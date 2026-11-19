@@ -1,0 +1,21 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Opening turns that give only context (solo trip, birthday, special occasion, weekend getaway, one-way, party size) and no concrete date are answered with a single seek_information line and no search. This holds for flights and for hotels. Five of the eight trajectories succeeded this way.",
+    "A US state code in an attractions request goes in state= with the type list (`search_attractions(type=[\"Art\"], state=\"CO\")`), and the search is assigned and followed by save_to_cache.",
+    "A date-range reply to the assistant's date question becomes two assigned and saved search_flights calls, saved as departure_flights and return_flights, with no extra parameters.",
+    "A refinement reply with a cached key is exactly load -> filter -> save, with only the new constraint (the Downtown Fresno neighborhood) and a new key.",
+    "The one trajectory that executed badly (Trajectory 1) shows what breaks the seek-only pattern. 'One-way' plus '2 travelers' led to a bare search with an invented example date, num_people, and a search nested in save_to_cache. The date rule exists in Rule 6, but it is buried deep in the skill."
+  ],
+  "patch": {
+    "reasoning": "Nearly every success was a first turn with no concrete date, answered by one seek_information line, or a minimal one-domain filter or search. The skill already covers all of these. The only recurring risk in the batch is the failed run, where the model invented a date and num_people for a context-only flight request. The existing 'Context is not a date' rule sits deep in Rule 6. I am promoting a short, checkable version to the top HARD OUTPUT RULES, paired with its positive trigger (a literal date means search), and adding no new top-level section.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- DATE GATE (before any search_flights / search_hotels): find the date the user literally wrote in the conversation (e.g. 'May 16, 2025'). Found -> search with it. Not found -> that domain gets `seek_information(...)` naming only the missing date(s) and NO search call. It is the whole output unless another requested domain is searchable (see 4b). 'One-way', 'N travelers', 'solo trip', 'weekend getaway', 'birthday' and 'special occasion' are context, not dates. Never use a TOOL CONFIG example date such as '2025-08-03'. search_flights never takes num_people or num_layovers."
+      }
+    ]
+  },
+  "source_type": "success"
+}

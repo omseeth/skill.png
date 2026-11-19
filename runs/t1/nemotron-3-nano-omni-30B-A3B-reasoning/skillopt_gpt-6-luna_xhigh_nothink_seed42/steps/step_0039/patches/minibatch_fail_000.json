@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "flight_leg_or_date_role_error",
+      "count": 4,
+      "description": "Round-trip or multi-city work was collapsed, searched in the wrong direction, or failed to preserve distinct outbound, return, and arrival-date roles."
+    },
+    {
+      "failure_type": "cache_refinement_or_delta_omission",
+      "count": 3,
+      "description": "Agents re-searched or skipped refinement instead of applying newly stated criteria to the latest compatible cached result."
+    },
+    {
+      "failure_type": "incomplete_action_or_result_persistence",
+      "count": 7,
+      "description": "Required tool calls or result bindings and cache saves were omitted."
+    },
+    {
+      "failure_type": "invalid_unrequested_nearest_call",
+      "count": 1,
+      "description": "A hotel amenity was incorrectly treated as a separate proximity target, causing a nearest search without two valid result inputs."
+    },
+    {
+      "failure_type": "time_range_encoding_error",
+      "count": 1,
+      "description": "A one-sided arrival deadline was passed as a single time value in an invalid format instead of a supported range."
+    },
+    {
+      "failure_type": "explicit_hotel_stay_duration_ignored",
+      "count": 1,
+      "description": "An explicitly stated number of hotel nights was not used to calculate the checkout date or search for the hotel."
+    }
+  ],
+  "patch": {
+    "reasoning": "The general rules for cache refinement, persistence, and scoped execution already exist, including in the protected section, so duplicating them is unlikely to help. These edits address specific gaps exposed by the batch: interpreting date ranges and distinct arrival requirements, encoding deadline times, deriving checkout from an explicitly stated stay length, and preventing invalid nearest calls.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.",
+        "content": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. When a user gives an origin, destination, and travel dates “from D1 to D2” with no one-way intent, search outbound on D1 and the reverse return leg on D2; never put both dates in the outbound `departure_date` list. Preserve any explicitly supplied airport code at the matching endpoint of each leg, including as the destination endpoint on the return leg. D2 is the return leg’s departure date, not an outbound arrival date. If the conversation separately states an outbound arrival date or deadline, include it as `arrival_date` on the outbound search even if that date also serves as the return departure date; do not infer an arrival constraint from a date range alone. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when explicitly requested. Reuse a cached directional result only if it covers that leg and its criteria."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "\n- For a one-sided time deadline such as “arrive by HH:MM,” encode the requested window using the time field’s required two endpoints, from the earliest supported time (typically midnight) through the stated cutoff. Use the time format accepted by that tool; do not pass a scalar or singleton time list."
+      },
+      {
+        "op": "insert_after",
+        "target": "Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood.",
+        "content": " If the user explicitly supplies a hotel start/check-in date and a stay duration in nights, calculate checkout with `adjust_date(date=<start date>, delta_days=<number of nights>)` and use its returned date as `checkout_date`; do not treat that checkout as missing. Do not infer a stay duration from vague wording such as “weekend getaway.”"
+      },
+      {
+        "op": "insert_after",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between supported domains.",
+        "content": "\n- The nearest call requires exactly two populated, compatible domain results. Do not call it when either result is missing, and do not treat an amenity within one domain (for example, a hotel rooftop bar) as a second domain or a proximity target."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

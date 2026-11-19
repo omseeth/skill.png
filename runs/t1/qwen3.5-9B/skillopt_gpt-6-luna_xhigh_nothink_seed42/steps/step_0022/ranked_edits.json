@@ -1,0 +1,34 @@
+{
+  "reasoning": "Preserved all failure-driven corrections as higher priority. Kept the success-driven round-trip date clarification because it addresses a distinct ambiguity not covered by the failure edits. All edits target content outside the protected section, and support counts and source types are retained. [optimizer-ranked: selected 3/6 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "`search_flights` requires `departure_date`; `arrival_date` is optional, even for a round trip.",
+      "content": "`search_flights` requires a `departure_date` for each leg being searched; for an explicit round trip, both the outbound departure date and return-leg departure date (return date) must be known. `arrival_date` is an optional outbound constraint, not a substitute for the return-leg departure date.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed.",
+      "content": "A party size or flight itinerary alone does not request a hotel search. When lodging is requested, set `num_people` only for an explicitly stated hotel booking headcount or occupancy constraint; do not infer it from travel context alone (for example, describing a trip as “solo”). Apply a newly supplied occupancy constraint with a same-domain filter on a suitable cached hotel result when needed.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "If a later constraint changes an underlying domain result used by a proximity result, refresh and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call.",
+      "content": "When a later request explicitly asks to refresh proximity recommendations after a domain result changes, retrieve the updated result and the latest suitable cached result for the other domain, then rerun and save `search_nearest`. A domain-only constraint updates only the explicitly targeted domain; do not rerun proximity as a side effect. For an explicitly requested nearest update, if the latest suitable base is already a combined result and supports the new constraint directly, filter and save it instead of making an unnecessary nearest call.",
+      "support_count": 1,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 5 has the strongest support and clarifies a required date for each round-trip leg. Edit 1 addresses a repeated risk of inferring hotel occupancy from travel context alone. Edit 0 prevents unnecessary proximity searches when the user only requested a domain-specific update. The remaining edits have weaker support or largely restate existing guidance.",
+    "selected_indices": [
+      5,
+      1,
+      0
+    ]
+  }
+}

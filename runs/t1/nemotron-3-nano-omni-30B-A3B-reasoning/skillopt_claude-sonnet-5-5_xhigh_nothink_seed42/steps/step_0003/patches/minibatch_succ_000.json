@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "First-turn flight requests that give origin and destination but no date (with extras such as 'one-way', '2 travelers', 'for a wedding, arrive on time', or 'I normally fly from LEX') get one short seek_information naming only the departure date. No search is run and no optional details are asked for.",
+    "A restaurant request with cuisine and budget but no city gets a single seek_information for the city. The optional details never replace the missing mandatory arg.",
+    "Refinement turns on a cached domain follow load, filter, save. They load the most refined key (e.g. filtered_flights, not flights), pass only the new constraint, and save under a new key. Example: flight_class=['first'] on the filtered_flights key.",
+    "A numeric budget phrased loosely ('around 500 per night', 'spend around 110') maps directly to budget=<number> on the right domain's filter or search. It is combined with other new amenities in a single filter_* call.",
+    "A bare refusal ('Not really') with an existing cache entry becomes a pure get_results_from_cache(key=...) with no search or filter."
+  ],
+  "patch": {
+    "reasoning": "Half the successes were first-turn flight requests where the agent correctly asked only for the missing departure date despite rich surrounding context. Others showed loose numeric budgets mapped to budget=<int> in a single filter call, and a compact per-turn decision order. The skill covers the pieces but never says that narrative or optional context is not a date, that 'around N' is a numeric budget, or in what order to run the checks. These short reinforcements should reduce both over-seeking and under-filtering.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- A round-trip request still needs the departure date. Ask for it; do not assume a return date.",
+        "content": "- Context is not a date. A flight request with origin and destination but no date is still missing departure_date, even if the user also gave 'one-way', a party size ('2 travelers'), a purpose ('wedding', 'family reunion', 'business trip'), a timing worry ('make sure we arrive on time'), or a home-airport habit ('I normally fly from LEX'). Output only `seek_information(\"We need the departure date for the flight.\")`. Do not search, and do not ask about class, airline, time, return date, or passenger count."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 10: Route the LAST turn's constraints to the right domain; a 'yes' to a proposal is a new constraint",
+        "content": "- Loose numeric budgets are still budgets. 'around 500 per night', 'about 110', 'we're looking to spend around 110' -> `budget=500` / `budget=110` (plain integer, no rounding or range) on the domain being discussed: hotel budget is per night, restaurant budget is per person, flight budget is per ticket. Combine it with any other new constraint in the same turn in ONE filter_* call (e.g. `filter_hotels(prior_results=x, budget=500, has_laundry_service=True)`). If that domain has no cache entry and its mandatory args are known, pass budget in the first search_* call. If a mandatory arg such as the restaurant city is still missing, only seek_information for it."
+      },
+      {
+        "op": "append",
+        "content": "## Quick decision order for every turn\n1. List the domains the user has requested anywhere in the conversation (flight, hotel, restaurant, attraction). Ignore domains never mentioned.\n2. For each domain, check the CACHE: a key exists -> refine with filter_* (Rules 2, 13) or retrieve only if the last turn adds nothing new (Rule 8). No key -> go to step 3.\n3. Check that domain's mandatory args, using values from ANY earlier turn. Anything missing -> one combined seek_information naming only the missing mandatory items (Rules 6, 7). All present -> `x = search_*(...)` plus `save_to_cache` (Rule 14).\n4. Pass only the constraints the user literally stated. Never ask about optional details, and never seek information for a domain the user has not requested."
+      }
+    ]
+  },
+  "source_type": "success"
+}

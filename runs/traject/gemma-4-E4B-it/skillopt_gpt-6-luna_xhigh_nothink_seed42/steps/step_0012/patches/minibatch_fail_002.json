@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_or_facet_coverage",
+      "count": 4,
+      "description": "Some calls used a plausible neighboring endpoint or omitted a distinct requested facet rather than fully mapping each deliverable."
+    },
+    {
+      "failure_type": "parameter_value_or_argument_mapping",
+      "count": 6,
+      "description": "Calls used mismatched parameter values or representations, or missed relevant search controls and constraints."
+    },
+    {
+      "failure_type": "scalar_parameter_cardinality",
+      "count": 1,
+      "description": "Multiple email targets were placed in one call despite the endpoint exposing only a single scalar email parameter."
+    },
+    {
+      "failure_type": "administrative_hierarchy_mapping",
+      "count": 1,
+      "description": "Location values were assigned by field labels rather than the endpoint's geographic hierarchy."
+    },
+    {
+      "failure_type": "collection_initialization",
+      "count": 1,
+      "description": "A collection search omitted the initial page and documented default sorting controls."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify when repeated targets require separate calls, make output-format examples authoritative for value serialization, initialize ordinary paginated searches consistently, and guard against interpreting geographic field names without endpoint-specific conventions. Endpoint and facet coverage already have explicit guidance in the skill, so no duplicate rule is added.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- **Scope and bundle calls appropriately.** Make separate calls for distinct targets, checks, or purposes when they require distinct arguments. Combine multiple filters or categories in one call when they concern the same operation and the endpoint supports that syntax. Do not repeat a check, add overlapping searches, or introduce unrequested calls.",
+        "content": "\n\nSchema cardinality governs bundling: if an endpoint has a scalar parameter for a target (such as one email, ID, location, or term), make a separate call for each target. Repeat a parameter in one call only when the documentation explicitly permits repeated values or defines a batch/list encoding; do not use repeated scalar parameters as an undocumented bulk request."
+      },
+      {
+        "op": "insert_after",
+        "target": "**Handle independent calls, pagination, and explicit sorting requests.**",
+        "content": "\n\nTreat an ordinary collection or search request as a request for its initial page: when the user gives no page, set an exposed page selector to 1. Use a documented page-size default when available, or otherwise the smallest conventional page size needed. If a sort selector documents a default and no alternative ordering is requested, use that default; never guess undocumented defaults."
+      },
+      {
+        "op": "insert_after",
+        "target": "**Map administrative locations by hierarchy, not by label similarity.**",
+        "content": "\n\nDo not infer a field's geographic level from its label alone; follow the endpoint's documented or well-established geographic conventions. For example, a parameter named `state` may serve as a country selector. Map each supplied country, region, metro area, and city to the corresponding API level, and do not invent a hierarchy assignment when the mapping is unclear."
+      },
+      {
+        "op": "replace",
+        "target": "Serialize values according to the required call-format convention: follow explicit examples that consistently encode values as strings, even for numeric or boolean parameters; otherwise follow the declared schema types.",
+        "content": "Serialize each `value` according to the required call-format examples: if an example encodes a numeric- or boolean-looking parameter as a JSON string (for example, `\"1\"`), encode such values as strings too, even when the schema type is NUMBER or BOOLEAN. If examples do not establish string encoding, follow the declared schema types. This affects serialization only, not the semantic value or required/optional grouping."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

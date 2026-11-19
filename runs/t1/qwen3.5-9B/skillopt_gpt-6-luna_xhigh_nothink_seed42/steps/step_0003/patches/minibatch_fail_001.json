@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_follow-up and result lifecycle",
+      "count": 7,
+      "description": "Agents skipped needed filters, treated broad cached results as satisfying new constraints, omitted saves, or repeated unrelated/already-applied work."
+    },
+    {
+      "failure_type": "context and required-input resolution",
+      "count": 2,
+      "description": "Agents failed to reuse a known trip destination for a newly requested domain or derive hotel checkout from an explicit stay length."
+    },
+    {
+      "failure_type": "location and criteria mapping",
+      "count": 2,
+      "description": "Agents mapped a state to the city field or inferred a narrower hotel amenity from vague wording."
+    },
+    {
+      "failure_type": "flight parameter formatting",
+      "count": 2,
+      "description": "Agents used an invalid flight-class casing or resubmitted a time range in an unsupported format."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify cache decisions for incremental updates and both round-trip legs, map locations using trip context and the correct fields, derive checkout only from an explicit stay length, and make flight enum/time input formats unambiguous.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Honor the user's request and values:** Use only domains explicitly requested; do not infer extra searches, preferences, amenities, or substitute similar categories. Preserve names, categories, criteria, and date strings unless a tool requires a format conversion. Map a specified neighborhood to the neighborhood field, not the city field. Check required inputs independently by domain: seek missing information, but proceed with other requested searches whose inputs are available. For ratings, represent “exactly x” as `[x, x]` and “at least x” as `[x, 5]`.",
+        "content": "- **Honor the user's request and values:** Use only domains explicitly requested; do not infer extra searches, preferences, amenities, or substitute similar categories. Do not map vague amenity wording to a narrower tool flag without clear equivalence. Preserve names, categories, criteria, and date strings unless a tool requires a format conversion. Map neighborhoods to the neighborhood field and states or regions to the state field, not the city field. When a domain is newly requested during an ongoing trip, use the already-established destination as its location when that context clearly applies rather than asking for a city already known. Check required inputs independently by domain: seek missing information, but proceed with other requested searches whose inputs are available. For ratings, represent “exactly x” as `[x, x]` and “at least x” as `[x, 5]`."
+      },
+      {
+        "op": "replace",
+        "target": "- **Handle follow-ups incrementally through the cache:** Retrieve the relevant cached result with `get_results_from_cache`, apply only the new constraints using the appropriate same-domain filter, and save the updated result under a relevant key. Do not mix domains. Search afresh only when there is no suitable cached base; if cached results already satisfy the latest request, do nothing. Avoid repeating unrelated searches, filters, or other operations.",
+        "content": "- **Handle follow-ups incrementally through the cache:** Use cache summaries to identify and retrieve the latest suitable base for each affected result with `get_results_from_cache`, then apply only constraints not already represented using the appropriate same-domain filter. A broad search summary that does not reflect a newly requested constraint does not satisfy it; filter the cached result. If an update applies to both outbound and return results, retrieve, filter, assign, and save each leg separately. Save every new filtered result under a relevant fresh key. Do not mix domains, use variables from earlier code, process unrelated cache entries, or repeat already-applied constraints. Do nothing only when the cached results already satisfy all current constraints."
+      },
+      {
+        "op": "replace",
+        "target": "- **Format flight time ranges as required:** For `departure_time` and `arrival_time`, use the validator's accepted 12-hour format with AM/PM (for example, `12:00 PM`), not `HH:MM:SS`. Choose a supported interval for vague time periods.",
+        "content": "- **Format flight time ranges and classes as required:** For `departure_time` and `arrival_time`, use the validator's 12-hour format with AM/PM (for example, `[\"01:07 PM\", \"11:59 PM\"]`), not 24-hour time or `HH:MM:SS`. Choose a supported interval for vague time periods, and do not resubmit a time constraint already applied to cached results unless the user changes it. Pass `flight_class` using the supported lowercase values, such as `[\"economy\"]`, `[\"business\"]`, or `[\"first\"]`; do not title-case them."
+      },
+      {
+        "op": "replace",
+        "target": "- **Distinguish required dates from optional details when seeking information:** `search_flights` requires `departure_date`; `arrival_date` is optional, even for a round trip. `search_hotels` requires both `checkin_date` and `checkout_date`, while `num_people` and `num_rooms` are optional. Phrases such as “last-minute” do not provide a date. Ask only for missing required values, not optional counts or dates.",
+        "content": "- **Distinguish required dates from optional details when seeking information:** `search_flights` requires `departure_date`; `arrival_date` is optional, even for a round trip. `search_hotels` requires both `checkin_date` and `checkout_date`, while `num_people` and `num_rooms` are optional. If the user explicitly gives a hotel check-in date and stay length in nights, derive checkout using `adjust_date` with that number of nights; ask for required dates only when they cannot be derived from explicit itinerary details. Phrases such as “last-minute” or “weekend” alone do not provide dates. Ask only for missing required values, not optional counts or dates."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

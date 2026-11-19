@@ -1,0 +1,40 @@
+{
+  "reasoning": "Preserved all four higher-priority failure-driven edits, including the broader date and itinerary guidance, and deduplicated their overlapping criteria within the existing rules. Added the distinct success insight that lodging location can be taken from the known destination of a flight on the same trip. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+      "content": "- Resolve the latest user reply against the immediately preceding assistant question or proposal. Treat answers to clarification questions—including brief affirmations and replies that add criteria—as active plan information; carry forward every explicit value and criterion the user explicitly accepts, and apply them to the affected requested results. If compatible cached results do not satisfy a newly stated or accepted criterion, retrieve the closest compatible result, filter only on criteria not already reflected, and save the output under a unique key. An affirmation authorizes only the entity, domain, or criterion in the proposal; do not infer other result types or searches (for example, accepting a hotel proposal does not request attractions, restaurants, or proximity searches). Do not return “No planning needed” until all current criteria are reflected in the relevant cached results.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg by setting `arrival_date` on the outbound search. Ask for an unknown endpoint rather than assuming a route. When a hotel stay is given as a check-in date plus an unambiguous duration in nights rather than a checkout date, call `adjust_date(date=<check-in date>, delta_days=<number of nights>)` and use its returned date as checkout; do not treat the duration as missing.",
+      "content": "- Preserve user-provided dates, entity values, and casing. For a round trip, make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg by setting `arrival_date` on the outbound search. For a request for only the return flight, reverse the known route and use the stated return date as `departure_date`, without searching the outbound leg. For a multi-city itinerary with explicitly stated routes and dates, search each stated leg separately, pairing dates with legs in the itinerary’s stated order; do not ask for dates already supplied for those legs. When, in response to a travel-date question for a known-route trip, the user explicitly gives an overall span with a start and end date, treat those as the outbound and return departure dates unless the conversation specifies one-way travel; do not ask for dates already supplied or treat the span as a single departure date. Ask for an unknown endpoint rather than assuming a route. When lodging is explicitly requested for that same trip at its known destination and the span clearly covers the stay, use the trip start and end as check-in and checkout dates. Do not infer lodging dates from an event date alone. When a hotel stay is given as a check-in date plus an unambiguous duration in nights rather than a checkout date, call `adjust_date(date=<check-in date>, delta_days=<number of nights>)` and use its returned date as checkout; do not treat the duration as missing.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Never pass a preference as an unsupported extra argument or place it in an unrelated field. For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+      "content": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Never pass a preference as an unsupported extra argument or place it in an unrelated field. When multiple stated criteria belong to one requested domain and the schema supports them together, include them in one search call rather than issuing separate searches for each criterion. Encode an explicitly stated party size, including “solo” as one person, in the matching lodging field when supported. For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). Encode an exact flight departure or arrival time as `[T, T]` in the tool’s expected time format (for example, `[\"08:23 PM\", \"08:23 PM\"]`). For a one-sided time bound, encode the full interval: “by T” means midnight through T, and “after T” means T through the end of the day. For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+      "content": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Also call it when the user explicitly requests both lodging and attractions or restaurants for the same destination or trip, even if they do not say “near.” Do not infer an unrequested result type. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Flight searches require a known route and departure date; hotel searches require a city, check-in date, and checkout date; restaurant searches require a city.",
+      "content": " When hotels are requested as part of the same trip as a flight with a known destination, use that destination as the hotel city unless the user specifies a different lodging location.",
+      "support_count": 3,
+      "source_type": "success"
+    }
+  ]
+}

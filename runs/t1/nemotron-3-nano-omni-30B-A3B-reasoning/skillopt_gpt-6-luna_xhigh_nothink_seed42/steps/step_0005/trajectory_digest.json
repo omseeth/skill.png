@@ -1,0 +1,65 @@
+{
+  "step": 5,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 27,
+  "failure_patterns": [
+    {
+      "pattern": "conversation_scope_and_delta: Agents missed new follow-up constraints or dropped earlier requested actions, including suggested neighborhoods, trip legs, lodging, and dining.",
+      "count": 27,
+      "task_ids": [
+        "hotelrestaurant:train:5:9:0",
+        "hotelrestaurant:train:14:10:3",
+        "restaurant:train:6:56:0",
+        "attraction:train:17:27:2",
+        "hotelrestaurant:train:13:51:0",
+        "flighthotelrestaurant:train:12:13:4",
+        "attraction:train:23:42:1",
+        "flighthotel:train:11:50:5",
+        "attraction:train:3:53:0",
+        "flighthotelattraction:train:12:30:3",
+        "flighthotelrestaurant:train:16:43:1",
+        "flighthotel:train:2:2:1",
+        "flighthotelrestaurant:train:22:30:3",
+        "hotelrestaurant:train:18:45:3",
+        "flighthotel:train:8:13:1",
+        "hotel:train:16:36:2",
+        "flighthotel:train:21:6:1",
+        "attraction:train:1:8:0",
+        "hotelrestaurant:train:14:41:1",
+        "flighthotelattraction:train:15:30:1",
+        "flighthotelrestaurant:train:1:59:3",
+        "attraction:train:17:12:0",
+        "restaurant:train:25:28:0",
+        "attraction:train:5:15:2",
+        "flighthotelattraction:train:11:26:1",
+        "restaurant:train:2:4:4",
+        "hotelrestaurant:train:12:12:4"
+      ]
+    }
+  ],
+  "score_before": 0.23,
+  "score_after": 0.23,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "- Build an action checklist from the full conversation, treating the latest user turn as an update. Retain every still-active requested item and domain, including each flight leg and each requested hotel destination. Resolve short replies and questions such as “What’s there?” against the immediately preceding assistant question or suggestion, and map each supplied constraint to its intended item and domain. Preserve multiple criteria, such as an attraction type and a named attraction, in the appropriate supported fields. Check cache coverage separately for each action and constraint. For affected actions, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only newly introduced constraints; search when a needed result is unavailable. If the latest turn introduces a new domain, perform that request rather than repeating unrelated work. For an in-trip search, use the current trip destination only when it is unambiguous; otherwise ask for the location. Do not omit uncovered actions, redo unaffected domains, or rely on variables from earlier executions.",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions."
+    },
+    {
+      "op": "replace",
+      "content": "## Missing mandatory information\nCheck mandatory inputs separately for each requested action and domain. If any are missing, make one `seek_information` call asking only for those missing mandatory inputs; do not search an incomplete action, but still execute and cache other requested actions whose own mandatory inputs are complete. Never invent values or use defaults; optional preferences are not mandatory inputs. For a hotel stay clearly tied to a dated round trip to one destination, use the explicitly supplied trip dates as check-in and check-out when no separate hotel dates were given. If an exact check-in date and an explicitly stated stay length in nights are supplied, use `adjust_date` to derive checkout rather than asking. If stay dates cannot otherwise be determined unambiguously, ask; do not treat vague timing as an exact date.",
+      "target": "## Missing mandatory information\nBefore searching, check the full conversation for all mandatory inputs required by each requested tool. If any are missing, do not invent values, use defaults, or run a partial search. Make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs."
+    },
+    {
+      "op": "insert_after",
+      "content": "- Preserve user-supplied entity names and category values verbatim. Do not normalize, translate, or replace them with synonyms or near-synonyms; use the schema to choose the argument field, not to rewrite the value, unless the schema explicitly requires a mapping.",
+      "target": "## Validate tool arguments and preserve user intent"
+    },
+    {
+      "op": "replace",
+      "content": "- When refining results, do not resend criteria already represented in the base result. For each newly introduced, schema-supported constraint not already satisfied, retrieve a valid relevant base result and apply the matching filter, passing it as `prior_results`. Retrieval alone is not refinement: never filter using a missing, guessed, or `None` result; if no suitable base result is available, search when its mandatory inputs are complete.",
+      "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter."
+    }
+  ]
+}

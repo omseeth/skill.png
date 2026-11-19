@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "runtime/tool invocation",
+      "count": 5,
+      "description": "Agents imported tools from a nonexistent module instead of calling the provided tool functions directly."
+    },
+    {
+      "failure_type": "incremental cache handling",
+      "count": 6,
+      "description": "Agents skipped new requested refinements, used less-relevant cached results, or failed to save all needed updated results."
+    },
+    {
+      "failure_type": "tool selection and parameter grounding",
+      "count": 4,
+      "description": "Agents added unsupported search criteria, used a broad search followed by unnecessary filtering, or mapped a location to the wrong field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most consequential recurring issues were invalid imports and treating an existing baseline search as a reason to skip new work. The rules below clarify direct tool invocation, how to incrementally apply new preferences to the most relevant cached results, and how to ground searches in the user's actual constraints.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Reliable tool use and incremental planning\n- Tools are provided as callable functions in the execution environment. Call them by name directly; do not import them or define replacements.\n- Treat each new user preference as a possible refinement, even when relevant results are already cached. Inspect the cache summaries and use the most specific relevant result, including a previously filtered result when available. Apply new constraints to every affected result set (for example, both flight legs when a preference applies to the whole trip), then save each updated result under a distinct cache key. Return `print(\"No planning needed\")` only when the cached results already reflect all current requirements and no further operation is needed.\n- When a search tool supports the user's stated constraints, include them directly in the search rather than broad-searching and then filtering unnecessarily. Do not add unstated categories or preferences. Map each entity to its matching parameter (for example, a state abbreviation to `state`, not `city`) and preserve the user's wording and values. Use `search_nearest` when the request is about proximity or access between result types."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

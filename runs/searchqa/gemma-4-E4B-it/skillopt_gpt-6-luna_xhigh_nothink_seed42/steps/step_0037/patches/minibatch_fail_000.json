@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 5,
+      "description": "Agents echoed clue wording or chose a nearby example/object instead of resolving the clue’s missing referent or requested category."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 2,
+      "description": "Answers used an incomplete or unnecessarily expanded work title rather than the title form expected by the clue."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "The bare-list guidance covers people but not lists of other named entities, leading to an unsupported umbrella-group answer."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make unresolved pronouns and category placeholders explicit answer-slot cues, extend the existing list guidance beyond people, and clarify how to preserve the requested conventional title form without truncating or concatenating alternate titles.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Treat grammatical relations as target cues: wording such as “this state's X” asks for the state, not X's divisions, members, or examples. Use context to identify the entity filling the possessive or relational slot.",
+        "content": "\nIf a clue contains an unresolved pronoun or demonstrative (such as “he,” “this war,” or “this instrument”) or a category placeholder (such as “one of these”), resolve it from context and return the referent or requested class. Do not echo the unresolved phrase or substitute a named example or nearby object for the missing answer."
+      },
+      {
+        "op": "replace",
+        "target": "For a prompt consisting only of several people’s names, use context to identify the distinctive shared relation the list is meant to cue (for example, a common country or realm for rulers), rather than defaulting to a generic common role. Return the shared entity or attribute the clue calls for, not a succession or family chain; do not guess when context leaves multiple relations equally plausible or establishes none.",
+        "content": "For a prompt consisting only of a list of names or named entities, use context to identify the distinctive relation or answer target the list is meant to cue; do not automatically replace the list with an umbrella group or generic shared category. Return the specific entity or attribute supported by the clue and context, and do not guess when multiple relations remain plausible or none is established."
+      },
+      {
+        "op": "append",
+        "content": "\nFor work-title answers, use the conventional title form indicated by the clue and context: retain identifying words that belong to the title, rather than truncating it to a recognizable prefix. When context distinguishes an original title from a translated or alternate release title, do not append the alternate title as an extra alias unless the clue asks for it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

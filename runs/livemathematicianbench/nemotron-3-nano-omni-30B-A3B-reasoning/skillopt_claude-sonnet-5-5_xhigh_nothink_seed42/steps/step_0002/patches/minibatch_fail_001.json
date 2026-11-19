@@ -1,0 +1,43 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "strength_mismatch",
+      "count": 3,
+      "description": "Chose a trivially true or weaker option over the real theorem: the easy converse direction instead of the nontrivial rigidity statement (T2), a hedged 'only XP, not FPT' option over the 2^{O(k)} n^{O(1)} FPT bound (T3), and a one-way implication over the full iff (T5)."
+    },
+    {
+      "failure_type": "strength_mismatch",
+      "count": 3,
+      "description": "Chose an inflated option with an unproved extra structural clause over the clean base statement. The extras were 'decorated vs undecorated tree' (T4), 'uncovered edges lie in an o(n) vertex set' (T6) and 'Eq is a free factor' (T7), which is impossible by a rank count when rank ≥ 2n-2 > n."
+    },
+    {
+      "failure_type": "option_confusion",
+      "count": 1,
+      "description": "Picked the option with a swapped coefficient placement (λ on the s_2 term), although all other options agreed on the opposite placement (T8)."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "Guessed the decay exponent (u^{-γ}) from a generic template and ignored that the stem's hypothesis γ>1 matches an exponent γ-1 (T1)."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already says 'pick the strongest justified option' and 'be suspicious of extras', but the agent applied it inconsistently. In 3 cases it swung to a weaker, trivial, or negative-hedged option (the converse direction, 'only XP', one-way implication). In 3 others it swung to the option with the most clauses, whose extras were not derivable (and sometimes refutable by a simple invariant). The edits turn this into checkable procedures: (1) a hub test plus an extra-clause audit with cheap invariant checks, (2) rules for trivial directions, negative 'only/not/need not' clauses, iff vs one-way, and FPT vs XP, (3) a rule that uses the stem's hypothesis threshold as a clue for exponents, and an odd-one-out rule for swapped placements.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Hub test and extra-clause audit (guards against over-reaching 'strongest')\n- 'Strongest valid' means strongest PROVABLE, not 'most clauses'. First locate the hub: the option from which every other option can be obtained by one small edit (add a clause, drop a clause, swap two symbols, shift an exponent, reverse a direction). The true statement is usually the hub or the hub plus a clause you can actually derive. Override the hub only on positive evidence.\n- Extra-clause audit: for any option that adds a clause beyond the hub (a new object not named in the stem, e.g. 'decorated' tree, 'free factor', 'uncovered edges lie in a small vertex set', 'the minimiser has least energy', 'moreover ... unique'), you must be able to prove the clause in a few lines. Otherwise reject the option and take the plain version phrased in the stem's own vocabulary.\n- Test extra clauses against cheap invariants before accepting: rank/dimension/cardinality bounds (a free factor of F_n has rank ≤ n, so it cannot also have rank ≥ 2n-2 > n for n ≥ 3), degrees, sizes, scaling, degenerate cases. A clause that fails such a check is the corruption.\n- Do not over-correct: prefer a stronger option only when its extra content is derivable (see strength calibration). Never prefer an option merely because it is longer or adds structure."
+      },
+      {
+        "op": "append",
+        "content": "\n## Trivial directions, negative hedges, iff vs one-way, FPT vs XP\n- If an option is the trivially true direction (isomorphic ⇒ same invariant, a result true for any graph, a general fact), it is almost never the answer to 'what is the role of invariant X in classifying / distinguishing / determining'. The intended theorem is the nontrivial direction (X determines the object, up to the stated equivalence). Ask: would a paper highlight this statement? Then check that the nontrivial direction is plausible under the stem's hypotheses, and that the option does not drop or add hypotheses.\n- Option tails of the form 'only ...', 'not ... one', 'need not ...', 'does not provide ...', 'non-uniform' assert that no better result exists or add a non-improvability claim. A positive-theorem source rarely proves this. Treat such tails as the downgrade corruption and prefer the positive option they weaken.\n- Algorithmic bounds: f(k)·n^{O(1)} (FPT, e.g. 2^{O(k)} n^{O(1)}) is strictly stronger than n^{O(k)} (XP) and than 'polynomial for each fixed k'. Among running-time options that are all true, the strongest is the best bound; choose the FPT bound if the stem's hypotheses support it, and distrust claims that the result is 'only XP' or 'not FPT'.\n- 'A iff B' beats 'A ⇒ B' and 'B ⇒ A' when the stem asks for the strongest statement about existence/characterization and the missing direction is the natural construction (e.g. every admissible parameter value can be realized). Reject iff-variants only if they change the condition (K vs O, a different range such as n=2 beyond the stem's n>2) or add a 'same without change' extension."
+      },
+      {
+        "op": "append",
+        "content": "\n## Using stem hypotheses as clues; odd-one-out swaps\n- A threshold hypothesis in the stem (e.g. 'γ>1', 'p>2d/(1+2d)', 'n>2') is usually exactly what the stated conclusion needs. If options differ in an exponent such as u^{-γ} vs u^{-(γ-1)}, ask which exponent is meaningful (positive, integrable, decaying) exactly on the stem's range, since the answer is typically the one whose validity range matches the hypothesis. Also sanity-check the exponent by a simple heuristic (e.g. a first-moment, scaling or dimension count) instead of recalling a template such as 'Kesten tail ~ u^{-γ}' without checking the model.\n- When options differ only by where a coefficient or index sits (λ on the s_1 term vs the s_2 term, A before B, i vs j), count how many options use each placement. If one option is the isolated swap and all others agree on the other placement, the swap is the corruption (distractors are single edits of the truth and so mostly inherit its details). Confirm with the stem's naming order or a limiting case (a parameter → 0) when possible."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

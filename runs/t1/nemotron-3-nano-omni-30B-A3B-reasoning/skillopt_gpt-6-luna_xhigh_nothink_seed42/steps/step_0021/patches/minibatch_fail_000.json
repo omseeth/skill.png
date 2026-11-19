@@ -1,0 +1,45 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_selection and result lifecycle",
+      "count": 6,
+      "description": "Calls omitted required result binding/saving or refined from the wrong cache state instead of applying only the new constraint."
+    },
+    {
+      "failure_type": "schema validation and constraint encoding",
+      "count": 4,
+      "description": "Calls used an unsupported flight passenger argument, singleton rating ranges, or repeated criteria already covered by cached results."
+    },
+    {
+      "failure_type": "flight-leg construction",
+      "count": 2,
+      "description": "Round trips were represented as one outbound search with both dates rather than a separate search for each directional leg."
+    },
+    {
+      "failure_type": "tool runtime misuse",
+      "count": 2,
+      "description": "Code imported tools or cache helpers that are already provided, and one trajectory also accessed an unverified result field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains rules for saving results, using compatible caches, separating flight legs, and validating supported arguments, so those rules should not simply be repeated. Make the existing preflight audit more operational by requiring a per-action/per-leg disposition and final call audit. Clarify how rating thresholds map to the tools’ range inputs, and add the missing execution-environment guidance against imports and guessed result-field access.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "- Before emitting code, build an action ledger from the full conversation and latest turn. For each pending item or new constraint, record its domain and target, what criteria are already covered, the latest compatible listed cache key (or none), and whether mandatory inputs are available. List every explicitly described flight leg separately, with its direction and departure date. Give each pending action one disposition: already satisfied by a valid cached result, refine the latest compatible cache with only the new constraint, search when no compatible cache exists and required inputs are available, or request missing mandatory information when blocked. Before finalizing, verify every action and flight leg has the correct disposition, calls use schema-supported arguments, and every search/filter/sort/nearest result is bound to a variable and saved under a unique descriptive key. Do not plan work for unaffected domains. Use `print(\"No planning needed\")` only when no requested action or constraint remains unsatisfied."
+      },
+      {
+        "op": "replace",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list. For rating fields, interpret “at least x,” “x or better,” and an unqualified requested rating of x as a minimum threshold unless the user explicitly asks for exactly x; encode the range from x to the maximum supported by the tool schema/examples (these rating examples use 5 as the upper endpoint). Follow the schema for other bounds and do not invent endpoints."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Use the provided tool environment\n- Tool functions and cache helpers are already available in the execution environment. Call them directly; do not import them from modules or redefine them. Do not print or access fields on returned result objects unless the tool’s output schema explicitly supports those fields."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

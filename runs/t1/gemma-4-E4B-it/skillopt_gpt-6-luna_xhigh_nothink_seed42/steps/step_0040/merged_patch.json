@@ -1,0 +1,47 @@
+{
+  "reasoning": "Applied the failure-driven edits as the higher-priority versions, including the precedence-based turn classifier, filter-input clarification, and scope-specific corrections. Merged the success insight about declining optional narrowing into the overlapping cache-retrieval rule rather than duplicating it. All edits are outside the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "content": "**Latest-turn action precedence:** Read the full conversation, the preceding assistant offer or question, and the cache summary. Identify only the scopes changed by the latest turn and pending requests that are now complete. For each changed scope:\n1. If the user explicitly requests or accepts proximity, use compatible cached datasets—applying any new constraints to the relevant dataset—and run `search_nearest`. Search only for inputs the cache cannot cover; do not substitute a new category search for an accepted proximity offer. Preserve earlier explicit proximity requests unless the user withdraws them. Do not infer proximity merely because domains are mentioned together.\n2. If the user only accepts an offer to present recommendations from an already-covered scope, retrieve the relevant cached result for use; do not search, filter, or save a duplicate.\n3. If a covered scope gains or changes a filterable constraint, retrieve the most constrained compatible result by its exact cache key, apply the matching filter, and save it. Do not repeat the base search or regenerate unaffected scopes.\n4. Search only for a genuinely new or cache-uncovered scope, or execute a pending request that has just become complete. Include all active supported criteria and combine same-domain criteria in one call when supported. Validate mandatory arguments before each search; do not execute an incomplete search, and seek only its missing required details while continuing independent requests that are complete.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result.",
+      "content": "When filtering a compatible cached result, pass only newly supplied constraints and still-active supported constraints not already embodied in the selected result. Do not re-pass criteria already represented in it.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- If an affirmative accepts only an offer to present recommendations from an already covered scope, retrieve the relevant cached result for use; do not repeat its search or an already-applied filter, or save a duplicate filtered result. Apply a filter only if the reply adds a new constraint.",
+      "content": "- If the user accepts an offer to present recommendations from an already covered scope, or answers a preference-clarification question without adding a constraint (for example, “not really”), retrieve the relevant cached result for use. Do not repeat its search, reapply an embodied filter, or save a duplicate result. Filter and save only when the reply adds a new constraint. Likewise, if the user declines optional narrowing or says the broad recommendations are fine, keep the original request active and retrieve its compatible cached result for use; do not treat this as a no-op, re-search, or invent a qualitative filter.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Do not equate “kid-friendly” or “family-friendly” with a kids club; set `has_kids_club=True` only when the user specifically requests a kids club.",
+      "content": "Broad descriptions such as “kid-friendly” or “family-friendly” do not specify an individual hotel amenity and must not be mapped to a kids club, pool, or another feature. Set `has_kids_club=True` only when the user specifically requests a kids club.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Flight itinerary legs",
+      "content": "\n- Respect an explicitly limited leg: if the user says they want only the return flight, search only the reverse-direction return leg on its stated date; do not also search an outbound leg merely because an earlier message mentioned that route. Keep each requested direction as its own search, and do not use `arrival_date` on an outbound search to represent a separate return leg.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; do not treat a request to stay in a named district as a proximity search.",
+      "content": "For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; do not treat a request to stay in a named district as a proximity search. For a lodging-feature request, map explicit beach access—including “a hotel near the beach” used to describe that feature—to `has_beach_access=True` when this is a supported hotel argument.",
+      "support_count": 1,
+      "source_type": "failure"
+    }
+  ]
+}

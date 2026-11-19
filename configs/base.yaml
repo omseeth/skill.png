@@ -1,0 +1,137 @@
+# Defaults for every run. Experiment configs inherit this with _base_: base.yaml.
+
+seed: 42
+
+model:
+  name: hf  # models.registry key
+  # local path or HF repo id — set this in your experiment config
+  model_id: ""              
+  dtype: bfloat16
+  device: auto
+  attn_implementation: null
+  trust_remote_code: false
+  resolution: [256, 256]
+  max_new_tokens: 8000 
+  generate:
+    do_sample: false 
+  chat_template_kwargs: {}  # e.g. {enable_thinking: false}
+  append_eos: false 
+  target_suffix: null 
+  max_target_tokens: 512  # right-truncate long gold turns
+  # Whole training sequence: image tokens + system + question + target.
+  max_sequence_tokens: 10240
+  vllm:
+    base_url: http://127.0.0.1:8000/v1
+    api_key: EMPTY
+    # Empty means model_id, which vllm serve <path> answers with. A server
+    # that lists some other name is another job's and is refused.
+    served_model_name: ""
+    # A whole reasoning trace can sit inside one request;
+    timeout: 3600.0
+    # how long the first call waits for the server to finish loading weights.
+    startup_timeout: 1800.0
+    max_retries: 8
+
+benchmark:
+  name: ""  # benchmarks.registry key
+  path: null
+  #splits: {train: 0.6, val: 0.2, test: 0.2}
+  allow_ungrouped: false   # refuse to split items whose group is None
+  # The <answer> tags and the single label inside them are what the scorer
+  # reads back and what the training target is wrapped in, so a replacement
+  # prompt has to keep asking for them.
+  system_prompt: |
+    You are an expert question answering agent.
+
+    ## Task Format
+    You will receive a CONTEXT containing document passages and a QUESTION.
+    Read the context carefully and answer the question based on the information provided.
+
+    ## Answer Format
+    Think step by step, then provide your final answer inside <answer>...</answer> tags. Keep your answer concise — typically a few words or a short phrase. Do not repeat the question. Do not include unnecessary explanation in the answer tags.
+
+    Example:
+    <answer>Abraham Lincoln</answer>
+  limit: null  # cap every split at N items; null keeps all of them
+  options: {}
+
+param:
+  kind: full
+  height: 256
+  width: 256
+  init: gray  # gray | random | <path to png>
+
+train:
+  epochs: 40 
+  batch_size: 6
+  lr: 0.03
+  beta1: 0.5  # Adam's first-moment decay
+  lr_schedule: cosine  # constant | cosine (decays lr to zero over the run)
+  grad_clip: null
+  log_every: 20
+  eval_every: 100
+  eval_items: 200
+  select_on: val_metric
+  # A skill document in the system turn for the whole run, placed by
+  # injection.skill_template as skillpng_conditioned places it when the image
+  # is scored. The val clean number is then the skill without an image.
+  # null: no skill.
+  skill_path: null
+  # Everything one benchmark and model produces lives here, one directory per
+  # run. Experiment configs pin the benchmark half (runs/searchqa) and the
+  # job scripts append the model (runs/searchqa/qwen3.5-9B).
+  run_dir: runs
+  run_name: run
+
+eval:
+  split: test
+  # none | noise | skillpng | llmskill | skillopt | skillpng_llmskill |
+  # skillpng_conditioned. skillpng_llmskill pairs an image and a skill
+  # obtained apart; skillpng_conditioned an image optimized under the skill
+  # (train.skill_path), which its sidecar must name.
+  condition: skillpng
+  # The optimized image; read only when condition is skillpng,
+  # skillpng_llmskill or skillpng_conditioned.
+  image_path: null
+  # The skill document; read only when condition is llmskill, skillopt,
+  # skillpng_llmskill or skillpng_conditioned.
+  skill_path: null
+  # Score the first N items of the split only
+  limit: null
+
+injection:
+  site: pre_query  # pre_query | post_query
+  # Where llmskill, skillopt, skillpng_llmskill and skillpng_conditioned put
+  # the skill in the system turn, and where train.skill_path puts it.
+  skill_template: |
+    {system_prompt}
+
+    ## Skill
+    {skill}
+
+results:
+  # null appends the scored rows to <train.run_dir>/results.jsonl, next to the
+  # runs they came from. Set a path to collect several groups in one file.
+  path: null
+
+wandb:
+  # Training only. Project, entity, group and mode come from the WANDB_*
+  # environment variables; history.jsonl is written either way. Metrics go up
+  # every logged step, the image only at the end of the run: best and latest.
+  enabled: false
+
+ensemble:
+  # Training only: more models the one image is optimized against, next to
+  # model, which stays the primary (the image lives on its device; run names
+  # and sidecars follow it). Each member's model block is the primary's
+  # resolved one with the keys it sets on top. Empty trains model alone, and
+  # leaves the config hash as it was. --set replaces lists whole, so pass all
+  # members at once:
+  #   --set 'ensemble.members=[{model: {model_id: /path/gemma-4-E4B-it,
+  #          resolution: [768, 768]}, weight: 1.0}]'
+  # A member can sit on another GPU with device: cuda:1.
+  members: []
+  # Loss weights are normalized over the primary and the members to sum to 1.
+  primary_weight: 1.0
+  # Rescale each model's image gradient to unit norm before the weighted sum.
+  normalize_grads: false

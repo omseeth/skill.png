@@ -1,0 +1,23 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "For date-filtered talks, distinguish when a talk was delivered or recorded from when it was published; two TED searches required record-date filters rather than publication-date filters.",
+    "For chess puzzle searches requiring multiple themes, encode themes as a JSON array string and use the `ALL` match mode rather than comma-joining them."
+  ],
+  "patch": {
+    "reasoning": "These two patterns recur across multiple trajectories and add field-specific guidance not captured by the general date and multi-value rules. Other observed issues, such as string serialization and canonical slugs, are already covered by the skill.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "For multi-value filters, preserve whether the user asks for any listed value or for all of them to match. Use the endpoint's documented list encoding and, when available, its documented match-mode parameter; do not assume comma-separated values or an all-match mode without schema support.",
+        "content": "\n\nFor `Chess Puzzles: Puzzles`, encode multiple requested themes in `themes` as a JSON-array string (for example, `[\"middlegame\",\"advantage\"]`); set `themesType` to `ALL` when the request requires all listed themes. Do not comma-join the themes."
+      },
+      {
+        "op": "insert_after",
+        "target": "Carry every explicit or clearly implied constraint into its matching documented field, including optional qualifiers such as location or area, active status, locale, sort, postal code, duration, quantity, source, or output mode; a broader or unfiltered response is not a substitute when the endpoint supports the requested scope.",
+        "content": " When an endpoint exposes separate record/event-date and publication-date filters, match the filter to the requested date meaning: use record/event-date fields for when something happened, was delivered, or was recorded; use publication-date fields when the request is about when it was published. Preserve the requested before/after bound using the documented selector (for example, TED talk delivery dates use `from_record_date`, not `from_publish_date`)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

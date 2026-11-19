@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_invocation_contract_violation",
+      "count": 4,
+      "description": "Agents imported the unavailable tools module instead of calling injected functions directly."
+    },
+    {
+      "failure_type": "location_parameter_mapping",
+      "count": 3,
+      "description": "Agents treated a supplied state as a city or incorrectly requested a city for an attraction search."
+    },
+    {
+      "failure_type": "result_persistence_omission",
+      "count": 2,
+      "description": "Agents performed attraction searches without saving the returned results to cache."
+    },
+    {
+      "failure_type": "categorical_value_normalization",
+      "count": 2,
+      "description": "Agents used user-style capitalization for flight-class values instead of the tool's canonical spelling."
+    },
+    {
+      "failure_type": "named_entity_resolution",
+      "count": 1,
+      "description": "An exact attraction request was handled as a broad category search rather than a search for the named attraction."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify how attraction locations map to the available city and state fields, distinguish tool enum values from user-provided entity casing, and ensure a specifically named attraction is not replaced by a broad category. The existing skill already explicitly covers direct tool calls and saving new results, so those omissions do not warrant duplicating its instructions.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, search each leg separately, reverse the outbound route for the return, and use the return leg’s departure date. Ask for an unknown endpoint rather than assuming a route.",
+        "content": "\n- For attraction searches, map a supplied city to `city` and a supplied state or state abbreviation to `state`, preserving it exactly. A state alone is sufficient when no city is given; do not request a city merely because `city` is optional and absent."
+      },
+      {
+        "op": "replace",
+        "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "- Match arguments to the tool schema’s expected type, cardinality, and meaning. Preserve user-provided casing for dates and named entities, but use the tool schema’s canonical spelling for categorical values; for example, encode economy flight class as `[\"economy\"]`, not with the capitalization used in the user’s sentence. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`)."
+      },
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated. When the request identifies a specific attraction by name, use that exact value in `attraction_name`; do not substitute a broad attraction category. Use a compatible cached result only if it explicitly covers the named attraction; otherwise search for the named attraction."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

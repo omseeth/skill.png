@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_coverage_and_refinement",
+      "count": 3,
+      "description": "Agents filtered from a missing cache result, assumed an unreported constraint was already satisfied, or searched instead of refining a compatible cached flight result."
+    },
+    {
+      "failure_type": "call_scope_and_missing_inputs",
+      "count": 4,
+      "description": "Agents omitted ready actions, added unsupported preferences or calls, or invented hotel inputs instead of seeking clarification."
+    },
+    {
+      "failure_type": "tool_result_binding_and_cache_persistence",
+      "count": 4,
+      "description": "New search or refinement results were not consistently bound and saved under cache keys."
+    },
+    {
+      "failure_type": "flight_leg_modeling",
+      "count": 2,
+      "description": "Round-trip dates were combined into one outbound search, or cached itinerary legs were re-searched rather than refined independently."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify how to verify cache coverage from summaries, distinguish a compatible base result from a result satisfying a new filter, and refine cached flight legs one by one. Make the ready-restaurant/missing-hotel-dates case actionable. Binding and saving results are already explicitly required, so those rules are not duplicated.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "\n- Use cache summaries as evidence only for criteria they explicitly report: a matching domain or location alone does not show that a newly requested amenity, cuisine, neighborhood, or class is covered. Before filtering, verify that a listed key matches the target and retrieve its result. Never pass a missing or `None` lookup to a filter; search if no compatible base result exists and mandatory inputs are ready, otherwise seek the missing inputs."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.",
+        "content": "\n- When a new flight constraint is added to an itinerary, retrieve and refine each compatible cached route/date leg independently with `filter_flights`; the fact that the base result does not yet reflect the new constraint is a reason to filter it, not to repeat the search. Search only for legs with no compatible cached result or changed route/date."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Missing mandatory information",
+        "content": "\nFor a request for a restaurant near a hotel, readiness is independent: if the city and cuisine are known, search the restaurant even when hotel check-in or check-out dates are missing. Ask for the missing hotel dates rather than inventing a stay, and perform the proximity call only once both relevant results are available."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

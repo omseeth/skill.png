@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_redundant_calls",
+      "count": 6,
+      "description": "Calls were routed to neighboring endpoints or expanded with irrelevant and near-duplicate tools instead of a minimal set for the requested outcomes."
+    },
+    {
+      "failure_type": "malformed_output",
+      "count": 2,
+      "description": "The final call list contained malformed JSON and did not conform to the required call-object structure."
+    },
+    {
+      "failure_type": "schema_parameter_mapping",
+      "count": 3,
+      "description": "Some parameters were placed in the wrong required/optional bucket or used values with types that did not match the schema."
+    },
+    {
+      "failure_type": "past_tense_action_omission",
+      "count": 1,
+      "description": "An explicitly described operation was omitted because it was recounted as a past action in a workflow."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that explicitly described actions remain requested outcomes even when recounted in past tense, while transitions alone do not authorize inferred calls. Add a concrete JSON syntax audit for malformed call lists. Endpoint minimization and schema mapping are already addressed in the skill, so those rules are not repeated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Treat narrative transitions as context, not as authorization for an additional operation.",
+        "content": "Treat each explicit action clause as a requested outcome even when recounted in past tense or embedded in a sequence; do not assume it has already been executed. Narrative transitions alone do not authorize additional calls: include operations named in action clauses, but do not infer operations from contextual goals or comparisons."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Check that every requested outcome is covered, each call uses the exact listed tool name, and each call object follows the active answer format exactly. Use the required keys, parameter buckets, types, and wrappers; include empty arrays when required. Do not merge calls, duplicate keys, or add explanatory text outside the required format.",
+        "content": "- Perform a final JSON syntax audit of the complete response: every call must be a valid object, parameter arrays must contain only valid parameter objects, and there must be no dangling key/value fragments or malformed wrappers."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

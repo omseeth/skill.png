@@ -1,0 +1,44 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_assignment_and_save",
+      "count": 4,
+      "description": "First searches were emitted as bare calls with no variable assignment and no save_to_cache (restaurants x2, attractions, flights). The round-trip case also used the nonexistent return_date kwarg."
+    },
+    {
+      "failure_type": "touching_already_handled_domains",
+      "count": 2,
+      "description": "The agent re-filtered hotels when the last turn was only about restaurants, and re-searched cached restaurants when flight dates arrived."
+    },
+    {
+      "failure_type": "wrong_hotel_param_mapping",
+      "count": 3,
+      "description": "Hotel parameters were mis-mapped. 'City view' went into neighborhood, a neighborhood went into city, stars=[1] had one value, neighborhood wording was truncated, free_wifi_included was added unprompted, and num_people was dropped."
+    },
+    {
+      "failure_type": "hallucinated_or_example_values",
+      "count": 2,
+      "description": "city='Dallas' was copied from a usage example for a state-only request. Python comments and helper variables cluttered the output."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures break rules that already exist but are buried deep in a long document: bare search calls, return_date, copied example values, stars with one element, and re-filtering cached domains. The first edit replaces the empty header line with a short, high-visibility checklist of these output-form rules, with concrete templates. The other two edits close real gaps: hotel parameter mapping (view phrases, city vs neighborhood, num_people, no extra amenities) and scoping the last turn to the domain whose state changed in multi-domain conversations, with worked examples from these failures.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Pre-flight checklist (verify before EVERY response; most failures come from these)\n1. Every search_*, filter_*, sort_results and search_nearest call is assigned to a variable AND followed by save_to_cache. A bare `search_restaurants(...)`, `search_attractions(...)` or `search_flights(...)` line is ALWAYS wrong, even when it is the only call in the turn. Templates:\n   `restaurants = search_restaurants(city=\"Fresno\", cuisine=[\"Persian\"], has_halal_options=True)` then `save_to_cache(key=\"restaurants\", value=restaurants)`\n   `attractions = search_attractions(type=[\"Art\", \"Scenic\"], state=\"GA\")` then `save_to_cache(key=\"attractions\", value=attractions)`\n2. Use only kwargs that exist in the tool's arg list. search_flights has NO return_date. A round trip ('leave May 17, return May 21') is TWO assigned and saved calls: `departure_flights = search_flights(start_airport_city=A, end_airport_city=B, departure_date=[\"May 17, 2025\"])` and `return_flights = search_flights(start_airport_city=B, end_airport_city=A, departure_date=[\"May 21, 2025\"])`, each followed by save_to_cache (keys departure_flights / return_flights).\n3. Never copy values from tool usage examples (cities such as \"Dallas\", example dates, airline codes). Use only what the user said. A state-only request ('attractions in GA') is `state=\"GA\"` with NO city.\n4. Output only tool calls inside <CODE>. No explanatory or 'checking mandatory params' comments, no helper variables such as `departure_dates = [...]`, no imports.\n5. Touch only the domain(s) whose situation changed in the last turn (see the final 'Scope of the last turn' rule). Never repeat work already shown in the CACHE summary."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 23: Hotel parameter mapping (search_hotels / filter_hotels)\n- `city` is only the base city (\"Atlanta\"). A district or area goes in `neighborhood=[...]` using the user's wording, including the city name. 'a hotel in Midtown Atlanta' -> `city=\"Atlanta\", neighborhood=[\"Midtown Atlanta\"]`. 'a hotel in Downtown St. Louis' -> `city=\"St. Louis\", neighborhood=[\"Downtown St. Louis\"]`. Never put a neighborhood in city and never shorten it to [\"Downtown\"] or [\"Midtown\"].\n- View phrases are amenities, never neighborhoods: 'city view' -> `has_city_view_rooms_present=True`; 'ocean view' -> `has_ocean_view_rooms_present=True`; 'rooftop bar' -> `has_rooftop_bar=True`.\n- Style words ('luxurious', 'nice', 'anniversary') produce no param. '1 star' -> `stars=[1, 1]`, always two values.\n- Counts: 'we'll need 4 rooms' -> `num_rooms=4`. If a headcount appears in the conversation (e.g. the assistant asked 'how many rooms for 4 people?' and the user answered), also pass `num_people=4`.\n- Map each stated amenity to exactly its own param: 'free parking' -> `has_free_parking=True` only. Never add `free_wifi_included` or other extras the user did not say.\n- When the dates finally arrive, the first search_hotels call must carry every hotel preference stated in earlier turns (neighborhood, budget, stars, view, rooftop bar, rooms), because the CACHE has no hotel entry yet.\n- Example: city 'Atlanta' and 'luxurious hotel with a city view and a rooftop bar' in turn 1, then 'May 20, 2025 to May 22, 2025, 4 rooms' (4 people mentioned) -> `hotels = search_hotels(city=\"Atlanta\", checkin_date=[\"May 20, 2025\"], checkout_date=[\"May 22, 2025\"], num_rooms=4, num_people=4, has_rooftop_bar=True, has_city_view_rooms_present=True)` then `save_to_cache(key=\"hotels\", value=hotels)`.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 24: Scope of the last turn in multi-domain conversations\n- Read the CACHE before writing code. A domain that already has a key is never re-searched. Its summary shows what is already applied (e.g. 'Additionally filtering for budget: $115, has_business_center'), so do not redo it.\n- If the last turn answers a question about ONE domain, output only that domain's load -> filter -> save, three lines, and nothing about the other domains. Example: CACHE has 'hotels', 'final_hotels' (budget and business center already applied) and 'restaurants'. Last turn: 'a restaurant with a rating of at least 4.5 and around 65'. Output exactly: `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, rating=[4.5, 5], budget=65)`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`. Do NOT load or filter hotels again, even though hotel preferences came up earlier in the conversation.\n- If the last turn supplies travel dates while flights and a hotel were requested and 'restaurants' is already cached, run only the flight search(es) and search_hotels, and leave restaurants untouched. Several candidate outbound dates go in one list: outbound `departure_date=[\"May 16, 2025\", \"May 22, 2025\"]`, return leg `departure_date=[\"May 25, 2025\"]`, hotel `checkin_date=[\"May 16, 2025\", \"May 22, 2025\"], checkout_date=[\"May 25, 2025\"]`. Apply the shared flight class to both legs. Then save the flights as departure_flights / return_flights and the hotel as hotels.\n- Dietary phrasing: 'I don't eat dairy' -> `has_dairy_allergy_options=True`. Never pass False for a need the user has.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

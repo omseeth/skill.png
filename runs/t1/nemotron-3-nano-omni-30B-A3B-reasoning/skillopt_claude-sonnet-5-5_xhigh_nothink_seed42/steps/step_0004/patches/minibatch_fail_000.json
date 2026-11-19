@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "stale_key_or_no_cache_reuse_on_refinement",
+      "count": 3,
+      "description": "On a follow-up turn the agent loaded the raw key (restaurants) although a filtered_* key existed, reused an already-existing save key, re-passed constraints the summary already showed, or re-ran search_flights on every leg instead of load, filter, save per leg key."
+    },
+    {
+      "failure_type": "invalid_or_extra_filter_param",
+      "count": 1,
+      "description": "Passed num_people=10 to filter_restaurants, which is not a parameter, and also re-passed a cuisine already applied in the cache."
+    },
+    {
+      "failure_type": "fabricated_or_example_dates_and_missing_partial_search",
+      "count": 3,
+      "description": "With hotel dates missing the agent invented dates (copied example dates or date lists), or in a multi-domain request it emitted only seek_information and skipped the domain that was fully specified (restaurants)."
+    },
+    {
+      "failure_type": "search_result_not_assigned_or_saved",
+      "count": 1,
+      "description": "Called search_attractions as a bare statement with no variable and no save_to_cache."
+    },
+    {
+      "failure_type": "wrong_scope_or_param_mapping",
+      "count": 1,
+      "description": "The user said 'just the return flight' but the agent searched both legs. 'Hotel near the beach' was not mapped to has_beach_access=True."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of eight failures are refinements that loaded a stale or raw key, collided with an existing save key, passed a non-existent filter param, or re-searched flights. A compact refinement checklist with a worked multi-leg example should fix these. Three failures come from Rule 6 saying to output ONLY seek_information, which contradicts the gold behaviour of searching the complete domain plus asking for the incomplete one. Fabricated dates also persist, so the rule needs explicit wording and an example. One failure is a bare search call with no assignment or save. One is a one-leg flight scope plus a beach amenity mapping gap. The edits fix the contradictory rule and add one refinement checklist, one assign-and-save rule and one scope and mapping note.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- If any mandatory arg is missing, output ONLY a seek_information(...) call that names what is missing. Do not also emit a search call with placeholders.",
+        "content": "- If any mandatory arg is missing for the ONLY requested domain, output ONLY a seek_information(...) call that names what is missing. Never emit a search call with placeholder, example, guessed or default dates, and never put a list of consecutive dates into checkin_date/checkout_date to cover the gap. A hotel request in any turn (even with amenities such as 'ocean view', 'pool', or '5 people') but no stated check-in and check-out dates means seek_information for the dates.\n- If SEVERAL domains were requested and only some are missing mandatory args, still run `x = search_*(...)` + `save_to_cache` for every domain whose args are complete (e.g. attractions with city/type, restaurants with city/cuisine; in a first turn the cache is empty so these are all fresh searches), and add ONE seek_information(...) naming only the incomplete domain's missing items. Do not output seek_information alone in that case. Example, hotel + Scenic attractions in San Jose, no dates: `attractions = search_attractions(city=\"San Jose\", type=[\"Scenic\"])`, `save_to_cache(key=\"attractions\", value=attractions)`, `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. Do not call search_hotels in that block."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use date strings exactly as the user wrote them (e.g. \"May 15, 2025\").",
+        "content": "- Scope of the flight search follows the user's wording. If the user says 'just the return flight', 'only the return', or similar, search ONLY that leg: `flights = search_flights(start_airport_city=<destination>, end_airport_city=<origin>, departure_date=[<later date>])`, `save_to_cache(key=\"flights\", value=flights)`. Do not search the outbound leg. A hotel in the same trip still uses both dates (check-in = earlier date, check-out = later date).\n- Map hotel phrases to the matching param: 'near the beach' / 'on the beach' -> has_beach_access=True; 'view of the ocean' -> has_ocean_view_rooms_present=True; 'city view' -> has_city_view_rooms_present=True. Include them together with the other stated amenities (pool_present, free_wifi_included, ...)."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 19: Refinement checklist (run before writing any filter_*)\n1. If the CACHE has ANY key for a domain, a follow-up turn must NOT call search_* for it, even for a one-word reply such as 'economy would be great'. Load, filter, save.\n2. Load the MOST REFINED key of the domain, which is the filtered_* key listed last. If `filtered_restaurants` exists, never load raw `restaurants`. Read the summary of the key you load and do NOT re-pass anything it already lists (e.g. 'Additionally filtering for cuisine(s): [French]' means no cuisine param).\n3. Save under a NEW key that is not already in the CACHE. If `filtered_restaurants` exists, save as `filtered_restaurants1`. For per-leg flights use `filtered_<legkey>`, e.g. `filtered_first_departure_flights`.\n4. Pass only params that exist on that filter tool. filter_restaurants, filter_attractions and filter_flights have NO num_people or num_rooms, so party size ('about 10 of us') is never passed to them. For a budget reply to a restaurant question, use `budget=<number>` only.\n5. When the CACHE holds several flight legs (e.g. first_departure_flights, second_departure_flights, first_return_flights) and the user gives a class, airline, time or price, emit one load/filter/save triple for EACH leg:\n   `a = get_results_from_cache(key=\"first_departure_flights\")`\n   `a2 = filter_flights(prior_results=a, flight_class=[\"economy\"])`\n   `save_to_cache(key=\"filtered_first_departure_flights\", value=a2)`\n   and likewise for the second_departure and first_return legs. Never re-run search_flights.\n\n## Rule 20: Every search/filter call is assigned and saved\n- Never write a bare `search_attractions(...)`, `search_hotels(...)`, `search_restaurants(...)`, `search_flights(...)` or `filter_*(...)` statement. Always `x = <call>` followed on the next line by `save_to_cache(key=\"<key>\", value=x)`.\n- First searches use the simple domain keys \"flights\", \"hotels\", \"restaurants\", \"attractions\" (a round trip uses departure_flights/return_flights per Rule 9)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,34 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "tool misuse / runtime error",
+      "count": 1,
+      "description": "An unnecessary import and redefined result model caused a NameError before the requested plan could run."
+    },
+    {
+      "failure_type": "context and value fidelity",
+      "count": 2,
+      "description": "Generated code altered user-provided values or formats, and did not consistently stick to the latest request."
+    },
+    {
+      "failure_type": "redundant tool use",
+      "count": 1,
+      "description": "A follow-up repeated work for cached flight and hotel results instead of handling only the newly requested attraction search."
+    }
+  ],
+  "patch": {
+    "reasoning": "The trajectories show that broad guidance alone did not prevent unnecessary code scaffolding, value transformations, or repeated work on a follow-up. These focused rules emphasize direct calls to the provided tools, faithful value passing, and limiting calls to the latest-turn changes.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n- **Use tools directly and keep code executable:** Tools and result models are provided by the runtime. Do not import libraries, redefine models, or add helper code for tool calls. Pass values directly unless a tool explicitly requires a conversion.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n- **Preserve values and act on the latest-turn delta:** Keep user-provided entity names, categories, and date strings unchanged unless a tool requires another format. On follow-up turns, use relevant cached results and call only tools needed for new or changed requests; do not repeat unrelated searches, filters, or nearest-result operations.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

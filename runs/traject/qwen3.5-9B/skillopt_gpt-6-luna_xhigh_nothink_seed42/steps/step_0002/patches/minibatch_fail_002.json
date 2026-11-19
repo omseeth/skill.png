@@ -1,0 +1,41 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "parameter_field_and_scope_binding",
+      "count": 2,
+      "description": "Natural-language constraints were mapped to a mismatched field or an unnecessarily narrow selector instead of the field and scope matching the request."
+    },
+    {
+      "failure_type": "value_serialization",
+      "count": 2,
+      "description": "Numeric parameter values were emitted as JSON numbers where the task's answer-format convention expected string values."
+    },
+    {
+      "failure_type": "required_optional_placement",
+      "count": 1,
+      "description": "Optional fields were placed in the required-parameters list."
+    },
+    {
+      "failure_type": "endpoint_granularity",
+      "count": 1,
+      "description": "A batch-capable endpoint was used where the expected calls used individual validation endpoints."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add operational guidance for mapping concepts to the right fields and handling broad selectors, plus clarify value serialization in the wrapper format. The existing skill already explicitly covers required/optional placement and endpoint selection and batching, so those rules do not need repeating.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Preserve user-provided identifiers and meaningful formatting unless the schema requires a documented conversion. Follow documented formats, enums, casing, codes, and delimiters, and interpret directional constraints according to the field semantics.",
+        "content": "- Bind each concept to the field representing that dimension, rather than to a nearby-sounding field. Convert natural-language terms to canonical API tokens only when the mapping is documented or unambiguous. For an unconstrained selector, avoid guessing a restrictive value; use a supported all/unfiltered option when required by the endpoint. If a request asks for one result and the endpoint exposes a result-count parameter, set it to one."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Include optional parameters when the request calls for them, including a documented value for an explicitly requested default behavior. Do not add unrelated optional settings or invent values. For missing required values, use only a documented default or a value unambiguously derivable from the query.",
+        "content": "- Follow the task's required answer-format convention for the wrapper's `value` fields separately from the API parameter types. If its examples serialize values as strings, use strings even for numeric schema fields; do not let serialization change whether a field belongs in the required or optional list."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

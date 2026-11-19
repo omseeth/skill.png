@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_result_persistence",
+      "count": 4,
+      "description": "Search results were left unbound or unsaved instead of being stored with save_to_cache."
+    },
+    {
+      "failure_type": "unsupported_imports_or_model_redefinitions",
+      "count": 3,
+      "description": "Code imported unavailable modules or redeclared tool models rather than calling runtime-provided tools directly."
+    },
+    {
+      "failure_type": "cached_refinement_delta_error",
+      "count": 4,
+      "description": "Refinements resent criteria already covered by cache or omitted a new criterion."
+    },
+    {
+      "failure_type": "missing_mandatory_inputs_and_scope_overreach",
+      "count": 1,
+      "description": "The plan invented missing travel dates and added unrelated actions instead of requesting required information while handling the ready restaurant search."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch repeatedly shows failures to turn tool calls into minimal, persisted actions and to refine cached results with only the uncovered criteria. An explicit pre-output count check makes persistence verifiable; rewriting the refinement and readiness rules makes their decision sequence more actionable.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- Emit only minimal executable tool code using the runtime-provided functions directly: do not import tool or cache modules, redefine tool models, or add presentation or print statements. For every search, filter, sort, or nearest-results call, bind its exact return value to a variable and save that same object with `save_to_cache` under a unique, descriptive key; use a new key for refinements. Before finalizing, count result-producing calls and their corresponding saves and verify that each call has one save. Do not print `No planning needed` after performing tool work."
+      },
+      {
+        "op": "replace",
+        "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+        "content": "- For a refinement, use the selected cache summary to identify which criteria are already applied. Retrieve the latest compatible result for the exact target and pass it as `prior_results`; supply only still-pending criteria that the summary does not cover, applying all new criteria with the appropriate filter. Do not resend covered dates, locations, amenities, cuisine, ratings, or other fields, and do not translate a broad preference into a specific feature unless the user names it or the schema defines that mapping. Save the refined result under a new key."
+      },
+      {
+        "op": "replace",
+        "target": "## Missing mandatory information\nBefore searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness independently for each requested domain and, where applicable, each city or leg: proceed with searches or refinements for domains whose required inputs are available even if another is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across blocked domains. Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood. Optional preferences are not mandatory inputs.",
+        "content": "## Missing mandatory information\nFor every still-pending request in the full conversation, identify the tool's required fields and verify each against an explicit user-provided value. Do not invent dates, use defaults, or treat an event date, itinerary context, or an assistant suggestion as a flight departure or hotel stay date. Do not call a search or refinement for an item with missing required inputs. Make one `seek_information` call asking only for all missing mandatory values across blocked items, while completing and saving other ready requests in the same execution. Assess domains and flight legs independently; hotel check-in and check-out dates must both be explicit, and a later update in one domain does not cancel earlier pending requests in another."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

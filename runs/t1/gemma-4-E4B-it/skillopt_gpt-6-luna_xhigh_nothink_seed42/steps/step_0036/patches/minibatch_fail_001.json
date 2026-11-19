@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_action_gating",
+      "count": 5,
+      "description": "Agents repeated searches or filters, or chose a broader cache entry, when the turn only supplied unsupported context, accepted existing recommendations, or added a filter to an already filtered scope."
+    },
+    {
+      "failure_type": "flight_leg_and_result_handling",
+      "count": 1,
+      "description": "A two-date round trip was represented as one outbound search with an arrival date, and the result was saved using an undefined variable."
+    },
+    {
+      "failure_type": "scope_and_argument_mapping",
+      "count": 2,
+      "description": "Agents reapplied an existing attraction category instead of filtering to the suggested neighborhood, or inferred an unsupported hotel party size and omitted the requested neighborhood."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the turn-action precedence explicit before the detailed workflow: do nothing when a reply adds no supported search constraint and cached requests are complete; retrieve without refiltering when an offer only presents existing recommendations; and use the most constrained compatible cache entry for a new filter, applying only the newly added constraint. Clarify how a suggested place maps to a supported scope field.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Cache-aware tool workflow",
+        "content": "\n**Latest-turn action gate (apply before selecting tools):** First identify what the user’s reply changes. If it only supplies information unsupported by the active domain’s tools (for example, traveler count for a flight search), do not search, filter, or resave that domain; when all active requests are already covered, return the no-op response. If the user accepts an offer to present recommendations from an already covered scope, retrieve that exact cached result only—do not repeat its filter or save a duplicate. For a new filter, retrieve the most constrained compatible cached result, including a previously filtered result, and apply only the newly added constraint; do not reapply constraints already embodied in that result. When the user asks about a named place the assistant just suggested, filter to that place using its supported field (for example, a named district uses `neighborhood=[exact name]`), not by repeating the parent category filter."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

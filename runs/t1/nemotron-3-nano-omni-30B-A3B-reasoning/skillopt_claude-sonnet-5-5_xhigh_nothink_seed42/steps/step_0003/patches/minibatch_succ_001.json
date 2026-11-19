@@ -1,0 +1,23 @@
+{
+  "batch_size": 3,
+  "success_patterns": [
+    "Missing mandatory dates on a flight request (even a round-trip 'weekend getaway') led to a single short seek_information call and no search call. This matches Rules 6 and 7 and passed.",
+    "Once the last turn supplied the missing hotel dates, the agent ran a straight-line search_hotels with the city from the earlier turn, the dates in the user's wording, and a save under 'hotels'. It left out the vague 'kid-friendly' descriptor, and the call matched gold exactly. Rule 14 covers this, but the 'kid-friendly' case is not in Rule 10's vague-word list.",
+    "The one execution failure in the batch was a search_flights call with arrival_time=['00:00:00','07:15:00']. The pydantic validator raised 'Unrecognized time format'. The 24-hour examples in TOOL CONFIG mislead, while the 12-hour 'H:MM AM/PM' strings already used in Rule 13 are the accepted format. No rule currently covers time-string format for search_flights/filter_flights."
+  ],
+  "patch": {
+    "reasoning": "Two gaps remain. (1) Time-range arguments crash with a ValidationError when written in the 24-hour 'HH:MM:SS' style shown in TOOL CONFIG examples, even when the tool choice is otherwise correct; the 12-hour format is a cheap, general fix for any arrival/departure-time request. (2) Rule 10's vague-word list does not mention 'kid-friendly' or 'family' descriptors. Those should not become amenity parameters in a first search, which the hotel trajectory confirmed by matching gold.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Do not convert vague style words ('formal', 'fun', 'romantic', 'nice', 'budget-friendly' with no number) into rating, stars, budget or amenity params.",
+        "content": "- Do not convert vague style words ('formal', 'fun', 'romantic', 'nice', 'budget-friendly' with no number, or a bare 'kid-friendly' / 'family vacation' / 'family reunion' with no named amenity) into rating, stars, budget or amenity params. A first hotel search for 'a kid-friendly hotel' with dates is just city + checkin_date + checkout_date."
+      },
+      {
+        "op": "append",
+        "content": "## Rule 15: Time-range arguments use 12-hour 'H:MM AM/PM' strings\n- For departure_time and arrival_time (in search_flights AND filter_flights), always write two 12-hour strings such as [\"12:00 AM\", \"7:15 AM\"]. Never use 24-hour 'HH:MM:SS' strings like \"00:00:00\" or \"07:15:00\", even though some TOOL CONFIG usage examples do. They raise 'Unrecognized time format' and the whole call fails.\n- 'Arrive by X' / 'before X' -> arrival_time=[\"12:00 AM\", \"<X>\"]. 'Depart after X' -> departure_time=[\"<X>\", \"11:59 PM\"]. 'Afternoon' -> [\"12:00 PM\", \"5:00 PM\"]. Keep the user's stated clock time exactly (e.g. \"7:15 AM\").\n- A time constraint is still only an optional detail: it never replaces the mandatory departure_date. If no date was given, call seek_information (Rules 6 and 7) instead of searching."
+      }
+    ]
+  },
+  "source_type": "success"
+}

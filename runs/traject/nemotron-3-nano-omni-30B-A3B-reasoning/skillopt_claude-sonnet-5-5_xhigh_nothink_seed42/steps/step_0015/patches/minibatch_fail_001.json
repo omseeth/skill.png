@@ -1,0 +1,41 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "entity_merged_into_one_call",
+      "count": 1,
+      "description": "'Both Egypt and the United States' was put into one `Coronavirus Smartable: GetStats` call with `location` listed twice, instead of two calls (one per location). The skill's 'no duplicate name' and 'N entities -> N calls' rules were ignored."
+    },
+    {
+      "failure_type": "param_placement",
+      "count": 1,
+      "description": "`News Network: Search News` lists `language` under Required parameters, but the agent put it in optional parameters because it read it as a qualifier."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 1,
+      "description": "'Latest news from CNN' with no CNN endpoint went to a keyword search (`Newscatcher: /v1/search_free`, q=`CNN`, plus an invented page=`1` copied from another clause). The correct tool was the source selector `Moka News: By Source (New)` with `source`=`cnn`."
+    }
+  ],
+  "patch": {
+    "reasoning": "Two of the three failures are structural or placement slips: two values for one param in a single call, and a required param put in the optional list. Both break rules the skill already states. I add short, literal BAD/GOOD patterns at the top of the relevant sections, where they are harder to skip. The third failure is a gap: the skill covers outlets that have their own endpoint, but not outlets that only fit a generic source-selector tool. I add that rule plus a note that a clause's own qualifiers must not leak across calls. Existing rules are kept and no new example lists are added.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Which calls to make",
+        "content": "\n- TWO VALUES FOR ONE PARAM = TWO CALLS. If a clause names several places, countries, IDs or emails ('COVID stats for both Egypt and the United States') and the tool's param takes one value, write one object per value. BAD: `{\"tool name\": \"Coronavirus Smartable: GetStats\", \"required parameters\": [{\"name\": \"location\", \"value\": \"EG\"}, {\"name\": \"location\", \"value\": \"US\"}], ...}` (same name twice, one call). GOOD: two objects, one with `location`=`EG` and one with `location`=`US`. Never repeat a param name inside one list, and never join values with commas or 'and'."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Parameters",
+        "content": "\n- REQUIRED-LIST COPY CHECK. For every call, first copy the tool's 'Required parameters' names, then fill each one in `required parameters`, even enum-like qualifiers such as `language`. Only names under 'Optional parameters' go in `optional parameters`. BAD: `News Network: Search News` with `keyword` in required and `language`=`en` in optional (the schema lists both as required). GOOD: `\"required parameters\": [{\"name\": \"keyword\", \"value\": \"Middle East politics\"}, {\"name\": \"language\", \"value\": \"en\"}], \"optional parameters\": []`.\n- DO NOT LEAK QUALIFIERS ACROSS CLAUSES. 'Page 1' in the election clause belongs only to the election call. Add `page`, `limit` or any other optional to a call only when that call's own clause states or implies it."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n- OUTLET WITHOUT ITS OWN ENDPOINT -> SOURCE SELECTOR, NOT KEYWORD SEARCH. 'Latest news from CNN' with no CNN-named endpoint takes a tool whose param literally selects a source (`Moka News: By Source (New)`, `source`=`cnn`), not a topic search with the outlet stuffed into `q` (BAD `Newscatcher: /v1/search_free`, q=`CNN`). Keyword search tools are for topics. Per-outlet endpoints (`Arabic news API: Aljazeera`) still win when they exist. Source values are lowercase slugs of the outlet name."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

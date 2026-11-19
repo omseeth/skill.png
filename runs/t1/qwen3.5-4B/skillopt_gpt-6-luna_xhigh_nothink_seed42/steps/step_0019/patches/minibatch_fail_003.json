@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_namespace_import",
+      "count": 5,
+      "description": "Agents imported the nonexistent `tools` module despite the skill’s existing rule to call injected functions directly."
+    },
+    {
+      "failure_type": "cached_criteria_not_applied",
+      "count": 3,
+      "description": "Agents repeated a covered search or failed to update cached results when the user added criteria."
+    },
+    {
+      "failure_type": "location_field_mapping",
+      "count": 1,
+      "description": "An unambiguous state abbreviation was passed as a city instead of in the attraction search’s state field."
+    },
+    {
+      "failure_type": "missing_required_inputs",
+      "count": 1,
+      "description": "An agent attempted a hotel search without required stay dates rather than seeking the missing information."
+    }
+  ],
+  "patch": {
+    "reasoning": "The dominant import and missing-input failures are already explicitly prohibited, so repeating those rules would not patch a skill gap. These edits clarify how answers to assistant clarification questions affect existing results and how state abbreviations map to attraction-search fields.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated. Also treat an answer to the assistant’s immediately preceding clarification (such as a date, class, rating, amenity, or party size) as active information for the request being clarified, while carrying forward the rest of that request. If the answer adds criteria to a compatible cached result, retrieve the affected result, filter it using the new criteria, and save the update; do not treat the unfiltered cached result as already satisfying those criteria."
+      },
+      {
+        "op": "replace",
+        "target": "For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+        "content": "For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. When phrasing unambiguously identifies a state—for example, “in CO” or “in Colorado”—pass it as `state`, not `city`, preserving the user’s exact text. A state alone is usable when the tool supports state-level search; do not ask for a city when it does."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

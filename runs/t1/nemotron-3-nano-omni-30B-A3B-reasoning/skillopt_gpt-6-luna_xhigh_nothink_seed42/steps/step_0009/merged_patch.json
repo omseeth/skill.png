@@ -1,0 +1,54 @@
+{
+  "reasoning": "Preserved all distinct failure-driven corrections at priority, including cache coverage, schema use, independent handling of missing inputs, flight-leg planning, and cached proximity refinement. The success-driven follow-up guidance overlaps with failure guidance on keeping the active scope; its distinct instructions about retrieving a compatible cached result for a continued response are retained without repeating the overlapping rule. No edits target a protected section.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "## Incremental planning and cache use",
+      "content": "- Resolve elliptical replies against the immediately preceding assistant question or offer and the full active plan. A direct affirmative accepts the offered action or preference; a question about an assistant-named place refers to that place and should update or refine the relevant domain using its name. Such a reply does not cancel earlier active requests or justify repeating work already satisfied by valid cached results.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.",
+      "content": "- Treat the listed cache summary as evidence of which criteria a result actually covers: criteria requested in the conversation but absent from the summary remain unsatisfied.\n- If a follow-up constraint explicitly applies to multiple requested items or domains (for example, “both”), apply it separately to each matching item’s relevant result; do not assume one domain’s refinement covers the others.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+      "content": "- For a cache refinement, use the most refined compatible result under a key actually listed in the cache summary: retrieve it into a local variable and pass that exact result as `prior_results` to the matching filter with only the newly introduced criteria. Do not rely on variables from earlier executions or resend criteria already represented in the result. Save the refinement under a new key. If no compatible base is listed and mandatory inputs are available, make one search with all currently active, explicit, schema-supported criteria for that item rather than a broad search followed by redundant filters.\n- For fields whose schema represents a minimum/maximum range, supply both bounds. An exact N-star hotel request uses `stars=[N, N]`, not a single-value list.\n- Map an explicitly stated numeric party or guest count to `num_people` when the hotel schema supports it; map an explicitly stated room count to `num_rooms`. Do not infer one count from the other or infer a room count from a broad description such as “family.” Treat a state or province abbreviation as a region and use `state`, not `city`, while preserving the supplied abbreviation.\n- Call the provided tool functions directly. Do not import tool modules or define or redefine tool functions or input models.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "## Missing mandatory information\nBefore searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+      "content": "## Missing mandatory information\nCheck mandatory inputs separately for every active requested action and domain against explicit values in the full conversation; related context does not automatically satisfy a required field. Do not invent missing values or use defaults. If any action lacks mandatory information, make one `seek_information` call asking only for those missing inputs. Do not search that incomplete action, but still execute and save other independently requested actions whose own mandatory inputs are complete. For a hotel stay at an unambiguous single trip destination, use explicitly supplied trip start and end dates as check-in and check-out when no separate hotel dates were given. If the destination or date relationship is ambiguous, ask instead. Optional preferences are not mandatory inputs.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "## Represent flight legs separately\n- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip, search outbound and return separately, reversing the route for the return; do not use an unsupported `return_date` argument or treat the return date as another outbound date. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+      "content": "## Represent flight legs separately\n- Treat each explicitly described flight leg as its own search, using that leg’s origin, destination, and departure date. When a trip between two cities is given as a start-to-end date span, treat the first date as outbound and the second as return unless the user explicitly describes a one-way or multi-city trip. Search the return separately with the route reversed; do not combine the dates into one outbound search or use an unsupported `return_date` argument. If the user requests only the return leg and the outbound route is known, reverse that route and use the return date as the return leg’s `departure_date`; do not search the outbound leg. Apply an explicitly requested flight class and other non-direction-specific preferences to every applicable leg; if directional results are cached, retrieve and refine each leg independently.\n- At follow-up, treat each flight leg as a separate cache-coverage unit. Leave a valid, unchanged leg untouched; search or filter only legs that are missing or affected by a new constraint, and save each resulting leg separately.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates. Pass values to `airline` only when they identify a specific airline; do not treat qualitative descriptions such as “kid-friendly” as airline names or invent a matching airline.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Proximity between travel domains",
+      "content": "- If a relevant `search_nearest` result is already cached and a follow-up adds a constraint to one of its domains, retrieve that result and apply the matching domain filter to it, preserving the existing comparison. Re-run `search_nearest` only if the compared targets or requested relationship change.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Incremental planning and cache use",
+      "content": "- When a reply only declines optional specificity (such as “not really” or “I’m flexible”) or accepts an offer to show recommendations, keep the original requested scope active and do not infer a filter from an assistant’s suggestion. If a listed, compatible result already covers that scope, retrieve it into a local variable for the continued response; do not search or filter again, print `No planning needed`, or retrieve unrelated, unchanged domains.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ]
+}

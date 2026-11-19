@@ -1,0 +1,34 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "follow-up intent and cache-state handling",
+      "count": 3,
+      "description": "Agents either treated a follow-up about a suggested neighborhood or a new budget constraint as requiring no action, or repeated a domain search already represented in cache."
+    },
+    {
+      "failure_type": "tool-call lifecycle and scope errors",
+      "count": 3,
+      "description": "Agents made redundant or unsupported calls, inferred unprovided itinerary details, or failed to save a result-producing call."
+    },
+    {
+      "failure_type": "multi-city lodging interpretation",
+      "count": 1,
+      "description": "The agent assigned lodging to an unintended route city and invented a per-city stay duration."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing rules already cover incremental filtering, avoiding redundant searches, and saving results, so restating them would duplicate current guidance. These additions address two uncovered ambiguities: a user can ask about an assistant-suggested place without explicitly accepting an offer, and hotel cities in a multi-leg itinerary should be interpreted as intended lodging stops rather than assumed flight endpoints.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n- **Treat questions about assistant-suggested places as actionable follow-ups:** If the assistant proposes a named neighborhood, attraction, or other travel option and the user asks what is there or asks for details, treat that as a request to provide the relevant results—not as a no-op. Retrieve the suitable cached results and apply the corresponding same-domain filter for the named place when needed. Do not use `search_nearest` unless proximity is requested."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Map multi-city lodging to intended overnight stops:** When a user requests hotels in cities on a multi-leg route, search the explicitly intended lodging destinations or overnight stops; do not automatically include a departure-only origin as a hotel city. Do not infer per-city stay lengths or dates from the flight legs. Use only established trip dates, and seek information if a required hotel input cannot be determined."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

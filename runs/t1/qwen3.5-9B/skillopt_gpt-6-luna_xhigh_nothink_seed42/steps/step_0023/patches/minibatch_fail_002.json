@@ -1,0 +1,51 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "unrequested_or_redundant_operations",
+      "count": 5,
+      "description": "Agents inferred preferences or added unnecessary searches, filtering, sorting, imports, or result-display code."
+    },
+    {
+      "failure_type": "pending_deliverable_or_multi_result_omission",
+      "count": 5,
+      "description": "Agents missed or incompletely handled requested criteria across domains, attraction searches, or both legs of a round trip."
+    },
+    {
+      "failure_type": "result_object_handling_or_persistence",
+      "count": 4,
+      "description": "Agents omitted required cache saves or treated returned result models as dictionaries."
+    },
+    {
+      "failure_type": "cache_base_or_schema_mapping_error",
+      "count": 3,
+      "description": "Agents used an unsuitable restrictive cached result or mapped a criterion in a way that did not match the tool's expected value."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers avoiding inferred preferences, limiting proximity calls, and combining known criteria, so those rules are not repeated. These edits clarify what makes a cached base suitable, make applying flight follow-up constraints to both legs explicit, prevent result-model display errors and unnecessary presentation operations, and specify the tool's canonical flight-class labels.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation.",
+        "content": " Generated code should contain only necessary tool and cache calls: do not add print/display loops, inspect or subscript result models, or sort results unless explicitly requested. Treat returned models as whole tool objects when passing them to downstream tools or the cache."
+      },
+      {
+        "op": "insert_after",
+        "target": "A cached result satisfies the offer only if it matches the requested location, category, and other criteria; a same-domain result for a different attraction, cuisine, or filter is not sufficient.",
+        "content": " A cached result is a suitable base only if it is broad enough to contain candidates for the new request; a name-specific or otherwise restrictive result is not suitable for discovering a different or broader category. If no suitable base exists, search afresh using the known location and all current criteria together."
+      },
+      {
+        "op": "insert_after",
+        "target": "For updates affecting multiple results, such as outbound and return legs, retrieve, filter, and process each independently.",
+        "content": " When a new flight constraint applies to a cached round-trip itinerary, retrieve and filter each applicable leg independently, then save each updated leg under a fresh key. Do not update only the outbound leg or treat the return date as an outbound arrival-date constraint."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Format flight time ranges as required:** For `departure_time` and `arrival_time`, use the validator's accepted 12-hour format with AM/PM (for example, `12:00 PM`), not `HH:MM:SS`. Choose a supported interval for vague time periods.",
+        "content": "\n\nFor `flight_class`, use the tool's canonical lowercase labels in a list: `business`, `economy`, or `first`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

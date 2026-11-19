@@ -1,0 +1,31 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Agents chose a related building or narrower subtype, or relied on a partial clue match, instead of honoring the requested referent and the clue's full distinguishing details."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 1,
+      "description": "The instruction to use a person's full identity encouraged expanding a conventional surname-only answer to a longer formal name."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify how to resolve the answer slot when a clue mentions an entity related to the target or asks for a member of a broad category, and replace the overbroad guidance favoring full personal names. The candidate-selection failure is already covered by the exact-relation rule, so no duplicate edit is needed.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "For a clue-like prompt, identify the semantic type of the requested answer before retrieving it. Preserve the head noun in phrases such as “this phenomenon”: answer with a phenomenon, not an associated personification. In “a person like X” constructions, treat X as an example and give the relevant shared role or category. If a declarative clue describes an entity using a pronoun, resolve the pronoun’s referent rather than treating the statement as a request to judge its truth. Reject candidates that are associated with the answer but are not the requested kind of thing.",
+        "content": "For a clue-like prompt, parse the whole clause to identify both the answer slot's semantic type and the exact referent it asks for; test the candidate by substituting it into that slot. Preserve the head noun in phrases such as “this phenomenon”: answer with a phenomenon, not an associated personification. When a clue identifies an entity by something related to it (for example, a building at “this site”), return the referent named by the answer slot, not the related entity. In “one of these” constructions, return the minimal category requested, not a narrower subtype unless the clue specifies that subtype. In “a person like X” constructions, treat X as an example and give the relevant shared role or category. If a declarative clue describes an entity using a pronoun, resolve the pronoun’s referent rather than treating the statement as a request to judge its truth. Reject candidates that are associated with the answer but are not the requested kind of thing."
+      },
+      {
+        "op": "replace",
+        "target": "For people, use the full identity supported by substantive context; do not answer with only a surname merely because a clue echo abbreviates it. Preserve initials, titles, and other name elements when the clue or a reliable passage supplies them—do not strip them for stylistic normalization.",
+        "content": "For people, select the conventional name form at the clue's granularity rather than automatically choosing the longest form in context. Use a full identity when the question asks for it or disambiguation requires it; use a conventional surname, familiar name, or mononym when that is the expected designation. Preserve name elements that belong to the requested form, but do not expand a short conventional label solely because context supplies given or middle names."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_criteria_not_applied",
+      "count": 4,
+      "description": "Agents returned “No planning needed” after users added hotel occupancy, amenity, flight-time, or budget criteria that were not satisfied by cached results."
+    },
+    {
+      "failure_type": "result_not_saved",
+      "count": 2,
+      "description": "Attraction searches were issued without assigning and saving their results to the cache."
+    },
+    {
+      "failure_type": "independent_domain_blocked",
+      "count": 1,
+      "description": "A missing hotel date blocked a restaurant search even though its required city was available."
+    },
+    {
+      "failure_type": "location_parameter_mismatch",
+      "count": 1,
+      "description": "A state abbreviation for an attraction search was incorrectly passed as a city."
+    },
+    {
+      "failure_type": "proximity_operation_omitted",
+      "count": 1,
+      "description": "The agent searched for hotels near a named attraction but did not combine the hotel and cached attraction results with search_nearest."
+    },
+    {
+      "failure_type": "tool_invocation_contract_violation",
+      "count": 1,
+      "description": "The agent imported the unavailable tools module despite the direct-call requirement."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that newly supplied criteria require filtering unless cached summaries explicitly show they are satisfied, and make result persistence an explicit step. Resolve the conflict between incomplete-domain handling and independent searches, and make geographic parameter mapping and named-place proximity workflows actionable. The direct-call requirement already covers the import violation, so it is not duplicated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available.",
+        "content": "- Check mandatory inputs separately for each requested domain against the full conversation and relevant cached results. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values for incomplete domains, and do not search or filter those domains. In the same turn, proceed with independent requested domains whose required inputs are complete; missing hotel dates, for example, do not block a restaurant search when its city is known. Do not guess or invent values, and do not ask for optional preferences as if they were required."
+      },
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied in a search. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- On each turn, compare every current criterion—including criteria newly supplied in a follow-up—with compatible cached result summaries. A result’s existence is not evidence that it satisfies a criterion: treat a new criterion as unmet unless the summary explicitly shows it was applied. For unmet criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result; search when the cache does not cover the requested domain or subject. Do not filter unrelated results or repeat constraints already applied. Treat persistence as part of every result-producing operation: assign its returned result and save it with `save_to_cache` under a unique key; never leave a search or transformation result unsaved. Use “No planning needed” only when cached results explicitly satisfy every current request."
+      },
+      {
+        "op": "replace",
+        "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "- Match arguments to the tool schema’s expected type, cardinality, and geographic level. For attraction searches, map a state name or abbreviation to `state`, not `city`; a supplied state can be sufficient when no city is given. Map a city to `city`, and preserve user-provided entity values and casing. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`)."
+      },
+      {
+        "op": "replace",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- When the user asks for one result type near a named or identified result of another type (for example, hotels near an attraction), ensure compatible results for both types are available: reuse a matching cached result and search for any missing result set. Then call `search_nearest` and save its result; do not stop after an ordinary search or omit proximity because one result set was cached. Set `groupBy` to the requested organizing base; when lodging is the planned base, group by hotel."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

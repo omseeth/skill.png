@@ -1,0 +1,35 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "All 8 passing answers had one clean object per clause, full `Provider: Endpoint` names, correct brackets, and every clause covered, including the last one. They matched narrow endpoints to each facet (Ski Weather API, Meteosource astro, Station Climate Data, SBB Autocomplete, Flixbus stations).",
+    "Required parameters came straight from the query wording: offset `0`, `type`=`weekly`, `zipcode`, `resort`, `station`, `sku`. Stated counts and defaults were also mapped, such as `limit`=`100` and Asos `country`/`lang`.",
+    "The remaining score losses were all in optional parameters, never in tool choice. A plural count was dropped ('5 chess puzzles' with no `count`). 'First 15 posts' gave `per_page` without `page`=`1`. The chess themes were sent as one string instead of a JSON array with `themesType`. A US ski resort got no imperial `units`.",
+    "Coordinates were handled two ways, and both scored. Two fields took separate `lat` and `lon`; a single-field tool took the combined string `point`=`39.48,-106.04`."
+  ],
+  "patch": {
+    "reasoning": "Tool choice and structure were perfect across the batch, so the remaining loss is optional-parameter completeness. The same misses repeat across several tasks: a dropped plural count, a missing page=1 next to per_page, chess themes in the wrong form, a missing locale unit, and the coordinate pair format. Each edit adds one short rule with a concrete example next to the existing parameter rules, and none restates existing text.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "'Between X and Y', 'at least X' and 'at most Y' -> the tool's min*/max* pair when it has one.",
+        "content": "\n- FIRST-N + PAGING. When a tool has both a page field and a size field, 'first 15 pronunciation posts' -> `per_page`=`15` AND `page`=`1`. Send `page`=`1` even though it is the default. A plural count in the clause is a parameter too: '5 chess puzzles rated 1800' -> `count`=`5`, `rating`=`1800`."
+      },
+      {
+        "op": "replace",
+        "target": "`Chess Puzzles: Puzzles` with `rating`=`1500`, `count`=`1`.",
+        "content": "`Chess Puzzles: Puzzles` with `rating`=`1500`, `count`=`1`. Several themes: '5 puzzles, rating 1800, endgame and promotion themes' -> `count`=`5`, `rating`=`1800`, `themes`=`[\"endgame\",\"promotion\"]` (a JSON-array string, not 'endgame promotion'), `themesType`=`ALL`."
+      },
+      {
+        "op": "insert_after",
+        "target": "Copy values verbatim from the query.",
+        "content": "\n- COORDINATES. 'coordinates 39.1911, -106.8175' -> separate `lat`=`39.1911` and `lon` (or `lng`)=`-106.8175` when the schema has two fields. Use one combined string `39.48,-106.04` (no space) when the schema has a single field such as `point` or `q`. Never guess coordinates the query does not give."
+      },
+      {
+        "op": "insert_after",
+        "target": "'sorted by date' -> the sort field.",
+        "content": "\n  - Unit systems follow the place. A US location (Breckenridge, Aspen, a US ZIP) with a units field -> the imperial value (`i`, `us`, `F`, `MPH`). A non-US place -> metric. Only do this when the tool has a unit parameter."
+      }
+    ]
+  },
+  "source_type": "success"
+}

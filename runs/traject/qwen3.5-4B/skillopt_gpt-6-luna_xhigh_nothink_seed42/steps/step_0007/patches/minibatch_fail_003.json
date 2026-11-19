@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "schema_and_argument_mapping",
+      "count": 7,
+      "description": "Calls mishandled parameter placement or representation, or omitted and mis-mapped requested filters, bounds, and API-native values."
+    },
+    {
+      "failure_type": "endpoint_selection_and_call_set",
+      "count": 4,
+      "description": "Some calls used the wrong source or operation, omitted an outcome, collapsed an explicit repeat, or added unrelated calls."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most broad schema and endpoint-selection rules already exist. These edits target residual gaps: converting units across all domains, making per-parameter serialization explicit, and distinguishing an explicitly requested additional retrieval from narrative restatement.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Ground arguments in the request and schema",
+        "content": "\n- For every numeric constraint, compare the user's unit with the selected field's documented unit and convert before setting the value, regardless of domain (for example, minutes to seconds). Preserve the comparison direction and convert both bounds. Never copy a number unchanged across mismatched units, and do not guess when the schema provides no conversion basis.\n- In formats that represent parameters as name/value entries, serialize each schema parameter as its own `{ \"name\": \"<exact field>\", \"value\": <concrete value> }` entry. Do not pack multiple parameters into a single object keyed by parameter names."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Deduplicate the call set: make one invocation per distinct requested operation and input unless the schema supports batching or the user requests repetition. Do not add related calls as extra checks. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint.",
+        "content": "\n- Deduplicate repeated narration, not explicitly requested additional retrievals: phrases such as “again,” “another,” or “show me more” identify a separate requested outcome. Retain a separate invocation even when its endpoint and arguments are otherwise identical."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

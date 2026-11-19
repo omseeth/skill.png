@@ -1,0 +1,45 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "follow-up and task-reconciliation failure",
+      "count": 5,
+      "description": "Agents missed newly requested or accepted work, including independent searches and constraints added to cached results."
+    },
+    {
+      "failure_type": "scope and tool-selection error",
+      "count": 2,
+      "description": "Agents used a proximity tool to explore a suggested area or repeated unrelated searches instead of handling only the current request."
+    },
+    {
+      "failure_type": "cache persistence omission",
+      "count": 2,
+      "description": "Agents made search calls without assigning and saving their results."
+    },
+    {
+      "failure_type": "constraint interpretation error",
+      "count": 2,
+      "description": "Agents mishandled an approximate restaurant budget and a flight arrival-time upper bound expressed as “by.”"
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures violate cache, scope, or follow-up rules already stated in the skill, so I avoid duplicating them. The edits clarify three underspecified mappings: approximate restaurant spending, “by” as an upper time bound, and exploring an assistant-suggested area as a neighborhood search or filter.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X” uses `[\"12:00 AM\", X]`, and “after X” uses `[X, \"11:59 PM\"]`, preserving the stated AM/PM value.",
+        "content": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X,” “by X,” “no later than X,” and “until X” use `[\"12:00 AM\", X]`; “after X” and “no earlier than X” use `[X, \"11:59 PM\"]`. Preserve the stated AM/PM value."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Map approximate restaurant spending to budget:** For restaurant requests, pass an approximate spend amount such as “around 85” directly as the scalar `budget` value. Do not convert it to a range or another criterion."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion. Retrieve the latest suitable cached result and apply the corresponding same-domain filter when needed. Use `search_nearest` only if the user requests proximity.",
+        "content": "\n  When the suggested referent is a neighborhood or area and the user asks what is there, use that full name as `neighborhood` in the relevant attraction search or filter. Do not use `search_nearest` to enumerate or explore an area; reserve it for proximity requests."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

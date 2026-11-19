@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_result_routing",
+      "count": 4,
+      "description": "Agents re-searched, merely displayed cached results, or searched an unchanged domain instead of filtering compatible cached candidates."
+    },
+    {
+      "failure_type": "flight_itinerary_interpretation",
+      "count": 2,
+      "description": "Agents mishandled a supplied travel-date range or failed to apply a later flight-class preference to every leg of a multi-leg itinerary."
+    },
+    {
+      "failure_type": "independent_domain_execution",
+      "count": 1,
+      "description": "The agent sought missing hotel dates but omitted the independently actionable restaurant search."
+    },
+    {
+      "failure_type": "tool_call_correctness",
+      "count": 3,
+      "description": "Some calls used an undefined result variable, omitted result caching, or mapped an entity to the wrong field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most actionable gap is flight-specific: the current leg guidance does not clearly resolve a two-date travel span for an established route, and its class instruction is limited to two legs. Clarifying those cases should address both flight failures without repeating the skill's existing general cache, validation, or result-saving rules.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Do not infer a return leg or ask for a return date solely because the user mentions a vacation, getaway, or destination. Request a return date only when the user explicitly asks for a round trip or return leg, or supplies a return date.\nTreat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to both legs, and do not combine distinct legs by repeating keyword arguments in one call.",
+        "content": "Do not infer a return leg or ask for a return date solely because the user mentions a vacation, getaway, or destination. Request a return date only when the user explicitly asks for a round trip or return leg, or supplies a return date. For an established one-way route, a two-date travel span (for example, “from [date] to [date]”) supplies outbound and return dates unless the conversation indicates otherwise: search the return in the reverse direction, not as `arrival_date` on the outbound flight.\nTreat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For multi-stop itineraries, apply an explicitly requested flight class to every described leg. If a class or other filterable preference is supplied after compatible per-leg flight results are cached, retrieve and filter each affected leg's result separately rather than repeating its base search. Do not combine distinct legs by repeating keyword arguments in one call."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

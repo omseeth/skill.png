@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache-state and incremental-filter selection",
+      "count": 5,
+      "description": "Agents re-searched covered scopes, selected a less-constrained cache entry, reapplied an old filter instead of the latest constraint, or regenerated unaffected domains."
+    },
+    {
+      "failure_type": "conversation-state and constraint provenance",
+      "count": 3,
+      "description": "Agents inferred constraints from assistant wording or failed to limit an elicited preference to the domain it updated."
+    },
+    {
+      "failure_type": "flight date/time field mapping",
+      "count": 1,
+      "description": "An arrival date was omitted and a deadline time was mapped with an invalid midnight value."
+    },
+    {
+      "failure_type": "tool-call dataflow and derived-date handling",
+      "count": 1,
+      "description": "A search result was not assigned before saving, and an explicit stay length was calculated without calling the date tool."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already explains cache reuse, but the failures show a need to make filter-delta selection explicit: use the most constrained valid result and apply the latest constraint rather than a stale one. Clarifying which values the user actually confirmed also prevents assistant assumptions from becoming constraints and keeps an elicited preference scoped to its domain. The flight edit makes date and clock fields independent and spells out deadline and midnight mapping.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs.",
+        "content": "\n\nWhen filtering, compare the latest-turn constraint with the selected cache summary: choose the most constrained compatible result whose candidate scope still covers the request, then pass the new or changed fields and any still-active constraints absent from that result. Do not reapply an already-embodied filter in place of the latest constraint (for example, an amenity instead of a newly supplied party size or neighborhood). Leave unchanged domains and itinerary legs untouched."
+      },
+      {
+        "op": "insert_after",
+        "target": "Drop or replace a constraint only when the user withdraws or changes it.",
+        "content": " Treat only values the user states or clearly confirms as active constraints; a value assumed or suggested by the assistant is not confirmation when the user answers another part of the question. If the assistant explicitly solicits a preference for a domain's recommendations and the user supplies it, activate or update that domain only; do not regenerate other domains unless the user changes them."
+      },
+      {
+        "op": "replace",
+        "target": "Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed. For flight `departure_time` and `arrival_time`, use 12-hour strings with an AM/PM suffix (for example, `[\"12:00 AM\", \"04:33 AM\"]`); represent midnight as `12:00 AM`, not `00:00:00`, and do not pass 24-hour `HH:MM:SS` strings to flight tools.",
+        "content": "Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed. Keep flight dates and clock times separate: map an explicitly stated arrival or departure date to its date field, and a clock deadline only to the corresponding time field. Interpret “by T” as a range from midnight to T (for example, `arrival_date=[D]`, `arrival_time=[\"12:00 AM\", \"09:01 PM\"]` for arrival by 9:01 PM on D). Use 12-hour strings with an AM/PM suffix; represent midnight as `12:00 AM`, never `00:00 AM`, and do not pass 24-hour `HH:MM:SS` strings to flight tools."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

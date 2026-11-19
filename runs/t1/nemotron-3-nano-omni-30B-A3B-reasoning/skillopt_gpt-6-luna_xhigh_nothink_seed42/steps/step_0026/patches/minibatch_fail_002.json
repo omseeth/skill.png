@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_cache_refinement",
+      "count": 6,
+      "description": "Agents searched again, selected the wrong cached result, or failed to apply only the latest constraint to the compatible cached result."
+    },
+    {
+      "failure_type": "incomplete_action_and_result_lifecycle",
+      "count": 5,
+      "description": "Agents omitted a pending domain or failed to bind, retrieve, and save the appropriate tool results."
+    },
+    {
+      "failure_type": "constraint_mapping",
+      "count": 4,
+      "description": "Agents omitted new hotel constraints such as budget or party size, or resent criteria already represented in the cached result."
+    },
+    {
+      "failure_type": "schema_or_environment_violation",
+      "count": 3,
+      "description": "Agents used a state abbreviation as a city, passed an unsupported traveler count to flight search, or imported and redefined tool models."
+    },
+    {
+      "failure_type": "missing_derived_hotel_checkout",
+      "count": 1,
+      "description": "An explicit check-in date and five-night stay were not used to calculate the hotel checkout date."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already gives broad instructions for cache refinement, result saving, and schema validation, so repeating them is unlikely to help. These edits clarify three uncovered input semantics shown in the trajectories: an explicit stay length determines checkout, an approximate nightly budget maps to the supported maximum-budget field, and an explicitly stated hotel party size maps to num_people.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness independently for each requested domain and, where applicable, each city or leg: proceed with searches or refinements for domains whose required inputs are available even if another is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across blocked domains. Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood. Optional preferences are not mandatory inputs.",
+        "content": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness independently for each requested domain and, where applicable, each city or leg: proceed with searches or refinements for domains whose required inputs are available even if another is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across blocked domains. Hotel check-in must be explicit. If the user also explicitly gives the stay length in nights, calculate checkout with `adjust_date(date=checkin_date, delta_days=nights)` rather than asking for a separate checkout date; otherwise checkout must be explicit. Do not borrow hotel dates from flight dates or infer a neighborhood. Optional preferences are not mandatory inputs."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "\n- For a schema field that represents a maximum nightly hotel budget, map wording such as “around N per night” to `budget=N` unless the user explicitly gives a range or tolerance."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+        "content": "\n- Map an explicitly stated number of hotel travelers to `num_people` when the schema supports it. If the count is added in a later turn, refine the latest compatible hotel result using only this new constraint. Do not pass the count to flight tools unless their schema supports it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

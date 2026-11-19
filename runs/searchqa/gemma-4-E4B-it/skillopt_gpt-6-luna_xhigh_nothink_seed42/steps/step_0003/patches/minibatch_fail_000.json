@@ -1,0 +1,34 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "answer_format",
+      "count": 6,
+      "description": "Answers were related but differed from the expected canonical form or scope, including name form, compound spelling, temporal granularity, event specificity, or noun number."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "The agent echoed a lone place name instead of inferring the clearly supported geographic jurisdiction."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "The agent answered with an associated group despite a singular-person clue."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already calls for minimal answers and exact answer slots, but these failures show a need for a more concrete check of answer type, scope, and canonical form. A separate rule addresses terse place-name prompts, where the intended location relation may be implicit.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Check Answer Type, Scope, and Form\nBefore answering, use the clue's pronouns and head nouns to constrain the kind of entity requested: for example, a singular person is not an associated group, and a species is not a mascot's descriptive nickname. Match the clue's level of specificity, such as a broad period rather than an exact year or a general event rather than a subtype. When context directly establishes a canonical answer form, preserve its conventional name or alias, spelling, and grammatical number; do not add modifiers or expansions that change the requested level."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Interpret Bare Place-Name Prompts\nWhen the prompt consists only of a place name, do not simply repeat it. If context clearly identifies its jurisdiction or location, treat the prompt as an elliptical request for that information and answer with the supported place attribute. Do not infer a relation when the context does not make one clear."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

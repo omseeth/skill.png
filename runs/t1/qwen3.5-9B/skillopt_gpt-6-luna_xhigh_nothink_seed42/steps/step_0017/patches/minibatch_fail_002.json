@@ -1,0 +1,36 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "cache_protocol_violation",
+      "count": 4,
+      "description": "Search or filter results were not saved, or cached results were not retrieved and assigned before reuse."
+    },
+    {
+      "failure_type": "criteria_over_inference",
+      "count": 2,
+      "description": "The agents inferred a hotel guest count from “family vacation” or treated “kid-friendly” as a request for a kids' club."
+    },
+    {
+      "failure_type": "date_handling",
+      "count": 1,
+      "description": "The agent calculated a checkout date with Python and reformatted a user-provided date instead of using adjust_date and preserving the date string."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache and date-handling failures already violate explicit skill rules, so adding duplicate instructions is not warranted. The criteria-inference failures expose two useful ambiguities; explicit examples clarify that family context gives no guest count and kid-friendly does not necessarily mean a kids' club.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Do not infer unspoken counts or pass traveler counts to flight tools.",
+        "content": "Do not infer unspoken counts (for example, “family vacation” does not establish `num_people`) or pass traveler counts to flight tools."
+      },
+      {
+        "op": "replace",
+        "target": "Do not map vague amenity wording to a narrower tool flag without clear equivalence.",
+        "content": "Do not map vague amenity wording to a narrower tool flag without clear equivalence (for example, “kid-friendly” alone does not mean the user wants `has_kids_club=True`; set that flag only when a kids' club is requested)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

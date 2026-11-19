@@ -1,0 +1,55 @@
+{
+  "step": 30,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 27,
+  "failure_patterns": [
+    {
+      "pattern": "dropped_requested_domain: A requested domain was never searched. The hotel was dropped when a date or 'N nights' arrived (T1, T2; T2 re-filtered flights by 'business' instead). The restaurant search was dropped from a hotel+restaurant opener that only emitted seek_information (T5).",
+      "count": 27,
+      "task_ids": [
+        "attraction:train:23:15:2",
+        "hotelrestaurant:train:11:24:0",
+        "hotelattraction:train:24:13:4",
+        "restaurant:train:4:45:2",
+        "flighthotel:train:21:6:1",
+        "flighthotelrestaurant:train:5:19:3",
+        "hotelrestaurant:train:15:3:1",
+        "hotelattraction:train:15:21:3",
+        "hotelrestaurant:train:25:31:2",
+        "flighthotel:train:9:39:6",
+        "flighthotelrestaurant:train:16:43:1",
+        "hotel:train:8:21:1",
+        "hotelattraction:train:16:34:3",
+        "hotelattraction:train:14:7:5",
+        "attraction:train:21:2:0",
+        "hotelattraction:train:12:34:4",
+        "hotel:train:6:21:4",
+        "flighthotelrestaurant:train:10:23:1",
+        "hotelrestaurant:train:21:60:4",
+        "hotel:train:13:3:1",
+        "attraction:train:18:34:2",
+        "flighthotel:train:14:29:1",
+        "flighthotelattraction:train:21:24:3",
+        "restaurant:train:13:41:2",
+        "restaurant:train:25:3:1",
+        "flighthotelattraction:train:19:26:3",
+        "flight:train:10:60:3"
+      ]
+    }
+  ],
+  "score_before": 0.545,
+  "score_after": 0.505,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "It is the whole output ONLY when no other requested domain is searchable. If the user also wants restaurants or attractions ('need a hotel and restaurant recommendation') and a city or state appears anywhere, the output is `restaurants = search_restaurants(city=\"<city>\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then ONE closing `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. A seek_information line alone is wrong in that case. Put in the restaurant search only restaurant constraints the user stated (cuisine, rating, dietary flag, per-person budget), never hotel budget or party size.",
+      "target": "It is the whole output unless another requested domain is searchable (see 4b)."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n-3. HOTEL REQUESTED IN ANY TURN + NO 'hotels' KEY + A START DATE KNOWN = search_hotels NOW. The start date is the flight date the user wrote (this turn or earlier, even if a flight key is cached). A stay length ('2 nights', 'stay there 3 nights', 'don't need a return flight') or a return date gives the checkout: `checkout_date = adjust_date(date=\"<start date as written>\", delta_days=N)`, then `hotels = search_hotels(city=\"<destination>\", checkin_date=[\"<start date>\"], checkout_date=[checkout_date], <neighborhood / stars / amenities / num_people stated in any turn>)` + `save_to_cache(key=\"hotels\", value=hotels)`. 'Weekend getaway' beside '3 nights' is still 3 nights. If no flight key exists yet, the flight search (with any class the user stated) is written first in the same block. A reply about nights, dates or a hotel neighborhood is never a flight filter, because an earlier class is already applied.\n   - Rooms and people on a cached hotels key: 'N rooms' -> num_rooms=N and 'N people' / 'N of us' -> num_people=N, together in ONE filter_hotels on the latest hotels key ('2 rooms for 3 people.' -> `num_rooms=2, num_people=3` and nothing else). Amenities named earlier (pool, kids club) are already applied. Never invent a kwarg for a word with no parameter (playground).\n",
+      "target": "## CACHE GATE (run this before writing any code, every turn)"
+    }
+  ]
+}

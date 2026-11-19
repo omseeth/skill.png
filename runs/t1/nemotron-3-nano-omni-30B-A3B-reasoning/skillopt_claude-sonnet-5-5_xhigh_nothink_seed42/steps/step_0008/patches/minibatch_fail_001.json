@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "first_search_form_violation",
+      "count": 4,
+      "description": "On an empty-CACHE turn the agent wrote imports, if/else cache probes, filter_* on fresh results or seek_information fallbacks (T1, T8). It also emitted a bare search_attractions with no assignment or save, and put a state in city= (T2, T7). Rules 14 and 21 already forbid all of this but were ignored."
+    },
+    {
+      "failure_type": "missing_search_nearest_for_hotel_near_attraction",
+      "count": 2,
+      "description": "The user wanted a hotel near a named attraction and the CACHE held hotels plus attractions or nearest_hotels. The agent filtered hotels only (T3), or invented neighborhood=['<attraction name>'] on the raw hotels key instead of filtering nearest_hotels (T5)."
+    },
+    {
+      "failure_type": "invalid_param_name",
+      "count": 1,
+      "description": "Invented kwargs meeting_rooms (needs the has_ prefix) and large_dining_area (no such parameter), which raised a pydantic ValidationError (T6)."
+    },
+    {
+      "failure_type": "skipped_search_for_complete_domain",
+      "count": 1,
+      "description": "A hotel+restaurant request with city but no dates got only seek_information. The restaurant search with the city alone was skipped (T4)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Half of the failures are basic output-form violations on first-search turns, even though Rules 14 and 21 forbid them. A short, high-priority rule at the top with concrete wrong/right examples should be read before the long rule list. The search_nearest pattern is a real gap in the skill (hotel near attraction, and chaining from nearest_hotels). Two smaller gaps are the hotel amenity naming and dropping features with no parameter, and the partial first-turn search for a domain whose mandatory args are already complete.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Travel Planning Skill",
+        "content": "\n\n## Rule 0: Empty CACHE + mandatory args known = plain straight-line searches (read first)\n- If the CACHE is `{}` or has no key for a domain and its mandatory args are known (from ANY turn), the code is ONLY `x = search_*(...)` followed by `save_to_cache(key=..., value=x)` for each domain. Never write `import`/`from ... import` (e.g. `from cache import ...` raises ModuleNotFoundError). Never write `get_results_from_cache` probes, `if x is None`/else, filter_* on a fresh result, or a seek_information fallback. Never add optional params the user did not say (flight_class, num_layovers, ...).\n- Every search is assigned and saved, even a single one-turn attraction search. Right: `attractions = search_attractions(city=\"Anchorage\", type=[\"Touristy\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. Wrong: a bare `search_attractions(...)`. A US state or abbreviation goes in `state=`, never `city=`: `search_attractions(state=\"GA\", type=[\"Touristy\"])`. Pass the type word exactly as the user wrote it.\n- Dates arriving in the last turn answer the earlier 'what are your dates?' question, so never reply with seek_information. 'June 28, 2026 to July 4, 2026' with flights requested means two flight searches: outbound `departure_date=[\"June 28, 2026\"]` and return `departure_date=[\"July 4, 2026\"]`, saved as departure_flights / return_flights. Use origin and destination from earlier turns. If a hotel was also requested, add `search_hotels(city=<destination>, checkin_date=[<first date>], checkout_date=[<second date>])` saved as \"hotels\", with any stated amenity (e.g. `has_electric_vehicle_charging=True`) passed in the search call. A stated exact departure time ('12:22 PM') becomes `departure_time=[\"12:22 PM\", \"12:22 PM\"]` on the outbound leg only. A party size ('for 4 people') is not a flight param, so omit it (it is num_people only on hotel calls)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Hotel amenity wording: 'fitness center' or 'fitness classes' -> `has_fitness_class=True`; 'gym' -> `gym_present=True`.",
+        "content": "\n- Common hotel amenity -> kwarg: 'meeting rooms' -> `has_meeting_rooms=True`; 'business center' -> `has_business_center=True`; 'kids club' -> `has_kids_club=True`; 'EV charging' -> `has_electric_vehicle_charging=True`; 'room service' -> `has_room_service=True`; 'wifi' -> `free_wifi_included=True`. Never write bare names such as `meeting_rooms=True`. If a user wish has no matching parameter in TOOL CONFIG ('large dining area', 'good view of the lake', 'conference vibe'), DROP it and filter only on the wishes that do map. 'Meeting rooms and a large dining area' -> `filter_hotels(prior_results=x, has_meeting_rooms=True)`."
+      },
+      {
+        "op": "insert_after",
+        "target": "4. Pass only the constraints the user literally stated. Never ask about optional details, and never seek information for a domain the user has not requested.",
+        "content": "\n5. A requested domain whose mandatory args are already complete is searched even when another domain is incomplete. 'Planning a trip to Fresno, need a hotel and restaurant recommendation' (no dates) -> `restaurants = search_restaurants(city=\"Fresno\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. The restaurant city alone is enough. Output seek_information alone only when EVERY requested domain is incomplete."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 23: 'Hotel near an attraction' means search_nearest (never a neighborhood filter)\n- Trigger: the user wants a hotel near a named attraction, or the assistant offered 'a hotel near <attraction>' and the user keeps answering hotel details (amenities, party size, budget). The attraction name is NEVER a `neighborhood` value.\n- CACHE has 'hotels' and 'attractions' but no nearest_* key, and the last turn adds hotel constraints (e.g. 'a hotel with a gym and wifi'): load both keys, filter the hotels, then call search_nearest and save it. `hotels = get_results_from_cache(key=\"hotels\")`, `attractions = get_results_from_cache(key=\"attractions\")`, `filtered_hotels = filter_hotels(prior_results=hotels, gym_present=True, free_wifi_included=True)`, `save_to_cache(key=\"filtered_hotels\", value=filtered_hotels)`, `nearest_hotels = search_nearest(hotels=filtered_hotels, attractions=attractions, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`.\n- CACHE already has a `nearest_hotels` key and the last turn adds a hotel constraint (party size '4 of us', budget, amenity): chain from that key. `n = get_results_from_cache(key=\"nearest_hotels\")`, `n2 = filter_hotels(prior_results=n, num_people=4)`, `save_to_cache(key=\"filter_nearest_hotels\", value=n2)`. Do NOT filter the raw 'hotels' key and do NOT add a neighborhood.\n- When a hotel and a named attraction are both searched in the same block (hotel args complete), also call `search_nearest(hotels=<hotels>, attractions=<attractions>, groupBy=\"hotel\")` and save it as \"nearest_hotels\"."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

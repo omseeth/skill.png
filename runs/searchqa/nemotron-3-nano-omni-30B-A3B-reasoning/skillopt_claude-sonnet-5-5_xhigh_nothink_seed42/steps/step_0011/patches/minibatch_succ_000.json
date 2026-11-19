@@ -1,0 +1,32 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every clue had a category noun or slot type ('this country', 'this city', 'this cheek cosmetic', 'this Czech-born author', 'Rose of this South American capital'). The agent answered with a bare entity of that type and did not echo clue words such as 'Rose of' or 'Piazza'.",
+    "The agent picked the entity that recurred across many independent passages together with the clue's distinctive details (Newton + 1703 + Royal Society; Kafka + Metamorphosis; Italy + Piazza). It did not over-think these.",
+    "Where the clue was a near-copy of a passage sentence with one slot blanked ('run out of ___, mix lipstick with Vaseline and apply to cheeks'), it filled the slot with the generic noun from that sentence.",
+    "For a fragment that gives one name of a thing ('...as the U.S. holiday Decoration Day'), the agent answered with the other name the passages pair with 'originally/formerly called' (Memorial Day).",
+    "For a clue that only describes a formula or property ('add the 2 parallel sides, divide by 2 & multiply by the height'), the agent named the concept it defines (trapezoid). Passages only described it, and the agent used the category noun 'quadrilateral' plus its own knowledge.",
+    "Where the archive snippet was cut off before the answer (the StudyStack 'CANADA' flashcard), the agent combined the clue details (1947 oil, 175 miles north of Calgary) with supporting passages (Leduc No. 1, Alberta's capital) and its own geography knowledge to land on Edmonton."
+  ],
+  "patch": {
+    "reasoning": "The skill already covers the dominant success patterns: category-noun slots, repeated-sentence slot filling, and short bare answers. Three recurring patterns are only implicit. First, alternate-name clues, where the answer is the OTHER name rather than the one in the clue. Second, description-only clues (formula, procedure, definition), where the answer is the named concept and passages may never state it as an answer. Third, truncated archive hits, where the answer should be completed from the clue's concrete details, supporting passages and own knowledge. Making these explicit should help with similar clues.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Honor qualifiers when the context offers several names for the same thing: 'Greek god of erotic love' -> 'Eros' (not Roman 'Cupid').",
+        "content": "- Alternate-name clues ('...as the U.S. holiday Decoration Day', 'formerly known as X', 'also called X'): the clue already gives ONE name for the thing, so the answer is the OTHER name. Look for passages saying 'originally/formerly called X' or 'X, now Y' and answer with Y ('Memorial Day'), never the name already in the clue.\n- Description-only clues (a formula, procedure, property or definition, e.g. 'To get this quadrilateral's area, add the 2 parallel sides, divide by 2 & multiply by the height'): the answer is the named concept that the description defines ('trapezoid'). Take its type from the clue's category noun ('quadrilateral' -> a shape). The passages may only describe it, so use your own knowledge to name it, and prefer the candidate that every detail of the description fits."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not talk yourself out of a well-supported entity.",
+        "content": "- If the archive hit is cut off before the answer (e.g. a flashcard dump showing only the clue), do not give up and do not answer 'unknown'. Resolve it from the clue's concrete details (year, distance, landmark, superlative) plus the supporting passages that name related entities (a discovery site, a province capital) and your own geography/history knowledge. Choose the one entity that fits every detail ('175 miles north of Calgary' + 1947 oil -> Edmonton)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "- A clue such as 'Rose of this South American capital' or 'set her novel in this country' wants only the bare entity of the named category ('Lima', 'Italy'), not the phrase it modifies. When one entity is repeated across many independent passages together with the clue's distinctive details, answer with it directly. A generic 'this <product/object>' slot in a tip or how-to clue takes the plain common noun the passages use ('blush')."
+      }
+    ]
+  },
+  "source_type": "success"
+}

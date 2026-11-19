@@ -1,0 +1,51 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "cache_write_omission",
+      "count": 4,
+      "description": "Search or nearest-result outputs were not consistently saved, despite the existing cache-save requirement."
+    },
+    {
+      "failure_type": "followup_action_or_scope_omission",
+      "count": 4,
+      "description": "Agents skipped a requested cached-result update, omitted a prerequisite search, or handled only one destination of a multi-city request."
+    },
+    {
+      "failure_type": "schema_field_mapping",
+      "count": 2,
+      "description": "A state abbreviation was sent as a city, and a bare numeric rating was treated as a minimum rather than an exact value."
+    },
+    {
+      "failure_type": "runtime_import_violation",
+      "count": 2,
+      "description": "Agents imported a nonexistent tools module despite the existing no-import instruction."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already requires saving results and forbids imports, so repeating those rules would duplicate guidance that has not prevented these failures. The edits clarify two underspecified actions: using an explicitly stated room count to update cached hotels, and completing proximity workflows with both relevant result sets. They also cover searches tied to multiple named destinations and clarify how to encode a bare numeric rating.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "When party size is explicit for the hotel stay, pass it as `num_people` (use `1` for an explicitly solo trip), but do not infer `num_rooms`.",
+        "content": " When the user explicitly states a room count, pass it as `num_rooms`; if a compatible hotel result is already cached, filter that result with the newly stated room count and party size rather than treating the reply as a no-op."
+      },
+      {
+        "op": "replace",
+        "target": "For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`.",
+        "content": "For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`). For ratings, treat a bare numeric rating request (for example, “rating 3.5”) as exact; encode it as `[n, n]`. Encode a stated minimum rating or a request for “at least” or “better” as `[n, schema_max]`."
+      },
+      {
+        "op": "insert_after",
+        "target": "Associate dates with explicitly stated itinerary legs in the order and context given, and do not ask again for dates already supplied.",
+        "content": " When a requested hotel, restaurant, or attraction search is tied to a multi-destination itinerary, search separately for each explicitly named applicable destination; do not collapse distinct destinations into one search or arbitrarily choose just one."
+      },
+      {
+        "op": "replace",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- For a recommendation near another result type, first ensure compatible results for exactly the two requested domains are available. Reuse matching cached results; for any missing result set, perform the requested search, or apply the stated criteria to its compatible cached base, before calling `search_nearest`. Pass both result objects, including any requested filters, and set `groupBy` to the organizing domain (for example, use `hotel` when lodging is the planned base). Do not call `search_nearest` with only one result set or an absent/placeholder cache result."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

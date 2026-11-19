@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "schema_parameter_mapping",
+      "count": 4,
+      "description": "Calls used incorrect parameter names or placed fields in the wrong required/optional bucket for the selected endpoint."
+    },
+    {
+      "failure_type": "argument_grounding",
+      "count": 5,
+      "description": "Explicit counts or values were missed or altered, while unrequested filters and empty optional values were sometimes added."
+    },
+    {
+      "failure_type": "endpoint_selection_or_redundancy",
+      "count": 3,
+      "description": "Some calls chose an endpoint with the wrong operation-specific capability or added a redundant validator."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers endpoint matching and minimal call sets, so those rules need no repetition. These edits sharpen the remaining recurring issues: audit each call against the selected endpoint's own schema, map an explicit result count such as one to a supported count field, and avoid inferring filters from contextual associations.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Preserve requested search text, identifiers, and constraints; normalize only as the endpoint requires, without dropping meaningful words or substituting one value or geographic level for another. Map explicit filters, counts, pages, sorting, locale, category, and location to the corresponding schema fields, using accepted representations for enums and locales.",
+        "content": "- Preserve requested search text, identifiers, and constraints; normalize only as the endpoint requires, without dropping meaningful words or substituting one value or geographic level for another. Map explicit filters, counts, pages, sorting, locale, category, and location to the corresponding schema fields, using accepted representations for enums and locales. When the query gives an exact result count, including one, map it to a supported limit, page-size, or count field; do not invent a count otherwise. Do not infer filters merely from a named publisher, source, or subject's association."
+      },
+      {
+        "op": "replace",
+        "target": "Represent parameters in the schema's required form and types. Put each in the declared required or optional bucket, and do not duplicate parameters across buckets. Include optional settings only when requested or clearly implied; use documented recency or freshness controls for requests such as “recent” or “latest,” and a modest supported result count when wording such as “some” calls for one. Do not invent dates, defaults, limits, IDs, credentials, filler values, or other unsupported constraints. If a required value is missing, do not fabricate it.",
+        "content": "For each selected endpoint, use that endpoint's own schema as the source of truth for parameter names, types, and required/optional buckets; do not borrow fields or bucket assignments from a similar endpoint. Put every provided parameter in its declared bucket, without duplication. Include optional settings only when requested or clearly implied; use documented recency or freshness controls for requests such as “recent” or “latest,” and a modest supported result count when wording such as “some” calls for one. Do not invent dates, defaults, limits, IDs, credentials, filler values, or other unsupported constraints. If a required value is missing, do not fabricate it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

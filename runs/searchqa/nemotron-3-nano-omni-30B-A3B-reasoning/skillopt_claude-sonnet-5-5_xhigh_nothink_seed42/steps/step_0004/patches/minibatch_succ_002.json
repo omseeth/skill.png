@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Bare work title plus year ('\"Rachel, Rachel\"(1968)'): the agent answered with the creator (director Paul Newman), the person the passages repeatedly pair with the title ('directed by'). It did not answer with the title or a plot detail.",
+    "Fragment clue with a leading ellipsis ('...as the U.S. holiday Decoration Day'): the agent answered with the other name of the thing, which is the entity the passages say was 'originally called Decoration Day'. It did not answer with a description.",
+    "A passage reproduced the clue verbatim with a trivia-news or archive answer ('The clue: ... \"What is France?\"', 'sitcom taught us ... | Welcome Back, Kotter'). The agent copied the answer, dropping the 'What is' wrapper.",
+    "Clues with 'this/these' plus category words were answered with the category referent in the form the passages use ('these people born between '46 & '64' -> 'baby boomers'; 'this creator of Uncle Remus' -> Joel Chandler Harris). Each answer was confirmed by several passages repeating the clue's details.",
+    "Clues whose wording closely matched a sentence in many passages (Outsiders, Jesse Owens, Monaco/France) were answered by taking the entity that co-occurs with all the clue's distinctive details."
+  ],
+  "patch": {
+    "reasoning": "The skill already covers verbatim archive hits and referent slot-typing. Three recurring successful behaviours are not stated explicitly. (1) A clue that is only a work's title and year wants its creator. (2) A leading-ellipsis fragment about an alias or former name wants the current or other name. (3) An archive or news answer written as a 'What is X?' / 'Who is X' response should be copied with that wrapper stripped. These edits are short and reinforce existing sections without the broad rewrites that were rejected earlier.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- A clue that is only a work's title, often with a year (e.g. '\"Rachel, Rachel\"(1968)'), asks for the work's creator: the director of a film, the author of a book, the composer of a piece. Pick the person that most passages pair with the title ('directed by X', 'novel by X'). Do not answer with the title itself or a plot detail.\n- A fragment such as '...as the U.S. holiday Decoration Day' or '...also known as X' is the tail of a sentence about an alias or former name. Answer with the other name that the passages tie to X ('originally called Decoration Day' -> 'Memorial Day')."
+      },
+      {
+        "op": "insert_after",
+        "target": "Before the answer tags, briefly quote the matched line.",
+        "content": "\n- An answer printed as a Jeopardy-style response ('The clue: ... \"What is France?\"', 'Who is Jesse Owens?') counts as a verbatim hit. Copy only the entity and drop 'What is' / 'Who is'. This applies even when the snippet comes from a news or game-show recap rather than an archive page. Treat only the contestant's WRONG responses as noise."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "\n- When the clue defines a group by description ('these people born between '46 & '64', 'these fish'), answer with the common name for that group as the passages phrase it ('baby boomers'), not the date range or an example member."
+      }
+    ]
+  },
+  "source_type": "success"
+}

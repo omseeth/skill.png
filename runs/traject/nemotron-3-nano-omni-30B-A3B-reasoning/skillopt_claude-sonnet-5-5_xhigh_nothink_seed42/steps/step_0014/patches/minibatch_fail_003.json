@@ -1,0 +1,41 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "param_placement",
+      "count": 2,
+      "description": "A parameter went in the wrong list. `DEI: GetSamples` `page` is Required but was put in optional. `Aliexpress - Item Search 3` says 'Required: none' but `q` was put in required."
+    },
+    {
+      "failure_type": "dropped_qualifier",
+      "count": 1,
+      "description": "Explicit qualifiers in a clause were left out: `from_record_date` for 'recorded after January 2017', and `page`=`1` for 'first page ... 10 per page'. The existing rules cover both, but the agent skipped them."
+    },
+    {
+      "failure_type": "missing_calls",
+      "count": 1,
+      "description": "The 'delivery services' facet was dropped (`Wayfair: products/get-home-services`). The vague 'compare options / other platforms' sentences also got too few search, auto-complete and countries calls."
+    },
+    {
+      "failure_type": "missing_default_optionals",
+      "count": 1,
+      "description": "The Asos auto-complete call omitted the schema-default country, currency, lang, sizeSchema and store optionals that Section E already requires."
+    }
+  ],
+  "patch": {
+    "reasoning": "Both trajectories lose most of their score on parameter details, not tool names or structure. Tool_em was 1.0 in the education case. The existing prose rules on required/optional placement and qualifier mapping are violated because they are not mechanical. I add two short, literal check steps to the final self-check: copy the Required list per call, and tick each qualifier phrase against a param. Both carry the exact BAD/GOOD strings seen in these failures. I also add a facet-word-to-endpoint mapping for the ecommerce case, where 'delivery services' did not match any endpoint name and the vague 'other platforms' sentences were under-called. Gold artifacts such as Numbers fragment/json=true and the Ikea countries call are deliberately not chased.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "If the tool cannot express a qualifier, switch to a sibling that can.",
+        "content": "\n8. PLACEMENT COPY (run per call; it fails in both directions). Copy the names under the tool block's `Required parameters:` line. Those names, and ONLY those, go in `required parameters`. Everything else, including the query's main input, goes in `optional parameters`. BAD `DEI: GetSamples` with `\"required parameters\": [], \"optional parameters\": [{\"name\": \"page\", \"value\": \"1\"}]` (the schema lists `page` as Required). GOOD `\"required parameters\": [{\"name\": \"page\", \"value\": \"1\"}], \"optional parameters\": []`. BAD `Aliexpress DataHub: Aliexpress - Item Search 3` with `q` in required (the schema says 'Required parameters: none'). GOOD `\"required parameters\": []` with `q` (and `page`, `region` when stated or implied) in optional.\n9. QUALIFIER TICK (run per call). Before the JSON, underline every qualifier phrase in the call's clause and write the param it maps to. The number of qualifier phrases should match the number of params in the call. Misses seen even with the rules above: 'first page ... 10 posts per page' -> `thefluentme: Get all posts` needs `page`=`1` AND `per_page`=`10` (BAD per_page only). 'TED talks by <speaker> on politics, Hebrew subtitles, at least 5 minutes, recorded after January 2017' -> `speaker`, `topic`, `subtitle_lang`=`he`, `min_duration`=`300` AND `from_record_date`=`2017-01-01` (BAD: the date bound dropped, 4 of 5 qualifiers)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "- FACET WORDS -> ENDPOINT NAMES. When one product (a Wayfair SKU) is asked about in several facets, make one call per facet and match by what the endpoint covers: images -> `Wayfair: products/get-images`; reviews -> `Wayfair: reviews/list`; delivery, installation or home services -> `Wayfair: products/get-home-services` (`sku`; add `postalCode` only if the query gives one); financing -> `Wayfair: products/get-financing-offers`. 'Images, reviews, delivery services, and financing options' is FOUR calls. Do not skip a facet because its wording ('delivery') differs from the heading. A vague sentence such as 'compare options', 'check other platforms like X and Y' or 'explore fabric sofas as an alternative' is still a list of calls: one search or auto-complete call on each platform the query names (Wayfair, Aliexpress, Asos), each with its own phrase from the query. 'What's available on Asos' also covers `Asos: countries/list`. Asos calls carry the schema-default optionals from Section E (country, currency, lang, sizeSchema, store)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

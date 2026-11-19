@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_selection_and_redundant_calls",
+      "count": 6,
+      "description": "Agents bypassed compatible cached results, chose less-constrained results, repeated searches, or touched unaffected domains."
+    },
+    {
+      "failure_type": "turn_scope_and_missing_information",
+      "count": 4,
+      "description": "Agents missed an accepted proximity request, did unrelated work, or failed to ask for a required detail for a newly requested domain."
+    },
+    {
+      "failure_type": "parameter_mapping_or_constraint_inference",
+      "count": 3,
+      "description": "Agents substituted a category value, passed an airport code as a list, or inferred specific amenities from a broad preference."
+    },
+    {
+      "failure_type": "unnecessary_result_output",
+      "count": 2,
+      "description": "Agents printed raw search results after saving them."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify the cache decision for incremental filters and untouched domains, make acceptance of an explicitly offered proximity operation actionable, and close gaps around flight-origin inference, airport-code argument shape, and unsupported amenity inference. The existing exact-value rule already covers category synonym substitution, so it is not duplicated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no cached result can cover the changed scope.",
+        "content": "When a changed request adds only filterable criteria, retrieve the most constrained compatible cache entry—including an existing filtered entry that already embodies active criteria—and apply the matching filter; do not rerun its base search. Do not retrieve, save, search, or otherwise repeat unaffected domains or legs merely to preserve them; retrieve a cached result only when it is needed as input to a requested operation, such as `search_nearest`. Search anew only when no cached candidate set covers the requested domain, location, dates or leg, and scope."
+      },
+      {
+        "op": "replace",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "- Call `search_nearest` only when the user explicitly requests proximity or directly accepts an assistant offer that explicitly proposed proximity (for example, attractions near a hotel). Merely mentioning hotels and attractions or restaurants for the same trip or city does not imply proximity. For an accepted or explicit proximity request, use the relevant compatible cached results and/or newly searched results with `search_nearest`, then save its result. Set `groupBy` to the domain the user wants prioritized."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Flight itinerary legs",
+        "content": "\n- For a newly requested flight, do not infer the departure city from the hotel city or the flight destination; seek the missing origin rather than guessing. Treat a supplied airport code as a scalar string, not a one-item list, and pass it through a scalar airport argument supported by the flight tool."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not add unrelated preferences.",
+        "content": "Do not infer a specific amenity from a broad suitability description unless it clearly means that supported feature. For example, “kid-friendly” alone does not establish that a hotel must have a kids' club or any other particular amenity."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

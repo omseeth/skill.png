@@ -1,0 +1,28 @@
+{
+  "reasoning": "Merged the overlapping assistant-suggested-area edits into one explicit location-filter branch, and combined the round-trip and nonstop guidance in a single flight-section edit. Kept concise operational additions for cached-result call sequencing, date boundaries, party-size scope, and city-plus-airport mapping. Omitted the proposed amenity rewrite because the current skill already addresses that ambiguity. Support counts estimate how many of the three source patches support each merged edit; no edits target the protected section. [optimizer-ranked: selected 2/7 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion. Retrieve the latest suitable cached result and apply the corresponding same-domain filter when needed. Use `search_nearest` only if the user requests proximity.",
+      "content": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, asks for details, or accepts exploring it, treat that as a request to explore the referent. For a named area or neighborhood, retrieve and assign the latest suitable result for the relevant domain, apply a same-domain `neighborhood` filter using the full area phrase, and save the filtered result under a fresh key. This is a location request, not a proximity request; do not call `search_nearest`. For other suggested places or options, retrieve the latest suitable result and apply the corresponding same-domain filter when needed. Use `search_nearest` only for an explicit proximity request.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+      "content": "- **Search round-trip flights as separate legs:** For an explicit round trip or date range with a return date, search outbound on the first date and return from destination to origin on the return date. Use each date only as that leg's `departure_date`; do not put the return date in the outbound `arrival_date` unless the user separately states an outbound arrival-date constraint. Cache each leg separately. Do not infer a return flight from hotel stay duration. When a requested flight is explicitly nonstop or non-stop, pass `num_layovers=[0]` on each applicable leg. If the user says the trip is one-way or declines a return flight, search only outbound.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Prioritize the supported follow-up gap: accepting exploration of a suggested area should trigger an assigned, same-domain neighborhood filter and saved result, not just retrieval. The nonstop-flight mapping adds a concrete constraint-to-schema rule absent from the skill; the other edits largely duplicate existing guidance or address narrower cases.",
+    "selected_indices": [
+      2,
+      5
+    ]
+  }
+}

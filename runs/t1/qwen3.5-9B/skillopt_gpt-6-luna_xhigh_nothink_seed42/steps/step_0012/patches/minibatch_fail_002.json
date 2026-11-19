@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_follow_up_handling",
+      "count": 4,
+      "description": "Follow-up filters used an outdated or unassigned result instead of retrieving the latest suitable cached result, and some calls omitted retrieval or saving."
+    },
+    {
+      "failure_type": "rating_range_interpretation",
+      "count": 2,
+      "description": "Conversational requests for an x-star rating were treated as exact ratings, while the expected interpretation was a minimum rating."
+    },
+    {
+      "failure_type": "date_computation_tool_misuse",
+      "count": 2,
+      "description": "Hotel checkout dates were computed with Python date arithmetic and an undefined variable instead of using adjust_date."
+    },
+    {
+      "failure_type": "conversation_constraint_reconciliation",
+      "count": 1,
+      "description": "The search omitted a previously stated cuisine and added an unrequested vegetarian preference."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify the ambiguous rating phrasing seen in two trajectories, make the cached follow-up flow emphasize selecting the latest result that reflects prior constraints, and specify direct use of adjust_date's returned value. The existing explicit-criteria rules already cover the remaining constraint-drift case.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5].`",
+        "content": "For ratings, interpret an explicit exact or “exactly x” rating as `[x, x]`. Interpret “at least x,” “x or higher/better,” and conversational requests such as “something with an x-star rating would be great” as lower bounds `[x, 5]`. A neutral bare numeric rating with no exact or lower-bound wording remains exact `[x, x]`."
+      },
+      {
+        "op": "replace",
+        "target": "If a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only the new same-domain filter and save the update under a fresh relevant key.",
+        "content": "If a suitable cached base exists and the new constraint is not reflected in it, choose the most recent cache entry whose summary already reflects all prior constraints for that domain, including earlier filters—not an older, broader result. Retrieve it using `get_results_from_cache(key=\"<exact key from the cache summary>\")`, assign the result locally, and use that variable as the tool input; never rely on variables from earlier code or turns. Apply only the new same-domain constraint, assign the filter output, and save it under a fresh relevant key."
+      },
+      {
+        "op": "replace",
+        "target": "When an explicit trip start date and number of hotel nights are known, use the start date as check-in and call `adjust_date` with the night count to compute checkout.",
+        "content": "When an explicit trip start date and number of hotel nights are known, use the start date as check-in and assign the returned string directly from `adjust_date(date=\"<trip start date>\", delta_days=<night count>)` as checkout. Pass that returned value to the hotel search; do not parse it, refer to an undefined date variable, or compute the date with Python."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

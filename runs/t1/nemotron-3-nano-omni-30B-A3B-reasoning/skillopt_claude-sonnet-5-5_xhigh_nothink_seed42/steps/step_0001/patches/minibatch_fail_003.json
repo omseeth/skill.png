@@ -1,0 +1,48 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "missing_save_to_cache",
+      "count": 4,
+      "description": "Generated code calls search/filter but never assigns the result or calls save_to_cache. The gold code always saves, so tool_f1 drops and cache_em is 0."
+    },
+    {
+      "failure_type": "re_applying_prior_filters",
+      "count": 2,
+      "description": "filter_hotels was called with criteria already applied in earlier turns and recorded in the cache summary (dates, rooms, pet-friendly, kids club). Only the new criteria from the last user turn belong in the call."
+    },
+    {
+      "failure_type": "undefined_variable_instead_of_cache_read",
+      "count": 1,
+      "description": "Passed an undefined variable `hotels` as prior_results instead of loading it with get_results_from_cache."
+    },
+    {
+      "failure_type": "wrong_no_planning_needed",
+      "count": 1,
+      "description": "Returned print('No planning needed') even though the user had just given restaurant criteria and the cache held no restaurant results."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four of the five failures omit save_to_cache, which the existing instructions require but the model skips. Two failures add constraints already applied to cached results. One uses an undefined variable. One wrongly returns 'No planning needed' for a new domain. The edits give a concrete output template with variable assignment and save, a rule for incremental filtering, a rule for loading from the cache, and a rule for when 'No planning needed' is allowed.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Mandatory code shape: assign, then save\nEvery search_*, filter_*, sort_results and search_nearest call MUST be assigned to a variable and followed by a save_to_cache call in the same code block. Never emit a bare tool call with no save. Even a single search must produce two statements.\nTemplate:\n<CODE>\nhotels = search_hotels(city=\"San Jose\", checkin_date=[\"August 30, 2025\"], checkout_date=[\"September 4, 2025\"])\nsave_to_cache(key=\"hotels\", value=hotels)\n</CODE>\nKey naming:\n- Use the plain domain name for the first search of a domain (\"flights\", \"hotels\", \"restaurants\", \"attractions\").\n- Use a new, unused key for every later filter or sort of that domain, following the style and numeric suffix already in the CACHE summary (e.g. \"filtered_hotels\", then \"filtered_hotels2\", then \"filtered_hotels3\"; or \"hotels2\").\n- Never overwrite an existing key.\n- If several tools are called in one turn, save each result under its own key."
+      },
+      {
+        "op": "append",
+        "content": "## Filtering cached results: only add NEW criteria\n- The CACHE summary text lists the filters and search parameters already applied to each key (dates, rooms, budget, amenities, neighborhood, etc.). Do NOT repeat any of them in a new filter_* call.\n- Pass only the constraints the user introduced in the LAST user turn. Example: if the cache already reflects 2 rooms, budget and kids club, and the user now says \"Downtown\", call filter_hotels(prior_results=..., neighborhood=[\"Downtown\"]) and nothing else.\n- Load the most recent relevant key (the latest filtered_* key if one exists, otherwise the base search key).\n- Do not re-derive earlier-turn constraints from the conversation history. They are already baked into the cached result.\n- If the user gives a value for an amenity (e.g. 'kid-friendly pool'), map it only to the matching tool parameter (pool_present=True). Do not add extra parameters such as has_kids_club unless the user states them in this turn."
+      },
+      {
+        "op": "append",
+        "content": "## Reading from cache\n- Never reference a variable that was not defined in the current code block (e.g. `hotels` from an earlier turn). Always load first, then use the loaded variable:\n  hotels = get_results_from_cache(key=\"hotels\")\n  hotels2 = filter_hotels(prior_results=hotels, pool_present=True, breakfast_included=True)\n  save_to_cache(key=\"hotels2\", value=hotels2)\n- The key passed to get_results_from_cache must be one that actually appears in the CACHE summary."
+      },
+      {
+        "op": "append",
+        "content": "## When 'No planning needed' is allowed\n- Output print(\"No planning needed\") ONLY if the last user turn adds no new search or filter criteria AND the needed result already exists in the cache.\n- If the last user turn answers an assistant question about a domain (e.g. dietary restrictions or cuisine -> restaurants, attractions types -> attractions) and the CACHE has no key for that domain, generate the search for that domain. Use the city/location already established elsewhere in the conversation (e.g. the hotel city) as the required city, and pass only the user-stated criteria. Example: nut allergy plus Latvian -> restaurants = search_restaurants(city=\"St. Louis\", has_nut_allergy_options=True, cuisine=[\"Latvian\"]) followed by save_to_cache(key=\"restaurants\", value=restaurants).\n- If the domain already has a cached result and the user adds a new preference, use filter_* on the cached result. If the domain is not yet cached, use search_*."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

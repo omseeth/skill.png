@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_result_reuse_and_filtering",
+      "count": 3,
+      "description": "Agents repeated base searches instead of retrieving compatible cached results and applying new filters."
+    },
+    {
+      "failure_type": "round_trip_leg_directionality",
+      "count": 2,
+      "description": "Agents treated a return date as an arrival-date filter instead of searching a separate reverse-direction leg."
+    },
+    {
+      "failure_type": "tool_result_binding_and_cache_persistence",
+      "count": 4,
+      "description": "Agents omitted result assignment or caching, called searches inline, printed results, or referenced an undefined variable."
+    },
+    {
+      "failure_type": "required_inputs_and_unjustified_defaults",
+      "count": 2,
+      "description": "Agents searched hotels without required dates or inferred a default party size."
+    },
+    {
+      "failure_type": "nearest_grouping_direction",
+      "count": 1,
+      "description": "The nearest-results call grouped by the hotel anchor rather than the requested nearby restaurants."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already directly addresses cache reuse, round-trip legs, result saving, and mandatory hotel dates, so repeating those rules would not fill a gap. Clarify the two remaining ambiguities: which domain groupBy represents and that hotel party size has no default.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "- Interpret `groupBy` as the domain to return or organize as the nearby targets, not the anchor: for “restaurants near a hotel,” use `groupBy=\"restaurant\"`; for “hotels near attractions,” use `groupBy=\"hotel\"`; for “attractions near a hotel,” use `groupBy=\"attraction\"`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+        "content": "- Never default a hotel party size (including to two people) or infer it from generic trip wording such as “weekend getaway.” Pass `num_people` only when the user explicitly states a count or an unambiguous descriptor supplies it; otherwise omit it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

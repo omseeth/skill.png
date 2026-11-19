@@ -1,0 +1,20 @@
+{
+  "batch_size": 4,
+  "success_patterns": [
+    "Single-domain routing on refinement turns. Neighborhood on restaurants, and 'gym and pool' on filtered_hotels, each produced exactly load -> filter -> save for that one domain. No other domain's key was touched.",
+    "A load -> filter -> save refinement passes only the last message's new constraint. The neighborhood reply gave neighborhood=['Downtown St. Louis'] with no cuisine or vegetarian re-passed. The gym/pool reply gave gym_present and pool_present only. The save key was new (filtered_restaurants, final_hotels).",
+    "Hotel first-search after dates arrive with restaurants already cached. search_hotels was called alone with every literal value (city from turn 1, both dates as written, num_rooms=3, num_people=5), saved as 'hotels', and restaurants were not re-searched.",
+    "A near-miss: for 'a kid-friendly pool and breakfast included' the agent added has_kids_club=True on top of pool_present and breakfast_included. It still scored, but the extra param was a false positive. 'Kid-friendly' or 'family-friendly' wording leaked into an amenity flag even though Rules 2 and 10 already forbid it."
+  ],
+  "patch": {
+    "reasoning": "Nearly every success was already covered by the existing rules (one-domain routing, minimal filters, first-search with literal values, final_* key naming). The only gap with direct evidence is amenity mapping. In trajectory 4 the agent turned the descriptive 'kid-friendly' into has_kids_club, and 'family-friendly' from turn 1 probably fed that. The rule against it sits in Rules 2 and 10, away from the amenity mapping table the agent looks up when writing kwargs. I fold the guard into the existing 'kids club' mapping entry rather than adding another example or rule, so the skill does not grow by accretion.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "'kids club' -> has_kids_club=True.",
+        "content": "'kids club' -> has_kids_club=True (only when the user literally says 'kids club'; 'kid-friendly', 'family-friendly' or 'family vacation' never set it, so 'kid-friendly pool' -> pool_present=True only)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

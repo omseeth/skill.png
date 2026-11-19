@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_misclassification",
+      "count": 5,
+      "description": "Agents repeated searches, selected a less-constrained cached result, or returned cached data without filtering the requested scope."
+    },
+    {
+      "failure_type": "cross_domain_state_and_required_arguments",
+      "count": 3,
+      "description": "Agents failed to carry known context across pending requests, searched an incomplete domain, or failed to execute an independent complete domain."
+    },
+    {
+      "failure_type": "itinerary_leg_mapping",
+      "count": 1,
+      "description": "A round trip was encoded as one outbound search with an arrival date instead of separate directional legs."
+    },
+    {
+      "failure_type": "unsupported_preference_inference",
+      "count": 1,
+      "description": "A broad kid-friendly preference was treated as an explicit request for a kids club."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch repeatedly shows failures to operationalize existing cache and required-argument rules. A per-domain scope-and-delta check makes cache reuse, filtering, and genuinely new searches easier to distinguish; explicit pending-domain handling prevents incomplete calls while preserving independent work. A concrete directional flight pattern addresses the return-leg error, and a narrow descriptor mapping prevents unsupported amenity inference.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Cache-aware tool workflow",
+        "content": "\n### Make the cache decision by scope and delta\nBefore emitting calls, compare each active domain's requested scope and criteria with the cache summary. If a compatible cached result already covers the request, do not search again. If the scope is the same and the user adds a filterable criterion, retrieve the exact cache key and filter that result, passing only criteria not already embodied in it. Search anew only for a requested domain or scope that no compatible cached result covers. Do not regenerate unaffected domains or merely retrieve/print an unfiltered result when the user asks to inspect a narrower suggested scope; apply the matching filter."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Required-argument checks",
+        "content": "\nFor multi-domain requests, resolve mandatory fields against the full conversation before asking or calling tools, and validate each domain separately. Never ask for a mandatory value already supplied earlier. Execute and immediately cache each independently complete domain even when another domain is incomplete; make no search call for the incomplete domain, and seek only its missing mandatory fields. Carry trip dates forward to every pending request they clearly apply to, including the hotel stay when those dates establish the trip span."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Flight itinerary legs",
+        "content": "\nFor a round trip, use two calls and save each assigned result immediately: `outbound = search_flights(start_airport_city=origin, end_airport_city=destination, departure_date=[departure_date])`, then `return_flights = search_flights(start_airport_city=destination, end_airport_city=origin, departure_date=[return_date])`. Do not encode the return as `arrival_date` on the outbound call. If the user explicitly requests only the return flight, make only the reverse-direction call on the return date."
+      },
+      {
+        "op": "replace",
+        "target": "If no supported argument captures an optional preference, omit it and proceed with the supported request without inventing a substitute or asking for unsupported details.",
+        "content": "If no supported argument captures an optional preference, omit it and proceed without inventing a substitute or asking for unsupported details. Do not equate broad descriptors such as “kid-friendly” or “family-friendly” with a particular amenity: set `has_kids_club=True` only when the user specifically requests a kids club."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

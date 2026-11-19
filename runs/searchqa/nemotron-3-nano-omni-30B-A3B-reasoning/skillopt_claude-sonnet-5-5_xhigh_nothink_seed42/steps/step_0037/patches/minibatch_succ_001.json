@@ -1,0 +1,25 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Definition-style clues ('This phrase describes...', 'This soft central part... contains...', 'This group of muscles... bends the knee') were solved by finding the dictionary or encyclopedia passage whose title or headword is glossed by the clue's own words, such as 'Hit-and-run | Define Hit-and-run', 'Pulp - definition of pulp' or 'Hamstring - Wikipedia'. The agent answered with that headword, kept its hyphen and plural, and left out the clue's category noun.",
+    "Verbatim archive hits were found in non-obvious places: a news recap quoting the clue with a contestant response ('What is France?'), and a GitHub dump line 'clue | Welcome Back, Kotter.'. The agent took the noun or title out of that line and copied it, dropping the 'What is' wrapper.",
+    "Slot-type discipline held up. 'this country' got France, 'this gland' got 'pituitary gland' (head noun kept because the bare modifier is not a name), 'this sitcom' got the series title, 'this Dante work' got 'Divine Comedy', and the singer clue got the person.",
+    "Candidates were confirmed by a phrase repeated across several independent passages ('would revert to France', 'pituitary gland contains a hormone... 1931') rather than by one stray passage."
+  ],
+  "patch": {
+    "reasoning": "Most successes were already covered by Rules 2-4 and the strategic block. Two gaps remain. Plain definition clues ('This phrase describes X', 'this part that contains Y') are not named in Rule 1, even though the agent solved them by matching the clue to a dictionary or encyclopedia headword. The 'What is X?' answer wrapper in archive or recap passages is only implied by Rule 3's mention of wrong contestant responses, so the instruction to strip it should be explicit. Both additions are narrow and avoid the mandatory-line restructuring that was rejected in earlier steps.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "look for the passage that glosses it ('locally referred to as lambi') and answer with the common English name (Conch).",
+        "content": "\n- DEFINITION clues ('This phrase describes an accident in which the driver flees', 'This soft central part of a tooth contains the nerves', 'This group of muscles at the back of the thigh bends the knee'): the answer is the single TERM being defined. Look for a dictionary, glossary or encyclopedia passage whose title or headword ('Hit-and-run | Define Hit-and-run', 'Pulp - definition of pulp', 'Hamstring - Wikipedia') is glossed with the clue's own words, and answer with that headword in the form shown (keep its hyphens, keep the plural if the clue describes a group). Drop the clue's category noun ('muscles', 'phrase', 'part') unless it is part of the standard name."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "- An archive hit may appear inside a news or blog recap that quotes the clue ('The clue: ... \"What is France?\"') or in a GitHub dump line 'clue | answer.'. Match it on the clue's distinctive words and take the noun or title that follows. Strip a 'What is / Who is / What are' wrapper, but if the same recap marks that response as wrong, use the correct answer given instead."
+      }
+    ]
+  },
+  "source_type": "success"
+}

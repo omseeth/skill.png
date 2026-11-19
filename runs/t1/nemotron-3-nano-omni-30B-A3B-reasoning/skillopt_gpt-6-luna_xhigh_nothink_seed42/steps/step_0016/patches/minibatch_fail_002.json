@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 6,
+      "description": "Search or refinement results were often left unbound or not saved to cache."
+    },
+    {
+      "failure_type": "incomplete_cache_and_constraint_coverage",
+      "count": 4,
+      "description": "Agents missed a new rating, amenity, named attraction, or cached-result refinement, or reprocessed an unchanged domain."
+    },
+    {
+      "failure_type": "flight_leg_or_argument_mismatch",
+      "count": 2,
+      "description": "Round trips were not represented as separate directional legs, and unsupported passenger-count arguments were sent to flight search."
+    },
+    {
+      "failure_type": "runtime_tool_redefinition",
+      "count": 2,
+      "description": "Agents imported packages or redefined result models instead of using the tools and models already available."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers result persistence and separate flight legs, so those rules need no duplicate patch. These edits address narrower gaps shown in the batch: named attractions must be searched even without a proximity request, one-sided rating thresholds need valid range encoding, cache keys must match the listing, and runtime tool models must not be recreated.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.",
+        "content": "\n- Treat a request to visit or consider a specifically named attraction as an attraction-domain target even when the user has not requested proximity. If no listed cache summary covers that exact attraction, search for it using `search_attractions` with the supported `attraction_name` field; a generic city or attraction-type result does not establish coverage of the named place."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "\n- For a one-sided threshold on a field defined as a minimum/maximum range, encode the stated threshold as the lower endpoint and use the documented upper endpoint of that field's scale (for example, a restaurant rating of at least 3 on a 0–5 scale is `rating=[3, 5]`). Do not treat a minimum as an exact value or invent an upper endpoint when the schema does not establish one."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "\n- Copy cache keys exactly as they appear in the supplied cache listing; do not guess aliases or conventional names for a listed result."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- Tools and their result models are already provided by the runtime. Call tools directly; do not import packages to recreate schemas or import, define, redefine, or wrap tools or result models."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

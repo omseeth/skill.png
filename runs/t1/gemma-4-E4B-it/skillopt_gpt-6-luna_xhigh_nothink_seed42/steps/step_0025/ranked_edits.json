@@ -1,0 +1,37 @@
+{
+  "reasoning": "Consolidated the cache guidance into one per-scope decision path, including precedence for compatible filtered results and when to search, filter, or simply retrieve. Added executable budget-filter and repeated-search examples, clarified acceptance and cache reuse for proximity requests, and added a targeted hotel checkout safeguard. Existing schema mappings and directional flight-leg instructions already cover the other concerns, so they need no duplicate edits. All targets are outside the protected section. [optimizer-ranked: selected 3/5 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "save_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "content": "\n\nFor budget-only follow-ups, retrieve and filter a compatible cached result rather than rerunning its base search. Use the same retrieve-filter-save workflow for a hotel amenity follow-up when the cached hotel scope covers it, passing only the amenity argument supported by the filter tool. For example, filter a budget separately for each affected flight leg:\n```python\noutbound = get_results_from_cache(key=\"<exact outbound-flight key>\")\nfiltered_outbound = filter_flights(prior_results=outbound, budget=<requested budget>)\nsave_to_cache(key=\"<new filtered outbound key>\", value=filtered_outbound)\nreturn_leg = get_results_from_cache(key=\"<exact return-flight key>\")\nfiltered_return = filter_flights(prior_results=return_leg, budget=<requested budget>)\nsave_to_cache(key=\"<new filtered return key>\", value=filtered_return)\n```",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Identify only the domains or itinerary legs changed by the latest user turn. For each changed request, if a compatible cached result exists, retrieve it with `get_results_from_cache(key=\"<literal cache key shown in the summary>\")` and assign the returned object to a local variable; cache keys and summaries are not Python result variables. Choose the most constrained cached result that still covers the request: its domain, location, dates or leg, and original scope must be compatible, and it must not be narrower than the requested scope. Prefer a result that already embodies the greatest number of still-active criteria, and retrieve it by its exact cache key. A result restricted to a different category or entity does not establish that a newly requested specific entity is included; search if the cached scope cannot cover it. Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result. A cached proximity result may also be used as filter input when its candidate set remains valid. Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no cached result can cover the changed scope.",
+      "content": "- At each turn, identify only the domains or itinerary legs changed by the latest user turn, then choose one action for each changed scope:\n  1. **Covered scope with a new filterable constraint:** Choose the most constrained compatible cached result that covers the request, retrieve it by its exact cache key, and assign it to a local variable. If both base and filtered results cover the scope, use the filtered result when it retains all active criteria. Apply only the newly supplied filters and any active criteria not already embodied in the retrieved result, then save the filtered result. Repeat separately for each affected leg. A result restricted to a different category or entity does not cover the request unless its scope can include it.\n  2. **Uncovered scope:** If no compatible cached result covers the changed scope, make and save a base search with all active supported criteria.\n  3. **Already-covered scope with no new supported constraint:** Do not search or filter. If the user asks to inspect or receive recommendations already covered by the cache, retrieve the compatible result once; do not save it again. If the turn adds only unsupported information, do not rerun the search.\n  Do not rerun unaffected domains or legs, or recompute cached sort, nearest, or other derived results unless the latest turn requests that operation or changes its scope.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "content": "- Call `search_nearest` only when the user explicitly requests or accepts proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. If the assistant explicitly offers to find one domain near a named result and asks for preferences needed for that combined search, treat the user's answer as acceptance unless they decline. Apply each domain's requested filters before calling `search_nearest`. If one side is unchanged and already cached, retrieve its exact compatible cache key and reuse it rather than searching again. Set `groupBy` to the domain the user wants prioritized: for example, `groupBy=\"restaurant\"` for restaurants near a hotel, or `groupBy=\"hotel\"` for hotels near restaurants.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Prioritize the concrete retrieve-filter-save pattern for recurring budget and amenity follow-ups, then the clearer cache decision branches. The proximity-offer clarification adds useful guidance; the other edits mostly duplicate existing instructions on result assignment or missing hotel dates.",
+    "selected_indices": [
+      1,
+      0,
+      3
+    ]
+  }
+}

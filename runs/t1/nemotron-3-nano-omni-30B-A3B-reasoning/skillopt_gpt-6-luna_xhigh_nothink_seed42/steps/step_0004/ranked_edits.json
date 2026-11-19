@@ -1,0 +1,46 @@
+{
+  "reasoning": "Combined overlapping lifecycle guidance while keeping cache refinement as a distinct rule. Merged the two conversational-scope suggestions, consolidated time-window and schema guidance into one insertion, and combined the proximity edits into a single section replacement. Preserved the flight-leg clarification, which appears in only one source patch. [optimizer-ranked: selected 4/6 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "## Incremental planning and cache use",
+      "content": "- Interpret short replies in light of the preceding assistant prompt and the full conversation. A brief affirmative accepts the specific action or preference offered; carry forward any supplied values, keep earlier requested domains in scope, and attach each criterion to its intended domain and item (for example, a per-night hotel budget is not a restaurant budget). Re-check cache coverage; do not treat an affirmative as a no-op, ask again for information already provided, or add work for unrequested domains.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+      "content": "- When refining a cached result, pass it as `prior_results` and include every newly introduced, schema-supported criterion in the appropriate filter; do not resend criteria already represented in the result. Passing only `prior_results` is not a refinement.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Validate tool arguments and preserve user intent",
+      "content": "\n- When the hotel schema supports `num_people`, map an explicitly stated numeric party size to that field, not `num_rooms`; never infer a room count. Use exact schema-supported amenity names (such as `has_room_service` or `airport_shuttle_present`), not shortened aliases or approximate substitutes. If no supported field unambiguously represents a preference, omit that unsupported criterion.\n- For time-window fields, provide two bounds in the format accepted by the tool (for example, `08:23 PM`, not a rejected 24-hour value with seconds). Interpret “at X” as X to X, “by,” “no later than,” or “arrive by X” as the start of the day through X, and “after” or “no earlier than X” as X through the end of the day.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "## Hotel proximity to attractions\n- If the user explicitly requests hotel access or proximity to an attraction, check whether relevant attraction results are available; search for any missing results, then call `search_nearest` with both the hotel and attraction result objects, grouped by the requested primary domain. Interest in visiting an attraction alone does not imply a request for proximity or require a nearest-results call.",
+      "content": "## Proximity between travel domains\n- Call `search_nearest` only when the user explicitly requests proximity between supported domains, such as a hotel near a restaurant or attraction. Interest in visiting or dining at a place alone does not imply a proximity request.\n- For a requested comparison, retrieve or search for the relevant results and pass exactly the two supported domain result objects to `search_nearest`; never call it with only one result object or with all three. Search for missing results only when their mandatory inputs are available, and group results by the requested primary domain.\n- For hotel beach access, use the supported `has_beach_access` amenity criterion; do not call `search_nearest` with hotels alone or invent an attraction result.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Prioritize the broad conversational-context fix, then the explicit cached-refinement requirements. The schema and time-window guidance addresses several concrete argument failures, while the proximity edit extends coverage across domains and clarifies when and how to call nearest-results. The remaining edits are more redundant with existing guidance or narrower in scope.",
+    "selected_indices": [
+      2,
+      1,
+      4,
+      5
+    ]
+  }
+}

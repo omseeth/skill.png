@@ -1,0 +1,40 @@
+{
+  "reasoning": "Preserved all distinct failure-driven corrections at higher priority, including the clarification to process newly stated constraints and clearly unfinished requests without replaying completed work. Kept the overlapping rating and hotel-star guidance combined in the failure version. The success-driven restaurant budget insight covers a pattern not addressed by the failure patches, so it is also included. [optimizer-ranked: selected 4/7 edits]",
+  "edits": [
+    {
+      "op": "append",
+      "content": "\n- **Map approximate restaurant spending to budget:** For restaurant requests, pass an approximate spend amount such as “around 70” or “price range around 40” directly as the scalar `budget` value. Do not invent a lower bound or convert it to a two-ended range.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns.",
+      "content": "On each turn, reconcile the full conversation and cache, but anchor actions to the latest user turn: process newly stated or changed constraints and clearly unfinished earlier requests (for example, a search deferred because required information was missing and now supplied). Do not replay completed work or revive an older constraint solely because it is absent from a later summary.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "append",
+      "content": "\n- **Treat answers to preference questions as new constraints:** When the user agrees to or selects a preference in response to an assistant's question, treat that preference as an explicit user constraint. Retrieve the affected cached result, apply the relevant same-domain filter, and save the update; do not treat the reply as a no-op while the preference remains unapplied.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+      "content": "For numeric ratings, treat a single value without range, minimum, or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and “at least x” is `[x, 5]`. For hotel star-count requests, use the `stars` field, not `rating`, with the same range semantics: a single value is exact unless minimum or “at least” is stated, “at least N stars” means `stars=[N, 5]`, “exactly N stars” means `stars=[N, N]`, and any explicitly stated range should be preserved.",
+      "support_count": 2,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 6 addresses a distinct, actionable restaurant-budget mapping gap and has the strongest support. Edit 3 improves follow-up handling broadly by distinguishing unfinished work from completed work. Edit 0 makes preference selections explicit constraints, complementing the existing cache workflow. Edit 2 prevents confusion between hotel star counts and numeric ratings. The remaining edits are narrower or substantially duplicate existing guidance.",
+    "selected_indices": [
+      6,
+      3,
+      0,
+      2
+    ]
+  }
+}

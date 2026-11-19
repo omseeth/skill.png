@@ -1,0 +1,20 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Hotel and restaurant refinements on a cached domain were three clean lines: load the most refined key, filter with only the last message's new constraint, save. Examples: wifi + gym, fitness center + room service, a bare 'around 60 per person'. Amenities were mapped to the right kwargs (has_fitness_class, has_room_service, gym_present, free_wifi_included).",
+    "When dates arrived as a reply and hotel and restaurants were both requested, only the missing domain was searched. Restaurants were already cached, so the agent ran search_hotels with the user's dates, the turn-1 num_people and the turn-1 budget, and did not touch restaurants.",
+    "First-turn requests with a missing mandatory arg (flight with no date, flight + hotel with only a destination) produced a lone seek_information and no search call. One run still wrote a '<date>' placeholder, which the existing date gate already forbids.",
+    "A reply that gave only an ARRIVAL date and time ('arrive on May 30, 2025 by 01:22 PM') was not treated as a departure date. The agent asked for the departure date instead of searching. This runs against the current 'date reply = search now' wording, so it needs an explicit exception."
+  ],
+  "patch": {
+    "reasoning": "Most successes already follow existing rules (one-domain refinement, minimal filters, seek_information for missing dates, search only the newly complete domain). The one pattern the skill does not cover, and which its 'DATE ANSWER = SEARCH NOW' and Rule 24 wording contradicts, is an arrival-only constraint answering a date question. Gold treats it as a missing departure date and asks for it. A short exception in the DATE GATE keeps the agent from searching with an arrival date as departure_date or from guessing a departure date.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "A budget, stars, amenity or party-size reply never supplies dates (hotel requested, no dates, reply 'around 80 per night' -> seek_information, no search_hotels).",
+        "content": " An ARRIVAL constraint is not a departure date. A reply such as 'I need to arrive on May 30, 2025 by 01:22 PM' ('get there by', 'land before') to a date question, with no departure date stated anywhere, leaves departure_date missing. The whole output is `seek_information(\"We need the departure date for the flight.\")`, with no search_flights call and no arrival_date or departure_date guessed from it. This exception overrides 'DATE ANSWER = SEARCH NOW' and Rule 24 for arrival-only replies. Once the user states a departure date, search and carry the arrival date and time they gave."
+      }
+    ]
+  },
+  "source_type": "success"
+}

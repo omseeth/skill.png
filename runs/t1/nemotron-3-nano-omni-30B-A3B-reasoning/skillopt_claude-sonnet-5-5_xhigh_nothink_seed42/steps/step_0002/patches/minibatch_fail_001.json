@@ -1,0 +1,52 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "affirmation_misread_as_no_new_constraint",
+      "count": 2,
+      "description": "A 'Yes ...' reply to an assistant proposal (neighborhood, Scenic attractions) was treated as no new constraint. The agent only retrieved, or sorted everything, instead of filtering or searching for the proposed value."
+    },
+    {
+      "failure_type": "cache_refinement_wrong_key_or_re_search",
+      "count": 3,
+      "description": "On refinement the agent re-searched legs that were already cached, filtered the stale 'hotels' key and re-applied old filters, or wrote a cache-None branch instead of loading and filtering each cached leg."
+    },
+    {
+      "failure_type": "invented_or_misnamed_parameters_and_unrelated_domain_work",
+      "count": 3,
+      "description": "The agent used a wrong parameter name (business_center instead of has_business_center) and invented amenity or cuisine filters. It also filtered or searched domains the last turn did not touch."
+    },
+    {
+      "failure_type": "initial_search_incomplete",
+      "count": 2,
+      "description": "The agent asked for a city that was already given. In another case it made no save_to_cache calls, merged the round trip into one search, and added unstated amenity flags."
+    },
+    {
+      "failure_type": "forbidden_code_patterns",
+      "count": 1,
+      "description": "The agent added `from tool import ...` and if-None cache checks, which crash the executor."
+    }
+  ],
+  "patch": {
+    "reasoning": "Eight failures fall into four recurring groups. First, the agent mishandles short affirmative replies, either retrieving only or sorting everything. Second, it handles refinements imprecisely: wrong cache key, re-search, or unrelated domains. Third, it fabricates or misnames parameters. Fourth, it makes initial-search errors: asking for a city that was given, skipping saves, and not splitting round trips. The existing Rules 2 and 8 are being over-applied or ignored, so the new rules sit after them and state the corrections explicitly. They also add code-hygiene constraints (no imports, exact has_* names, no invented filters).",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Rule 9: Short or affirmative replies ('Yes', 'sounds great', 'Yes, we'd like Downtown Memphis') are usually NEW constraints (overrides the retrieval-only bullet of Rule 8)\n- Read the assistant's LAST message to see what it proposed. If it proposed a preference or a domain (a neighborhood, 'Scenic attractions', 'a hotel near X', a spa), the user's 'Yes' accepts it as a new constraint. Do NOT just retrieve from the cache and do NOT print('No planning needed').\n  - Neighborhood accepted -> `x = get_results_from_cache(key=<latest hotels key>)`, `x2 = filter_hotels(prior_results=x, neighborhood=[\"<user's wording>\"])`, `save_to_cache(key=\"<new key>\", value=x2)`.\n  - Attraction type accepted (e.g. 'Scenic') and the cached attractions entry was for a different query (e.g. a named attraction) -> `attractions = search_attractions(city=<established city>, type=[\"Scenic\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. Do not retrieve everything and do not re-filter other domains.\n- Only a refusal or 'no preference' ('Not really', 'Anything is fine') with an existing cache entry means pure retrieval.\n- Never call sort_results unless the user explicitly asks to sort or rank (cheapest, highest rated, earliest). Never invent a sort column."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 10: First-time search turns\n- If the mandatory args for a domain are already in the conversation, search immediately. For restaurants only city is mandatory: 'Italian restaurants in St. Louis' -> `restaurants = search_restaurants(city=\"St. Louis\", cuisine=[\"Italian\"])` then `save_to_cache(key=\"restaurants\", value=restaurants)`. Never use seek_information for a value the user already gave, or for optional values.\n- Every search_*/filter_* result must be assigned to a variable and saved with save_to_cache. A bare call with no save fails.\n- A round trip needs TWO flight searches: outbound (origin->destination, outbound date(s)) saved as 'departure_flights', and the return (reversed airports, return date) saved as 'return_flights'. A multi-city trip needs one search per leg. If the user offers several dates for one leg, put all of them in that leg's departure_date list.\n- Pass only what the user actually stated. Never add unstated amenity flags or False values (e.g. free_wifi_included, airport_shuttle_present, is_pet_friendly). 'Free parking' means only has_free_parking=True.\n- Copy a neighborhood in the user's own words (e.g. 'Downtown St. Louis' -> neighborhood=[\"Downtown St. Louis\"]).\n- If a domain already has a cache entry for the same request (e.g. restaurants), do not search it again; only search the domains that are still missing."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 11: Precision for refinement turns (supplements Rule 2)\n- Flight legs can have any cache key names (departure_flights/return_flights, first_flights/second_flights, flights). When the user gives a class, time or airline preference, load EACH flight key from the CACHE and filter it. Do not re-run search_flights. Save each result under a new key such as filtered_<original key>.\n- Load only the keys of the domain being refined, and start from the most refined key (e.g. filtered_hotels, not hotels). Pass only the NEW constraint(s) from the last turn. Do not re-pass budget, stars, rooftop bar etc. that the cache summary already lists. Do not load or return unrelated keys (e.g. flights when only a hotel amenity was added).\n- Only refine domains the last turn actually talks about. A hotel budget or amenity answer must not filter restaurants, and never invent filter values (e.g. a made-up cuisine list or budget) for another domain.\n- 'Flexible, but preferably in the afternoon' is still a time preference: apply `departure_time=[\"12:00 PM\", \"5:00 PM\"]` to each flight leg via filter_flights."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 12: Code hygiene\n- Never write `import` or `from ... import` lines. All tools are pre-defined, so `from tool import ...` crashes. Never wrap cache reads in `if x is None` branches. Call `x = get_results_from_cache(key=\"<key from CACHE>\")` directly and then filter_*.\n- Use parameter names EXACTLY as listed in TOOL CONFIG. Hotel amenities beyond gym_present, pool_present, breakfast_included, smoking_allowed, air_conditioning_present, heating_present, free_wifi_included, airport_shuttle_present, is_pet_friendly all use the `has_` prefix: has_business_center, has_spa_services, has_rooftop_bar, has_free_parking, has_electric_vehicle_charging, etc. Writing `business_center=True` raises a validation error. Check each kwarg against the tool's arg list before writing it.\n- Do not add print() of results, unused loads, or comments-only logic; emit the minimal load -> filter/search -> save sequence."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

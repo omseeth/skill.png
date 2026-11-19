@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "outcome_coverage_and_call_set",
+      "count": 6,
+      "description": "Explicit searches, lookups, or other requested outcomes were omitted, while unrelated or duplicate calls were added."
+    },
+    {
+      "failure_type": "schema_argument_mapping",
+      "count": 8,
+      "description": "Arguments were missing, assigned to the wrong required/optional bucket, or mapped to the wrong field or API-native value."
+    },
+    {
+      "failure_type": "response_construction",
+      "count": 1,
+      "description": "Multiple calls were bundled into one object, with duplicate keys and arguments shared across tools."
+    }
+  ],
+  "patch": {
+    "reasoning": "An action-to-call ledger makes multi-step narratives easier to cover without adding calls that have no requested outcome, and clarifies that earlier searches are not satisfied by later detail lookups. The parameter guidance clarifies how implied filters and open-ended list requests map to documented endpoint controls, addressing repeated omissions without encouraging invented fields or values.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Plan tool calls",
+        "content": "Before selecting tools, make a one-row-per-action ledger recording each requested operation, subject and source, constraints, and candidate endpoint. Match every explicit operation independently: a later detail lookup does not fulfill an earlier search, and an action narrated in the past tense is not evidence that it has already been executed. For nested scopes, populate all corresponding hierarchy fields in one call when the endpoint schema supports them, rather than making overlapping calls for alternative scopes. Keep each call only if its operation and source fulfill a ledger row, and ensure every row is covered."
+      },
+      {
+        "op": "replace",
+        "target": "Include optional settings only when requested or clearly implied; use documented recency or freshness controls for requests such as “recent” or “latest,” and a modest supported result count when wording such as “some” calls for one.",
+        "content": "Include optional settings when explicitly requested or entailed by the requested result: map semantic qualifiers to documented endpoint filters (for example, “free games” to a game-type filter, or a request spanning an entire set to the documented all/unrestricted value). Interpret scope phrases such as “main page” using the endpoint’s documented identifier. For open-ended list/feed or recent-history requests, use the first page and a modest supported page size or limit when pagination controls exist; do not add these to fixed-size endpoints or invent undocumented values. Use documented recency or freshness controls for requests such as “recent” or “latest.”"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

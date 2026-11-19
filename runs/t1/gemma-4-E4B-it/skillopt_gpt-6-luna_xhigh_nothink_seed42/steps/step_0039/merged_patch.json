@@ -1,0 +1,61 @@
+{
+  "reasoning": "Prioritized the failure-driven turn classifier and its deduplication of lower-level cache guidance. Preserved the distinct failure insights on pending proximity follow-through, spending-range interpretation, airport identifiers, and event dates explicitly tied to flight arrival. Kept the success-driven canonical cache-key convention because it adds a separate, well-supported naming practice and aligns with the existing collision-avoidance guidance. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "content": "**Turn triage (before tool selection):** Resolve the latest turn against the full conversation, preceding assistant question or offer, and cache summary; identify only changed scopes.\n1. For a compatible cached scope, retrieve the most constrained compatible result by its exact key. Apply a filter and save only for new constraints and still-active constraints not already embodied in that result. Do not re-search, repeat an embodied filter, or regenerate unaffected domains or legs. If the user only accepts an offer to present already-covered recommendations, retrieve the result for use without refiltering or duplicate saving.\n2. An accepted offer activates its stated scope: use compatible cached data if it covers the scope; otherwise search only the genuinely new or uncovered scope with all active supported criteria. For an accepted or continuing proximity request, use compatible datasets with `search_nearest` rather than substituting a new category search; a generic affirmative implies proximity only when it was explicitly offered or requested.\n3. Validate mandatory inputs separately before each domain or leg action. If required details are missing, ask only for those details while continuing independent complete requests; do not guess or pass `None`.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "delete",
+      "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+      "content": "",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "delete",
+      "target": "- If an affirmative accepts only an offer to present recommendations from an already covered scope, retrieve the relevant cached result for use; do not repeat its search or an already-applied filter, or save a duplicate filtered result. Apply a filter only if the reply adds a new constraint.",
+      "content": "",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Call `search_nearest` when the user explicitly requests or accepts proximity, including a clear spatial relation such as asking for restaurants near a hotel or a hotel with access to nearby attractions. Merely requesting a hotel and a restaurant recommendation, or independently mentioning a planned attraction visit in the same trip or city, does not imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "content": "\n- If the assistant offers to find one domain near another and asks a clarifying question to fulfill that offer (for example, asking about hotel amenities), a responsive answer supplies criteria within the pending proximity request. Retrieve compatible datasets, filter and save only the changed candidate set first, then run and save `search_nearest` with that updated result and the compatible unchanged counterpart. Do not use stale broader candidates or re-search an unaffected base scope.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+      "content": "\n- In hotel or restaurant recommendations, interpret an amount phrased as “around X,” “in the X range,” or similar pricing language as a `budget` when it describes spending; do not map a price amount to `rating`. Use `rating` only when the user explicitly refers to a rating or stars.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Flight itinerary legs",
+      "content": "\nWhen the user supplies both a city and a specific airport name or code, pass the city and exact airport identifier in the corresponding fields if the tool schema supports both; do not treat the city as making the identifier redundant. On a reverse leg, carry that identifier to the corresponding destination-airport field (`end_airport` or `end_airport_code`) when supported.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "For an established origin-destination route, treat a two-date travel span (for example, “from [date] to [date]”) as the outbound date and return date unless the conversation indicates otherwise.",
+      "content": "\n- If the conversation explicitly ties a previously stated event date to a flight arrival deadline (for example, the user must arrive by the wedding date), include that date as `arrival_date` on the outbound-direction search, in addition to its departure date. This is an arrival constraint, not a hotel date or a substitute for a separately described reverse-direction return leg. An event date without a clear connection to flight arrival or departure remains context.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Tool results and constraints",
+      "content": "- Prefer stable canonical cache keys when no collision exists: use `flights`, `hotels`, `restaurants`, or `attractions` for an initial base result, and `filtered_<domain>` for its first filtered result. Add scope or leg qualifiers only when needed to distinguish results or avoid overwriting a valid entry.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ]
+}

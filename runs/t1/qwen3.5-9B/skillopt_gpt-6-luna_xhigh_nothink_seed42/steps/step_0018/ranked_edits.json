@@ -1,0 +1,37 @@
+{
+  "reasoning": "The proposals add distinct clarifications to existing rules, so each is merged at its own text location without duplicating established cache or tool-use guidance. The edits distinguish hotel room counts from party size, scope clarification answers to the question asked, clarify proximity grouping and per-leg flight updates, distinguish hotel stars from ratings, cover exact and deadline flight times, add explicitly sequenced multi-stop flights, and reuse trip dates already provided. Each edit is supported by one of the three source patches. [optimizer-ranked: selected 3/8 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion.",
+      "content": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. Scope a yes/no or restrictive clarification answer to the domain and question asked: for example, “no, only the return flight” changes which flight leg is requested, but does not cancel separately requested hotel or restaurant planning unless the user explicitly withdraws it. An affirmative answer accepting an offered domain or option is a request to proceed. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X” uses `[\"12:00 AM\", X]`, and “after X” uses `[X, \"11:59 PM\"]`, preserving the stated AM/PM value.",
+      "content": "- For flight times, treat “at X” as an exact time range `[X, X]`. For an upper bound such as “by X,” “no later than X,” or “before X,” use `[\"12:00 AM\", X]`; for “after X,” use `[X, \"11:59 PM\"]`. Preserve the stated AM/PM value.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "content": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. For hotel searches and filters, map an explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`) and an explicitly stated room count to `num_rooms`. If a follow-up supplies either or both counts, apply all newly supplied count fields together in one same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 1 prevents a clarification about one domain from accidentally canceling other pending requests, a broadly applicable follow-up safeguard. Edit 5 adds concrete mappings for common exact and upper-bound flight-time requests that are not fully covered. Edit 0 fills the missing hotel room-count mapping and ensures multiple new counts are applied together; the remaining edits are narrower or substantially overlap existing rules.",
+    "selected_indices": [
+      1,
+      5,
+      0
+    ]
+  }
+}

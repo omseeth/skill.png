@@ -1,0 +1,30 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "Redundant or irrelevant endpoint selection",
+      "count": 3,
+      "description": "Some trajectories added overlapping validators, weaker adjacent lookups, or speculative calls that did not serve a distinct requested result."
+    },
+    {
+      "failure_type": "Incomplete coverage from misreading task intent",
+      "count": 1,
+      "description": "A concrete workflow described in past tense was treated as a report of completed actions, so most listed operations were omitted."
+    },
+    {
+      "failure_type": "Endpoint, selector, or parameter fidelity",
+      "count": 5,
+      "description": "Calls sometimes used a mismatched endpoint or selector, an unsupported or unnecessary value, or the wrong required/optional parameter group or serialization."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add decision gates for two gaps that recur despite the existing general guidance: interpreting concrete past-tense workflows as requested operations, and selecting a minimal set of calls when multiple endpoints overlap. The skill already specifies schema groups, selectors, and serialization, so repeating those rules would not add a new safeguard.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n### Additional decision gates\n\n- **Treat concrete workflow narratives as requests.** If a prompt says that the user used, retrieved, searched, or checked something but then specifies the outputs, targets, and constraints, treat those listed operations as the requested work to perform. Do not omit calls merely because the description is in past tense; interpret it as a request for confirmation or summary only when that is explicitly asked.\n- **Choose a minimal sufficient set of calls.** For each target, identify which requested facets an endpoint actually covers. Prefer one endpoint when it fulfills multiple facets; add another only when it supplies a distinct requested result that the selected endpoint cannot provide. Do not call overlapping checkers or adjacent tools for corroboration, and do not add a call merely because its description shares the topic.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

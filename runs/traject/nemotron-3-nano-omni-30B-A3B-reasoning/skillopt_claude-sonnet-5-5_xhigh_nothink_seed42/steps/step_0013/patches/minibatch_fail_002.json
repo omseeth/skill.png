@@ -1,0 +1,41 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "structure_error",
+      "count": 2,
+      "description": "One answer repeated the \"optional parameters\" key in three objects (Pokemon Unite x2, Card, Chess Puzzles), which wiped the filled lists. Another omitted the \"optional parameters\" key and the closing </answer> tag."
+    },
+    {
+      "failure_type": "wrong_parameters",
+      "count": 3,
+      "description": "Number and range qualifiers were mishandled. 'Between 5-8 letters' became wordLength=8 instead of minLength=5 and maxLength=8. '3 scores on page 1' dropped per_page=3. An empty-valued optional (star='') was emitted. The Ace card, Pokedex case and Asos defaults were also off."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 2,
+      "description": "'Search sectional sofa on Asos' used Asos countries/list instead of v2/auto-complete. A Wayfair search was duplicated to cover the Asos clause. In the email task, Check Free Email Providers and Check Valid Emails (format-only) were used where deliverable/disposable verifiers (Email Address Validator, Alpha Email Checker) were needed."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most costly failure is still structure: a repeated or missing optional key silently drops params. It clusters on tools whose inputs are all optional, so I add a literal anti-pattern with exact bad/good strings and a per-line key-count check. Next, number and range qualifiers were skipped even where the skill already had an example (per_page for '3 scores'), so I add a NUMBER AUDIT rule with the min/max range mapping and the empty-value ban. Last, two tool-choice errors repeat: an Asos search clause mapped to the wrong endpoint with a duplicate Wayfair call, and email checks using free-provider or format-only tools for deliverable/disposable questions. A short rule fixes both.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## FINAL SELF-CHECK (run on the finished answer, character by character)",
+        "content": "\n\n**KEY-COUNT CHECK (failed again in the latest batch).** After the closing `]` of an object's `optional parameters` list, write `}` and stop. The extra key sneaks in on tools whose schema says `Required parameters: none` and take their input as optional (Chess Puzzles `id`, Pokemon Unite `page`/`pageSize`, Card Draw `suit`/`value`, thefluentme `page`/`per_page`). Real broken lines: BAD `{\"tool name\": \"Chess Puzzles: Puzzle by Id\", \"required parameters\": [], \"optional parameters\": [{\"name\": \"id\", \"value\": \"HxxIU\"}], \"optional parameters\": []}` (the second key wipes the id). GOOD `{\"tool name\": \"Chess Puzzles: Puzzle by Id\", \"required parameters\": [], \"optional parameters\": [{\"name\": \"id\", \"value\": \"HxxIU\"}]}`. BAD `{\"tool name\": \"Asos: countries/list\", \"required parameters\": []}` (no `optional parameters` key at all). For every line, count the text `\"optional parameters\"` (exactly 1) and `\"required parameters\"` (exactly 1). A line containing `}], \"optional parameters\"` is always wrong. Write each object once in final form, deciding both lists first, rather than editing a skeleton. End the answer with `]</answer>`; the closing `</answer>` tag is required.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Parameters",
+        "content": "\n- NUMBER AUDIT (run per call). List every number, range and count in the call's clause, and map each to a parameter or the main input. An unused number means a missed parameter. '3 pronunciation scores on page 1' -> `per_page`=`3` AND `page`=`1` (BAD: page only). '10 random words between 5-8 letters' -> `count`=`10`, `minLength`=`5`, `maxLength`=`8` (BAD: `wordLength`=`8`; `wordLength` means an exact length). 'between X and Y', 'at least X' and 'at most Y' -> the tool's min*/max* pair when it has one. 'Two pages, 20 per page' -> two calls, `page`=`1`/`2`, `pageSize`=`20`. Never emit an optional with an empty value (BAD `{\"name\": \"star\", \"value\": \"\"}`); leave it out."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n- ASOS SEARCH AND NO DUPLICATES. When the Asos tools offer no product-search endpoint, 'search/look up X on Asos' -> `Asos: v2/auto-complete` with `q`=X. `Asos: countries/list` is only for 'which countries Asos sells to'. 'Searching X on Wayfair and BestBuy' -> exactly one `Wayfair: products/search` plus one `BestBuy Product Data: BestBuyProductData`. Never add a second Wayfair search with the same keyword to cover another retailer's clause. Each call must trace to a distinct retailer, SKU or facet.\n- EMAIL ADDRESSES. For full addresses asked whether they are valid, deliverable, legitimate or disposable, use dedicated verifiers (`Email Address Validator: Validate Email Address`, `Alpha Email Verification: Email Checker`) and not these: `Email API: Check Free Email Providers` and `MailboxValidator.com: Free Email` only say whether the provider is a free one like Gmail. `Email API: Check Valid Emails` checks syntax only. `Email API: Validate Email By Service` checks role-style prefixes. Use any of these only when the query asks for that exact facet. A bare domain still goes to the domain-level disposable tool."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

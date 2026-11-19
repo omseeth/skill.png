@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_update_or_subject_mismatch",
+      "count": 5,
+      "description": "Agents treated stale or broadly matching cached results as complete, skipping new filters or a search for a specifically named attraction."
+    },
+    {
+      "failure_type": "tool_or_schema_contract_violation",
+      "count": 3,
+      "description": "Agents imported a nonexistent tools module or passed an argument not supported by the selected tool."
+    },
+    {
+      "failure_type": "result_persistence_omission",
+      "count": 2,
+      "description": "Agents called a search but did not save its result to the cache."
+    },
+    {
+      "failure_type": "range_semantics",
+      "count": 1,
+      "description": "An acceptable minimum rating was treated as an exact rating rather than a lower bound."
+    },
+    {
+      "failure_type": "duration_date_derivation",
+      "count": 1,
+      "description": "A stay duration was converted to a checkout date without using the provided date-adjustment tool."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache-update, result-saving, and direct-tool-call rules are already explicit, so adding another broad version would duplicate existing guidance. These edits clarify uncovered schema and rating-range semantics and specify how to derive checkout dates from a stated stay duration.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Never pass a preference as an unsupported extra argument or place it in an unrelated field. For range-shaped fields, distinguish exact values from thresholds: encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for “at least” or “or better” as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, search each leg separately, reverse the outbound route for the return, and use the return leg’s departure date. Ask for an unknown endpoint rather than assuming a route.",
+        "content": "\n- When a lodging stay is given as a check-in date plus a duration in nights rather than a checkout date, call `adjust_date` with the check-in date and the number of nights, then use its returned date as checkout."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

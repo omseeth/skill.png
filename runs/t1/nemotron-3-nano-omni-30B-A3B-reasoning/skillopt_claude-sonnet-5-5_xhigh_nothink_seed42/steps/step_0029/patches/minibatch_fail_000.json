@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "fabricated_or_placeholder_dates",
+      "count": 2,
+      "description": "A hotel was searched with no user-stated dates. One call used '<date>' placeholders. The other used May 16/18, 2025, which appear only in the skill's examples, even though the gold output was seek_information (plus a restaurant search in one case)."
+    },
+    {
+      "failure_type": "state_mapped_to_city_or_bare_call",
+      "count": 2,
+      "description": "'OR' went into city= (once as a bare, unassigned, unsaved call). Once a city ('Portland') was invented from the state."
+    },
+    {
+      "failure_type": "stale_anchor_reran_earlier_turn",
+      "count": 3,
+      "description": "The agent re-executed an earlier turn instead of the LAST message: it re-passed budget=55 after a neighborhood reply, re-passed stars after a cuisine/rating reply (wrong domain), or re-ran the original attraction search after 'What's there?' on a cached domain."
+    },
+    {
+      "failure_type": "date_answer_ignored_reasked",
+      "count": 1,
+      "description": "The user gave one date plus party size and 'for 2 nights', but the agent called seek_information again instead of searching flights and hotels (adjust_date for checkout)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Past rounds show that short edits merged into existing HARD OUTPUT bullets were accepted, while long new top-level items were rejected. The four edits below are short and each extends an existing bullet. (1) The skill's own example dates and '<X>'-style placeholders leak into hotel searches when dates are missing; this affected 2 tasks. (2) The 'city only when named' bullet now also forbids guessing a city from a state and bare calls; this affected 2 attraction tasks. (3) The date-answer rule did not cover 'one date + N nights', which is the one case that still produced a repeated seek_information. (4) Three of the refinement failures were the agent re-running an earlier turn (or choosing the newest key instead of the domain named in the last message). One principle in KWARG TRACE addresses all three: the CACHE already holds every earlier turn, and the last message alone picks the domain and the kwargs.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Never use a TOOL CONFIG example date such as '2025-08-03'. search_flights never takes num_people or num_layovers.",
+        "content": "Never use a TOOL CONFIG example date such as '2025-08-03', and never reuse a date that appears only in this skill's examples (May 16/18/19/26, 2025 and similar). Never write a placeholder such as '<date>' or '<X>' as an argument. Before typing any date, find that exact string in a user message of the CONVERSATION. If you cannot, the date is missing and that domain gets seek_information. A budget, stars, amenity or party-size reply never supplies dates (hotel requested, no dates, reply 'around 80 per night' -> seek_information, no search_hotels). search_flights never takes num_people or num_layovers."
+      },
+      {
+        "op": "replace",
+        "target": "Use `city=` only when a city is named.",
+        "content": "Use `city=` only when a city name appears in the conversation. Never guess a city from a state ('OR' is not 'Portland'), and never leave a search unassigned: a state request is `attractions = search_attractions(type=[...], state=\"XX\")` followed by its save_to_cache."
+      },
+      {
+        "op": "replace",
+        "target": "If the assistant just asked for dates and the user's reply holds a date or an 'X to Y' range, never ask again.",
+        "content": "If the assistant just asked for dates and the user's reply holds a date (with or without a stay length such as 'for 2 nights') or an 'X to Y' range, never ask again. One stated date plus 'N nights' with a hotel requested anywhere means: flight search saved as \"flights\" (if flights were requested), then `checkout_date = adjust_date(date=<the stated date as written>, delta_days=N)`, then `search_hotels(city=<destination>, checkin_date=[<stated date>], checkout_date=[checkout_date], num_people=<number the user stated>)` saved as \"hotels\"."
+      },
+      {
+        "op": "replace",
+        "target": "- KWARG TRACE (every filter_* call): each kwarg must come from a word in the user's LAST message.",
+        "content": "- KWARG TRACE (every filter_* call): each kwarg must come from a word in the user's LAST message. The CACHE already holds the result of every earlier user turn (each search, and each filter shown as 'Additionally filtering for ...'). Re-running an earlier turn is the most common wrong answer: do not repeat the previous reply's budget or stars, and do not repeat the first search. Pick the domain from the words of the last message, not from which key was saved most recently: a cuisine name, 'restaurant', or a restaurant rating means filter_restaurants even if a hotels key was filtered last. A place the assistant proposed ('What's there?', 'Yes') means filter that cached domain by that place."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

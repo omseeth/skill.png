@@ -1,0 +1,35 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_missing",
+      "count": 4,
+      "description": "Bare entity lists and a standalone quoted phrase left the requested relation implicit; agents gave incidental relationships or a generic description instead of the shared place or associated work."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Agents ignored the requested answer slot or clue constraints, returning a truth judgment, a nearby but incorrect candidate, or a descriptive attribute instead of the requested name component."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "The referent was correct, but the answer expanded the unambiguous name form given in the prompt, causing an exact-match failure."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add focused guidance for prompts whose relation is omitted but can be inferred from a list of entities or a standalone quoted phrase. The existing clue and evidence rules already cover the other ignored constraints, so avoid duplicating them. Clarify that an unambiguous name form already supplied by the prompt should not be expanded unnecessarily.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n### Prompts with an implicit shared relation\n- When a prompt consists of a comma-separated list of entities, use context to identify the attribute or relation they share, such as a common country, jurisdiction, or organization. Return that shared entity rather than an incidental relationship between the listed people, unless the prompt cues that relationship.\n- For a standalone quoted name or phrase, use direct contextual evidence to resolve the named work, source, or series it is associated with when that is the implied lookup. Give the associated entity, not a generic description of the phrase."
+      },
+      {
+        "op": "replace",
+        "target": "Use a full canonical personal name when the clue does not supply a name component; when it supplies part of a name and asks for completion, give only the missing component.",
+        "content": "When the question or directly relevant source gives an unambiguous form of a person's name, preserve that form rather than adding unrequested initials, suffixes, or expansions; retain titles or name components made salient by the clue or needed to distinguish the person. Otherwise use the canonical full name. When a clue supplies a name component and asks for completion, give only the missing component."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,60 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "structure_error",
+      "count": 4,
+      "description": "Malformed answers: a bare-string required parameter (BizToc page_id), a duplicated 'optional parameters' key, a missing 'optional parameters' key, and a stray ']' after the first object that made the whole answer unparseable (score 0)."
+    },
+    {
+      "failure_type": "tool_name_form",
+      "count": 1,
+      "description": "Tool names were copied from the 'Provider: ... — long description' line instead of the '### ' heading, so every call scored 0 on tool match."
+    },
+    {
+      "failure_type": "missing_calls",
+      "count": 3,
+      "description": "Clauses that were narrative, background or marked 'less relevant' were dropped (Asos countries list, Wayfair search, Aliexpress store call). The FlightNumber qualifier was also omitted."
+    },
+    {
+      "failure_type": "over_calling",
+      "count": 1,
+      "description": "10 calls for 2 emails and 1 domain: four different validators were stacked on each email and the domain call was repeated."
+    },
+    {
+      "failure_type": "param_placement",
+      "count": 1,
+      "description": "All values were put in 'required parameters' for a tool whose schema says 'Required parameters: none'."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 2,
+      "description": "Sibling tools were picked by title instead of by ID parameter name (Indonesia School List, province vs district). Qualifier-rich news requests were sent to keyword-search or movie tools instead of the source, sentiment or sources endpoints."
+    }
+  ],
+  "patch": {
+    "reasoning": "Structure and tool-name form cost the most (whole-task zeros), and the existing rules were already violated in several trajectories. So the first edit is a short end-of-answer list of literal wrong-to-right strings that mirror the observed failures. The next edits address missing calls (narrative or 'less relevant' clauses, one checklist line per clause), over-calling (a call-count formula using the email example) and sibling-tool selection (match the ID parameter name to the entity level; prefer endpoints whose optionals express the qualifiers). The protected section is left untouched, and the new rules are placed where they will not be skipped.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## FINAL CHECK: literal anti-patterns (run before closing `</answer>`)\nWrong -> Right:\n- `\"required parameters\": [\"page_id\"]` -> `[{\"name\": \"page_id\", \"value\": \"main\"}]`. Every entry is a `{name, value}` object, never a bare string.\n- `...}], {\"tool name\": ...` (list closed after the first call) -> `...}, {\"tool name\": ...`. There is exactly ONE `]`, at the very end. A stray bracket makes the whole answer unparseable and scores 0.\n- `\"optional parameters\": [...], \"optional parameters\": []`, or an object with only `tool name` and `required parameters` -> exactly one each of the three keys per object.\n- `\"tool name\": \"NFT API News — This NFT API will keep you...\"` or `\"Election2020 Smartable — The Election API...\"` -> copy ONLY the text after `### ` (`NFT API News: NFT News`, `Election2020 Smartable: GetFutureEvents`). Never copy from the `Provider:` line. Any ' — ' in a tool name is wrong.\n- Tool says `Required parameters: none` (e.g. `Flight Info API: schedules`, `Kubric ...: News`) -> keep `\"required parameters\": []` and put EVERY value in `optional parameters`. Moving them into required fails both lists.\n- Qualifier left out of a call: 'flight 556' -> FlightNumber `556`; 'default sorting' on `Wayfair: products/search` -> sortby `0`; every stated page, count, source, sentiment or country maps to its optional parameter."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+        "content": "- Narrative or past-tense queries ('The user searched...', 'They also explored...', 'I also checked X, though this seems less relevant') are still lists of calls. Never drop a clause because it sounds background, off-topic or irrelevant. 'Also checked which countries Asos sells to' -> `Asos: countries/list`. An opening clause like 'searched Wayfair for ergonomic office chairs' -> `Wayfair: products/search`, even when later clauses focus on a SKU. 'A specific store (ID X, seller ID Y)' -> the store tool whose params are `storeId`/`sellerId`, in one call. Write a one-line-per-clause checklist (clause -> tool) before the JSON, and make the object count equal the checklist count."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "- Call count = distinct entities x distinct checks the query names. 'Verify the validity of two emails and check whether a domain is disposable' is exactly 3 calls: ONE validator tool (the same one for both emails) once per email, plus one domain-tool call for the domain. Never run 2-4 different validators on the same email, and never repeat an identical call unless the query asks for it twice. If your answer has more objects than your checklist, delete the extras."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "- Near-identical sibling tools: choose by the ID parameter name matching the entity level in the query, not by the endpoint title. Indonesia School List: province (propinsi) ID -> the tool taking `kode_wilayah_propinsi_id`; district (kabupaten) ID -> the tool taking `kode_wilayah_kabupaten_id`; sub-district (kecamatan) ID -> the tool taking `kode_wilayah_kecamatan_id`. Two different levels mean two different tools, never the same tool called twice with different IDs.\n- When a clause has qualifiers such as source, sentiment, count, country, language or category ('5 positive movie news from the Hollywood Reporter', 'top English sources from the US'), prefer the endpoint whose optional parameters express them (`Kubric ...: News` with source, sentiment, limit; `NewsData: sources` with country, language, category) over a keyword-search endpoint that stuffs them into `q`. A named outlet with 'latest stories' ('BBC') maps to a source-id endpoint (`BizToc: News / Source`, source_id `bbc`), not to an unrelated topical tool. 'Upcoming events from page 1' on Election2020 -> `GetFutureEvents`, page `1`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,36 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "output_ordering",
+      "count": 5,
+      "description": "Every trajectory kept calls in query order instead of sorting them by tool name as the answer contract required."
+    },
+    {
+      "failure_type": "endpoint_selection",
+      "count": 5,
+      "description": "Each trajectory included an endpoint mismatch, such as choosing an unrelated operation or overlooking a more specific endpoint."
+    },
+    {
+      "failure_type": "call_coverage",
+      "count": 4,
+      "description": "Requested operations were omitted or an unrequested call was added, especially within compound requests."
+    },
+    {
+      "failure_type": "schema_and_qualifier_mapping",
+      "count": 4,
+      "description": "Some explicit filters or pagination values were missed, or arguments did not match the selected endpoint's schema."
+    }
+  ],
+  "patch": {
+    "reasoning": "The clearest batch-wide gap not stated explicitly in the skill is call ordering: all five agents ignored the contract's required tool-name sort order. Add a narrow rule to reorder complete call objects after mapping them. The other observed problems are already covered by the skill's endpoint-selection, action-tracking, and schema-mapping rules, so duplicating them is not warranted.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Follow the active prompt’s answer contract. Represent each invocation as its own call object with exactly the required keys and value types; keep calls in the required wrapper and do not merge calls or duplicate fields.",
+        "content": "- Follow the active prompt’s answer contract. Represent each invocation as its own call object with exactly the required keys and value types; keep calls in the required wrapper and do not merge calls or duplicate fields. If the contract specifies an order (for example, sorting by tool name), reorder the complete call objects to match it; do not let query or clause order override the required order."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

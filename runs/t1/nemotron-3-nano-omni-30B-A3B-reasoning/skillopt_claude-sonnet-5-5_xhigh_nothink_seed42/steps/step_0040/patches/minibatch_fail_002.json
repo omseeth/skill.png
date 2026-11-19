@@ -1,0 +1,46 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "no_key_domain_not_first_searched",
+      "count": 2,
+      "description": "The reply supplied hotel dates (a full range in T3, a check-out in T2) while CACHE had no hotels key. The agent filtered another cached domain instead (attractions type in T3, flights class in T2) and never ran search_hotels. In T2 it also skipped the cuisine filter on the cached restaurants key."
+    },
+    {
+      "failure_type": "nested_search_call",
+      "count": 1,
+      "description": "The round-trip date reply was written as one search_flights call with return_flights=search_flights(...) as a kwarg, which raised a ValidationError. It should be two separate assigned and saved searches."
+    },
+    {
+      "failure_type": "invented_parameter",
+      "count": 1,
+      "description": "'business trip' together with 'customer rating of at least 4.5' produced an extra stars=[4, 5] that the user never stated. 'Rating' and 'stars' were confused."
+    }
+  ],
+  "patch": {
+    "reasoning": "T2 and T3 fail the same way. A hotel-domain reply arrives while CACHE holds only other domains, and the agent matches the reply to whatever key exists. The fix edits the first sentence of the SEARCH GATE so the agent names the domain of the last message's words before reading CACHE, and treats a keyless domain as a first search. A short insert under the date rule covers the check-out-only reply plus a cuisine filter. T1 needs one explicit ban on putting a tool call inside another call's arguments. T4 needs a rating-versus-stars line, and a line that trip-purpose words add no parameters. These are in-place edits that replace or extend existing sentences and add no new gate sections, in line with the earlier finding that extra gate paragraphs hurt.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "SEARCH GATE (do this first): read the CACHE dict. If a domain's key is present, search_* is forbidden for that domain,",
+        "content": "SEARCH GATE (do this first): first name the domain of each word in the LAST message (check-in/check-out/arrival/leaving dates, stars, per-night budget, hotel amenities, party size on a hotel request -> hotels; cuisine/dietary -> restaurants; attraction type/name -> attractions; class/airline/flight time -> flights). Then read the CACHE for EACH of those domains. A named domain with NO key is a FIRST search carrying every constraint stated in any turn (party size, per-night budget, stars, amenities, neighborhood); a cached key of some other domain is never filtered or re-saved in its place. If a domain's key is present, search_* is forbidden for that domain,"
+      },
+      {
+        "op": "insert_after",
+        "target": "-2. DATE ANSWER = SEARCH NOW (beats every seek_information rule below, including the 'vague timing' paragraph of Rule 6).",
+        "content": " A reply that gives only a check-out date also counts: hotel requested, no hotels key, check-in known from a one-way flight's departure date or an earlier turn -> `search_hotels(city=<destination>, checkin_date=[<that earlier date>], checkout_date=[<new date>], <every hotel constraint from any turn>)` + save as hotels. Anything else the same reply adds for a cached domain (e.g. a cuisine for a cached restaurants key) is one separate load/filter/save block for that domain. Never re-filter flights for a hotel-date reply."
+      },
+      {
+        "op": "replace",
+        "target": "Never repeat a search call, and never nest a search inside save_to_cache.",
+        "content": "Never repeat a search call, and never nest a search inside save_to_cache. Never put one tool call inside another call's arguments (no `return_flights=search_flights(...)` kwarg: search_flights has no such parameter). A round trip is two separate statements: `departure_flights = search_flights(...)` + save, then `return_flights = search_flights(...)` with the cities swapped + save."
+      },
+      {
+        "op": "replace",
+        "target": "'at least / minimum 3.5' -> rating=[3.5, 5]. Never pass a one-element list.",
+        "content": "'at least / minimum 3.5' -> rating=[3.5, 5]. Never pass a one-element list. 'Customer rating', 'guest rating' and 'rating of at least X' map to rating only. stars is passed only when the user says 'star' or 'stars'. Trip-purpose words ('business trip', 'family trip') add no parameter. 'Business facilities' maps to has_business_center, and 'meeting room' to has_meeting_rooms."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

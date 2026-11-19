@@ -1,0 +1,30 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "runtime_tool_invocation_error",
+      "count": 2,
+      "description": "Both agents imported tools from a nonexistent module instead of calling the runtime-provided functions directly."
+    },
+    {
+      "failure_type": "cached_result_misuse_and_criterion_drift",
+      "count": 1,
+      "description": "The agent filtered a cached named-attraction result for a new attraction category and changed the offered category label."
+    },
+    {
+      "failure_type": "omitted_explicit_guest_count",
+      "count": 1,
+      "description": "The agent did not map the explicitly stated solo hotel trip to one guest."
+    }
+  ],
+  "patch": {
+    "reasoning": "The recurring runtime error is the only failure present in both trajectories. Rather than repeat the broader rejected rules from the prior step, this edit makes the cause explicit: tool functions are injected into the execution namespace and there is no tools module.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Runtime tool invocation\n- Tool functions, including cache helpers, are injected directly into the execution namespace; there is no `tools` module. Call them by name without imports (for example, `search_hotels(...)`). Do not import, redefine, or wrap the provided tools."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

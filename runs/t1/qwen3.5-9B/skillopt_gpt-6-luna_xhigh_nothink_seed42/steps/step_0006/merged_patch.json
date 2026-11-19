@@ -1,0 +1,52 @@
+{
+  "reasoning": "Preserved all distinct failure-driven corrections at higher priority, including the clarification to process newly stated constraints and clearly unfinished requests without replaying completed work. Kept the overlapping rating and hotel-star guidance combined in the failure version. The success-driven restaurant budget insight covers a pattern not addressed by the failure patches, so it is also included.",
+  "edits": [
+    {
+      "op": "append",
+      "content": "\n- **Treat answers to preference questions as new constraints:** When the user agrees to or selects a preference in response to an assistant's question, treat that preference as an explicit user constraint. Retrieve the affected cached result, apply the relevant same-domain filter, and save the update; do not treat the reply as a no-op while the preference remains unapplied.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value.",
+      "content": "Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value. A two-letter U.S. state abbreviation supplied as a location belongs in `state`, with `city` unset unless a city was also provided. For a city plus neighborhood, keep them separate (for example, `city=\"Atlanta\"` and `neighborhood=[\"Midtown Atlanta\"]`), rather than using the neighborhood as the city.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+      "content": "For numeric ratings, treat a single value without range, minimum, or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and “at least x” is `[x, 5]`. For hotel star-count requests, use the `stars` field, not `rating`, with the same range semantics: a single value is exact unless minimum or “at least” is stated, “at least N stars” means `stars=[N, 5]`, “exactly N stars” means `stars=[N, N]`, and any explicitly stated range should be preserved.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns.",
+      "content": "On each turn, reconcile the full conversation and cache, but anchor actions to the latest user turn: process newly stated or changed constraints and clearly unfinished earlier requests (for example, a search deferred because required information was missing and now supplied). Do not replay completed work or revive an older constraint solely because it is absent from a later summary.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "If an update applies to multiple cached results, such as outbound and return flight legs, retrieve, filter, and process each independently.",
+      "content": "If an update applies to multiple cached results, such as outbound and return flight legs, retrieve, filter, and process each independently. Likewise, when the user supplies multiple alternative locations for one cached result, branch each location filter from the same retrieved base and save a separate result; do not chain one alternative's filtered output into another or reuse one output for multiple cache keys.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Check required inputs independently by domain: seek missing information, but proceed with other requested searches whose inputs are available.",
+      "content": "Check required inputs independently by domain: when one requested search lacks a mandatory input, seek that information but still run and save any other explicitly requested search whose own mandatory inputs are available (for example, search requested restaurants while asking for missing hotel dates). Never infer the missing input or withhold ready work from another domain.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "append",
+      "content": "\n- **Map approximate restaurant spending to budget:** For restaurant requests, pass an approximate spend amount such as “around 70” or “price range around 40” directly as the scalar `budget` value. Do not invent a lower bound or convert it to a two-ended range.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ]
+}

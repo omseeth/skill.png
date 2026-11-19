@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_execution_contract",
+      "count": 4,
+      "description": "Follow-up code nested or omitted cache operations, used an earlier-turn variable, or overwrote an existing result instead of using the latest cached base and a fresh saved result."
+    },
+    {
+      "failure_type": "unnecessary_operations",
+      "count": 4,
+      "description": "Code touched completed or unrelated domains, repeated a cached search, or added non-planning helper and output code."
+    },
+    {
+      "failure_type": "date_value_fidelity",
+      "count": 3,
+      "description": "Dates were reformatted or shifted despite explicit trip boundaries and the existing instruction to preserve user-provided date strings."
+    },
+    {
+      "failure_type": "location_referent_mapping",
+      "count": 3,
+      "description": "Combined area-and-city phrases were shortened, or an assistant-suggested neighborhood was treated as a proximity request rather than an area filter."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache, minimal-operation, and date-handling rules already directly cover the other repeated errors, so repeating them would not patch a skill gap. These two edits make the remaining area-handling ambiguities operational: preserve the whole neighborhood phrase and use a same-domain neighborhood filter when exploring an assistant-suggested area.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "For a location combining a neighborhood or district with its city (for example, Midtown Atlanta or Downtown St. Louis), use the city in `city` and the full provided area phrase in `neighborhood`. When only a state or region is given, including an abbreviation, use `state`, not `city`.",
+        "content": "For any phrasing that combines a district or neighborhood with its city, put the city component in `city` and pass the entire user-stated area phrase—including its city wording—in `neighborhood`; never shorten it to the district name alone. When only a state or region is given, including an abbreviation, use `state`, not `city`."
+      },
+      {
+        "op": "replace",
+        "target": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion. Retrieve the latest suitable cached result and apply the corresponding same-domain filter when needed. Use `search_nearest` only if the user requests proximity.",
+        "content": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant suggests a named area or neighborhood and the user asks what is there, asks for details, or accepts exploring it, treat that as a request to explore the area: retrieve the latest suitable cached result for the relevant domain and apply a same-domain `neighborhood` filter using the full area name. This is not a proximity request and does not call `search_nearest`. For other suggested places or options, explore the referent with the corresponding same-domain filter. Use `search_nearest` only for an explicit proximity relationship."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

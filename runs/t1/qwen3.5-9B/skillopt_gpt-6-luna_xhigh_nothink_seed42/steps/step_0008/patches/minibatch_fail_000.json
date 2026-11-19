@@ -1,0 +1,60 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache persistence omission",
+      "count": 2,
+      "description": "Filtered results were produced but not assigned and saved, despite the existing cache-persistence rule."
+    },
+    {
+      "failure_type": "category-value normalization",
+      "count": 2,
+      "description": "Attraction type values were changed to similar labels instead of preserving the user's wording."
+    },
+    {
+      "failure_type": "duplicate tool calls",
+      "count": 2,
+      "description": "Agents repeated identical searches and discarded an extra result."
+    },
+    {
+      "failure_type": "incremental follow-up handling",
+      "count": 2,
+      "description": "Agents skipped a newly stated flight-time constraint or reapplied a flight-class constraint already reflected in cached results."
+    },
+    {
+      "failure_type": "partial execution across requested domains",
+      "count": 1,
+      "description": "A restaurant search with known required inputs was omitted while seeking missing hotel dates."
+    },
+    {
+      "failure_type": "runtime-tool misuse",
+      "count": 1,
+      "description": "An agent imported a library and reimplemented a provided date tool, causing execution failure."
+    },
+    {
+      "failure_type": "proximity mapping",
+      "count": 1,
+      "description": "A named attraction used as a hotel proximity anchor was incorrectly passed as a neighborhood."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures involving cache saves, incremental updates, required-input checks, and runtime tools are already explicitly covered by the skill, so repeating those rules is unlikely to help. The edits clarify two narrower gaps: preserving user wording for categorical values while avoiding duplicate calls, interpreting one-sided flight-time bounds, and treating lodging near a named landmark as a proximity request.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n- **Preserve category wording and avoid duplicate searches:** Pass user-provided category and type values as stated; do not substitute synonyms or normalize their wording to a similar-looking tool label. Make only the result-producing call needed for each requested search or update; do not issue duplicate or throwaway calls."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Format flight time ranges as required:** For `departure_time` and `arrival_time`, use the validator's accepted 12-hour format with AM/PM (for example, `12:00 PM`), not `HH:MM:SS`. Choose a supported interval for vague time periods.",
+        "content": "\n- For a one-sided flight-time bound, complete the range to the day boundary: “before X” uses `[\"12:00 AM\", X]`, and “after X” uses `[X, \"11:59 PM\"]`, with the stated AM/PM value preserved."
+      },
+      {
+        "op": "replace",
+        "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. Do not approximate proximity by extracting a neighborhood and using it as a filter.",
+        "content": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: use the attraction results (retrieved from cache or searched if absent) together with the lodging or restaurant results. Do not pass the attraction name as a `neighborhood` value or approximate proximity with a neighborhood filter."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

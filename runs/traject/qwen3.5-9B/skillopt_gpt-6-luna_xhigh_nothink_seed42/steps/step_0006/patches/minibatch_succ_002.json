@@ -1,0 +1,23 @@
+{
+  "batch_size": 7,
+  "success_patterns": [
+    "Call selection and parameter binding generally followed the decomposed request, but final call ordering often followed query order despite an explicit response-contract ordering.",
+    "Requests for the first N items on paginated endpoints can imply both page 1 and a per-page limit."
+  ],
+  "patch": {
+    "reasoning": "The skill covers call selection and requested facets, but does not explicitly require reordering the final list to match the response contract or make page 1 explicit for “first N” requests. Both clarifications help satisfy output and pagination requirements without inventing values.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Final response check",
+        "content": "- If the response contract specifies an ordering (for example, sorting calls by tool name), reorder the call objects to match it after selecting and validating the calls; do not simply preserve query order."
+      },
+      {
+        "op": "replace",
+        "target": "- Include an optional parameter whenever it directly encodes a requested facet, even if the user phrases it in prose or the endpoint has a default. For an unfiltered, random, or full/standard result, use a documented “all” or unfiltered selector when needed to preserve that scope. Do not add options that are neither requested nor needed to express it, or invent values. For missing required values, use only a documented default or a value unambiguously derivable from the query.",
+        "content": "- Include an optional parameter whenever it directly encodes a requested facet, even if the user phrases it in prose or the endpoint has a default. For the first N results from a paginated endpoint, set page to 1 and the supported limit or per-page parameter to N, even when page 1 is implied rather than stated. For an unfiltered, random, or full/standard result, use a documented “all” or unfiltered selector when needed to preserve that scope. Do not add options that are neither requested nor needed to express it, or invent values. For missing required values, use only a documented default or a value unambiguously derivable from the query."
+      }
+    ]
+  },
+  "source_type": "success"
+}

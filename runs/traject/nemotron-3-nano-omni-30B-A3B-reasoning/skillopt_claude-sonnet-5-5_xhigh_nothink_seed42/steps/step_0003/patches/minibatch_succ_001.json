@@ -1,0 +1,33 @@
+{
+  "batch_size": 3,
+  "success_patterns": [
+    "Each clause of the query, including narrated past-tense steps ('I verified X using tool Y', 'they checked which regions are available'), became exactly one call. No helper or distractor tools were added. Similar-looking siblings were avoided, e.g. temp-mail, inbox, domain-only, and crypto or movie feeds.",
+    "When the query named a provider and tool ('Easy Email Validation's Validate Email', 'BizToc.com', 'India Today's tag search', 'GamerPower', 'OpenCritic'), the agent used exactly that provider's endpoint. Otherwise it picked the endpoint whose name or description mirrors the query's verb and object ('which regions are available' -> Available Regions; 'highest-value giveaways' -> Sort live giveaways; 'Hall of Fame 2023' -> the hall-of-fame/{year} endpoint).",
+    "Every stated or implied constraint was mapped to a parameter of the chosen tool, using that tool's own parameter names. Examples: Germany -> country=DE, 'highest-value' -> sort-by=value, '15 most recent ... page 1' -> limit=15 and page=1, '10 active federal-level politicians' -> limit=10, active=true, level_of_government=federal, 'first page' -> page=1, and 'Apple-related' -> tag=Apple.",
+    "Each parameter was placed in the list matching the tool schema (Required vs Optional). Values were copied verbatim from the query, and optional parameters the query did not imply were left out.",
+    "The output was a single flat JSON list. Tool names were copied exactly in 'Provider: API' form, and each call had the three keys tool name, required parameters and optional parameters."
+  ],
+  "patch": {
+    "reasoning": "All three trajectories scored a perfect full_em with the same simple behaviours: one call per clause, the named provider's endpoint, parameters mapped from query phrases and placed per the schema, and no extra calls or unimplied optionals. The earlier rule sets that were rejected were long and prescriptive, and they lowered the score. This patch therefore encodes only the short, evidence-backed habits, spread across a few small sections.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Cover every clause, add nothing else\n- Before answering, split the query into atomic requests: each sentence, each 'then / also / additionally / finally' clause, and each narrated past-tense step ('I verified X using tool Y', 'they checked which regions are available'). Each one is an action that needs its own call.\n- One call per distinct clause, entity or value. If a tool takes one email, domain or ID and the query lists several, make one call for each.\n- Do not add helper, 'just in case' or look-alike calls (inbox or temp-mail tools, list-all tools, search-then-get) that no clause asks for. Count your calls against the checklist before finalizing."
+      },
+      {
+        "op": "append",
+        "content": "\n## Choose the tool the query points to\n- If the query names a provider or tool ('Easy Email Validation's Validate Email', 'BizToc.com', 'GamerPower', 'OpenCritic', 'India Today's tag search'), call exactly that provider's endpoint.\n- Otherwise pick the endpoint whose name and description mirror the query's verb, object and input type.\n  - 'Which regions are available' -> the 'Available Regions' tool.\n  - 'Highest-value giveaways' -> the 'Sort ...' endpoint with a sort field.\n  - 'Hall of Fame for 2023' -> the dedicated year endpoint.\n  - 'Articles by tag' -> the tag-search endpoint.\n- Prefer a dedicated endpoint over a generic search. Ignore tools from unrelated topics that only share a keyword."
+      },
+      {
+        "op": "append",
+        "content": "\n## Parameters: map the query, place per schema\n- Use only the parameter names the chosen tool lists. Put a parameter under `required parameters` if the schema lists it as Required, and under `optional parameters` if the schema lists it as Optional, even when it carries the query's main subject. A tool with 'Required parameters: none' gets `[]`.\n- Map every constraint the query states or clearly implies to a matching parameter, and copy values verbatim.\n  - A country name -> its code ('Germany' -> `DE`).\n  - 'N most recent' / 'N items' -> limit/pageSize `N`.\n  - 'first page' / 'page 1' -> page `1`.\n  - 'highest-value' -> sort `value`.\n  - 'active' -> `true`.\n  - 'federal-level' -> the level_of_government option `federal`.\n  - A subject such as 'Apple-related' -> the tag/query/keyword parameter `Apple`.\n- Do not add optional parameters the query does not imply (defaults, format flags, toggles, content-type headers). Never emit placeholders or invented IDs."
+      },
+      {
+        "op": "append",
+        "content": "\n## Output format check\n- Give ONE flat JSON list inside `<answer>` with balanced brackets. Each call has exactly the keys `tool name`, `required parameters` and `optional parameters`, using `[]` when a list is empty. Never omit a key.\n- Copy `tool name` exactly as the tool heading gives it ('Provider: API').\n- Write every parameter as `{\"name\": \"x\", \"value\": \"y\"}`, with the value as a quoted string (`\"15\"`, `\"1\"`, `\"true\"`)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,23 @@
+{
+  "batch_size": 6,
+  "success_patterns": [
+    "Translate user terminology into the exact supported tool fields, including when the field name differs from the user's wording.",
+    "Validate each flight leg's departure date and conditional origin requirement before searching; a destination alone is insufficient."
+  ],
+  "patch": {
+    "reasoning": "The batch includes a restaurant allergy request that maps to a supported allergy-options field and hotel amenity terminology that must use the schema's exact field names. Two flight requests also reinforce the need to check departure dates and the tool's conditional origin requirement, which is not explicit in the current skill.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+        "content": "- Pass only criteria supported by the conversation, map each value to the exact supported field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`; map hotel hot tubs and saunas to `has_hot_tub=True` and `has_sauna=True`, not invented field names; and map a nightshade-allergy accommodation request to the supported restaurant field `has_tomato_allergy_options=True`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Required-argument checks",
+        "content": "\nFor each flight leg, require a `departure_date` and at least one starting-airport identifier: `start_airport_city`, `start_airport`, or `start_airport_code`. Treat this conditional origin requirement as mandatory even though each field is individually optional; ask for any missing required detail before searching."
+      }
+    ]
+  },
+  "source_type": "success"
+}

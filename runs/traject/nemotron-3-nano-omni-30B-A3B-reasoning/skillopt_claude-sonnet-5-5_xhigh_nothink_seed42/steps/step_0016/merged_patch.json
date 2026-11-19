@@ -1,0 +1,74 @@
+{
+  "reasoning": "Failure-driven edits were kept in full. The first replaces the two-pass skeleton with a single-pass, fully-filled canonical object line, which targets the top-ranked bug (duplicate `optional parameters` key) in the form the meta-guidance prefers. The related deletion removes one of the bad-string examples. The NAME CHECK rewrite replaces 'ignore what follows the dash' with the mechanical ` — ` -> `: ` rule. The PARAM-NAME GATE, OUTPUT-COUNT GATE, and defaults/enums/schema-facts edits cover wrong-sibling selection, dropped clauses, and placement. The OUTPUT-COUNT GATE keeps an explicit boundary so it does not conflict with the 'one clause, two properties = one call' rule. None of these overlap the success edits. All four success edits cover patterns the failure edits do not address, so they are kept. Each one replaces existing text rather than adding a new rule: the Hearthstone literal line, the sort-value rule, the CSGO `Content-Type`, and the code-form rule. In the code-form edit I removed the \"'US news' -> `US`\" example. It could contradict the protected block's lowercase `country`=`in` for News API_v2, and the 'use the form the schema shows' sentence already covers it. Nothing targets or re-echoes the SLOW_UPDATE block, and all targets were checked to exist in the editable region.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Build the answer in two passes. Pass 1: write an empty skeleton for every checklist call, `{\"tool name\": \"<### heading>\", \"required parameters\": [], \"optional parameters\": []}`. Pass 2: put the parameter objects INSIDE those two existing brackets (decide all optionals first; never add a third list or a second key).",
+      "content": "Write each object ONCE, left to right, in a single pass: `tool name`, then `required parameters` (filled or `[]`), then `optional parameters` (filled or `[]`), then `}`. Always write both keys, using `[]` when empty. Decide all optional values BEFORE typing the optional key, type that key exactly once, and never write an empty skeleton or `[]` first and fill it later. Nothing but `}` may follow the optional list's closing `]`. Imitate these lines (filled lists stay filled): `{\"tool name\": \"Random Words: Get multiple random words\", \"required parameters\": [{\"name\": \"count\", \"value\": \"10\"}], \"optional parameters\": [{\"name\": \"minLength\", \"value\": \"5\"}, {\"name\": \"maxLength\", \"value\": \"8\"}]},` and `{\"tool name\": \"Helioviewer v1: getUserVideos\", \"required parameters\": [], \"optional parameters\": [{\"name\": \"num\", \"value\": \"5\"}]},`.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "NAME CHECK: copy the name from the `### ` heading line only, and ignore the `Provider: X — blurb` line under it.",
+      "content": "NAME CHECK: the name is the `### ` heading, pasted. Never assemble a name from the query's wording. If the heading reads `Provider — shortEndpoint` (e.g. `periodicTable — periodic table`), the token after the dash IS the endpoint: replace ` — ` with `: ` -> `periodicTable: periodic table`. If the line under the heading is a long blurb, take the endpoint from the `### ` heading list instead. Never type `—` in an answer. Query labels are loose: find the ONE `### ` line containing the endpoint words and keep that line's own provider (`Current conditions (basic)` sits under `Easy Weather:`, so `RapidWeather: Current conditions (basic)` is invented; `Get Specific Pokemon` -> `Pokedex: Get Specific Pokemon`).",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Tool selection",
+      "content": "\n- PARAM-NAME GATE (mechanical, per call). Every parameter name you write must appear in the chosen tool's own Required/Optional list. If a clause qualifier (unit, country, region, day count, coordinates) needs a name the tool lacks, discard the tool and take the sibling that lists it. Pick the provider whose heading or description contains the clause's domain noun before considering verb or time scope. '3-day forecast for location ID 102643743 in Fahrenheit and MPH' -> `Foreca Weather: Daily` (required `location`; optional `periods`=`3`, `tempunit`=`F`, `windunit`=`MPH`), not `Tomorrow.io: Weather Forecast` (only `location`, `timesteps`, `units`). '48-hour air quality forecast' -> `Air Quality: Air Quality Forecast` (`lat`, `lon`, optional `hours`=`48`), not a generic weather tool. 'Pikachu from the Pokédex, UK region' -> `Pokedex: Get Specific Pokemon` (`country`, `pokemon`), not a tool with no region field. Latitude/longitude given -> a tool whose inputs are coordinates (`Easy Weather: Current conditions (basic)`: `latitude`, `longitude`), never a tool requiring `city` with a city guessed from the numbers.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+      "content": "- OUTPUT-COUNT GATE (before `</answer>`). Number the query's deliverables (every comma, 'and', 'then' and 'finally' item, including hedged ones like 'attempted', 'checked', 'also explored'). The object count must equal that number, and every object must trace to a numbered item. List the `### ` endpoints of each provider you called and tick those whose noun the query uses; an unticked noun means a dropped call. 'Statistics, character classes, and the engraving system' = `Lost Ark: get stats` + `Lost Ark: get classes` + `Lost Ark: get engravings` (the last list item is the one dropped). 'Recent climate change news from CNN' -> `Climate_change: specific news` with `newspaperId`=`CNN` (an outlet name is a value, never a reason to skip the clause). 'Today's insight AND information about faith' = Uncovered Treasure `/today` + `/topic/{topic}` (`topic`=`faith`): two clauses on one provider with different inputs are two calls. Boundary: a facet the query does not name gets no call ('images and current pricing' = `get-images` + `get-pricing`, no `get-financing-offers`), and one clause naming two properties of the same input is still one call.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Parameters",
+      "content": "\n\n- DEFAULTS, ENUMS, RANGES. Never fill an optional just because its description shows a default (BAD `limit`=`200` from 'Default 200'); add it only when the query states the number. Pick the ONE enum option the query's words match, not the schema's whole list ('linear perpetual market' -> `category`=`linear`). Both ends of a required range go in `required parameters` (`start` AND `end`, `lat` AND `lon`). When the query names an endpoint for a `function`-style param ('DIGITAL_CURRENCY_DAILY'), use that name verbatim.\n- PER-TOOL SCHEMA FACTS (required vs optional; copy the split from the tool's own block, do not infer). `DEI: GetSamples`: `page` is REQUIRED -> `\"required parameters\": [{\"name\": \"page\", \"value\": \"1\"}]`. `BizToc: News / Latest / Page`: required `page_id` takes the query's own word ('main page' -> `main`, not `1`). `Aliexpress DataHub: Aliexpress - Item Search 2` has NO required params, so `q` and `sort` go in optional. `Lazada DataHub: Lazada - Item Search` requires `region` and `q`; its `sort` and `page` are optional.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "delete",
+      "target": "- Stray trailing key after a one-param list: `\"optional parameters\": [{\"name\": \"value\", \"value\": \"A\"}], \"optional parameters\": []`. The empty list erased `value`=`A`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "'One Hearthstone card from page 1' -> ONE call with `page`=`1`, `pageSize`=`1`.",
+      "content": "'One Hearthstone card from page 1' -> ONE call where 'one' is also a parameter (page AND pageSize). Copy this shape, with the tool name taken from the listed heading: `{\"tool name\": \"Hearthstone: Get Cards\", \"required parameters\": [], \"optional parameters\": [{\"name\": \"page\", \"value\": \"1\"}, {\"name\": \"pageSize\", \"value\": \"1\"}]}`. Emitting only `page` loses the optional-param score.",
+      "support_count": 4,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "'sorted by date' -> the sort field.",
+      "content": "'sorted by date' -> the sort field. Ranking words are sort values too, so copy the query's own word when the schema lists no options, and copy the param name exactly, hyphens included. 'Sorting results by relevancy' on `News API_v2: Search` -> `sortBy`=`relevancy` (do not drop it while keeping `country` and `pageSize`). 'Sort all giveaways by their value, highest to lowest' -> `GamerPower: Sort live giveaways` with optional `sort-by`=`value`.",
+      "support_count": 6,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "'My 15 most recent CS:GO matches from page 1' -> ONE `CSGO matches and tournaments: Played` call with `limit`=`15`, `page`=`1`.",
+      "content": "'My 15 most recent CS:GO matches from page 1' -> ONE `CSGO matches and tournaments: Played` call with `limit`=`15`, `page`=`1`, `Content-Type`=`application/json`. Its sibling `CSGO matches and tournaments: Upcoming` ('limited to 10 results on page 1') takes the same three optionals. When a schema lists a header-style optional `Content-Type`, set it to `application/json`.",
+      "support_count": 4,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "Copy values verbatim from the query.",
+      "content": "Copy values verbatim from the query. For country and language code fields, use the code form the schema's own description shows: 'Germany' -> `DE` (description 'E.g, ES, DE, US'), 'Great Britain' -> `GB`, and 'in English' on `Booking.com_v2: currencies` -> `language_code`=`en-us` (schema 'Default: en-us'). Do not invent another casing or code style.",
+      "support_count": 4,
+      "source_type": "success"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "reasoning": "Kept the three distinct operational gaps: carrying an earlier explicit party size into a hotel update, interpreting exact and upper-bound flight times, and searching explicitly dated multi-city flight legs independently. Broader cache and proximity guidance is already covered, so it is not duplicated. Each edit is supported by one of the two source patches, and none targets the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "content": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. For a hotel search or update, carry any explicitly stated party size from the full conversation into `num_people` unless the latest suitable hotel result already reflects it. If the cached base lacks the count, include `num_people` in the same hotel filter as other pending hotel constraints, even when the count was supplied earlier. “Solo” means `num_people=1`. Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X” uses `[\"12:00 AM\", X]`, and “after X” uses `[X, \"11:59 PM\"]`, preserving the stated AM/PM value.",
+      "content": "- For flight-time bounds, use two endpoints: an exact “at X” departure or arrival uses `[X, X]`; “before X,” “by X,” or “no later than X” uses `[\"12:00 AM\", X]`; and “after X” uses `[X, \"11:59 PM\"]`. Preserve the stated AM/PM value and use the supported 12-hour format.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+      "content": "\n\n- **Search explicitly dated multi-city flight legs independently:** When the user lists consecutive route segments with dates, search each stated segment separately using its stated origin, destination, date, and any other explicit criteria for that leg. Assign and save each leg under a distinct cache key. Do not combine the segments into one flight or infer extra legs. Complete these known flight searches even if required hotel details are missing; seek only the genuinely missing hotel inputs.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_result_not_updated",
+      "count": 4,
+      "description": "Agents returned “No planning needed” even though the latest turn added a filter criterion or requested a new result."
+    },
+    {
+      "failure_type": "tool_namespace_import",
+      "count": 3,
+      "description": "Agents imported tools from a nonexistent module instead of calling the injected functions directly."
+    },
+    {
+      "failure_type": "incomplete_required_input_handling",
+      "count": 1,
+      "description": "An agent searched hotels without required stay dates instead of requesting the missing dates while doing the independent restaurant search."
+    },
+    {
+      "failure_type": "overinclusive_optional_arguments",
+      "count": 1,
+      "description": "An agent set unrelated allergy-option flags and omitted saving the generated search result."
+    },
+    {
+      "failure_type": "proximity_entity_misclassification",
+      "count": 1,
+      "description": "An agent treated a named place as a neighborhood and searched the wrong result types instead of using compatible results for proximity."
+    },
+    {
+      "failure_type": "date_value_reformatting",
+      "count": 1,
+      "description": "An agent reformatted user-provided dates rather than preserving their stated representation."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache, injected-tool, required-input, and proximity behaviors are already addressed by the skill, so repeating those instructions would duplicate existing content. The argument-matching rule does not explicitly prevent filling unrelated optional fields merely because they exist in the schema; clarifying that gap addresses the overinclusive allergy filters.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Never pass a preference as an unsupported extra argument or place it in an unrelated field. For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+        "content": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Set an optional field only when it corresponds to an active criterion stated in the conversation; do not fill unrelated fields just because the schema supports them. For dietary or allergy requests, set only the matching supported accommodation option(s), not every allergy or dietary flag. Never pass a preference as an unsupported extra argument or place it in an unrelated field. For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

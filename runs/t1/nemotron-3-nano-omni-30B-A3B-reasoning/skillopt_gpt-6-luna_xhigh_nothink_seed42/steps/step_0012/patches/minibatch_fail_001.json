@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 7,
+      "description": "Search and refinement results were commonly left unbound or not saved to cache."
+    },
+    {
+      "failure_type": "cache_refinement_or_noop_misuse",
+      "count": 3,
+      "description": "Agents ignored valid cached results or treated an unsatisfied new constraint as already covered."
+    },
+    {
+      "failure_type": "itinerary_or_domain_coverage",
+      "count": 4,
+      "description": "Agents missed a return leg or requested domain, or failed to map a stated stay length to hotel dates."
+    },
+    {
+      "failure_type": "schema_or_unsupported_inference",
+      "count": 2,
+      "description": "A state was passed as a city, and a solo trip was converted into an unsupported hotel guest count."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already directly requires caching results and refining compatible cached results, so repeating those instructions would duplicate covered guidance. These edits clarify ambiguous date-range and multi-city flight handling, allow valid domain searches to proceed while seeking missing information for another domain, derive hotel checkout from an explicitly stated stay length, and tighten location and hotel-count argument mapping.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Represent flight legs separately",
+        "content": "- When a user gives a date range for a previously described single origin-to-destination itinerary, treat the first date as outbound and the last as the return date, reversing the route for the return, unless the conversation explicitly says the trip is one-way or describes a different leg sequence. Apply new flight constraints to every affected segment in a multi-city itinerary, not just its first or final leg."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Missing mandatory information",
+        "content": "- Check mandatory inputs independently for each requested domain. If one domain lacks required information, still search or refine other requested domains whose required inputs are available, and make one `seek_information` call for the missing mandatory inputs. When the user explicitly gives a hotel check-in date and a stay length in nights, calculate checkout with `adjust_date(date=..., delta_days=...)`; do not ask for or invent a checkout date."
+      },
+      {
+        "op": "replace",
+        "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+        "content": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Use `state` for a state-level location, including an abbreviation, and `city` only for a city. Do not infer exact party or room counts from broad descriptions such as “family”; do not populate hotel `num_people` or `num_rooms` from “solo” alone—include these only when the user explicitly supplies a numeric count. A traveler count is not a flight-search parameter unless the schema provides one."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

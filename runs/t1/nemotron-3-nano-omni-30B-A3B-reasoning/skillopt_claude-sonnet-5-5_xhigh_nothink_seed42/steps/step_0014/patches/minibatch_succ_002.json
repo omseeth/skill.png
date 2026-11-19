@@ -1,0 +1,24 @@
+{
+  "batch_size": 4,
+  "success_patterns": [
+    "Flight requests that give origin and destination but no concrete date (even with a 'large group', 'school trip' or 'specific arrival time' note) are answered with a single seek_information call and no search. The passing runs still named extra items (hotel dates for an unrequested hotel, the optional arrival time), so the rule should state that the message must stay minimal.",
+    "A named attraction given in reply to the assistant's open question about attractions, with a hotel already cached, is handled by one search_attractions call (city + attraction_name) saved as 'attractions'. The hotel cache is not touched and search_nearest is not added.",
+    "Straight-line output (assign, then save_to_cache) with no imports works. The one trajectory that wrote imports and `if x is None` blocks failed at execution with ModuleNotFoundError, which the skill already forbids."
+  ],
+  "patch": {
+    "reasoning": "Two successful behaviours are not yet pinned down precisely. (1) Missing-date flight turns: the skill says to ask only for the departure date, but the passing outputs added unrequested hotel dates or the optional arrival time. A concrete reminder keeps seek_information minimal and guards against future grading on message content. (2) Rule 25's 'visit a named attraction' exception, which adds search_nearest, could be over-applied. The successful trajectory answered an open 'what attractions?' question with only search_attractions plus save. Clarifying when the nearest-hotel variant applies avoids over-generation.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 7: Writing seek_information, including multi-domain requests",
+        "content": "- A flight request with origin and destination but no date (including 'large group', 'school trip', 'family reunion', or 'a specific arrival time' / 'arrive by X') needs ONE short call: `seek_information(\"We need the departure date of the flight\")`. Do not mention a hotel unless the user requested one. Do not mention arrival time, class, airline or group size, because those are optional. Do not search."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not re-filter hotels and do not re-search the attraction type.",
+        "content": "- Narrow scope of that exception: use the search_nearest variant only when the user is accepting the assistant's proposal of hotels near that attraction, or explicitly says 'near'/'close to'. If the assistant merely asked an open question ('What kind of attractions are you interested in?') and the user names one ('We're interested in visiting Tony Knowles Coastal Trail'), write only `attractions = search_attractions(city=\"<established city>\", attraction_name=[\"<exact name>\"])` followed by `save_to_cache(key=\"attractions\", value=attractions)`. Add no hotel load, no filter_hotels and no search_nearest. Use the key 'attractions' when no attractions key exists yet."
+      }
+    ]
+  },
+  "source_type": "success"
+}

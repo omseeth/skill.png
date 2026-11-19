@@ -1,0 +1,54 @@
+{
+  "step": 30,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 26,
+  "failure_patterns": [
+    {
+      "pattern": "cache_scope_mismanagement: Agents repeated searches or filters for cached or unchanged domains instead of acting only on the changed scope and reusing valid results.",
+      "count": 26,
+      "task_ids": [
+        "attraction:train:23:15:2",
+        "hotelrestaurant:train:11:24:0",
+        "hotelrestaurant:train:2:9:3",
+        "hotelattraction:train:24:13:4",
+        "restaurant:train:4:45:2",
+        "hotelrestaurant:train:9:45:1",
+        "flighthotel:train:21:6:1",
+        "flighthotelrestaurant:train:5:19:3",
+        "hotelrestaurant:train:15:3:1",
+        "hotelrestaurant:train:25:31:2",
+        "flighthotel:train:9:39:6",
+        "hotelattraction:train:25:8:3",
+        "restaurant:train:18:7:3",
+        "hotelattraction:train:16:34:3",
+        "hotelattraction:train:14:7:5",
+        "attraction:train:21:2:0",
+        "hotelattraction:train:12:34:4",
+        "hotelrestaurant:train:7:59:2",
+        "hotel:train:2:25:3",
+        "hotelrestaurant:train:21:60:4",
+        "hotel:train:13:3:1",
+        "attraction:train:18:34:2",
+        "flighthotel:train:14:29:1",
+        "flighthotelattraction:train:21:24:3",
+        "restaurant:train:13:41:2",
+        "flighthotelattraction:train:19:26:3"
+      ]
+    }
+  ],
+  "score_before": 0.505,
+  "score_after": 0.475,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "\nFor same-scope restaurant rating or budget follow-ups, retrieve the compatible result and filter it rather than repeating the base search. For example:\n```python\nprior_restaurants = get_results_from_cache(key=\"<exact compatible restaurant key>\")\nfiltered_restaurants = filter_restaurants(\n    prior_results=prior_restaurants,\n    rating=[<minimum rating>, 5],\n    budget=<maximum per-person budget>,\n)\nsave_to_cache(key=\"<descriptive filtered restaurant key>\", value=filtered_restaurants)\n```\nFor a same-city, same-stay hotel follow-up with newly supplied occupancy or budget constraints:\n```python\nhotel_prior = get_results_from_cache(key=\"<exact compatible hotel key>\")\nfiltered_hotels = filter_hotels(prior_results=hotel_prior, num_people=<user-stated count>, budget=<requested budget>)\nsave_to_cache(key=\"<descriptive filtered hotel key>\", value=filtered_hotels)\n```\nInclude only constraints that are newly supplied and not already embodied in the cached result; omit unused keywords.",
+      "target": "```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```"
+    },
+    {
+      "op": "replace",
+      "content": "- Identify only the domains or itinerary legs changed by the latest user turn, plus pending requests that have just become complete. Use cache summaries as a coverage ledger. For each changed scope, retrieve the most constrained compatible result by its exact cache key: its domain, location, dates or leg, category or entity scope, and candidate set must cover the request. Prefer a result that already embodies the greatest number of still-active criteria. A filtered or nearest-derived result is suitable when its candidates still cover the requested scope; filters can narrow a candidate set but cannot broaden it. Apply the matching `filter_*` tool only for newly supplied supported constraints and active constraints not already embodied in the retrieved result; do not reapply embodied filters. When a constraint affects multiple domains, handle each affected domain separately. If no compatible result covers a newly requested scope, make one base search with all active supported criteria. Do not repeat base searches for filterable updates or retrieve, filter, search, or save unchanged domains or legs unless they are needed as input to a requested operation or the user asks to receive their cached result. If the user accepts an offer to show or recommend a scope already covered by cache, retrieve that exact result once and do not search, filter, or save it again.",
+      "target": "- Identify only the domains or itinerary legs changed by the latest user turn. For each changed request, if a compatible cached result exists, retrieve it with `get_results_from_cache(key=\"<literal cache key shown in the summary>\")` and assign the returned object to a local variable; cache keys and summaries are not Python result variables. Choose the most constrained cached result that still covers the request: its domain, location, dates or leg, and original scope must be compatible, and it must not be narrower than the requested scope. Prefer a result that already embodies the greatest number of still-active criteria, and retrieve it by its exact cache key. A result restricted to a different category or entity does not establish that a newly requested specific entity is included; search if the cached scope cannot cover it. Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result. A cached proximity result may also be used as filter input when its candidate set remains valid. Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no cached result can cover the changed scope."
+    }
+  ]
+}

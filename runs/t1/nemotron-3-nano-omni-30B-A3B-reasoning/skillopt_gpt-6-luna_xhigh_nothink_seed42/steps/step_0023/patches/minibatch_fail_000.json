@@ -1,0 +1,45 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_cache_and_pending_action_coverage",
+      "count": 6,
+      "description": "Agents skipped pending actions or searched/refined the wrong results instead of applying new criteria to the latest compatible cache entries."
+    },
+    {
+      "failure_type": "tool_result_lifecycle",
+      "count": 4,
+      "description": "Search or filter results were not consistently bound and saved under new cache keys."
+    },
+    {
+      "failure_type": "schema_value_validation",
+      "count": 2,
+      "description": "Flight time values were sent in an invalid format rather than safely reusing the compatible cached results."
+    },
+    {
+      "failure_type": "execution_environment_misuse",
+      "count": 1,
+      "description": "The agent imported a nonexistent cache module instead of calling the provided tools directly."
+    },
+    {
+      "failure_type": "contextual_party_size_omission",
+      "count": 1,
+      "description": "A party size established in the assistant's concrete hotel question was omitted from the supported hotel people-count field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The dominant cache-routing, result-lifecycle, and schema-validation failures are already addressed explicitly in the skill, so repeating those rules would not patch a gap. Add only the missing execution-environment constraint and clarify how to carry a concrete, uncorrected hotel party size from the conversation into the supported field.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Tool execution environment\n- Tools and cache helpers are already available in the execution environment. Call them directly by their provided names; do not import or redefine tools, their models, or a cache module."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+        "content": "\n- For hotel calls, carry a concrete party size established in the conversation into `num_people` when supported, including a count stated in the immediately preceding assistant question as context that the user does not correct. Treat `num_people` and `num_rooms` independently; include each only when its value is established, and never infer one from the other."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,37 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "When the clue asks for only part of a name ('First name of the man elected chancellor...'), the agent first identified the person from the passages (Helmut Kohl) and then output only the requested part ('Helmut').",
+    "For an epithet or tagline clue ('He's \"America's Sherlock Holmes in Sneakers\"'), the agent found the entity that sat next to the quoted phrase in nearly every passage and answered with it ('Encyclopedia Brown'), not a descriptor.",
+    "For a 'this trade name / brand name' slot, the agent picked the single brand the passages named first and most often ('Ritalin') and ignored the generic name already in the clue and the other brands listed.",
+    "For a typed slot ('this capital city') where the passages only imply the answer, the agent combined the type constraint with the passage anchors (Swedish Nobel family, Alfred Nobel born in Stockholm) and gave a bare place name ('Stockholm') instead of refusing.",
+    "For verbatim hits the agent copied the short archive or flashcard answer exactly ('Clark', 'coddling'). For a bare list of character names it answered with the show title ('What's Happening!!').",
+    "Direct factual-descriptor clues ('state capital on the Alabama River') were answered with the bare entity ('Montgomery') that every passage ties to the descriptor."
+  ],
+  "patch": {
+    "reasoning": "Several successes depended on small behaviours the skill does not state. These are: answering only the requested part of a name, reading epithet clues through the entity adjacent to the quoted phrase, choosing one best-supported brand for 'this trade name' slots, and using the clue's type constraint with passage anchors when the passages only imply the answer. Each is short and does not conflict with existing rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Still apply the person-name rule above.",
+        "content": "\n- Partial-name requests ('First name of the man who...', 'last name of', 'surname', 'nickname of', 'initials'): first identify the full person from the passages, then output ONLY the requested part ('Helmut', not 'Helmut Kohl'). Do not return the full name when the clue asks for a piece of it."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not talk yourself out of a well-supported entity.",
+        "content": "\n- Epithet or tagline clues ('He's \"America's Sherlock Holmes in Sneakers\"', 'known as the \"Sultan of Swat\"'): the quoted phrase usually appears verbatim in many passages right beside one name or title. Answer with that adjacent entity ('Encyclopedia Brown'), as the passages write it, not with the epithet or a description. This works for fictional characters and works too."
+      },
+      {
+        "op": "insert_after",
+        "target": "'Greek god of erotic love' -> 'Eros' (not Roman 'Cupid').",
+        "content": "\n- 'This trade name / brand name / nickname / slogan of X' (X = a drug, product or company): answer with ONE name, the one the passages put first or repeat most often ('methylphenidate ... known by this trade name' -> 'Ritalin'). Never answer with the generic name already in the clue, a list of brands, or a less-cited variant ('Concerta', 'Ritalin SR')."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "\n- When the passages only imply the answer (a person's biography page that never states the birthplace), combine the clue's type word ('this capital city') with the anchors the passages do give (Swedish family, Alfred Nobel born in Stockholm) and your own knowledge, and name the single entity of that type. Give it as a bare name ('Stockholm'). Never reply that the context does not say."
+      }
+    ]
+  },
+  "source_type": "success"
+}

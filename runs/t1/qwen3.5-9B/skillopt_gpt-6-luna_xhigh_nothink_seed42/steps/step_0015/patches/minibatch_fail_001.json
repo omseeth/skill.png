@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_lifecycle",
+      "count": 5,
+      "description": "Search or filter results were left unsaved, used without retrieving the appropriate cached base, or saved under a reused key."
+    },
+    {
+      "failure_type": "follow_up_reconciliation",
+      "count": 5,
+      "description": "Agents dropped earlier criteria or pending domains, or reapplied constraints already reflected in cached results."
+    },
+    {
+      "failure_type": "proximity_tool_selection",
+      "count": 2,
+      "description": "Agents treated a neighborhood as a proximity anchor or called search_nearest without the two result domains it requires."
+    },
+    {
+      "failure_type": "parameter_mapping",
+      "count": 2,
+      "description": "Agents mapped an allergy to an unrelated flag or supplied flight times in an invalid format."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already gives explicit cache and follow-up rules, so repeating them would not patch a gap. The proximity rule needs to clarify neighborhood wording, the required two-domain nearest inputs, and how to choose the target domain for groupBy. Add a semantic allergy-mapping rule to prevent substituting an unrelated allergy flag. The existing flight-time format rule already covers the format failure.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results. Do not pass the attraction name as a `neighborhood` value or approximate proximity with a neighborhood filter. If a later constraint changes an underlying domain result, such as filtering the hotel set, recompute and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call.",
+        "content": "- **Use proximity tools only for proximity requests:** A request for a hotel or restaurant near a named attraction, hotel, or restaurant is a proximity request; identify the anchor and target domains from the conversation, and retrieve or search for suitable results in both. Call `search_nearest` with exactly two result-domain arguments among `hotels`, `attractions`, and `restaurants`; set `groupBy` to the target domain the user wants near the anchor. Search for a named attraction when requested. By contrast, “near Downtown” or “near [neighborhood/district]” is a location constraint, not a proximity request: use the full area phrase in `neighborhood` with its city, and filter a suitable cached result when available. Do not use an area as a proximity anchor or an attraction name as a neighborhood. If a later constraint changes an underlying result, recompute and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Map dietary allergies by meaning:** For an explicitly named allergy, use only a supported allergy-option field that semantically corresponds to it; never substitute an unrelated allergen flag simply because that field is available. If the allergy is a broad class and the tool exposes a relevant constituent allergen, use that field only as a partial proxy, not as evidence of comprehensive accommodation. Do not invent unsupported fields or imply that a partial proxy guarantees safety."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

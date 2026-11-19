@@ -1,0 +1,51 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "pending_action_or_input_resolution",
+      "count": 4,
+      "description": "Hotel or restaurant actions were omitted, treated as no-ops, or attempted with invented hotel dates despite pending requests."
+    },
+    {
+      "failure_type": "cache_scope_or_relation_error",
+      "count": 2,
+      "description": "Agents repeated covered filters, used a generic result for a named target, or performed unrequested proximity and sorting actions."
+    },
+    {
+      "failure_type": "schema_and_location_mapping",
+      "count": 3,
+      "description": "Agents confused a state with a city, misencoded exact values, or failed to distinguish supported preferences from unsupported ones."
+    },
+    {
+      "failure_type": "result_persistence_omission",
+      "count": 1,
+      "description": "A required search result was not saved to cache."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains broad cache, schema, and completion guidance, so these edits address narrower gaps exposed by the trajectories: deriving hotel dates only when the conversation clearly links them to a dated stay, recognizing a contextual answer to a proximity question, handling the supported portion of mixed preferences, and making state-only attraction searches unambiguous.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness independently for each requested domain and, where applicable, each city or leg: proceed with searches or refinements for domains whose required inputs are available even if another is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across blocked domains. Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood. Optional preferences are not mandatory inputs.",
+        "content": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness independently for each requested domain and, where applicable, each city or leg: proceed with searches or refinements for domains whose required inputs are available even if another is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across blocked domains. Hotel check-in and check-out dates must be explicit or clearly derivable from the same stated stay. If the conversation clearly ties the hotel stay to a dated trip and establishes that lodging begins on that trip date—for example, the user supplies a checkout date in response to a question about that stay—use that date as check-in. If the user gives a stay length of N nights and the start date is established, compute checkout with `adjust_date(date=<check-in date>, delta_days=N)`. Do not borrow an unrelated flight date or infer a hotel neighborhood; otherwise seek the missing hotel date. Optional preferences are not mandatory inputs."
+      },
+      {
+        "op": "replace",
+        "target": "## Proximity between travel domains\n- Call `search_nearest` only when the user explicitly requests proximity between supported domains. Before calling it, verify that each cached result covers the specific requested target, not merely the same domain or city. For example, a generic city attraction search does not cover a separately named attraction; search for the named attraction using `attraction_name` unless the cache summary shows that exact target is already covered.\n- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain), not the reference domain: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`.\n- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+        "content": "## Proximity between travel domains\n- Call `search_nearest` when the user explicitly requests proximity between supported domains. Also treat a reply naming a place after the assistant asks whether the user wants options near a particular place as a proximity request, even if the reply is phrased as wanting to visit that place. Mere interest in visiting or dining somewhere, without that contextual proximity question or a proximity request, does not imply proximity.\n- Before calling, verify that each result covers the specific requested target and applicable criteria, not merely the same domain or city. A generic city attraction result does not cover a separately named attraction; search for the named target using the appropriate exact-name field, such as `attraction_name`, unless the cache summary shows that exact target is covered.\n- Pass the relevant result objects for the domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain): hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`."
+      },
+      {
+        "op": "insert_after",
+        "target": "Send only schema-supported parameters; do not infer amenities, ratings, or other preferences.",
+        "content": "For a request combining supported and unsupported preferences, apply every supported criterion and omit only the preference with no schema field. Do not invent an argument, ask for an unsupported preference as mandatory information, or abandon the supported search or refinement."
+      },
+      {
+        "op": "replace",
+        "target": "Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+        "content": "Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a city belongs in `city`, and a named attraction in `attraction_name`. For attraction searches, a state-only location—including a postal abbreviation—belongs in `state`, not `city`; use `city` when a city is provided. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

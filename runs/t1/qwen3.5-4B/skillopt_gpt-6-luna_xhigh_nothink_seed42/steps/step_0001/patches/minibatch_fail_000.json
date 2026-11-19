@@ -1,0 +1,47 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "Tool invocation contract violation",
+      "count": 7,
+      "description": "Agents imported tools even though the runtime provides them directly, causing execution failures."
+    },
+    {
+      "failure_type": "Incremental cache handling failure",
+      "count": 4,
+      "description": "Agents regenerated results, chose a less relevant cached result, or did nothing instead of applying newly stated criteria to cached results."
+    },
+    {
+      "failure_type": "Round-trip flight planning error",
+      "count": 2,
+      "description": "Agents failed to handle outbound and return flights as separate directional legs or apply the requested class to both."
+    },
+    {
+      "failure_type": "Unnecessary calls or missed constraints",
+      "count": 4,
+      "description": "Agents invoked unrelated or duplicate operations, or missed an explicit constraint such as the hotel guest count."
+    }
+  ],
+  "patch": {
+    "reasoning": "These edits address the most repeated execution and planning errors: calling tools directly, updating compatible cached results for new preferences, modeling round trips by leg, and keeping calls minimal while preserving explicit constraints.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n- **Call tools directly:** Tool functions are already available in the execution environment. Do not import or redefine them; call the provided function names directly."
+      },
+      {
+        "op": "append",
+        "content": "\n\n- **Update cached results incrementally:** When a user adds or changes criteria for a previously searched domain, retrieve the most specific compatible cached result and apply the matching filter. Do not repeat the original search or return “No planning needed” while new criteria remain to be applied. Save each new filtered result under a fresh cache key."
+      },
+      {
+        "op": "append",
+        "content": "\n\n- **Handle round-trip flights as two legs:** Plan outbound and return flights separately, using the correct direction and departure date for each leg. Carry applicable preferences such as flight class to both legs. Reuse and filter cached leg results when they are compatible with the updated request."
+      },
+      {
+        "op": "append",
+        "content": "\n\n- **Keep the plan minimal and complete:** Call only domains the traveler requested, carry forward all explicit criteria, and avoid repeating searches or filters whose results already satisfy them. For hotels, map “solo” to `num_people=1` and a stated party size to `num_people`; do not confuse guest count with room count."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

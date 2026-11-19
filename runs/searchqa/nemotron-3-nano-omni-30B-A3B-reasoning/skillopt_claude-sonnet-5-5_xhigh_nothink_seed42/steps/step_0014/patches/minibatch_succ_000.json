@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Agents took the entity that recurs across many passages together with the clue's anchor details (Chapel Hill 1795 -> North Carolina; Khartoum -> Sudan; Ithaca College studio -> Jessica Savitch; Thimblefinger -> Joel Chandler Harris). They answered with the category the 'this <noun>' pointer asks for and did not echo clue words.",
+    "For 'this/her/his <person>' clues with no verbatim archive line, agents gave the full first + last name exactly as the passages repeat it (Joel Chandler Harris, Jessica Savitch, Marilyn Monroe), with no title or descriptor.",
+    "When the passages consistently use a specific standard species name ('the Brown Pelican is the official state bird'), the agent kept the full name ('Brown Pelican') even though the clue said 'this bird'. Only the bare category word was dropped.",
+    "Verbatim J!-Archive lines ('CATEGORY | clue | Rumsfeld. right: Eric.') were copied directly, using the bare surname form shown in the archive.",
+    "A glued length hint ('He spun straw into gold(15)') was used as a check on the candidate (Rumpelstiltskin has 15 letters), not as part of the answer."
+  ],
+  "patch": {
+    "reasoning": "Most successes are already covered by the existing rules, so I propose only three small additions in areas the skill underspecifies. (1) The person-name form is vague outside archive hits, and successful agents used the full first+last name from the passages. (2) The head-noun and category-word rules could push an agent to cut 'Brown Pelican' to 'Pelican', so the species-name case needs stating. (3) The letter-count hint also appears glued to the clue with no space, and it works as a verification filter. These are narrow and consistent with the existing rules. Earlier rejected steps added broad or conflicting rules, so these avoid them.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "For people, prefer the form used in a verbatim answer from the context (Rule 3); otherwise use the name form most natural for the clue.",
+        "content": "\n- When there is no verbatim archive answer and the clue asks for a person ('this late journalist', 'this creator of Uncle Remus', 'She's the subject of...'), answer with the first + last name exactly as the passages repeat it ('Joel Chandler Harris', 'Jessica Savitch', 'Marilyn Monroe'). Do not add titles, roles or descriptors, and do not shrink it to a first name or a bare surname unless an archive line shows that form (then copy it, e.g. 'Rumsfeld')."
+      },
+      {
+        "op": "insert_after",
+        "target": "Pure category labels ('play', 'king', 'spacecraft', 'novel') are still dropped: 'this play' -> 'Henry V'.",
+        "content": "\n- Species and varieties: for 'this bird / this tree / this animal' where the passages consistently use one standard (often 'official state') name with its qualifier ('the Brown Pelican is Louisiana's state bird'), answer with that full standard name ('Brown Pelican'). Only the bare category word ('bird') is dropped; the qualifier is part of the name, not an echo of the clue."
+      },
+      {
+        "op": "insert_after",
+        "target": "If a bare number appears in parentheses, treat it only as this hint, not as part of the question.",
+        "content": "\n- The count may be glued to the clue with no space ('He spun straw into gold(15)'). Use it as a check on your candidate (Rumpelstiltskin = 15 letters), and keep it out of the answer tags."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Co-subject clues ('Lemmon & this actor', 'In 1974 this author...'): the agent excluded the named anchor and picked the other participant or the one entity the passages repeatedly tie to the clue's details (Tony Curtis, Stephen Hawking).",
+    "Pun or wordplay clues ('no flash in the Tai-Pan', 'Grades of this potable range from doux to brut'): the agent ignored the pun and answered from the plain factual core (author of Gai-Jin -> James Clavell; doux/brut terms -> Champagne).",
+    "The answer was bare and left out clue modifiers: 'a miniature this' -> 'pizza', 'this country's Bharat Ratna' -> 'India', 'this classic toy' -> 'Slinky'.",
+    "When the clue's details were repeated across many passages, or a verbatim archive line existed, the agent answered directly in one step without second-guessing."
+  ],
+  "patch": {
+    "reasoning": "Every success was a one-step answer built on a clean reading of the clue. Three habits recurred: excluding the already-named co-subject, ignoring pun decoration in favour of the factual core, and dropping clue modifiers from the answer. The skill only partly covers these, so short reinforcements are worth adding. All three are small and conservative, to avoid the regressions seen in rejected steps.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Other named entities in the clue are anchors, never the answer.",
+        "content": "\n- Co-subject clues ('Lemmon & this actor joined an all-girl band', 'X and this man ...'): the person already named is given. The answer is the OTHER participant the passages list alongside him (Tony Curtis), never the named one."
+      },
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- Puns and wordplay in the clue ('no flash in the Tai-Pan', 'a hot ticket') are decoration. Find the plain factual core ('author of Gai-Jin') and answer that. Title words and jargon in the clue are anchors. Jargon that fits only one thing ('doux ... brut', 'Bharat Ratna') points to that thing (Champagne, India), even if the passages only mention it in glossaries."
+      },
+      {
+        "op": "insert_after",
+        "target": "do not append that role word to the answer.",
+        "content": "\n- Modifiers in front of 'this' belong to the clue, not the answer: 'a miniature this' -> 'pizza' (not 'mini pizza'), 'this classic toy' -> 'Slinky', 'this country's award' -> 'India'. When the passages repeatedly name one entity that fits all the clue's details, answer it directly and do not second-guess it."
+      }
+    ]
+  },
+  "source_type": "success"
+}

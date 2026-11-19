@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_routing",
+      "count": 3,
+      "description": "The last turn's constraints were applied to the wrong domain's cache key. Flights were re-filtered when the turn asked for a hotel and attractions. Attractions were re-filtered for a hotel star reply while hotel dates were missing. search_nearest was re-run instead of a hotel neighborhood filter."
+    },
+    {
+      "failure_type": "multi_domain_partial_handling",
+      "count": 2,
+      "description": "A requested domain with complete mandatory args (restaurants, where the city is the destination) was not searched. Instead the agent output seek_information only, or fabricated dates and num_people with bare and nested search calls."
+    },
+    {
+      "failure_type": "incomplete_or_stale_refinement",
+      "count": 2,
+      "description": "Only one flight leg was filtered when two were cached. A stale raw 'hotels' key was loaded and saved over an existing 'filtered_hotels' key, with the invalid kwarg has_airport_shuttle_present."
+    },
+    {
+      "failure_type": "spurious_save_on_retrieval",
+      "count": 1,
+      "description": "A pure-retrieval turn ('Okay, that sounds good') loaded the cached result and then saved it under an invented key."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures come from the agent not asking which domain the last turn is about and what that domain's own cache state is. Edit 1 adds a domain-routing step at the very top of the CACHE GATE. A domain with no key is searched with all known args, or gets seek_information only if a mandatory arg is missing. Another domain's key is never used as a substitute. Edit 2 puts the multi-domain rule (search the complete domain, then one closing bare seek_information, no invented values) in the HARD OUTPUT RULES, because the deeper copies in Rules 6/7 and the Quick decision order are being ignored. Edit 3 adds a short refinement self-check: most refined load key, a fresh save key, every flight leg, exact hotel kwarg spellings, the neighborhood filter, and single-line pure retrieval. The edits are concise and avoid duplicating the long rules the earlier rejected edits added.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\n0. ROUTE BY DOMAIN FIRST. Name the domain of each constraint in the LAST user turn: stars / amenity / neighborhood / per-night budget / rooms -> hotels; cuisine / dietary / per-person budget -> restaurants; attraction type or name -> attractions; class / airline / flight time -> flights. Look up that domain's OWN key in CACHE. Never load or filter a different domain's key to apply it.\n   - Domain has NO key and its mandatory args are known anywhere in the conversation (hotel check-in/check-out may be the outbound/return flight dates; the city is the destination) -> first search NOW, carrying every constraint stated in any turn. Example: CACHE holds only flight keys (depart May 16, 2025, return May 18, 2025, trip to St. Louis) and the turn says 'A 4 star hotel in Downtown St. Louis with business facilities and a gym. And I'm interested in Touristy attractions' -> `hotels = search_hotels(city=\"St. Louis\", checkin_date=[\"May 16, 2025\"], checkout_date=[\"May 18, 2025\"], stars=[4, 4], has_business_center=True, gym_present=True, neighborhood=[\"Downtown St. Louis\"])` + save 'hotels', then `attractions = search_attractions(city=\"St. Louis\", type=[\"Touristy\"])` + save 'attractions'. Do NOT re-filter the flights.\n   - Domain has NO key and a mandatory arg is missing (hotel with no check-in/check-out date) -> the ONLY output is one seek_information. Example: CACHE holds only 'attractions' (Las Vegas, Scenic), the user wants a hotel for 5 and now says 'We're looking for a 3 star hotel' -> `seek_information(\"We need the check-in and check-out dates for the hotel.\")` and nothing else. Never apply a hotel reply to the attractions key."
+      },
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- Multi-domain turn where some domains are incomplete: ALWAYS run each complete domain first (assigned + saved), then ONE closing bare `seek_information(...)` (never `x = seek_information(...)`) naming only the missing items. The restaurant city is the trip destination from anywhere in the conversation. 'I don't know the details yet, just show me something' never makes dates optional and never justifies invented dates, num_people or example values. A seek_information-only output is wrong whenever a requested domain can be searched.\n  - 'planning a trip to Fresno and need a hotel and restaurant recommendation' -> `restaurants = search_restaurants(city=\"Fresno\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. No search_hotels.\n  - flight Atlanta->Tucson + hotel with a fitness center, last turn 'I dont know yet the details. can you show me something? also show me vegan restaurants there' -> `restaurants = search_restaurants(city=\"Tucson\", has_vegan_options=True)`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need the departure and return dates for the flight and the check-in and check-out dates for the hotel.\")`."
+      },
+      {
+        "op": "insert_after",
+        "target": "4. Domain has NO key and all its mandatory args are known -> first search (`x = search_*(...)` then `save_to_cache`).",
+        "content": "5. Refinement self-check before output:\n   - LOAD the most refined key of that domain (a `nearest_*` or highest-numbered `filtered_*` key beats the raw key; with 'hotels' and 'filtered_hotels' in CACHE load 'filtered_hotels', never 'hotels'). SAVE under a name that is NOT in CACHE (-> 'filtered_hotels1').\n   - Flights: with 2+ flight keys in CACHE (departure_flights / return_flights, ...), any class / airline / time / budget reply needs a load-filter-save triple for EACH leg (six lines for two legs). 'Flexible, but preferably in the afternoon' -> `departure_time=[\"12:00 PM\", \"5:00 PM\"]` on each leg. Filtering one leg is wrong.\n   - Hotel kwargs WITHOUT the has_ prefix: airport_shuttle_present (never has_airport_shuttle_present), gym_present, pool_present, breakfast_included, free_wifi_included, smoking_allowed, air_conditioning_present, heating_present, is_pet_friendly. 'airport shuttle and beach access' -> `airport_shuttle_present=True, has_beach_access=True`.\n   - A neighborhood reply ('We're looking to stay in Summerlin') with hotels cached -> `filter_hotels(prior_results=x, neighborhood=[\"Summerlin\"])` on the most refined hotels key (nearest_hotels if present), saved under a new key. Never re-run search_nearest for it, and never nest get_results_from_cache inside search_nearest / filter_* / save_to_cache.\n   - Pure retrieval (the user only agrees, e.g. 'Okay, that sounds good', and the CACHE entry already lists the accepted filter) is exactly ONE line: `x = get_results_from_cache(key=\"<most refined key>\")`. No save_to_cache, no search_nearest, no invented key such as 'nearest_hotels'."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "parameter_binding_and_encoding",
+      "count": 6,
+      "description": "Values were encoded with the wrong scalar type or casing, or bound to a similarly named parameter whose documented meaning did not match the request."
+    },
+    {
+      "failure_type": "endpoint_selection",
+      "count": 3,
+      "description": "Agents chose a similar but nonmatching endpoint, including one that did not preserve a named source or cover the requested checks."
+    },
+    {
+      "failure_type": "optional_parameter_scope",
+      "count": 3,
+      "description": "Agents omitted or misbound optional selectors that directly expressed a requested category or unrestricted result."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers decomposition and schema checking, so the edits clarify recurring gaps: how to bind categorical values by documented meaning, preserve an explicitly named source, include options that encode requested scope, and serialize values in this answer format.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Break the request into distinct operations and match each to an endpoint by its documented capability and parameter schema—not merely by provider or broad topic. Use the exact full tool identifier from the available-tools list. Do not substitute a tangential endpoint or call several similar alternatives for the same requested result.",
+        "content": "- For overlapping endpoints, compare the exact input type and every requested output facet, not just the broad topic. If the user explicitly names a source or issuing authority, treat it as a constraint and prefer its matching endpoint over a different provider's similar result."
+      },
+      {
+        "op": "replace",
+        "target": "- Preserve user-provided identifiers and meaningful formatting unless the schema requires a documented conversion. Follow documented formats, enums, casing, codes, and delimiters, and interpret directional constraints according to the field semantics.",
+        "content": "- Preserve user-provided identifiers and meaningful free text unless the schema requires a documented conversion. For categorical filters, codes, and selectors, map the request to the documented parameter meaning—not a similarly named field—and use the endpoint's canonical accepted token and casing from its enums or examples. Do not pass a descriptive word as a category value when it changes the field's meaning; preserve original wording when no conversion is documented. Interpret directional constraints according to field semantics."
+      },
+      {
+        "op": "replace",
+        "target": "- Include optional parameters when the request calls for them, including a documented value for an explicitly requested default behavior. Do not add unrelated optional settings or invent values. For missing required values, use only a documented default or a value unambiguously derivable from the query.",
+        "content": "- Include an optional parameter whenever it directly encodes a requested facet, even if the user phrases it in prose or the endpoint has a default. For an unfiltered, random, or full/standard result, use a documented “all” or unfiltered selector when needed to preserve that scope. Do not add options that are neither requested nor needed to express it, or invent values. For missing required values, use only a documented default or a value unambiguously derivable from the query."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Audit every call against its own schema and the decomposed request checklist. Ensure each call is relevant and has the exact full tool identifier and correctly formed parameter entries.",
+        "content": "- In this answer format, encode scalar `value` fields as JSON strings, including numeric and boolean-like parameter values, unless the task's response contract explicitly requires native JSON numbers or booleans."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 4,
+      "description": "A near-miss sibling was chosen instead of the endpoint the clause words point to. T1 used Tag Search with an invented tag instead of the no-input Get News. T5 used an hourly forecast tool for a 'daily forecast'. T2 put bare domains into an email-param tool. T8 chose between two equivalent disposable-domain tools."
+    },
+    {
+      "failure_type": "missing_or_merged_calls",
+      "count": 2,
+      "description": "T3 dropped the Wayfair detail call and kept only get-similar-items. T2 collapsed the 'disposable domain with suggested alternatives' clause into an email-level tool."
+    },
+    {
+      "failure_type": "param_value_or_placement",
+      "count": 5,
+      "description": "Qualifiers were not mapped to schema fields or lists. Examples: Aliexpress q in required, BestBuy page in optional, Amazon domain=US instead of com, Asos categories country omitted, 'most relevant' without sort_order, 'sorted by default' without sortby, category=science,technology omitted, 'three regular dice' mapped to rolls=3, Aliexpress loc used instead of region."
+    },
+    {
+      "failure_type": "structure_error",
+      "count": 2,
+      "description": "T7 omitted the comma between two objects, so nothing parsed and the score was zero. T4 wrote a trailing duplicate 'optional parameters': [] that erased the Ace value."
+    },
+    {
+      "failure_type": "tool_name_form",
+      "count": 1,
+      "description": "T3 wrote 'Ali Express DataHub: ...' instead of the real provider heading 'Aliexpress DataHub: ...'."
+    }
+  ],
+  "patch": {
+    "reasoning": "The remaining failures fall into four buckets. (1) Structure: a missing comma and a trailing duplicate key slipped past the existing rules, so I add literal bad strings and a countable comma/key rule. (2) Wrong sibling or invented input, which I address with short rules for outlet-latest vs tag search, daily vs hourly, and domain vs email params. (3) A dropped detail call when the extra facet has its own endpoint, plus a provider-name typo. (4) Qualifier-to-optional mapping and required/optional placement that were still missed, which I address with a per-call pass using concrete before/after examples. None of these restate existing text. Each adds a concrete pattern seen in 2 or more of the 8 trajectories.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n\n- NO-INVENTED-INPUT RULE FOR 'LATEST' CLAUSES. 'Latest news/headlines from <outlet>' with no topic -> that outlet's no-input latest endpoint (`India Today Unofficial: Get News`, required none). Do not use a tag/search endpoint whose required `tag`/`q` you would have to make up (BAD `India Today Unofficial: Tag Search` with tag=`latest`). Use Tag Search only when a topic is named ('technology news from India Today' -> `tag`=`Technology`). 'Daily forecast for the next few weeks' -> the tool whose name says `daily` (`AI Weather by Meteosource: daily`, with `lat`/`lon` in its OPTIONAL list), not an `hourly` or `summary` tool. 'Cities nearby' -> `RapidWeather: Cities in circle`.\n- DOMAIN vs EMAIL PARAMS. Never put a bare domain into an `email` parameter (BAD `Email Existence Validator: Check for Disposable emails` with email=`quickmail.io`). A bare domain asked to be disposable -> a tool whose param is `domain` (`MailCheck: Domain` or `fast Email verifier: disposable Domain and Suggest Domain`). 'Disposable domain with suggested alternatives' -> `fast Email verifier: disposable Domain and Suggest Domain`. A full address asked to be disposable -> `Email Existence Validator: Check for Disposable emails`."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Which calls to make",
+        "content": "\n\n- DETAIL CALL IS NEVER OPTIONAL. 'Detailed information about SKU X from Wayfair, including similar items' = TWO calls, `Wayfair: products/v2/detail (Deprecating)` and `Wayfair: products/get-similar-items`, each with `sku`. A heading ending in `(Deprecating)` is a valid name: copy it whole and do not skip it because the extra facet has its own endpoint. The same holds for any 'details of X, including Y' clause: one call for X's detail endpoint plus one for Y.\n- PROVIDER SPELLING. Copy the provider half exactly as in the heading: `Aliexpress DataHub: Aliexpress - Item Search 3`, not `Ali Express DataHub: ...` (`Ali Express Data Service` is a different provider)."
+      },
+      {
+        "op": "insert_after",
+        "target": "If the tool cannot express a qualifier, switch to a sibling that can.",
+        "content": "\n8. QUALIFIER-TO-PARAM PASS (per call, re-read that tool's schema). (a) PLACEMENT: when the schema says `Required parameters: none`, every input goes in optional (BAD Aliexpress `q` in required); when the schema lists `page` or `keyword` under Required, they go in required (BAD BestBuy `page` in optional). (b) MAP EACH QUALIFIER WORD: 'US customers' or 'US market' -> the tool's `region`/`country` = `US` (Asos `categories/list`: `country`=`US` and `lang`=`en-US`; Aliexpress: `region`=`US`, `currency`=`USD`, `page`=`1`, not `loc`); 'most relevant reviews' -> `sort_order`=`RELEVANCE`; 'sorted by default' -> `sortby`=`0`; 'science and technology sources' -> `category`=`science,technology`; 'US-based, in English' -> `country`=`us`, `language`=`en`. (c) Amazon US marketplace -> `domain`=`com`, never `US`. (d) 'Roll three regular dice' with no repeat count -> `Dice Roll Simulator: Regular dice` with `dice`=`3`, not `Regular dice rolls` with rolls=`3`. (e) An unused adjective or number in the clause means a missed optional."
+      },
+      {
+        "op": "insert_after",
+        "target": "If a line looks like any of these, rewrite the whole object instead of splicing.",
+        "content": "\n**Two more real failures.** (1) Missing comma between lines: `...\"optional parameters\": []}` then a newline then `{\"tool name\": ...`. Nothing parses and ALL calls are lost (score 0). (2) A stray trailing key after a one-param list: `\"optional parameters\": [{\"name\": \"value\", \"value\": \"A\"}], \"optional parameters\": []`. The empty list erased `value`=`A`. COUNT CHECK before `</answer>`: with N objects there are exactly N-1 lines ending `]},`, the last line ends `]}`, and `\"optional parameters\"` appears exactly N times. Any non-last line ending `]}` without a comma is broken: add the comma."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

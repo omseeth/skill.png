@@ -1,0 +1,26 @@
+{
+  "reasoning": "Failure-driven edits take priority and all nine are kept. Two of them overlap with success edits: (1) Both groups replace the same DATE GATE sentence 'search_flights never takes num_people or num_layovers.' They disagree on num_layovers. The failure version passes num_layovers=[0] only for 'non-stop' or 'direct', and that is the corrective one, so it wins. I folded the success edit's useful part into it, which is that neither search_flights nor filter_flights takes num_people and that an 'N of us' reply is not a flight filter. This produces one edit instead of two competing replacements. (2) The two other success edits cover points no failure edit addresses, so they are preserved. One forbids num_people on flight tools in the party-size-only branch, worded without any print() instruction. The other relaxes Rule 23's key-naming scheme to 'any unused name', because key names are not scored. That also removes a conflict with the slow block's final_* scheme and fits the meta-skill's advice to delete contradictions. No new gates or examples were added. The failure edits were already de-conflicted: they use placeholders, replace text in place, and resolve the Rule 9, Rule 10 and Rule 14 contradictions with the slow block and Rules 25/26. [optimizer-ranked: selected 2/11 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Add no other params: no airline, flight_class, budget, times or num_people.",
+      "content": "Add only params the user stated anywhere in the conversation: a stated flight_class or airline goes into BOTH legs (a class named in turn 1 -> flight_class=[\"<class>\"] on departure_flights and return_flights). Never invent an airline, budget, times or num_people.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Search only the domain whose mandatory args just became complete. Leave other domains' existing cache entries untouched (e.g. restaurants already cached, now the hotel dates arrive: call search_hotels only).",
+      "content": "- Search every requested domain that has no key and complete args in the same block (flights + hotel, hotel + attractions + search_nearest when asked). Leave domains that already have a key untouched (e.g. restaurants already cached, now the hotel dates arrive: call search_hotels only).",
+      "support_count": 2,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Prioritized contradiction-removing replacements per the meta-skill. [1] resolves Rule 9's 'add no other params' vs the stated-class-into-every-leg rule (missing class on both legs fails cache_em). [4] resolves Rule 14's 'search only the domain just completed' vs the pending-domain sweep (dropped domains/legs fail the task). [10] is pure shrinkage but low failure impact since key names aren't scored. [0] has high support but adds a long paragraph duplicating existing date/round-trip rules and reverses the num_layovers guidance, raising prompt entropy. Others are single-task or additive.",
+    "selected_indices": [
+      1,
+      4
+    ]
+  }
+}

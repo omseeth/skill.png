@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 5,
+      "description": "A sibling or near-match tool was picked instead of the one literally matching the clause. Examples: admin-divisions lookup for 'download location data', 'Number of schools in city' for a Sub-District school list, RapidWeather instead of the 'Current conditions' tool, Search or by-URL tools when Spotify IDs were given, FreeDomain used for 'role accounts'."
+    },
+    {
+      "failure_type": "missing_or_extra_calls",
+      "count": 3,
+      "description": "Final clauses were dropped (warranty and product detail in T1, 'basic validation' in T4). In T2, every email was run through three validators, giving 17 calls instead of about 7."
+    },
+    {
+      "failure_type": "malformed_answer_json",
+      "count": 2,
+      "description": "Stray `}], {` between calls (T8), and an extra `\"final answer\"` key after an early-closed list (T1). Nothing was parsed, so the score was zero."
+    },
+    {
+      "failure_type": "parameter_errors",
+      "count": 4,
+      "description": "Required `page` was put in optional (BestBuy). Empty-string optionals were emitted (Asos). A second `\"optional parameters\": []` wiped filled lists (T7). An invented `star=1` replaced the sort for 'most helpful'. Wrong search term ('classical' instead of the named composer). The state qualifier was dropped."
+    }
+  ],
+  "patch": {
+    "reasoning": "Earlier rejected steps bundled many long, example-heavy edits and lowered the score. This patch uses four short, general rules, one per recurring failure: answer-structure integrity, parameter placement and empties, literal verb/entity tool matching, and per-clause call enumeration. Each rule restates a requirement the model violated in this batch, without task-specific values.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not close the list early or leave stray brackets.",
+        "content": "\n- The `<answer>` holds ONLY the JSON list: no extra keys (e.g. `\"final answer\"`), no repeated copy of the list, no trailing text. Calls are separated only by `}, {`. A `]` appears once, at the very end, so never write `}], {` or `]}` between calls. Cover every clause before closing the list; for long queries keep each call compact."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+        "content": "\n- Copy every name listed under the schema's 'Required parameters' into `required parameters`, including `page` (e.g. a keyword + page tool has both as required). Never leave an optional with value `\"\"`; drop it. Merge all optional values into ONE `optional parameters` list. Never write a second `\"optional parameters\": []` after a filled one, because it erases the filled list.\n- Map each qualifier to the field that expresses it. 'most helpful' -> the sort field (`sort_order`=`HELPFUL`), not a star filter. 'page 1' -> page `1`. 'in Massachusetts' on a hotel or listing tool -> its state/region field (`state_code`=`MA`) when it has one. A search `term`/`q`/`keyword` is the named entity (person, title, product) from the query, not its genre or descriptor."
+      },
+      {
+        "op": "insert_after",
+        "target": "Radio stations in a country -> the radio-stations tool, not a Spotify tool.",
+        "content": "\n- Match the verb AND the entity level literally, then check that the schema's required inputs fit the value given. 'Download location data' -> the `Download locations` tool, not an admin-divisions lookup. 'List of schools in a Sub-District (Kecamatan)' -> the Sub-District list tool, not 'Number of schools in a city'. 'Current weather conditions' at coordinates -> the `Current conditions` tool, and 'air pollution' -> the pollution tool. 'Albums/artist data for given IDs' -> the `Get albums` / `Get artists` by-ids tool, not Search or an 'artist's albums by URL' tool. 'Role accounts of gmail.com' -> `Role Account` (FreeDomain only for 'available for registration'). 'Basic validation' -> a plain validate tool. If two clauses with different verbs landed on the same tool, one is mis-mapped, so re-pick."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "\n- A generic 'verify / analyze / validate these N emails' means exactly N calls (one validator per address). Never run each address through several validators. Add extra calls only for checks the query names separately (MX records, disposable, role account, domain availability), each on the input it names. Before answering, write one line per clause (first to last) with its chosen tool, and make sure the call count matches. Narrative queries often end with clauses that are easy to drop (e.g. 'warranty information for X and product details for Y'), and each of those needs its own call."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

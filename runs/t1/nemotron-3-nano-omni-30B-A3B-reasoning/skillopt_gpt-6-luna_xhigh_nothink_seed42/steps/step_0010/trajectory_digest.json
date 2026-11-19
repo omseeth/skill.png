@@ -1,0 +1,69 @@
+{
+  "step": 10,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 31,
+  "failure_patterns": [
+    {
+      "pattern": "result_lifecycle: Search or filter results were not consistently assigned and saved; one trajectory also tried importing tools instead of calling the provided functions directly.",
+      "count": 31,
+      "task_ids": [
+        "restaurant:train:1:60:0",
+        "flighthotel:train:1:7:1",
+        "flighthotelrestaurant:train:3:42:1",
+        "flighthotel:train:17:15:3",
+        "flighthotelrestaurant:train:23:52:0",
+        "restaurant:train:8:4:3",
+        "restaurant:train:19:56:0",
+        "attraction:train:11:29:0",
+        "hotel:train:2:25:3",
+        "flight:train:10:60:3",
+        "hotel:train:15:57:1",
+        "flight:train:23:12:2",
+        "restaurant:train:23:15:1",
+        "attraction:train:19:56:0",
+        "hotelrestaurant:train:15:3:1",
+        "attraction:train:21:15:2",
+        "restaurant:train:14:15:3",
+        "flighthotelattraction:train:7:34:1",
+        "hotelrestaurant:train:14:3:0",
+        "restaurant:train:8:21:3",
+        "hotelattraction:train:6:6:4",
+        "hotel:train:9:15:4",
+        "hotel:train:22:44:2",
+        "restaurant:train:4:45:2",
+        "hotel:train:14:35:2",
+        "flighthotelrestaurant:train:24:43:1",
+        "hotelattraction:train:8:42:3",
+        "flighthotelrestaurant:train:21:58:1",
+        "flighthotel:train:25:1:2",
+        "hotelrestaurant:train:18:53:4",
+        "restaurant:train:8:56:0"
+      ]
+    }
+  ],
+  "score_before": 0.235,
+  "score_after": 0.235,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "Check each required tool field against explicit values in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Partition requested actions by domain: execute and save every action whose own mandatory inputs are available, even when another requested action is blocked by missing inputs. Make one `seek_information` call asking only for the missing mandatory information for blocked actions; optional preferences are not mandatory inputs. Do not invent values or use defaults. Resolve references such as “there” or “nearby” to a previously stated destination only when that destination is unambiguous. When a hotel stay is clearly at the sole destination of an explicitly dated round trip and no separate hotel location or dates were given, use that destination as the hotel city and the outbound and return dates as check-in and check-out. If an explicit check-in date and stay length in nights are given but checkout is missing, derive checkout with `adjust_date`. If the destination or date relationship is ambiguous, ask rather than infer.",
+      "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs."
+    },
+    {
+      "op": "insert_after",
+      "content": "- Resolve brief or affirmative replies against the immediately preceding assistant question or offer. Treat them as accepting the offered action or preference, add that work to the active plan, and retain earlier active requests; do not treat the reply as a no-op merely because related results are cached. Apply each new constraint to its intended item and domain, and filter only with a compatible cached result from that same domain.",
+      "target": "## Incremental planning and cache use"
+    },
+    {
+      "op": "replace",
+      "content": "- Call the provided tools directly; do not import tool modules, alter module paths, or define or redefine tool functions or models. Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key before proceeding. Save refined results under new keys and do not substitute hand-built dictionaries or redefined models for tool result objects. Before finishing, verify that every result-producing call has a corresponding save.",
+      "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects."
+    },
+    {
+      "op": "insert_after",
+      "content": "- Map comparative time language to a range for the correct field: “by” or “no later than X” means start-of-day through X; “after” or “no earlier than X” means X through end-of-day; “at X” means X to X. Apply departure constraints to `departure_time` and arrival constraints to `arrival_time`. Use the time syntax accepted by the specific tool; do not assume seconds or end-of-day sentinels are valid.",
+      "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter."
+    }
+  ]
+}

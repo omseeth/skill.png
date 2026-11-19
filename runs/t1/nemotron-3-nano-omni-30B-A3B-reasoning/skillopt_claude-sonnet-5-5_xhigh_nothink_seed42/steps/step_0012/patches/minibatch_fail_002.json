@@ -1,0 +1,54 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "output_form_violation",
+      "count": 3,
+      "description": "Bare search calls with no assignment or save, comma-chained or nested search inside save_to_cache, an 'from cache import ...' line that raised ModuleNotFoundError, and optional params copied from tool usage examples (budget=1000, has_vegetarian_options=True)."
+    },
+    {
+      "failure_type": "missing_adjust_date_for_nights",
+      "count": 2,
+      "description": "The user stated a stay in nights ('3 nights', '2 nights') and the gold code computes checkout with adjust_date. The agent either skipped the hotel or hardcoded the checkout date."
+    },
+    {
+      "failure_type": "wrong_seek_information",
+      "count": 1,
+      "description": "Asked for the departure date after the user had just given it, with origin and destination already known from earlier turns."
+    },
+    {
+      "failure_type": "refinement_misrouted_or_overspecified",
+      "count": 3,
+      "description": "A bare budget reply ('Around 105') was only re-saved from the cache instead of filtered. A repeated flight_class was passed although the CACHE summary already lists it. A named attraction ('Pittock Mansion') triggered a hotel re-filter and a type search instead of a name search plus search_nearest."
+    },
+    {
+      "failure_type": "wrong_rating_format",
+      "count": 1,
+      "description": "'3.5 star rating' was mapped to rating=[3.5, 3.5], but the gold is [3.5, 5]. The filter result was also saved over its own key, with get_results_from_cache nested inside filter_restaurants."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the eight failures are mechanical output-form errors that Rule 21 already forbids but the model ignores because it sits deep in the document. The top-of-document placeholder is replaced with a short output-format block. It is much smaller than the rejected checklist and carries a concrete restaurant example, and it also covers the copied-from-examples params. A new rule covers the date-answer and nights-to-adjust_date patterns, which are not handled anywhere and caused two failures plus a wrongful seek_information. The Rule 22 rating example is replaced because it taught the wrong [X, X] mapping for ratings. A final rule covers refinement-turn errors: unique keys, bare numeric replies, not repeating flight class already in the CACHE summary, and named attraction plus cached hotels leading to search_nearest.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Output format (check before every answer)\n- Output plain tool calls only, one statement per line, inside <CODE>. Never write `import` or `from ... import ...` (not even `from cache import ...`; it raises ModuleNotFoundError). No comments, no print, and no commas joining statements.\n- Every search_*, filter_* and search_nearest call is `x = tool(...)` followed on its own line by `save_to_cache(key=\"...\", value=x)`. Never call a search bare. Never nest a search inside save_to_cache. Never write `save_to_cache(value=get_results_from_cache(...))`.\n- Pass only arguments the user actually stated. Values in TOOL CONFIG usage examples (budget=1000, has_vegetarian_options=True, dates, cities) are never defaults. Example: 'birthday party, Croatian, around 20 people, we're looking at Lexington' -> `restaurants = search_restaurants(city=\"Lexington\", cuisine=[\"Croatian\"])` then `save_to_cache(key=\"restaurants\", value=restaurants)`. Group size and occasion are not parameters."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 26: A date given in the last turn, and stays given in nights\n- A date in the user's reply to the assistant's date question IS the departure_date, even when the conversation also mentions an occasion ('anniversary', 'family trip'). If origin and destination appeared in any earlier turn, search immediately: `flights = search_flights(start_airport_city=\"<origin>\", end_airport_city=\"<destination>\", departure_date=[\"May 16, 2025\"])` then `save_to_cache(key=\"flights\", value=flights)`. Do NOT call seek_information when departure_date and an origin are known.\n- A stated class goes into the flight search ('prefer business' -> flight_class=[\"business\"]).\n- A stay given in nights ('3 nights', 'for 2 nights') plus a known check-in date (the flight date or a stated date) is a reference date plus an offset, so compute checkout instead of guessing or asking. Write: `checkout_date = adjust_date(date=\"May 21, 2025\", delta_days=3)`, then `hotels = search_hotels(city=\"<destination>\", checkin_date=[\"May 21, 2025\"], checkout_date=[checkout_date])`, then `save_to_cache(key=\"hotels\", value=hotels)`. Put the flight search and save first and the hotel after, in the same block. This applies only when nights are stated; with no stated nights, still ask for the check-out date (Rule 6).\n- A party size the user states explicitly ('there are 5 of us') with a hotel request -> num_people=5 on search_hotels only. Flight and restaurant tools have no party-size parameter."
+      },
+      {
+        "op": "replace",
+        "target": "'a 3.5 rating' -> rating=[3.5, 3.5]; 'at least 4' -> rating=[4, 5].",
+        "content": "'a 3.5 star rating' or 'a 3.5 rating' (restaurant or hotel `rating`) -> rating=[3.5, 5]; 'at least 4' -> rating=[4, 5]. Only hotel `stars` ('3 star hotel') uses [X, X]. This overrides any [X, X] rating phrasing elsewhere."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 27: Refinement-turn checklist\n- Never save a filter result under the key you loaded. Use a new key: filtered_<domain>, or filtered_<domain>1 if that key is already in the CACHE. Load on its own line (`x = get_results_from_cache(key=\"...\")`) and never nest it inside filter_*.\n- A bare reply to the assistant's last question ('Around 105.', 'under 1100', 'about 85') is a budget on the domain that question was about (hotel per night, restaurant per person, flight per ticket). Filter that domain's most refined key with `budget=<n>` only, then save under a new key. Retrieving keys and re-saving them is never a valid answer.\n- Flight budget on cached legs: `filter_flights(prior_results=x, budget=1100)` for each leg. Flight classes or times shown in the CACHE summary ('flight classes: [business, first]') are already applied, so do not pass flight_class again.\n- A user who says they want to visit or be near a specific named attraction while hotels are cached (e.g. 'Yes, we want to visit Pittock Mansion') gets exactly this, replacing the 'do not touch the hotel cache' bullet in Rule 10: `hotels = get_results_from_cache(key=\"<latest hotels key, e.g. filtered_hotels>\")`, `attractions1 = search_attractions(city=\"<city>\", attraction_name=[\"<exact name>\"])`, `save_to_cache(key=\"attractions1\", value=attractions1)`, `nearest_hotels = search_nearest(hotels=hotels, attractions=attractions1, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`. Use a new attractions key because 'attractions' already exists. Do not re-filter hotels and do not re-search the attraction type.\n- Rating phrasing for restaurant or hotel `rating`: 'X star rating' or 'at least X' -> [X, 5], not [X, X]. This overrides Rule 10."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

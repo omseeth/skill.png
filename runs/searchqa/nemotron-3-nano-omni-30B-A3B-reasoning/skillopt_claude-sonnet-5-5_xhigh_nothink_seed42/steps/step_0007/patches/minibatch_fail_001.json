@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Answer filled the wrong slot. It was a work list ('The Last Supper, Mona Lisa') instead of the person (Leonardo da Vinci), both named people ('William Henry Harrison and John Tyler') instead of the one not given, or the possessed noun ('World Golf Hall of Fame') instead of the owner (LPGA)."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "Multi-part definition clue ('Aussie slang for a pub, also a shack; poor people live in a \"town\" of them'). The agent echoed a clue word ('poor') instead of finding one word that fits every part ('shanty')."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "Answer form was wrong. It was a singular where the passages and the existing crops rule use the plural ('strawberry' vs 'strawberries'). It was a hedged phrase with a body part ('sheep or goat intestines') instead of a single bare noun ('Sheep')."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "The agent chose the current holder of a related office (Roger Wicker) because a generic phrase ('first and foremost') matched a snippet. It ignored the role descriptor ('GOP leader') that points to Trent Lott."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "Word-form mismatch: gold was the gerund 'Meandering' where the agent gave 'meander'. This is too idiosyncratic to patch."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures are slot or answer-shape errors. The agent answered a work list instead of a creator, both names of a pair, the possessed noun instead of its owner, a clue word, or a hedged 'X or Y' phrase. Four short, targeted edits address these: (1) multi-definition and compound-word clues, (2) pronoun and pair clues, (3) bare plural and single-entity answers, (4) owner-versus-possession and role-holder checks. The edits are focused and avoid the broad bundles that were rejected earlier.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- Multi-part definition clues ('Aussie slang for a pub, it's also a shack; poor people may live in a \"town\" of them') want ONE word that satisfies EVERY part ('shanty': a shack, Aussie slang for a pub, 'shanty town'). Test each candidate against each part. A quoted word such as 'town' is often the second half of a compound, so answer the first half. Never answer with a descriptive word lifted from the clue ('poor'). If the passages are noisy or the archive snippet is cut off before the answer, use your own vocabulary knowledge."
+      },
+      {
+        "op": "insert_after",
+        "target": "asks for the title or category noun itself (Dalai Lama), not the individual named in the clue.",
+        "content": "\n- 'He / his / she' in a clue that names a work, slogan, quote or event ('between 2 more famous pictures, he worked on his \"Virgin and Child with St. Anne\"') asks for the PERSON, never the works or titles the passages list ('Leonardo da Vinci', not 'The Last Supper, Mona Lisa'). A slogan or pair clue that names one of two people ('Tippecanoe and Tyler too', 'Lemmon & this actor') wants the OTHER person ('William Henry Harrison'). Do not answer with both names or with the one already given. Always give exactly one entity, never a list."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use the singular form for a generic single object ('Well', not 'wells'), but keep the plural for crops, commodities and mass categories ('Bananas') or when the clue says 'these'/'ones'.",
+        "content": "\n- 'This fruit / vegetable / grain' that a festival, harvest or industry is built around takes the plural form the passages use ('Strawberries', not 'strawberry'). 'These animals / plants / people' wants ONE bare noun for the best-supported member that the passages put first or most often ('Sheep'). Never write 'X or Y', and never add the body part or product from the passages ('sheep or goat intestines' is wrong)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Honor qualifiers when the context offers several names for the same thing: 'Greek god of erotic love' -> 'Eros' (not Roman 'Cupid').",
+        "content": "\n- 'This organization's / league's / city's X' (Hall of Fame, team, building): answer the OWNER ('LPGA'), not the X ('World Golf Hall of Fame'). If your answer repeats the clue's own noun phrase ('Hall of Fame'), it fills the wrong slot.\n- Role clues ('GOP leader', 'chief', 'founder', 'champion') need someone who actually held that role. Do not pick a name because a generic phrase from the clue ('first and foremost') sits next to it in one snippet, or because he currently holds a related office (a sitting senator). Clues are often years old. Choose the person the passages tie to the role (e.g. a headline like 'Sen. Trent Lott gives up Senate GOP leader's post') and to every other detail, such as the state."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

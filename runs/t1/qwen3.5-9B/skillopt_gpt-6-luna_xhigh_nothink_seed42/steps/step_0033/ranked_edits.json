@@ -1,0 +1,28 @@
+{
+  "reasoning": "Consolidated the recurring cache-update guidance into one compact follow-up procedure, combining the ledger and delta-execution proposals while avoiding duplication of rules already present. Combined the proximity proposals in one replacement to remove the unconditional rerun instruction and make the anchor and two-input requirements explicit. Kept the distinct flight-time clarification. Dropped proposals that restated existing domain-input and schema rules, and made no edits within the protected section. [optimizer-ranked: selected 2/3 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Treat a short answer to an assistant's clarification question as an explicit user-provided value or preference; an affirmative answer accepting an offered domain or option is a request to proceed. On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns, then decide separately for every requested or clearly pending domain. If a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only the new same-domain filter and save the update under a fresh relevant key. If no suitable base exists and required inputs are available, search and save. If required inputs are missing, ask for them while still completing other requested domains whose required inputs are available. A result summary satisfies a request only when it reflects all current constraints. For updates affecting multiple results, such as outbound and return legs, retrieve, filter, and process each independently. Do not repeat completed work, reapply constraints, or touch unrelated results. Never return no-planning merely because a cache entry exists. Compare the cache summary with the current conversation and follow the cache-update, search, or missing-input rules above for any unmet request or pending deliverable. Return no-planning only when every requested or pending deliverable reflects all current constraints and the latest turn adds no request, accepted offer, or new constraint.",
+      "content": "Treat a short clarification answer as an explicit value or preference, and an affirmative acceptance as a request to proceed. At each turn, make a compact ledger of every explicitly requested or accepted deliverable across the full conversation. Mark an item satisfied only if the latest suitable cache summary reflects its domain, location, and all current constraints; complete every unmet item, not just the topic of the latest message, and leave satisfied or unrelated items untouched. For an unmet item with a suitable latest same-domain, location, and itinerary-leg base, retrieve it in a standalone assignment using its exact cache key, apply only the new criteria in one matching filter call, assign that result, and save it under a fresh key. Otherwise, search once with all known criteria if required inputs are available, assigning and saving the result; seek missing required inputs while completing other ready items. Process multiple affected results independently. Never nest cache retrieval in another call, leave a result-producing call bare, repeat completed work, or treat cache presence alone as completion. Return no-planning only when all ledger items are satisfied and the latest turn adds no request, acceptance, or constraint.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "If a later constraint changes an underlying domain result used by a proximity result, refresh and save `search_nearest` using the updated result and the latest suitable cached result for the other domain.",
+      "content": "Do not rerun `search_nearest` merely because a previously used input result changes. Rerun only when the current turn explicitly requests an updated proximity relationship or the latest suitable cached nearest result fails a still-pending proximity request. A named area preference remains a same-domain location filter and does not reopen a completed proximity request. When a nearest call is needed, require an explicit anchor, retrieve and assign exactly two relevant domain results (target and anchor) once each, and set `groupBy` to the anchor's domain.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 1 addresses the recurring, broad cache-update failure with a concrete ledger and retrieval/filter/save procedure. Edit 2 resolves conflicting proximity guidance and prevents unnecessary nearest calls while specifying the required anchor and two inputs. Edit 0 is a narrower expansion of existing flight-time guidance.",
+    "selected_indices": [
+      1,
+      2
+    ]
+  }
+}

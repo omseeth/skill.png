@@ -1,0 +1,20 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "First hotel search once dates arrive: city, dates and earlier-stated optional details (budget, num_people, num_rooms) go into a single assigned `search_hotels` call saved as 'hotels'. Other cached domains such as restaurants are left untouched. Rules 14 and 24 already cover this.",
+    "Missing mandatory args produce one short seek_information call naming only the missing item (hotel dates, flight departure date, restaurant city). This held even when the user gave context such as an anniversary, a birthday, or a preferred airport. Rules 6 and 7 already cover this.",
+    "A refinement reply on a cached domain (stars, neighborhood) is three straight-line statements: load, filter with only the new constraint, save under a new key. Rules 2, 13 and 17 already cover this.",
+    "Replies that answer an optional-detail question ('don't know', 'STL is our preferred choice', 'At least 3 stars') do not change which mandatory args are missing. They are applied as filters or ignored, and the turn still asks for the missing mandatory item. Only partly covered by existing rules."
+  ],
+  "patch": {
+    "reasoning": "Seven of the eight successes are already governed by Rules 2, 6, 7, 13, 14, 17 and 24. Trajectory 3 passed on cache_em even though it re-searched instead of retrieving from the cache, so it is not a pattern to reinforce. The one under-specified pattern is trajectories 5 and 8: the user replies to an assistant question about an optional detail (cuisine, specific arrival airport) with a vague or partial answer while a mandatory arg (city, departure date) is still missing. In both cases the correct output was a single seek_information for the mandatory item. A short reinforcing bullet under Rule 7 covers this without adding a new section. Earlier large rewrites were rejected, so only this minimal edit is proposed.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Keep it to one short sentence, e.g. seek_information(\"We need to ask for the check-in and check-out dates\") or seek_information(\"We need the departure date for the flight\").",
+        "content": "- A reply to the assistant's question about an OPTIONAL detail does not fill a missing mandatory arg. Examples: 'don't know' to a cuisine question, 'STL is our preferred choice' to an arrival-airport question, 'At least 3 stars' while dates are still missing. If a mandatory arg (restaurant city, flight departure date, hotel check-in/check-out dates) is still missing after the reply, output only the single seek_information naming that item. Do not search and do not ask again about the optional detail. If the mandatory args are already complete, the optional reply is just a new constraint to apply (Rules 2 and 25)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

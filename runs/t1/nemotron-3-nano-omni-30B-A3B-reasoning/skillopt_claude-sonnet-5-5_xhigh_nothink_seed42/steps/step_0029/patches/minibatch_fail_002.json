@@ -1,0 +1,56 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "placeholder_or_fabricated_mandatory_args",
+      "count": 2,
+      "description": "Missing flight origin or dates were filled with '<origin>', '<date>' and '<checkin_date>' placeholders. The gold output was seek_information, plus a restaurant search in one case."
+    },
+    {
+      "failure_type": "output_form_violation",
+      "count": 1,
+      "description": "First-turn restaurant search was emitted as a bare search_restaurants(...) with no assignment and no save_to_cache."
+    },
+    {
+      "failure_type": "parameter_mapping_error",
+      "count": 2,
+      "description": "A state code was passed as city=\"CA\", and 'a 3.0 rating' was mapped to [3.0, 5.0] instead of [3.0, 3.0]."
+    },
+    {
+      "failure_type": "re_searched_cached_domain",
+      "count": 1,
+      "description": "Attractions were cached for the state of CA, then San Jose was named. The agent re-ran search_attractions instead of filter_attractions(city=...)."
+    },
+    {
+      "failure_type": "wrong_key_and_invented_kwarg",
+      "count": 1,
+      "description": "A party-size-only reply ('3 of us') filtered the raw 'hotels' key with an invented neighborhood. The gold output was num_people=3 on the most refined key, nearest_hotels."
+    },
+    {
+      "failure_type": "dropped_requested_domain",
+      "count": 1,
+      "description": "A turn described a hotel (stars, neighborhood, amenities) plus attractions with flight keys cached. The agent searched only attractions and dropped the hotel."
+    }
+  ],
+  "patch": {
+    "reasoning": "The seven failures fall into three groups. (1) Salience and hygiene lapses: placeholders, a bare search call, city=state-code and the rating shape. These rules exist but sit deep in the document, so the patch adds a short pre-send line check at the very top and pairs each prohibition with its positive action: no search, one seek_information, and restaurants searched first when searchable. (2) Refinement routing on cached domains: new city on cached attractions, and a party-size reply on a hotels key. The patch adds one compact narrowing rule that names the most-refined-key rule for nearest_* keys. (3) A dropped hotel block when flight keys are cached. The patch promotes a domain-counting step into the decision ladder with a generalised hotel-from-flight-dates trigger. All edits are inserted at distinct headings and none touches the protected slow-update block.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- PRE-SEND LINE CHECK (scan every line before answering): (a) every `search_*`, `filter_*`, `search_nearest` line starts with `name = ` and the next line is `save_to_cache(key=..., value=name)`. A bare `search_restaurants(...)` is always wrong. Correct form: `restaurants = search_restaurants(city=\"Memphis\", cuisine=[\"Turkish\"], has_vegetarian_options=True)` then `save_to_cache(key=\"restaurants\", value=restaurants)`. (b) `city=` never holds a state name or two-letter code. 'a trip to CA' -> `state=\"CA\"` and no city. (c) Plain 'with a X rating' -> `rating=[X, X]`. Only 'at least X' -> `[X, 5]`.\n- NO PLACEHOLDERS: a value in angle brackets ('<date>', '<origin>', '<checkin_date>') or any made-up string never appears in code. A requested domain whose mandatory arg is not in the conversation gets NO search_* call. It is named in ONE closing seek_information. Flight origin never named by the user (e.g. hotel cached for Tucson, then 'help me with flights too') -> the whole flight part is `seek_information(\"We need to ask for the departure city\")`. The cached hotel dates already supply the flight dates, so ask only for what is missing. Flight + hotel + restaurant requested with no dates given and the restaurant city known -> `restaurants = search_restaurants(city=<destination city>, <stated rating / dietary flag / cuisine>)` + save, then ONE `seek_information(\"We need to ask for the departure dates and checkin and checkout dates\")`. No search_flights and no search_hotels in that block.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\n-3. NARROWING A CACHED DOMAIN (key present -> load, filter, save; never re-search): (a) CACHE 'attractions' built for a state and the user now names a city inside it ('I am thinking of going to San Jose') -> `a = get_results_from_cache(key=\"attractions\")`, `a2 = filter_attractions(prior_results=a, city=\"San Jose\")`, `save_to_cache(key=\"filtered_attractions\", value=a2)`. Do not re-pass the type and do not call search_attractions. (b) A hotel was requested, a hotels key exists, and the reply is only a party size ('There are 3 of us') -> `filter_hotels(prior_results=h, num_people=3)` on the MOST REFINED hotels key. A `nearest_hotels` key beats 'hotels' when it exists, and filtered_*/final_* beat the raw key. Save under a new key. Never invent a neighborhood from an attraction name.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Quick decision order for every turn",
+        "content": "\n00. COUNT THE DOMAINS NAMED IN THE LAST MESSAGE before writing code, and write one block per domain that has no CACHE key. A message that describes a hotel (stars, neighborhood, amenities) AND an attraction type is hotels + attractions = two blocks. When only flight keys are cached (any names: flights, departure_flights, return_flights) and no 'hotels' key exists, the hotel block is `hotels = search_hotels(city=<flight destination>, checkin_date=[<outbound date as written>], checkout_date=[<return date as written>], stars=[N, N], <each amenity word as its has_ / plain flag>, neighborhood=[\"<as written>\"])` + `save_to_cache(key=\"hotels\", value=hotels)`, followed by the attractions search + save. Never output only the attractions block and never re-filter the flight keys. 'The hotel doesn't have to be close by' means no search_nearest.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,69 @@
+{
+  "reasoning": "Merged the two affirmative-acceptance edits into one. Combined cache re-auditing, preference for the most-refined compatible cached result, and exact cache-key use in a single edit at the shared cache-planning paragraph. Combined the one-sided rating and time-range guidance because both extend the same endpoint-encoding rule. Preserved the remaining distinct insights and avoided duplicating rules already present in the skill.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. A direct answer can introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.",
+      "content": "\n- When the assistant proposes a concrete domain, target, activity, or relation and the user affirmatively accepts, treat the proposal as an actionable request. Carry its details into the appropriate search or refinement using the relevant trip context; do not treat acceptance as a no-op or assume cached results cover it. Apply any additional constraint supplied in the reply as well.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+      "content": "\n- When a reply supplies information requested earlier, re-audit all still-pending requests across the full conversation and assess each domain independently; do not repeat completed work or let one domain's cache satisfy another. If the cache listing contains both base and refined results, prefer the most-refined compatible result that covers the still-valid earlier criteria, and apply only the new criteria. Copy cache keys exactly as shown in the listing.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.",
+      "content": "\n- Treat a specifically named attraction the user wants to visit or consider as an attraction-domain target, even without a proximity request. If no listed cache summary covers that exact attraction, search for it with `search_attractions` and the supported `attraction_name` field; a generic city or attraction-type result does not establish coverage.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+      "content": "\n- For a one-sided threshold on a range field, preserve the stated boundary and use the opposite endpoint only when the schema documents it. For example, a restaurant rating of at least 3 on a documented 0–5 scale is `rating=[3, 5]`. For one-sided time limits, use the full schema-required range: “before T” runs from the earliest valid time through T, and “after T” from T through the latest valid time. Use documented endpoints and time formats; do not pass a scalar or invent bounds.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Validate tool arguments and preserve user intent",
+      "content": "\n- Tools and result models are provided by the runtime. Call tools directly; do not import packages to recreate schemas or import, define, redefine, or wrap tools or result models.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "content": "- For every search, filter, sort, and nearest-results call, assign the exact returned object to a local variable and immediately save that same object with `save_to_cache` under a unique, descriptive key, before using it downstream or finishing the plan. Never leave a result-producing call bare or omit its save. Save each refinement under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+      "content": "\n- Interpret relational wording semantically: requests for options “near” a place or lodging “with access to” another supported domain explicitly request proximity. Search for the candidates and reference target using their stated criteria, then call `search_nearest` with `groupBy` set to the domain the user wants recommended.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Parse locations hierarchically when the user gives both a city and an area within it: use the parent city in `city` and pass the named district or area verbatim in `neighborhood` when supported. Preserve the complete location label rather than shortening it or passing the combined city-and-area phrase as the city; for example, a request for Downtown Tucson uses `city=\"Tucson\"` and `neighborhood=[\"Downtown Tucson\"]`.",
+      "content": "\n- Match geographic granularity to the schema: a state name or abbreviation belongs in `state`, not `city`. Preserve user-provided categorical values verbatim in supported fields such as attraction `type` and restaurant `cuisine`; do not replace them with a guessed synonym or normalized category.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

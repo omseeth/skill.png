@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "conversation_delta_and_domain_coverage",
+      "count": 7,
+      "description": "Agents omitted the latest request or accepted preference, or continued work on an unrelated earlier domain."
+    },
+    {
+      "failure_type": "cache_and_result_lifecycle",
+      "count": 7,
+      "description": "Agents used nonexistent or invalid cache results, failed to save tool outputs, or treated retrieval as completing the request."
+    },
+    {
+      "failure_type": "parameter_mapping",
+      "count": 2,
+      "description": "Agents did not consistently map the user's intended location granularity, rating meaning, or proximity target to the matching tool arguments."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the individual cache and result-handling rules, but the trajectories show agents failing to apply them to the complete latest-turn delta. A final coverage audit makes the call plan explicitly accountable to each new request and helps catch stale-domain calls, omitted preferences, invalid cache refinements, and mismatched tool arguments before execution.",
+    "edits": [
+      {
+        "insert_after": "## Incremental planning and cache use",
+        "content": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

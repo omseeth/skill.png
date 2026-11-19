@@ -1,0 +1,28 @@
+{
+  "reasoning": "Replaced the opening cache boundary with a precedence-based turn classifier, as requested, rather than adding another generic cache reminder. Kept distinct corrections for return-only flights, alternative dates, proximity grouping, amenity fields, filter deltas, confirmed constraints, hotel date inference, recommendation ranking, and flight date/time mapping. Omitted the mixed-domain example because the existing required-input section already instructs agents to proceed with complete independent requests while asking only for missing mandatory details. No edits target the protected section. [optimizer-ranked: selected 2/10 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "content": "**Per-turn scope classifier (apply before tool selection):** Inspect the full conversation, preceding assistant question or offer, and cache summary; resolve terse replies and identify only the scopes changed by the latest turn. If the turn accepts an offer to run proximity, retrieve compatible cached hotel, attraction, or restaurant datasets and run `search_nearest`, searching only for a genuinely missing dataset; keep earlier explicit proximity requests active unless withdrawn, and for later filter updates use the relevant cached or composite result rather than rebuilding unchanged searches. Otherwise, for each changed scope, retrieve the exact key of the most constrained compatible cached result and apply and save newly changed supported constraints plus any still-active constraints not embodied in that result. Do not repeat its base search or regenerate unaffected domains or legs. Base-search only a genuinely new or uncovered scope, including all active supported criteria. Validate mandatory inputs separately for each changed domain or leg; execute complete independent requests and seek only missing required details for incomplete ones.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result.",
+      "content": "Apply the matching `filter_*` tool using newly supplied or changed filterable fields and any still-active constraints not embodied in the selected result; do not substitute a previously applied filter for the latest constraint. A cached proximity result may also be used as filter input when its candidate set remains valid, including for later party-size or amenity changes.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 0 best addresses recurring follow-up failures with a precedence-based classifier, changed-scope handling, and the correct response to accepted proximity offers. Edit 5 next clarifies how to apply the latest constraints to cached or composite results, including proximity results, without repeating searches. The remaining edits are narrower or more duplicative of existing guidance.",
+    "selected_indices": [
+      0,
+      5
+    ]
+  }
+}

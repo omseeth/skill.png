@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "schema_and_constraint_mapping",
+      "count": 8,
+      "description": "Every trajectory had at least one argument mismatch, including wrong bounds or units, missing filters, incorrect value types, or parameters placed in the wrong bucket."
+    },
+    {
+      "failure_type": "endpoint_scope_and_outcome_coverage",
+      "count": 4,
+      "description": "Calls included unrelated endpoints or missed the requested source or operation, including an extra kanji/franchise lookup and unrelated retailer searches."
+    },
+    {
+      "failure_type": "response_serialization",
+      "count": 2,
+      "description": "Malformed call-object structure or tool naming caused requested calls to be dropped during parsing."
+    }
+  ],
+  "patch": {
+    "reasoning": "The current skill already covers endpoint matching, schema use, and final auditing, but these failures show that comparative language, schema-declared scalar types, source scope, and per-invocation JSON structure need more operational checks. The edits sharpen those checks without adding task-specific values.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Translate stated market constraints into API-native values according to the tool schema. Keep each constraint scoped to its requested outcome and carry every compatible constraint into the call. Preserve both bounds of a stated range when corresponding minimum and maximum fields are available; preserve comparison direction and units (for example, map “at least” to a minimum and “at most” to a maximum, converting to the schema's units). For exact quantities, use an exact-value field or matching lower and upper bounds when supported. Map an exact requested result count, including one, to a supported count, limit, or page-size field; for paginated requests, map both the requested page and result count/page size when available. Select the date field corresponding to the event named in the request, and map semantic filters and sorting to documented API flags or enum values. Use the endpoint's accepted locale form and canonical enum, code, or slug; do not guess undocumented values or substitute a semantically different field when the requested distinction is unavailable.",
+        "content": "- Translate stated market constraints into API-native values according to the tool schema. Keep each constraint scoped to its requested outcome and carry every compatible constraint into the call. Interpret comparison language before selecting fields: longer than, more than, or at least maps to a minimum/lower bound; shorter than, less than, or at most maps to a maximum/upper bound; and a range such as between X and Y uses both bounds when available. Convert units to the endpoint's units (for example, minutes to seconds). Preserve strictness where supported; if it is not supported, use only the documented closest bound. Never reverse a comparison or collapse a range to a single endpoint. For exact quantities, use an exact-value field or matching lower and upper bounds when supported. Map an exact requested result count, including one, to a supported count, limit, or page-size field; for paginated requests, map both the requested page and result count/page size when available. Select the date field corresponding to the event named in the request, and map semantic filters and sorting to documented API flags or enum values. Use the endpoint's accepted locale form and canonical enum, code, or slug; do not guess undocumented values or substitute a semantically different field when the requested distinction is unavailable."
+      },
+      {
+        "op": "replace",
+        "target": "- For each selected endpoint, take parameter names, declared types, and required-versus-optional placement from that endpoint's own schema; do not borrow fields or bucket assignments from a similar endpoint. Put every required field in the required bucket and every non-required field in the optional bucket, even when the user explicitly requests an optional setting; never duplicate a field across buckets. Use the schema's declared types and accepted enum or API-native forms, including canonical codes, symbols, and casing, while preserving identifiers and free-text search wording. Include optional settings only when requested or clearly implied; use documented recency or freshness controls for requests such as “recent” or “latest,” and a modest supported result count when wording such as “some” calls for one. Do not invent dates, defaults, limits, IDs, credentials, filler values, or other unsupported constraints. If a required value is missing, do not fabricate it.",
+        "content": "- For each selected endpoint, first copy its parameter names, declared types, and required-versus-optional partition from that endpoint's own schema; do not borrow fields or bucket assignments from a similar endpoint. Put every required field in the required bucket and every non-required field in the optional bucket, even when the user explicitly requests an optional setting; never duplicate a field or place it in both buckets. Represent values using the declared types: JSON numbers as numbers and booleans as booleans, not quoted strings; preserve strings as strings. Use accepted enum or API-native forms, including canonical codes, symbols, and casing, while preserving identifiers and free-text search wording. Include optional settings only when requested or clearly implied; use documented recency or freshness controls for requests such as “recent” or “latest,” and a modest supported result count when wording such as “some” calls for one. Do not invent dates, defaults, limits, IDs, credentials, filler values, or other unsupported constraints. If a required value is missing, do not fabricate it."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Build the smallest complete call set: cover every requested outcome, and make every call serve one of them. Use one endpoint for multiple outcomes only when it genuinely covers them; make separate calls for distinct inputs unless the schema supports batching. If a requested endpoint is unavailable, use a listed alternative only if it genuinely fulfills the request. Do not invent tools, add unrelated calls, or include redundant alternatives or validators.",
+        "content": "\n- For requests naming multiple platforms or providers, track each named source as a separate source-scoped outcome unless one endpoint genuinely covers them all; do not add unmentioned sources. A noun that identifies an item, source, or context does not itself request another lookup—require an explicit requested action or result. For configurable endpoints, select the documented operation or function that returns the requested kind of data; related outputs such as an overview and a current quote are not interchangeable."
+      },
+      {
+        "op": "replace",
+        "target": "Finally, validate the complete response as valid JSON in the exact active format and wrapper, with exact tool names, allowed keys, required empty arrays, and well-formed parameter objects; check for duplicate keys, malformed wrappers, bundled calls, or extra text.",
+        "content": "Finally, validate the complete response as valid JSON in the exact active format and wrapper. Each endpoint invocation must be its own top-level call object with exactly the allowed keys; keep the tool name at the object level and keep required-parameter and optional-parameter arrays separate, containing only well-formed parameter objects (or empty arrays). Check that every invocation appears once, no call is nested or bundled with another, tool names match the catalog exactly, and there are no duplicate keys, malformed wrappers, or extra text."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

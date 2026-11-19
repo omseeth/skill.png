@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every clause of the query got exactly one call from the tool whose name and description matched it. Queries that name a provider (Alpha Email Verification, Blaze Verify, fast Email verifier, Uncovered Treasure) used that provider's endpoint. Lists of N emails or domains became N separate calls.",
+    "Qualifier phrases in a clause were mapped onto the schema's optional parameters: 'limited to 150 characters' -> limit, '7-letter word' -> wordLength, 'from CNN' -> newspaperId, 'including STEREO_A and STEREO_B' -> enable, 'SMTP checking and 10-second timeout' -> smtp and timeout, 'specifically in English' -> language_code, '10 active federal politicians' -> limit, active and level_of_government, 'first page' -> page 1.",
+    "The gold answers show filter-type optionals that are easy to miss. 'Active' and 'federal' map to the active and level_of_government filters. 'One card from page 1' needs both page and pageSize 1. 'Without requiring exact matches' maps to exact `0`, following the schema's `Default 0` flag convention.",
+    "Optionals the query gives no basis for were left out (Uncovered Treasure callback, Numbers json/fragment/notfound, Helioviewer verbose). Bare queries without qualifiers kept optional lists empty.",
+    "A long narrative-style query (a user 'conducted a multi-faceted search...') was handled by one call per described action. The closing speculation about the user's purpose ('possibly for analysis...') produced no extra call."
+  ],
+  "patch": {
+    "reasoning": "Several runs lost optional-parameter credit by dropping a qualifier that the schema could express. Examples: 'federal' -> level_of_government, 'one card' -> pageSize 1, 'not exact' -> exact 0. The skill covers page, count, date and unit qualifiers but not status adjectives, 'one item' sizing, negated flags, or list-valued include-style parameters. A short note on narrative queries also stops the trailing commentary from being turned into extra calls.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Do not invent parameters the query gives no basis for",
+        "content": "- Filter words also map to optionals. Check status, level, scope and flag words in the clause against the schema and include the match:\n  - 'active politicians' -> active `true`; 'federal-level' -> level_of_government `federal` (use both when both words appear).\n  - 'one card from page 1' -> page `1` AND pageSize/limit `1`; 'first 10' -> limit `10`.\n  - 'without requiring exact title matches' -> exact `0`; 'exact match' -> exact `1`. Follow the schema's own flag convention (`0`/`1` when the description says `Default 0`, otherwise `true`/`false`).\n  - 'limited to 150 characters' -> limit `150`; '7-letter word' -> wordLength `7`; 'including STEREO_A and STEREO_B data' -> enable `STEREO_A,STEREO_B` (comma-separated); 'from CNN' -> newspaperId `CNN`; 'specifically in English' -> the language field (`en-us` when the description shows that format).\n  - 'SMTP checking with a 10-second timeout' -> smtp `true`, timeout `10`. 'N dice with S sides, R times' -> dice `N`, sides `S`, rolls `R`.\n- Do not invent parameters the query gives no basis for"
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "- Narrative or third-person queries ('The user searched X, then accessed Y, finally checked Z...') are checklists. Make one call per described action, using the quoted terms and numbers as values. Ignore closing commentary about the user's purpose ('possibly for analysis of...'), which asks for no call."
+      }
+    ]
+  },
+  "source_type": "success"
+}

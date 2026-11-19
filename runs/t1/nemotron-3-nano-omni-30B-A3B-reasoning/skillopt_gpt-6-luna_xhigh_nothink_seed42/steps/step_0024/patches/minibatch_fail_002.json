@@ -1,0 +1,45 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "contextual_request_interpretation",
+      "count": 4,
+      "description": "Neighborhood questions and acceptance of an additional attraction category were treated as already satisfied instead of actionable requests."
+    },
+    {
+      "failure_type": "cache_selection_and_refinement",
+      "count": 2,
+      "description": "Agents selected an unsuitable result or searched anew instead of refining the latest compatible cached result."
+    },
+    {
+      "failure_type": "tool_execution_contract",
+      "count": 1,
+      "description": "The agent imported a tool module even though tools are provided by the execution environment."
+    },
+    {
+      "failure_type": "incomplete_pending_action_coverage",
+      "count": 1,
+      "description": "The agent omitted required result caching and a clarification for a blocked hotel request while completing a ready flight search."
+    }
+  ],
+  "patch": {
+    "reasoning": "The contextual guidance makes neighborhood exploration and accepted additional-category recommendations explicit, addressing four missed actions. The hotel guidance clarifies how to encode an explicit party size and preserve an existing proximity relation when refining. A direct-call rule prevents the observed import failure. Existing cache lifecycle and missing-input rules already cover the remaining omissions, so they are not duplicated.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "\n- Resolve replies against the assistant’s immediately preceding suggestion or question. If the assistant has just named a neighborhood and the user asks “What’s there?” or says they have not considered it, treat that as a request to explore that neighborhood: refine the latest compatible result for the pending domain with the neighborhood criterion, preserving earlier criteria. If the user accepts an offer for additional attractions of a stated category, treat it as a new category search; a cache entry for a different scope, such as one named attraction, does not satisfy it."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- When the user explicitly states the number of people traveling, map it to `num_people` for hotel searches or filters when supported; do not infer a room count. When refining a result that already represents a proximity relation, use the latest compatible cached result that preserves that relation (for example, the nearest-hotels result), rather than reverting to a generic hotel result."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Call prebound tools directly\n- Tools and cache helpers are provided by the execution environment. Call them directly; do not import tool modules or redefine tool functions or models."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

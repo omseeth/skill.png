@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 4,
+      "description": "Wrong slot category. The agent named a related concept from the passages instead of the thing the clue's head phrase asks for: the process (transpiration) for 'this part of the tree', the quantity measured (direct solar radiation) for 'energy from this', an adjective (synthetic) for 'this type of chewing gum', and the museum name for 'Her home ... is now a museum'."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "Acronym clue ('second S in LSUS'): the agent gave the famous parent city (Baton Rouge) instead of the branch name spelled out in the passages (LSU Shreveport)."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 2,
+      "description": "Form errors: 'strawberry' instead of the plural crop 'strawberries' in a festival context, and 'Amazon River' instead of the bare name 'Amazon'."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 1,
+      "description": "The formal-name preference turned 'Jimmy Doolittle' into 'James Doolittle', but the key uses the nickname form that the passage titles use."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four of the eight failures are the same TYPE error, where the agent answers a related word from the passages instead of the category the clue's head phrase asks for (part, kind, source, person). I add one concrete rule that lists those head phrases, placed in Rule 2 next to the existing type rules. Three further edits fix gaps that each cost an exact match: acronym-letter clues, plural crops and bare river names, and nickname-form people. I avoid another top-of-prompt template because several earlier template attempts were rejected. These edits are small, keyed to visible clue features, and do not touch the Rule 3 verbatim-archive behaviour.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "\n- SLOT HEAD PHRASE: the noun phrase around 'this' (or the pronoun) names the CATEGORY you must answer in. Passages are full of related words from other categories, and those are wrong. Name the category (part / kind / source / person) first, then reject any candidate from another one.\n  - 'this part of the <plant / body / machine>' or 'through this part' -> a PART noun (roots, valve), not the process or function the passages explain (absorption, circulation).\n  - 'this type / kind / variety of <noun>' -> a named kind that forms a compound with that noun (a 'chewing tobacco' kind), never a bare material or adjective ('natural', 'synthetic').\n  - 'the energy / light / heat / water from this', 'X is measured by a <instrument>' -> the SOURCE or object itself, not the quantity measured or a descriptive phrase like 'direct ... radiation'.\n  - 'Her / His <home, house, studio, birthplace>' that is now a museum or landmark -> the PERSON. Do not give the museum or house title, and do not add 'Museum', 'House' or 'Birthplace'."
+      },
+      {
+        "op": "insert_after",
+        "target": "- 'N-word' hints ('this 3-word phrase') work like a letter count: the answer must have exactly N words.",
+        "content": "- ACRONYM / INITIALS clues ('the second \"S\" in XYZ stands for this city'): find the passage heading that spells out the full name (e.g. 'XY <Branch City>') and take the word at the requested letter. An acronym with an extra letter usually names a branch or variant, so do not answer with the famous flagship or parent city or institution. Count the letters, then check that the expansion appears in the passages."
+      },
+      {
+        "op": "replace",
+        "target": "- Use the singular form for a generic single object ('Well', not 'wells'), but keep the plural for crops, commodities and mass categories ('Bananas') or when the clue says 'these'/'ones'.",
+        "content": "- Use the singular form for a generic single object ('Well', not 'wells'), but keep the plural for crops, commodities and mass categories ('Bananas') or when the clue says 'these'/'ones'. A clue 'this fruit / vegetable / grain / crop' in a festival, harvest, farming or market context names the crop as a mass category, so answer PLURAL ('Strawberries', not 'strawberry'). For rivers, give the bare name ('Amazon', 'Nile'), not 'Amazon River', unless the bare word is ambiguous."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For nickname clues about a person ('known as \"Uncle Walter\"'), answer with the real name as it appears in the context (Walter Cronkite), not the nickname. Still apply the person-name rule above.",
+        "content": "- Diminutive exception: when a person is famous under a diminutive first name and the passage titles and headings use that form ('Jimmy Doolittle'), answer with that form. The formal-given-name preference applies only when the passages themselves call the person by the formal name."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

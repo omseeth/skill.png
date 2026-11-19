@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every success was a one-step answer that picked the entity of the type the clue's category noun names. 'This country' got the country (not the town Hwange), 'this Czech-born author' got the author (not the novella), 'the crime' got the crime, and 'He...' got a person.",
+    "The agents anchored on a distinctive phrase, nickname or number and took the answer from passages that repeat it. Examples are 'Mexican potato', '51.5 kilometers', 'Silver & Bronze Stars', and archive or flashcard lines such as '| Clark.' and 'IN 1720 BAD INVESTMENTS... SOUTH SEA'.",
+    "Archive answers were copied in the form printed ('Clark'). Generic-noun answers stayed bare and short ('balloon', 'triathlon', 'jicama', 'adultery'), and articles did not matter for the match.",
+    "For a clue that quotes the head word ('this \"bubble\"'), the agent kept the standard full name 'South Sea Bubble' instead of stripping the quoted word down to 'South Sea'. This sits in tension with the DELETE-CLUE-WORDS test, which the agent resolved correctly.",
+    "When the clue gave an alias of a thing ('often referred to as a Mexican potato'), the agent found the passages saying '<Name> is also called a Mexican potato' and answered the primary name (jicama), not the alias."
+  ],
+  "patch": {
+    "reasoning": "The skill already covers slot typing, verbatim archive copying, and bare-noun trimming, and these successes follow those rules. Two behaviors are only implicit. First, an alias or nickname of a THING in the clue should be resolved to the primary name that the passages pair with that alias (the existing nickname rule covers only people). Second, a head word the clue itself puts in quotes (this \"bubble\") belongs to the standard name, which the delete-clue-words test could wrongly strip. Both are short clarifications that attach to existing bullets and add no new top-level structure. They do not weaken Rule 3.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Look for passages where that word appears next to a candidate and answer with that candidate.",
+        "content": "Look for passages where that word appears next to a candidate and answer with that candidate. When the quoted word is the head noun right after 'this' (this \"bubble\", this \"party\") and the passages show a standard name that includes it, answer with that full standard name ('South Sea Bubble', not 'South Sea'). The DELETE-CLUE-WORDS test is for separate descriptor words, not for a quoted head word that is part of the proper name."
+      },
+      {
+        "op": "insert_after",
+        "target": "answer with the common English name (Conch).",
+        "content": "\n- The same gloss-lookup works for aliases of a thing ('this crunchy vegetable is often referred to as a Mexican potato'). Find the passages saying '<Name> is also called / known as <the clue's alias>' and answer the primary name (Jicama), not the alias already in the clue."
+      }
+    ]
+  },
+  "source_type": "success"
+}

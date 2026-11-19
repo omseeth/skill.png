@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Skill already forbids True/False, requires the letter count, and says a verbatim archive 'A:' answer overrides forum comments. The agent answered 'True', 'FLOOSIE' (6 letters for a 4-letter clue) and a forum guess 'Friction' instead of 'the atmosphere'."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "'a series on these' and 'one of these holes' want the category noun itself ('Trains', 'sinkhole'). The agent gave the series name 'All Aboard! stamps' and the clue's own example word 'spring'."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A bare film title with a year ('Rachel, Rachel (1968)') asks for the person the passages repeat as director (Paul Newman). The agent gave the star, Joanne Woodward."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 2,
+      "description": "Name form too long. 'Jean-Honore Fragonard' where the key is the bare surname 'Fragonard', and 'Athens Classic Marathon' where the key is 'the marathon'."
+    }
+  ],
+  "patch": {
+    "reasoning": "Several failures come from the agent not mapping unusual clue shapes to a slot type. These are declarative 'his/her' sentences, bare title+year clues, 'a series on these', and 'one of these <noun>'. Others come from skipping hard checks: letter count on run-together words, and a verbatim 'A:' line versus a loose forum comment. Four short edits cover these. Each one is placed next to the rule it clarifies, and none repeats earlier rejected broad additions.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- NEVER answer 'Not answerable', 'True/False', 'Yes/No', or a description of the clue. Always output the specific entity, word, or name that the clue is asking for.",
+        "content": "\n- A clue written as a full declarative sentence with a pronoun ('\"Shake It\" is the last song on his 1983 album \"Let's Dance\"') is NOT a claim to verify. It hides the person the pronoun stands for, so answer with that person ('David Bowie'). Never answer 'True'.\n- A bare work title plus a year ('\"Rachel, Rachel\"(1968)') asks for the person the passages tie to the work. When most passages say 'directed by X' or 'produced and directed by X', answer the director ('Paul Newman'), not a star named alongside.\n- The words of a clue can arrive run together without spaces ('FlirtatiousfloozyFlanders (4)'). Split them and apply the letter-count rule. Count the letters of your candidate before answering. A 6-letter dictionary word for a '(4)' clue is wrong. Look instead for the 4-letter partner word in the passage titles ('Moll Flanders' -> 'Moll')."
+      },
+      {
+        "op": "insert_after",
+        "target": "- 'One of these <role/title>' ('the 14th one of these spiritual leaders') asks for the title or category noun itself (Dalai Lama), not the individual named in the clue.",
+        "content": "\n- 'A series / collection / list / set on these <period or group>' ('A series on these of the \\'30s & \\'40s features the Daylight & the 20th Century Limited'): the pointer stands for the CATEGORY of the named items, in the plural ('Trains'). Do not answer with the series' own title or product ('All Aboard! stamps'). Ask what kind of thing the named examples are.\n- 'X is one of the state's largest water-filled one of these holes' / 'one of these <noun>s' where the clue supplies the final noun: the answer is the word or compound that ends in that noun ('sinkhole', 'blowhole'). The named example (Silver Springs) is only an anchor, so do not answer with a word taken from its name ('spring'). Use the passages that discuss what kind of hole the example is."
+      },
+      {
+        "op": "insert_after",
+        "target": "Before the answer tags, briefly quote the matched line.",
+        "content": "\n- A verbatim 'Q: <clue> ... A: <answer>' line (news sites, StudyStack and similar flashcards) beats any unattributed forum reply, comment or 'Reply'/'Report Abuse' line, and beats your own science or trivia knowledge. Example: one page shows 'CORDRAY: What is gravity? A: the atmosphere' and a forum shows 'Friction'. The answer is 'the atmosphere'. If two or more passages agree on the archived 'A:' answer, use it and ignore single guesses."
+      },
+      {
+        "op": "insert_after",
+        "target": "Never cut a part that identifies the person: keep the regnal numeral of a king or of a play's title character ('Richard III', not 'Richard'; 'Henry V').",
+        "content": "\n- For historical artists, painters, composers and writers who are universally known by their surname ('Fragonard', 'Rembrandt', 'Mozart'), the trivia key is usually the bare surname, not the full encyclopedia form ('Jean-Honore Fragonard'). Use the surname unless the surname alone would be ambiguous. When the clue says 'this <event>' and a passage names a longer official title ('Athens Classic Marathon'), answer with the plain generic event word ('the marathon'), dropping the city or sponsor prefix. Copy the passage's longer name only if the clue gives no generic type noun."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

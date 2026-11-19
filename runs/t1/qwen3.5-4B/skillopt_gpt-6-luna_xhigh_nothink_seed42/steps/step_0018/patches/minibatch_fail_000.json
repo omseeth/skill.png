@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_namespace_import",
+      "count": 4,
+      "description": "Agents imported a nonexistent `tools` module instead of calling injected functions directly, despite the existing explicit rule."
+    },
+    {
+      "failure_type": "cache_save_omission",
+      "count": 3,
+      "description": "Agents ran initial restaurant or hotel searches without saving their results to cache, despite the existing save requirement."
+    },
+    {
+      "failure_type": "cache_reuse",
+      "count": 2,
+      "description": "Agents repeated flight filtering or retrieved results that were not needed even though compatible filtered results were already cached."
+    },
+    {
+      "failure_type": "cross_domain_scope_and_coordination",
+      "count": 2,
+      "description": "Agents either omitted coordination for explicitly requested hotel-and-attraction results or invented extra domains and searches after a hotel-only affirmation."
+    },
+    {
+      "failure_type": "flight_time_range_encoding",
+      "count": 1,
+      "description": "An exact departure time and a latest-arrival bound were encoded in the wrong time format and as incorrect intervals."
+    }
+  ],
+  "patch": {
+    "reasoning": "The repeated import, save, and cache-reuse failures are already addressed explicitly in the skill, so I avoid duplicating those rules. The edits clarify the uncovered time-bound conventions, combining same-domain criteria and party size, limiting affirmations to the proposal made, and coordinating hotel and place recommendations when both are requested.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": " For an exact flight departure or arrival time, encode `[T, T]` in the tool’s expected AM/PM format (for example, `[\"08:23 PM\", \"08:23 PM\"]`). For a one-sided bound, encode the full interval: “by T” means midnight through T, and “after T” means T through the end of the day."
+      },
+      {
+        "op": "replace",
+        "target": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Never pass a preference as an unsupported extra argument or place it in an unrelated field. For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+        "content": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Never pass a preference as an unsupported extra argument or place it in an unrelated field. When multiple stated criteria belong to one requested domain and the schema supports them together, include them in one search call rather than issuing separate searches for each criterion. Encode an explicitly stated party size, including “solo” as one person, in the matching lodging field when supported. For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does."
+      },
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward only the proposed entity, domain, or criterion as stated. An affirmation accepting a hotel proposal authorizes that hotel request; it does not by itself request attractions, restaurants, or proximity searches."
+      },
+      {
+        "op": "replace",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Also call it when the user explicitly requests both lodging and attractions or restaurants for the same destination or trip, even if they do not say “near.” Do not infer an unrequested result type. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

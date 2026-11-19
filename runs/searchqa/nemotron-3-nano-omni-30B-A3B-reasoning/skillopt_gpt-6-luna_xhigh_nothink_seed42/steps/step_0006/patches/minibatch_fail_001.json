@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 4,
+      "description": "Agents returned a related item or formula component instead of the entity described by the clue."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 3,
+      "description": "Answers missed exact-match form through over-expansion, added diacritics, or singular/plural mismatch."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A bare comma-separated pair was treated as asking for one member rather than a shared attribute."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already advises identifying the requested slot, but the repeated related-entity mistakes suggest an operational check may help agents apply that rule to declarative clues. A bare list of entities is a distinct clue pattern not explicitly covered. Clarifying how to preserve source spelling addresses the diacritic mismatch; no plural-specific edit is proposed because a similar edit was rejected previously.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Treat terse statements, quoted fragments, and incomplete phrases as information-seeking clues when appropriate. Infer the answer slot from the wording, then use the context to identify the entity or value that satisfies the clue.",
+        "content": "- For a declarative clue, first turn it into a direct one-slot question (for example, “Who is described?” or “What thing has this property?”). Check that the answer fills that slot, rather than naming a component, associated item, or other entity mentioned nearby."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For completion or compound clues, identify the missing shared component that makes the alternatives fit; do not repeat a clue-supplied component or return one full compound. For partial-name prompts, give only the requested unknown name part. Omit components already stated in the question unless they are needed for unambiguous identification.",
+        "content": "- When a prompt is just a comma-separated list of entities, check whether it is a clue for a shared attribute or relationship. If the context supports one, give that common answer rather than selecting one listed entity."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use the context-supported conventional form of a name or answer, and include additional name parts only when needed to distinguish otherwise-confusable entities.",
+        "content": "- For exact-match answers, mirror the spelling used in the question or the clearest relevant context passage when variants appear; do not add diacritics absent from those sources."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

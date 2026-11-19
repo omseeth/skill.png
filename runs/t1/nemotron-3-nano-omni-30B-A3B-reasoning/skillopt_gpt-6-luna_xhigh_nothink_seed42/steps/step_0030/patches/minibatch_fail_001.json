@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_binding_and_cache_persistence",
+      "count": 5,
+      "description": "Searches or refinements were not saved, or were invoked again inside save_to_cache instead of saving the original return value."
+    },
+    {
+      "failure_type": "cache_selection_and_incremental_refinement",
+      "count": 3,
+      "description": "Agents used an outdated or missing cache entry, omitted the new filter argument, or repeated already completed work."
+    },
+    {
+      "failure_type": "pending_action_and_domain_readiness",
+      "count": 4,
+      "description": "Agents skipped requested domains or flight legs instead of completing ready actions while separately handling blocked inputs."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers the broad principles, but these trajectories show recurring failures at execution time. These concise clarifications make the required call-and-save pattern explicit, enforce that refinements actually include the new criterion and use a compatible cache entry, and distinguish ready work from requests blocked on missing inputs.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- Execute each planned search, filter, sort, or nearest-results call once: bind its exact return value to a variable, then save that variable under a unique descriptive key (for example, `restaurants = search_restaurants(...); save_to_cache(key='restaurants', value=restaurants)`). Never inline or repeat the tool call inside `save_to_cache`, and never omit saving. Save refinements under new keys; use returned tool objects rather than hand-built or redefined models."
+      },
+      {
+        "op": "replace",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "- Treat the latest user turn as an update to the trip plan and check cache coverage separately for each affected domain and target. When choosing among listed entries, retrieve the most refined compatible result that covers the same target and all still-valid earlier criteria. If no compatible listed result exists, search when mandatory inputs are available; do not retrieve an unlisted key or filter without valid `prior_results`. A refinement call must also explicitly include every newly introduced criterion in its schema-supported argument—`prior_results` alone does not apply the update. Save each refinement under a new key and leave unaffected domains alone."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Missing mandatory information",
+        "content": "\n- In a mixed-domain request, `seek_information` is not a substitute for ready work: perform and save every ready domain’s search or refinement in the same code, then ask once for the missing mandatory inputs of blocked domains."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

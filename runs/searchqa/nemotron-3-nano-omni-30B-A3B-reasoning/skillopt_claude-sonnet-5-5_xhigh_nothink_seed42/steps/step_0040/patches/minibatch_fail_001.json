@@ -1,0 +1,46 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 4,
+      "description": "Answer was over-extended with words the clue already supplies or generic suffixes: 'third Dalai Lama' (ordinal from the clue), 'Hallmark Cards' (product word), 'funeral pyre' (clue adjective), 'Adirondack Mountains' (clue's 'these mountains'). The existing delete-clue-words rule has these exact patterns but was not applied."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "A verbatim archive line ('keele sült ... | tongue. right: Leah.') was in the first passage, but the agent answered 'liver' from its own guess."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "Scraped-text artifact copied into the answer ('ragaE' instead of 'rag') for a fill-in-the-last-word clue."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "Quoted title in a 'Descriptor: \"Title\"' clue was echoed as the answer ('West Side Story') instead of the linked source work ('Romeo and Juliet')."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four of seven failures are the same exact-match error: extra words appended to the right entity. Earlier mandatory-template edits were rejected, so I avoid them. Instead I put a concrete trim rule at the top of Rule 4, where it is salient. It names the specific over-extension types seen here: ordinals and adjectives from the clue, a generic type noun repeating the clue ('these mountains'), and product or corporate suffixes. It also scopes the head-noun exception so it does not license these cases. Three small bullets cover the remaining distinct, generalizable misses: scraped-text artifacts, quoted-title anchors, and scanning archive-style documents first so the verbatim answer is not overridden by a guess. None of these touch the passes (Gadsden Purchase, Roman Empire, archive copies).",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 4: Exact-match formatting of the final answer",
+        "content": "\n- TRIM TO THE BARE NAME (the most common exact-match miss). Before writing the answer, remove from your candidate: (a) any word the clue already states, including ordinals and adjectives ('the third leader ... first to bear this title' -> 'Dalai Lama', not 'third Dalai Lama'; 'this funeral structure' -> 'Pyre', not 'funeral pyre'); (b) a generic type noun that only repeats the clue's 'these mountains / this river / this company / this magazine' when the short name stands alone ('these mountains' -> 'the Adirondacks', not 'Adirondack Mountains'; 'this gift company' -> 'Hallmark', not 'Hallmark Cards'); (c) product or corporate suffixes (Cards, Company, Inc., Corp.). Answer with the short form a quiz answer key would list. The head-noun exception below covers only names whose bare modifier is not a name by itself (Roman Empire, Gadsden Purchase, hydrochloric acid). It never covers clue-supplied ordinals, adjectives or suffixes like those above.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 3: Look for the clue repeated verbatim in the context",
+        "content": "\n- ARCHIVE-PAGE CUE: passages titled like 'jeopardy/NNNN_Qs.txt ... GitHub', 'J! Archive', 'jService', 'Jeopardy Questions page N' or flashcard sites hold the clue followed by '| answer. right: Name.'. Scan them FIRST and match on a distinctive piece of the clue (a foreign word such as 'keele sült', a place, the first few words), even when the clue starts with a parenthetical like '(Sarah of the Clue Crew ...)'. Copy the text between '|' and '. right:' ('tongue') and do not replace it with your own guess ('liver'), even when most other passages are junk word lists.\n- SCRAPED-TEXT ARTIFACTS: passages sometimes glue stray characters onto words ('ragaE', 'pail and ragaE'). Never copy an artifact. For a fill-in-the-last-word clue, give just the one clean missing word, as it appears in the cleanest passage ('rag').\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "- QUOTED TITLE ANCHOR ('A 1961 classic: \"West Side Story\"', or a clue that is only a descriptor plus a quoted work): a title or name already in quotes is the anchor, never the answer. The answer is a different thing the passages tie to it: the source work it adapts or retells, its creator, its setting or its star. Look for 'adaptation of', 'retelling of', 'based on' or 'inspired by' next to the title and answer with that linked work ('Romeo and Juliet'). If your candidate equals the quoted title, reject it and pick the linked entity."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

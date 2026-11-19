@@ -1,0 +1,51 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "strength_mismatch",
+      "count": 3,
+      "description": "The agent chose the option with an extra rider, a larger bound, or a higher logic level (E with set X, E with a 2-primary gloss, 12268, Sigma^1_2) instead of the plain theorem-level statement."
+    },
+    {
+      "failure_type": "condition_miss",
+      "count": 2,
+      "description": "The agent did not test whether a rider is degenerate or false. In the undermonoid question, G(N)=G(M) plus G(N)∩M=N forces N=M, so the option is trivially weak. In the Clifford question, a 2-part-structure condition was accepted without a small-case check."
+    },
+    {
+      "failure_type": "option_confusion",
+      "count": 1,
+      "description": "The agent echoed the stem's '2ℓ twists' into the divisibility condition instead of converting units (2ℓ half-twists change a11 by ℓ)."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "The agent picked a structural characterization over the sibling statement with the sharper bound (O(log N) vs O((log N)^2)) in an 'equivalent to' stem."
+    }
+  ],
+  "patch": {
+    "reasoning": "Six of the seven misses picked the more elaborate option: an extra object, an 'equivalently' gloss, a higher index or level, or a bigger number. The current skill pushes upward in steps 6 and 10 and only weakly enforces the falsification step. The edits (1) make the pre-commit check on extra content concrete, (2) add a protocol for 'equivalent to' stems covering class restriction, property weakening, vacuity of combined hypotheses, level matching and stem-defined terms, (3) add rules for echoed stem constants and for small-case separation of near-identical conditions, and (4) add a cluster heuristic for numeric record bounds.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "6. Do not default to the bare, minimal, or hedged option because it feels safe.",
+        "content": "6. Do not default to the bare, minimal, or hedged option just because it feels safe. The opposite error is at least as common: picking the option with the extra object, extra 'equivalently/moreover' gloss, higher index or level, or larger constant. Before choosing an option that has more content than its rivals, write a 2-line derivation of EVERY extra piece. If you cannot, drop that option and fall back to the plain theorem-level statement."
+      },
+      {
+        "op": "insert_after",
+        "target": "10. Strength ladder (use when options are nested variants, and always for 'strongest / exact / complete' stems)",
+        "content": "\n11. 'Equivalent to the assertion that ...' stems (reductions and gap theorems). The answer is normally a sibling of the stem's assertion with the same object type and the same property, changed in only one way that a named theorem justifies (a class reduced to a stem-defined subclass, or a bound tightened or collapsed). Check each option as follows.\n   - Both directions. It must imply the stem's assertion and be implied by it. Shrinking the class of objects ('every N with an extra condition') gives a WEAKER statement that need not imply the original. Swapping the property for a weaker one (FFM→BFM, polylog→some bound) is not equivalent. Look for a 'more elaborate than needed' class restriction.\n   - Vacuity test. Combine the hypotheses inside one option and see whether the class collapses. Example: if G(N)=G(M) already holds, then G(N)∩M=M, so adding 'G(N)∩M=N' forces N=M and the option says almost nothing. A rider that collapses or trivialises the class is the corruption.\n   - Stem-defined terms. If the stem defines a special term (undermonoid, pseudovariety, a named class), the correct option usually uses that term plainly with the same target property. Options that re-spell the definition with extra conditions, or add named objects the stem never mentions (a forbidden-subsemigroup list, a vertex set X, a unit condition), are distractors.\n   - Level matching. In logic and reverse-mathematics stems, the equivalent principle sits at the same complexity level as the objects in the stem (analytic = Sigma^1_1 ↔ Sigma^1_1 induction or separation). A level shifted up or down (Sigma^1_2, Pi^1_1) is an altered distractor.\n   - Bound-sandwich stems. When the stem fixes a bound (e.g. O(log² N)) and options give a sharper and a weaker bound, determine which direction is the nontrivial theorem. Prefer the same-quantity sibling over a different-vocabulary structural characterization or width-restricted variants that add parameters."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Near-duplicate options: constants, quantifiers, ranges, exact details",
+        "content": "- Echoed stem constants and unit conversion: if an option reuses a number from the stem verbatim ('divides 2ℓ' when the stem says '2ℓ twists'), suspect it is the echo distractor. Convert units yourself (2ℓ half-twists = ℓ full twists, so the matrix entry changes by ℓ, and the divisibility is by ℓ). Likewise verify the direction ('a divides ℓ' vs 'ℓ divides a') with one explicit small example.\n- Conditions that look alike but depend on different data (an arithmetic condition on |A|, such as parity or 4∤|A|, vs a structural condition on a Sylow part, such as cyclic or elementary abelian). Find the smallest examples where the options disagree (Z/2, Z/4, Z/2×Z/2, Z/3, Z/2×Z/3) and decide those cases by direct reasoning or a known fact. Do not accept an 'equivalently, exponent 2' style paraphrase without checking it. The sharp threshold in source theorems is usually a simple arithmetic invariant of the stem's data."
+      },
+      {
+        "op": "insert_after",
+        "target": "be sceptical of any lower bound above the known record.",
+        "content": " If you cannot recall the exact record, look at the spacing of the numeric options. A tight cluster of nearly equal values (within about 1%) usually holds the previous record and the true new record. Pick the top of that cluster. Isolated values several percent or more above the cluster are inflated distractors, and values below it are weaker true statements. Do not choose a larger number just because 'a stronger bound is better' unless you can attest it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

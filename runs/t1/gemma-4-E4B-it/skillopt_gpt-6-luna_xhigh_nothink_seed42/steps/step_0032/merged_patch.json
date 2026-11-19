@@ -1,0 +1,61 @@
+{
+  "reasoning": "Preserved all failure-driven edits as the higher-priority corrections, including the precedence-based cache workflow, flight-leg filtering, cache-key guidance, and input-mapping clarifications. Kept the success-driven airport preference edit because it adds guidance not covered by the failure edits. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "content": "**Turn-action precedence (apply before any tool call):** Inspect the full conversation, preceding assistant question or offer, and cache summary; resolve terse replies in context and identify only the scopes changed by the latest turn. An offer is not accepted by an unrelated answer, and a proximity suggestion alone does not authorize `search_nearest`.\n1. If the user requests or accepts a proximity search, run `search_nearest` using compatible cached hotel and requested attraction or restaurant results; do not substitute a new category search. Preserve earlier explicit proximity requests unless withdrawn, and search only for any genuinely missing input scope.\n2. For each changed scope, if a compatible cached result covers the same domain, location, dates or leg, and entity scope, retrieve it by its exact literal cache key. If the user adds or changes a supported filterable constraint—including a relevant party-size or amenity constraint—apply the matching filter and save the result. Otherwise, retrieve and use the compatible result without searching or filtering again. Do not rebuild covered scopes, composite inputs, or unaffected domains and legs.\n3. Base-search only for a genuinely new or uncovered domain, category, entity, location, date, or leg, including all active supported criteria. Combine same-domain criteria in one call when supported, such as a category and named attraction.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Apply an explicitly requested flight class to every described leg. If a filterable preference is supplied after compatible per-leg flight results are cached, retrieve and filter each affected leg separately rather than repeating its base search.",
+      "content": "Apply any flight preference asked about the itinerary generally—including class, time window, airline, or budget—to every described leg unless the user explicitly limits it to one leg. If compatible per-leg results are cached, retrieve and filter each affected leg separately, retaining its route, date, and constraints already embodied in the result; do not rerun a covered leg merely to add or change a filter.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Tool results and constraints",
+      "content": "\n**Cache-key naming:** For a first base result, use the conventional domain key (`hotels`, `restaurants`, or `attractions`); for flights, use the established leg-specific key or the outbound/return convention. For a derived filtered result, use a `filtered_<scope>` key. If that key already contains a distinct valid result, keep it and use a unique descriptive key for the new result.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+      "content": "- An assistant question that solicits criteria for a domain as part of offering recommendations establishes that domain as an active request (for example, asking about cuisine or dietary needs for restaurant recommendations); interpret the reply as supplying criteria for that domain. Then apply the turn-action precedence above: retrieve and filter a compatible cached result, or search only an uncovered scope once its mandatory inputs are available. Accepting an offer to search a new domain, category, or entity likewise activates that scope. A generic affirmative indicates proximity only if the preceding offer or request was explicitly about proximity.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; do not treat a request to stay in a named district as a proximity search. Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed. For flight `departure_time` and `arrival_time`, use 12-hour strings with an AM/PM suffix (for example, `[\"12:00 AM\", \"04:33 AM\"]`); represent midnight as `12:00 AM`, not `00:00:00`, and do not pass 24-hour `HH:MM:SS` strings to flight tools. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+      "content": "For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; preserve the complete user-supplied place name without shortening or truncating it, and do not treat a neighborhood request as proximity. For hotel star-count requests, use `stars` (exactly N stars means `[N, N]`; at least N stars means `[N, 5]`); reserve `rating` for guest-review scores. Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed. Map common dayparts to bounded windows rather than all-day ranges; for example, interpret “afternoon” as 12:00 PM–5:00 PM and pass `[\"12:00 PM\", \"05:00 PM\"]`. For flight `departure_time` and `arrival_time`, use 12-hour strings with an AM/PM suffix (for example, `[\"12:00 AM\", \"04:33 AM\"]`); represent midnight as `12:00 AM`, not `00:00:00`, and do not pass 24-hour `HH:MM:SS` strings to flight tools. Do not add unrelated preferences.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "For hotels, when the check-in date and an explicit stay length in nights are known but checkout is not, use `adjust_date` to calculate checkout. Do not infer a stay length; ask when a required date cannot be obtained or derived from explicit information.",
+      "content": "\n- A flight date to the hotel destination may anchor hotel check-in only when the conversation clearly ties the hotel to that trip; it does not establish checkout or an unstated stay length. If checkout is missing and no explicit stay length is known, seek the checkout date rather than assuming a one-night stay. When explicit nights allow checkout to be derived, assign the returned `adjust_date` value to a local variable and pass it as `checkout_date=[that_variable]`; do not hardcode the calculated date.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+      "content": "\n- If an assistant clarification explicitly states an exact party size and the user answers without correcting it, retain that count as established context. Use it only for domains whose tools support party size; do not infer a count from a tentative suggestion or vague description.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Flight itinerary legs",
+      "content": "\nWhen the user gives a preferred airport or airport code as well as a city, include the exact airport value in the corresponding airport-specific endpoint field alongside the city. Use the origin field on the outbound leg and the destination field on the return leg; reverse the mapping for other directional legs. Honor the tool's declared argument names and types. If a mandatory input is still missing, seek it rather than making a partial search.",
+      "support_count": 7,
+      "source_type": "success"
+    }
+  ]
+}

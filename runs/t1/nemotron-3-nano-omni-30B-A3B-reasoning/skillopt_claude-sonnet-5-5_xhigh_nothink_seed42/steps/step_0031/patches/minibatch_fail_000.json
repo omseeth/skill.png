@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_refiltering",
+      "count": 2,
+      "description": "Hotel-only reply ('Around 30', '5 star and kids club') made the agent also re-filter cached flight keys with the earlier class, and re-pass old stars and amenities."
+    },
+    {
+      "failure_type": "repassed_earlier_constraint",
+      "count": 2,
+      "description": "Filter re-passed constraints already in the cached entry (cuisine=Balkan on a restaurant budget reply; stars and rooftop bar on a hotel budget reply). Rule 2 and Rule 17 still say to re-pass earlier constraints the summary does not list."
+    },
+    {
+      "failure_type": "requested_domain_dropped",
+      "count": 2,
+      "description": "Hotel requested in turn 1 (multi-city 'hotels in each city'; 'hotel stay for a special occasion') was not searched once the dates arrived. Only the flight searches were written."
+    },
+    {
+      "failure_type": "fabricated_dates_from_skill_example",
+      "count": 1,
+      "description": "First turn 'hotel and restaurant in Fresno' searched hotels with May 16/18, 2025, which are the dates in a skill example, instead of searching restaurants and seeking the hotel dates."
+    },
+    {
+      "failure_type": "search_vs_filter_misroute",
+      "count": 1,
+      "description": "'Yes' to a NEW attraction type (Cultural) filtered the cached attractions entry (a named attraction) instead of running a fresh search_attractions. The top SEARCH GATE contradicts the slow-block exception."
+    },
+    {
+      "failure_type": "hygiene_state_city_unsaved",
+      "count": 1,
+      "description": "'trip to OR' wrote a bare search_attractions(city=\"OR\") with no assignment, no save and city instead of state."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four edits, all rewrites of existing rules rather than new gates. (1) Rule 2's 'plus earlier-stated constraint not shown in summary' clause conflicts with the slow block and is the stated cause of re-passed cuisine, stars and amenities, so it is rewritten to 'only the last turn's constraints'. (2) The flight-reply trigger (-1) is narrowed so it fires only on flight words in the last message, and it states that hotel, restaurant and number replies leave flight keys untouched; this covers both over-filtering failures. (3) The pending-domain sweep gets three concrete misses: a turn-1 hotel dropped after dates arrive, multi-city needing a hotel per city, and a hotel with no dates needing the other searches plus one seek_information with no skill-example dates. (4) The top SEARCH GATE gets the one exception the slow block already allows: a new attraction type that the cached entry does not cover gets a fresh search. The pure-hygiene failure (state vs city, unsaved call) is not patched because the rules already show that exact example, and more text would add to the length that is probably causing the miss.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Criteria to pass to filter_*: the constraints introduced in the LAST user turn, plus any earlier-stated constraint that the CACHE summary text (\"Additionally filtering for ...\" / search description) does not show as applied. Do NOT repeat filters or search parameters the summary already lists. Never call filter_* with only prior_results.",
+        "content": "- Criteria to pass to filter_*: ONLY the constraints introduced in the LAST user turn. Every earlier turn (its search and each filter) is already inside the cached entry, so never re-pass an earlier cuisine, stars, neighborhood, amenity, budget, class or dates, whether or not the summary text happens to list it. Never call filter_* with only prior_results."
+      },
+      {
+        "op": "replace",
+        "target": "-1. FLIGHT REPLIES = ONE BLOCK PER FLIGHT KEY. This applies only when the assistant's last question or the user's last message is about flight class, airline, flight time or ticket price (a class word such as 'economy'/'first', an airline code, 'under N' answering a flight-price question), even if a 'hotels' key is also in CACHE.",
+        "content": "-1. FLIGHT REPLIES = ONE BLOCK PER FLIGHT KEY. This fires ONLY when the user's LAST message itself contains a flight word (a class such as 'economy'/'first'/'business', an airline code, a departure/arrival time, or a ticket price) or answers an assistant question that asked about flight class, airline, time or ticket price. It NEVER fires for stars, amenities, neighborhood, a per-night hotel budget, a bare number after a hotel question, or any restaurant/attraction reply. A class the user chose in an earlier turn is already in the flight keys' summaries, so those keys stay untouched: zero flight lines, even when flight keys sit in CACHE next to 'hotels'."
+      },
+      {
+        "op": "replace",
+        "target": "0. PENDING-DOMAIN SWEEP: re-read the WHOLE conversation (turn 1 included) and list every requested domain with no CACHE key. Each one must appear in this turn's code: either searched (mandatory args known) or named in the single closing seek_information. Never output only one domain's call while another requested domain is searchable.",
+        "content": "0. PENDING-DOMAIN SWEEP: re-read the WHOLE conversation (turn 1 included) and list every requested domain with no CACHE key. Each one must appear in this turn's code: either searched (mandatory args known) or named in the single closing seek_information. Never output only one domain's call while another requested domain is searchable. Typical misses: (a) a hotel mentioned in turn 1 in any wording ('and a hotel stay', 'for a special occasion', 'hotels in each city') whose dates are now known from the flight dates -> `search_hotels(city=<destination>, checkin_date=[<outbound date>], checkout_date=[<return date>])` in the SAME block as the flight searches (a class or airline the user stated goes into both flight searches, not the hotel). (b) Multi-city trip ('A to B, then B to C, hotels in each city'): one search_flights per leg AND one search_hotels per destination city (first city: first leg date to second leg date; a later city with no further date reuses the first and last stated dates). (c) A hotel with NO user-written dates on a first turn ('trip to Fresno, need a hotel and restaurant'): search the other requested domains that have their city, then ONE closing seek_information for the hotel dates. Never invent dates; the dates in this skill's examples (May 16/18/19/26, 2025) are never the user's."
+      },
+      {
+        "op": "replace",
+        "target": "A search_* call is allowed only for a domain with NO key. Examples:",
+        "content": "A search_* call is allowed only for a domain with NO key. One exception: the user accepts or names a NEW attraction type that the cached attractions entry does not cover (e.g. the cache shows only 'attraction name(s): [X]' and the assistant offered 'Cultural attractions', answered 'Yes'). Then run a fresh `attractions = search_attractions(city=<trip city>, type=[\"<offered type>\"])` and save it as \"attractions\"; do not filter the cached entry. Examples:"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

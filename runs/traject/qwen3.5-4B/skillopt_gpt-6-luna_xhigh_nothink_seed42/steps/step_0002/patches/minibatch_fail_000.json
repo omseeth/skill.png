@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_outcome_coverage",
+      "count": 4,
+      "description": "Calls were omitted or routed to a neighboring operation, such as pricing instead of autocomplete or an aggregate count instead of location-specific alerts."
+    },
+    {
+      "failure_type": "schema_parameter_mapping",
+      "count": 5,
+      "description": "Arguments used incorrect schema fields, required/optional buckets, or value types, and sometimes included unsupported parameters."
+    },
+    {
+      "failure_type": "call_scope_control",
+      "count": 3,
+      "description": "Agents added unrequested calls or redundant broad and filtered calls instead of keeping calls traceable to requested outcomes."
+    },
+    {
+      "failure_type": "canonical_tool_identifier",
+      "count": 2,
+      "description": "A tool was identified by its description or a noncanonical label rather than its exact listed provider-and-endpoint name."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch shows that general instructions to match operations, follow schemas, and avoid redundant calls were not applied reliably. These edits make the mapping from requested outcomes to endpoint operations more explicit, add a final traceability check, emphasize literal schema-driven argument placement and types, and clarify the canonical tool label.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Turn the query into a checklist of distinct requested outcomes, including each subject, action, and explicit constraint. Keep modifiers attached to the result they qualify. Match each outcome to an available endpoint by its actual operation and schema, not just a shared keyword; distinguish similar operations and prefer an explicitly named endpoint when available.",
+        "content": "- Turn the query into a checklist of distinct requested outcomes, including each subject, action, and explicit constraint. Keep modifiers attached to the result they qualify. Match each outcome to an endpoint that returns the requested kind and granularity of result, using its actual operation and schema rather than topical similarity (for example, distinguish item-level results from aggregate counts, and suggestions from pricing). Prefer an explicitly named endpoint when available. Treat narrative transitions as context, not as authorization for an additional operation."
+      },
+      {
+        "op": "replace",
+        "target": "- Build the smallest complete call set: cover every requested outcome, and make every call serve one of them. Use one endpoint for multiple outcomes only when it genuinely covers them; make separate calls for distinct inputs unless the schema supports batching. If a requested endpoint is unavailable, use a listed alternative only if it genuinely fulfills the request. Do not invent tools, add unrelated calls, or include redundant alternatives or validators.",
+        "content": "- Build the smallest complete call set: cover every requested outcome, and make every call serve one of them. Before responding, trace each call to a requested outcome and verify that every outcome has a fulfilling call; remove calls with no corresponding outcome. If a documented filter captures the requested scope, use it on the relevant call rather than adding an unfiltered duplicate, unless the broader result is separately requested. Use one endpoint for multiple outcomes only when it genuinely covers them; make separate calls for distinct inputs unless the schema supports batching. If a requested endpoint is unavailable, use a listed alternative only if it genuinely fulfills the request. Do not invent tools, add unrelated calls, or include redundant alternatives or validators."
+      },
+      {
+        "op": "replace",
+        "target": "Represent parameters in the schema's required form and types. Put each in the declared required or optional bucket, and do not duplicate parameters across buckets. Include optional settings only when requested or clearly implied; use documented recency or freshness controls for requests such as “recent” or “latest,” and a modest supported result count when wording such as “some” calls for one. Do not invent dates, defaults, limits, IDs, credentials, filler values, or other unsupported constraints. If a required value is missing, do not fabricate it.",
+        "content": "For each selected endpoint, take parameter names, required-versus-optional placement, and value types directly from its schema. Put every required field in the required bucket and every non-required field in the optional bucket, even when the user explicitly requests an optional setting; never duplicate a field across buckets. Use the schema's declared types and accepted enum representations rather than converting values for convenience. Include optional settings only when requested or clearly implied; use documented recency or freshness controls for requests such as “recent” or “latest,” and a modest supported result count when wording such as “some” calls for one. Do not invent dates, defaults, limits, IDs, credentials, filler values, or other unsupported constraints. If a required value is missing, do not fabricate it."
+      },
+      {
+        "op": "replace",
+        "target": "Check that every requested outcome is covered, each call uses the exact listed tool name, and each call object follows the active answer format exactly.",
+        "content": "Check that every requested outcome is covered, each call uses the exact canonical tool label shown in the tool list (provider and endpoint name, not its description or an alias), and each call object follows the active answer format exactly."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

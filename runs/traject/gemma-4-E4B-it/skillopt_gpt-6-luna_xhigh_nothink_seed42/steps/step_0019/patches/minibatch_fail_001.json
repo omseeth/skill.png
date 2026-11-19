@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "parameter_mapping_and_schema_validation",
+      "count": 6,
+      "description": "Calls misassigned endpoint-specific fields or values, including optional parameters and regional selectors."
+    },
+    {
+      "failure_type": "incomplete_facet_coverage",
+      "count": 2,
+      "description": "A separately requested meaning or keyword-discovery facet was omitted when another related lookup was performed."
+    },
+    {
+      "failure_type": "pagination_scope_omission",
+      "count": 1,
+      "description": "Initial paginated search and review calls omitted the first-page selector."
+    },
+    {
+      "failure_type": "administrative_location_mapping",
+      "count": 1,
+      "description": "Geographic levels were shifted into fields based on their names instead of the endpoint's location hierarchy."
+    }
+  ],
+  "patch": {
+    "reasoning": "These edits address the observed gaps by making initial-page handling explicit, clarifying that location fields must follow endpoint semantics, and preserving distinct discovery facets when the tool list offers only an autocomplete fallback. They avoid prescribing redundant email checks or undocumented values.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "When the user explicitly requests the first page, pass `page=1` on every applicable paginated call; do the same where applicable when a requested count is served by a paginated endpoint.",
+        "content": "For a single initial request to retrieve a paginated search, list, or review collection, pass the documented first-page value (`1`) when the endpoint exposes a page selector, even if the user does not explicitly say “first page.” Do not add page parameters to non-paginated endpoints."
+      },
+      {
+        "op": "insert_after",
+        "target": "Parse each supplied area into its geographic level (country, state/province/region, county/metro, city/locality), then map each value to the corresponding documented field and preserve all explicitly requested levels.",
+        "content": "Determine each location field’s meaning from the endpoint documentation and conventions, not its name alone: a field labeled `state` may, for example, encode a country or market selector, while nested administrative fields encode subnational levels. Use the documented country representation first, then place region, metro/county, and city values in their corresponding levels."
+      },
+      {
+        "op": "insert_after",
+        "target": "Conversely, cover separately requested outputs when they require distinct endpoints rather than assuming one broad or multi-capability lookup covers every facet.",
+        "content": "Keep keyword discovery separate from ID-specific product details or similar-item lookups, and keep a requested meaning lookup separate from a reading or pronunciation filter. If no direct catalog-search endpoint is listed, use a documented query/autocomplete endpoint as the closest supported call for an explicit keyword-discovery request rather than omitting that facet; do not present its suggestions as full product listings."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

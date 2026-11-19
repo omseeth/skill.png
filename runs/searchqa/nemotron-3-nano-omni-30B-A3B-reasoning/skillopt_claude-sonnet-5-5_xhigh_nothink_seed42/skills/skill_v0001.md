@@ -1,0 +1,21 @@
+# Question Answering Skill
+
+## Rule 1: Questions are Jeopardy-style clues; always answer with the missing entity
+- The 'question' is usually a trivia clue, a category-like fragment, or a statement with a hidden answer (e.g. 'In Dijon & Bordeaux', '"...on my mind"', '"X" is the Norwegian title of his drama'). It is rarely a literal question.
+- NEVER answer 'Not answerable', 'True/False', 'Yes/No', or a description of the clue. Always output the specific entity, word, or name that the clue is asking for.
+- If the clue is a fragment, work out what single thing connects it to the context. Examples: places plus language context -> the language or nationality; a phrase with '...' -> the missing word; 'his/her/this [work]' -> the person who created it. The context passages about the topic usually reveal the link.
+
+## Rule 3: Look for the clue repeated verbatim in the context
+- Context passages often reproduce the clue text from a trivia/Jeopardy archive (e.g. J! Archive, flashcard sites), followed by the answer (e.g. 'CLUE | answer', after a comma at the end, or in flashcard text). If you find this, copy that answer exactly, in the same form and spelling.
+- Otherwise, build the answer from passages that match several of the clue's details.
+
+## Rule 4: Exact-match formatting of the final answer
+- Give only the core answer: no category or descriptor words ('vitamin C' -> 'C', 'U2 tribute band' -> 'U2', 'Ellie Goulding song' is wrong), no added articles, no explanation. Keep a leading article only when it is part of the proper title or name as it appears in the context (e.g. 'The New York Times', 'The Divine Comedy').
+- Use the shortest standard form that names the entity, as a trivia answer key would. If the clue says 'this vitamin', answer with just the letter. If the clue names a group or band, give the group's name only. For people, prefer the form used in a verbatim answer from the context (Rule 3); otherwise use the name form most natural for the clue.
+- Use the singular form for a generic object ('Well', not 'wells').
+- Put only the bare answer in the answer tags. Do not write a sentence, restate the clue, or add dates, qualifiers or alternatives. Brief reasoning belongs before the tags.
+
+## Rule 2: Answer the referent, not a word from the clue
+- When the clue says 'this country / this vitamin / this man / one of these ...', the answer is the thing that phrase stands for. Do not copy a proper noun or phrase already in the clue.
+- Example pattern: a clue about a region 'in this country' wants the country, not the region. A clue about 'one of these "watering holes"' wants the real object being nicknamed, not the nickname.
+- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?

@@ -1,0 +1,41 @@
+{
+  "batch_size": 3,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "The agent answered with the anchor entity or an echo of a clue word instead of the slot the clue asks for. It gave 'University of North Carolina at Chapel Hill' when the slot was 'this state', and 'shanty town' when the clue already supplied 'town' in quotes. The Type and Delete-clue-words rules exist but were not applied, because the agent emitted a bare answer with no check line."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A clue made only of real people's titled names ('Princess A & Princess B') asks for the shared realm or country. The agent answered with their relationship ('sisters'). The existing list rule covers only fictional names and gives no warning against relationship words."
+    }
+  ],
+  "patch": {
+    "reasoning": "All three failures come from committing to the first plausible entity without checking its type against the clue's slot or its overlap with clue words. I add a short mandatory three-field line at the top of the editable skill, as the optimizer memory recommends. I fix the real-people-list rule by replacing the old sentence, so it covers titled names and bans relationship words. I tighten the Rule 4 'MISSING part' bullet to handle quoted half-compounds and shorten it. I extend the Rule 2 example so that 'institution/capital/team of this <place>' wants the place. No Rule 3 content or SLOW_UPDATE content is touched.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Question Answering Skill",
+        "content": "\n## MANDATORY: write this one line before every answer\n`Slot: <the noun the clue asks for ('this state' -> a state; two people's names -> what they share>) | Evidence: <quoted passage line or own fact> | Check: <candidate is that kind of thing, fills the blank, and repeats no clue word>`\n- If the Check fails, pick a new candidate before answering. Typical failures: the candidate is a university, team, film or person when the slot is a state, city or country; it contains a word the clue already states; or it is a relationship word ('sisters', 'rivals') instead of an entity.\n- Then put only the bare answer in the tags.\n"
+      },
+      {
+        "op": "replace",
+        "target": "If the list is of real people, answer with the team, state or other entity they share.",
+        "content": "If the clue is only names of real people (including titled names such as 'Princess A & Princess B' or 'Senator X, Governor Y'), answer with the single place, realm, team, family or other entity they all belong to (for royals or officials, the country or principality). NEVER answer with their relationship or role word ('sisters', 'rivals', 'politicians'). Pick the entity the passages repeat next to every name."
+      },
+      {
+        "op": "replace",
+        "target": "- Give only the MISSING part. If a word from the clue is part of the answer phrase, do not repeat it ('A \"hasty\" dessert' -> 'pudding', not 'hasty pudding'; 'Bridge to' this place -> 'Terabithia'). If the clue says 'this manicurist / this king / this dessert', do not append that role word to the answer.",
+        "content": "- Give only the MISSING part. If a word from the clue is part of the answer phrase, do not repeat it ('Bridge to' this place -> 'Terabithia'). If the clue says 'this manicurist / this king / this dessert', do not append that role word to the answer. Half-compound clues: when the clue states one half of a compound, often in quotes ('a \"hasty\" dessert', 'live in a \"town\" of them', 'a \"house\" of these'), the answer is the OTHER half alone, as one word ('pudding', not 'hasty pudding'; the modifier, not 'modifier town'). Check: your answer plus the clue's word gives the familiar phrase, and your answer alone does not contain the clue's word."
+      },
+      {
+        "op": "replace",
+        "target": "Example pattern: a clue about a region 'in this country' wants the country, not the region.",
+        "content": "Example pattern: a clue about a region 'in this country' wants the country, not the region. Likewise 'the <university / team / capital / river / flag> of this state/country/city' wants the state, country or city itself, never the institution, team or object that the clue and passages describe (those are anchors)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

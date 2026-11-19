@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_or_entity_mismatch",
+      "count": 6,
+      "description": "Selected a topical or wrong-provider endpoint, or failed to preserve the requested source or qualified location."
+    },
+    {
+      "failure_type": "outcome_coverage_and_scope",
+      "count": 5,
+      "description": "Missed an explicit requested outcome or added an unrequested call instead of auditing the complete call set."
+    },
+    {
+      "failure_type": "schema_argument_fidelity",
+      "count": 3,
+      "description": "Misplaced parameters between required and optional fields or failed to provide a valid required value."
+    },
+    {
+      "failure_type": "repeated_request_or_pagination",
+      "count": 2,
+      "description": "Did not consistently treat an explicit request for more results as a separate invocation or continuation."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains extensive endpoint, coverage, and schema audits, so repeating those rules would add little. The clearest narrow gap is handling explicit repeat or continuation language: two trajectories undercounted a requested additional pass or omitted its continuation page.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Deduplicate the call set: make one invocation per distinct requested operation and input unless the schema supports batching or the user requests repetition. Do not add related calls as extra checks. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint.",
+        "content": "- Deduplicate only when the request asks for one result. Preserve separate invocations for separately requested passes—even when the endpoint and entity recur, such as an explicit request to repeat a check, show more items, or use a second sort. For a sequential “more” or “next page” request, use the next page/index only when the schema supports pagination and the request establishes continuation; keep each pass’s requested filters or sorting on its own call. Do not infer repetition from narrative context alone. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

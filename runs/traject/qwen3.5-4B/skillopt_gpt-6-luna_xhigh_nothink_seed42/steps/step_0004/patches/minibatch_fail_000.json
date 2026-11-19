@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "unmatched_tool_overcalling",
+      "count": 4,
+      "description": "Added unrelated tools or a broad feed that did not fulfill a distinct requested outcome."
+    },
+    {
+      "failure_type": "endpoint_selection_and_coverage",
+      "count": 4,
+      "description": "Omitted or misrouted requested outcomes, including choosing a generic search instead of a source-specific operation."
+    },
+    {
+      "failure_type": "schema_argument_mapping",
+      "count": 6,
+      "description": "Tool identifiers or arguments were placed, normalized, or populated incorrectly, including unsupported sample values."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers general coverage audits and schema matching. These focused additions address two remaining ambiguities exposed in the batch: a named news publisher should be treated as the source of the articles, and formatting examples must not leak into call arguments.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Plan tool calls",
+        "content": "\n- For a request for news published by a named outlet, treat the outlet as a source constraint: prefer a source-specific feed and provide its documented source identifier. A generic keyword search for the outlet can return articles that merely mention it, and a broad all-source feed is not an additional requested outcome unless the user asks for one."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Ground arguments in the request and schema",
+        "content": "\n- Treat example calls and answer-format samples as syntax demonstrations only. Never copy their sample tool names, parameter names, or values into a task call unless the actual tool schema and user request independently support them."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_invocation_contract_violation",
+      "count": 4,
+      "description": "Agents imported the unavailable tools module instead of using injected functions directly."
+    },
+    {
+      "failure_type": "cache_reuse_and_filtering",
+      "count": 3,
+      "description": "Agents returned no-op despite a new rating or neighborhood criterion not being reflected in the cached results."
+    },
+    {
+      "failure_type": "contextual_date_and_itinerary_interpretation",
+      "count": 3,
+      "description": "Agents failed to carry explicit trip dates or return-leg context into the requested hotel or return-flight searches."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly prohibits importing tools, so repeating that rule would not patch a gap. The edits clarify how to interpret contextual follow-ups and how to map explicit trip dates and durations to lodging and return-only flight requests, addressing the repeated missed actions.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, search each leg separately, reverse the outbound route for the return, and use the return leg’s departure date. Ask for an unknown endpoint rather than assuming a route.",
+        "content": "- Preserve user-provided dates, entity values, and casing. For a round-trip flight request, search each leg separately, reverse the outbound route for the return, and use the return leg’s date as that search’s `departure_date`. If the user requests only the return leg of an established trip, search only that reversed route using the established return date. For lodging clearly tied to the same trip, use the explicit trip interval’s first date for check-in and last date for checkout unless separate lodging dates are stated. If the user gives a check-in date and an explicit stay length in nights but no checkout date, derive checkout with `adjust_date`; never infer an unstated stay length. Ask for an endpoint or date only when it is genuinely unknown."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "\n- Resolve short answers and fragments using both the preceding exchange and their meaning. A reply may supply a different actionable preference than the one asked about (for example, a rating in response to a cuisine question); map it to the matching supported parameter rather than treating it as a no-op or assigning it to an unrelated field. When a reply adds a criterion, retrieve the closest compatible cached result, apply the matching filter, and save the updated result unless the cache already supports that criterion."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

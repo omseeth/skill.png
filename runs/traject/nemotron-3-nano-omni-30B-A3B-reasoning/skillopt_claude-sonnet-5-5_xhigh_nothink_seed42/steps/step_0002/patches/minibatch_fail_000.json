@@ -1,0 +1,58 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "parameter_placement_and_type",
+      "count": 4,
+      "description": "Parameters put in the wrong list (optional values like dice, TED filters, postalCode placed under required, and required page placed under optional). Numeric values emitted unquoted. Some parameter names or values invented (e.g. tp, search_type='travel')."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 5,
+      "description": "Tool chosen by loose similarity: a category list instead of a product search, a Realtime tool reused for a forecast, Item Search instead of the Store Item Search endpoint that has storeId and sellerId, and the same Asos tool used for a furniture item."
+    },
+    {
+      "failure_type": "missing_or_extra_calls",
+      "count": 3,
+      "description": "Dropped clauses (level 3 raids, the lamp search, the forecast) and added an unrequested call (Rocket League Profile for an author)."
+    },
+    {
+      "failure_type": "tool_name_format_error",
+      "count": 2,
+      "description": "Tool name shortened or invented ('reviews/list', 'BestBuyProductData', 'Priceline com Provider: Search locations') instead of the exact 'Provider: API' heading."
+    },
+    {
+      "failure_type": "degenerate_repetition_output",
+      "count": 1,
+      "description": "Output looped on the same calls until truncated, so nothing could be parsed (parse_success=0)."
+    },
+    {
+      "failure_type": "value_mapping_error",
+      "count": 2,
+      "description": "Query phrases not mapped to parameter values (Ace -> value=A, most helpful -> HELPFUL, next 3 days -> num_of_days=3), and unrequested defaults added (page, sort_order)."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill is empty, and the previous large rule set was rejected. This patch uses four short rules aimed at the failures that recur across this batch. (1) Exact tool names, schema-driven required/optional placement, quoted-string values, and a no-loop, compact output. (2) Clause checklist coverage with no extra calls. (3) Tool selection by function and by matching query identifiers to parameter names, using a different tool per capability or item type. (4) Mapping query phrases to parameter values without inventing anything.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Rule 1: Output contract (check before answering)\n- `tool name` is copied exactly from the tool's `### ` heading in the form `Provider: API` (e.g. `Wayfair: reviews/list`, `BestBuy Product Data: BestBuyProductData`). Never drop the provider prefix. Never shorten, rename or invent a name that is not in the list (a 'Search locations' tool does not exist if the list says 'Search hotels locations').\n- Put each parameter in the list where the chosen tool's schema declares it. Names under 'Required parameters' go in `required parameters`. Names under 'Optional parameters' go in `optional parameters`, even when the query supplies the value (dice count, postalCode, starid, TED filters, ids). Check every call against its schema, because a parameter listed as required must not end up under optional either.\n- Use only parameter names that appear in that tool's schema. Never invent one (e.g. `tp`, `period`) and never borrow one from a sibling tool.\n- Every parameter is `{\"name\": ..., \"value\": \"...\"}` and every value is a quoted string, including numbers (`\"5\"`, `\"300\"`, `\"9098084\"`). Every call has exactly the three keys, with `[]` when a list is empty.\n- Give ONE flat, balanced JSON list, written compactly. Never repeat the same call over and over. If you notice you are repeating, stop, then close the list and `</answer>`. A truncated or looping answer scores zero."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 2: Cover every clause, add nothing else\n- Before answering, split the query into atomic requests. Each sentence, each 'then / also / finally' clause, each item in a list, and each past-tense narrated step ('I searched…', 'looked up level 3 raids') is one required action. Count your calls against this checklist before finishing. Dropped clauses are the most common failure.\n- When the query itself names a tool ('using the X tool'), call exactly that tool with the stated parameters.\n- One call per distinct entity, id, page, or market ('US and UK' = 2 calls; 'two pages of 20' = page 1 and page 2, each with pageSize 20). Keep constant parameters on each call. Different needs should not be squeezed into one tool called twice, so give each its own call.\n- Do not add calls that no clause asks for. Do not call a lookup tool because a name or id looks like its input (e.g. an author name is not a game-profile query). Do not issue duplicate or 'hedging' calls."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 3: Pick the tool by function and by the query's identifiers\n- Choose the tool whose description matches the query's verb and object nearly word for word. 'Search for travel locations by name' -> the tool described as searching travel locations by name. 'Check if a store carries X' or 'search for X' -> a tool with a query/keyword/q parameter, not a category list or a count/admin helper.\n- If the query gives identifiers, pick the tool whose parameter names match them (storeId and sellerId -> the store item search endpoint that has those fields; sku -> a Wayfair sku endpoint; ASIN -> the ASIN tool). A 'by id' request needs a 'by id' tool, not a keyword search.\n- When one request needs two capabilities (current conditions and a multi-day forecast, search and reviews), use a tool for each capability. Check that its description and parameters actually cover that capability (e.g. forecast days -> a tool with a days/forecast parameter). Do not reuse a current-only tool with made-up parameters.\n- When several items of different types are listed (clothing vs furniture/lamps vs electronics), match each item to the provider in the list that sells that type. Do not send everything to one provider.\n- When the query says 'different tools/platforms' and lists sibling endpoints (a specific provider's reviews, images, warranty, pricing, financing, home services), call each named aspect's endpoint once.\n- For a named aspect ('base regions', 'countries and languages'), use the tool whose description says it lists exactly that."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 4: Mapping query phrases to values\n- Copy ids, SKUs, ASINs, postal codes, names and search terms from the query without changing them. For a search term, keep the query's keywords (singular/plural does not matter).\n- Map every stated or clearly implied constraint to the matching parameter of that tool, and add no parameter the query does not imply. Examples: 'next 3 days' -> days/num_of_days `\"3\"`; 'minimum 5 minutes' -> min_duration in the unit the description gives (seconds: `\"300\"`); 'from 2017 onwards' -> the from_* date field `\"2017-01-01\"`; 'Ace' -> value `\"A\"`; 'most helpful' -> sort `HELPFUL`; 'top 10' -> a range or limit `\"10\"`; 'first page' -> page `\"1\"`; 'UK / US market' -> country/lang/store in the tool's own code format; 'bookings in <place>' -> the postal code or location field.\n- Do not add page, sort, or default values the query never mentions (e.g. no page/sort_order on a plain reviews request unless the query asks for sorting).\n- If the schema description lists valid options or formats (enum values, slugs, lowercase codes, 'YYYY-MM-DD'), follow them exactly. For a required type/enum parameter the query does not specify, choose the inclusive option (e.g. `ALL`), not an invented category."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

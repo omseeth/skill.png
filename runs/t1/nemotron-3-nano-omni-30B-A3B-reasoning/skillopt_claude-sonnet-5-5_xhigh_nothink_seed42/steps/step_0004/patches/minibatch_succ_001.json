@@ -1,0 +1,26 @@
+{
+  "batch_size": 6,
+  "success_patterns": [
+    "On a first-search turn where the last user message only supplies the missing mandatory args (dates, rooms), the agent merged city and optional constraints from earlier turns (amenities, 'at least 3.5' rating, pet-friendly, kids club) with the new values. It emitted ONE straight-line search_* plus save_to_cache, with no seek_information and no cache probing.",
+    "The agent passed only values the user stated. A party size that appeared only in the assistant's question ('2 people, including children') was not turned into num_people. Amenity phrases were mapped to single matching params, and 'rating of at least 3.5' became rating=[3.5, 5].",
+    "When mandatory args were missing (no date for a flight; a vague 'business trip to X for 2 people' opener), the agent emitted only a single short seek_information. It made no search call and asked nothing about optional details.",
+    "Round-trip flight plus hotel requests became two separate search_flights calls (outbound and return) plus one search_hotels call (city, outbound date as check-in, return date as check-out), each saved to the cache.",
+    "A flight-class reply on a multi-leg trip (first/second departure legs plus a return leg) was applied to EVERY cached leg key, each with its own load, filter and save, using the exact keys from the CACHE summary."
+  ],
+  "patch": {
+    "reasoning": "Two patterns are not yet explicit in the skill. First, a first search that needs to merge earlier-turn constraints with last-turn dates and rooms, while ignoring numbers only the assistant mentioned. Second, an opener that names no domain at all (e.g. 'business trip to Lexington for 2'), where the agent should ask once for dates and what to book, not invent a flight or hotel request. Other observed behaviours (round trip + hotel, per-leg class filtering, missing departure date) are already covered by Rules 6, 9 and 17.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Search only the domain whose mandatory args just became complete. Leave other domains' existing cache entries untouched (e.g. restaurants already cached, now the hotel dates arrive: call search_hotels only).",
+        "content": "- The dates-and-rooms turn is usually the FIRST search for that domain. Build the call from the WHOLE conversation: city and amenities/rating/stars stated in earlier user turns plus the dates/rooms in the last turn, all in ONE search_* call. Example: earlier 'kids club and beach access, rating at least 3.5' + last 'Sept 27 to Oct 11, 2 rooms' -> `search_hotels(city=\"Las Vegas\", checkin_date=[\"September 27, 2025\"], checkout_date=[\"October 11, 2025\"], num_rooms=2, has_kids_club=True, has_beach_access=True, rating=[3.5, 5])`, then `save_to_cache(key=\"hotels\", value=x)`. Do not drop the earlier amenities. Only the USER's own statements count: a number that appears only in the assistant's question (e.g. '2 rooms for 2 people?') is not num_people unless the user confirms it."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 7: Writing seek_information, including multi-domain requests",
+        "content": "- Vague opener with no explicit domain (e.g. 'I'm planning a business trip to Lexington for 2 people', 'thinking of going to Vegas for my birthday'): no flight, hotel, restaurant or attraction has been requested yet, and no dates are given. Output ONLY one short seek_information asking for the travel dates and what the user wants to book. Do not search, do not guess a domain, and do not name flight-only or hotel-only fields the user never asked about. If a domain IS stated (e.g. 'I need an economy flight from Anchorage' with a destination), ask only for that domain's missing mandatory args, such as the departure date."
+      }
+    ]
+  },
+  "source_type": "success"
+}

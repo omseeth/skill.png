@@ -1,0 +1,50 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "stale_or_raw_cache_key_on_refinement",
+      "count": 3,
+      "description": "Agent loaded the raw key (restaurants, hotels) or invented a filter when a fresher nearest_*/filtered_* key existed. It also saved over an existing key, and in one case filtered only one of the two domains the user answered for ('ideal for both')."
+    },
+    {
+      "failure_type": "repassed_already_applied_constraint",
+      "count": 1,
+      "description": "The flight filter re-passed flight_class even though the CACHE summaries already listed the classes. Only the new budget should have been passed."
+    },
+    {
+      "failure_type": "uncached_domain_loaded_instead_of_searched",
+      "count": 1,
+      "description": "Hotel and attraction requests arrived after only flights were cached. The agent loaded a non-existent 'hotels' key and filtered it (None input) instead of calling search_hotels and search_attractions with dates taken from the flight legs."
+    },
+    {
+      "failure_type": "first_search_form_error",
+      "count": 1,
+      "description": "First-turn attraction search was a bare call with no assignment or save, and it put the state abbreviation 'AZ' in city instead of state."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures come from existing rules that were not followed because they are buried in a long document, plus one gap (hotel dates taken from cached flight dates). The edits are: (1) a short top checklist covering assign+save, state=, freshest key and no key overwrite; (2) a concrete flight-budget example under Rule 17; (3) a rule for choosing the freshest key (nearest_*/filtered_*/numbered) and handling 'for both' answers; (4) a rule for hotel/attraction requests when only flights are cached, so the agent searches instead of loading a missing key.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Top checklist (check before writing code)\n1. Every search_*, filter_*, sort_results and search_nearest call is written `x = ...` and followed by save_to_cache. A bare `search_attractions(...)` is always wrong, even on the first turn.\n2. A US state name or abbreviation ('AZ', 'Georgia') goes in `state=`, never `city=`. Attraction types are copied as the user wrote them: `search_attractions(state=\"AZ\", type=[\"Touristy\", \"Guided\"])`, saved as \"attractions\".\n3. On a follow-up, load the FRESHEST key of the domain (nearest_*, filtered_* or numbered keys beat the raw key). Pass only the new constraint, never what that key's CACHE summary already lists (Rules 17, 23).\n4. A requested domain with no CACHE key is a search_*, never get_results_from_cache (Rule 24).\n5. Never save under a key that is already in the CACHE."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 17: Refinements - pass ONLY the new constraint (the CACHE summary shows what is already applied)",
+        "content": "- Flight example: CACHE 'departure_flights' and 'return_flights' summaries already say 'flight classes: [business, first]', and the last turn is only 'yeah let's keep it under 1100'. For EACH leg: `x = get_results_from_cache(key=\"departure_flights\")`, `y = filter_flights(prior_results=x, budget=1100)`, `save_to_cache(key=\"filtered_departure_flights\", value=y)`, then the same for return_flights. Do NOT re-pass flight_class, airline, layovers or dates that the summary already lists, even if the user said them earlier."
+      },
+      {
+        "op": "insert_after",
+        "target": "4. Pass only the constraints the user literally stated. Never ask about optional details, and never seek information for a domain the user has not requested.",
+        "content": "\n## Rule 23: Load the freshest key, cover every domain the answer applies to, never overwrite a key\n- Before writing get_results_from_cache, list ALL CACHE keys of that domain and pick the freshest. A nearest_* key beats the search keys it was built from. A filtered_* or numbered key (filtered_restaurants, hotels2, hotels3) beats the raw key. A summary containing 'Additionally filtering for ...' or 'near hotels/attractions' is later than the raw 'restaurants' or 'hotels'.\n- Save under a NEW key that is not already in the CACHE, adding the next number (hotels2 -> hotels3, filtered_restaurants -> filtered_restaurants1, nearest_hotels -> filter_nearest_hotels).\n- Example: CACHE has 'restaurants' and 'filtered_restaurants' (neighborhood already applied) and the user adds a rating. Load filtered_restaurants (never raw restaurants), call filter_restaurants with only the rating, save as filtered_restaurants1.\n- Example: CACHE has hotels, attractions and nearest_hotels (hotel near a named attraction) and the user says 'There are 3 of us'. Output `n = get_results_from_cache(key=\"nearest_hotels\")`, `n2 = filter_hotels(prior_results=n, num_people=3)`, `save_to_cache(key=\"filter_nearest_hotels\", value=n2)`. Party size is num_people on the hotel filter. An attraction name is never a neighborhood value, and do not re-filter the raw 'hotels' key.\n- 'X would be ideal for both' / 'for both' when hotels and restaurants are cached (e.g. hotels2 and nearest_restaurants): handle BOTH domains. `h = get_results_from_cache(key=\"hotels2\")`, `h2 = filter_hotels(prior_results=h, neighborhood=[\"X\"])`, save as hotels3. Then `r = get_results_from_cache(key=\"nearest_restaurants\")`, `r2 = filter_restaurants(prior_results=r, neighborhood=[\"X\"])`, save under a new key. Never filter the raw restaurants key when nearest_restaurants exists, and never skip the hotel half."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 24: A requested domain with no CACHE key is searched, never loaded (e.g. hotel/attraction after flights)\n- If the last turn gives hotel constraints or an attraction request and the CACHE has no 'hotels' / 'attractions' key (for instance only departure_flights / return_flights / filtered_* flight keys), never write get_results_from_cache(key=\"hotels\") and never call filter_hotels or filter_attractions. Run search_hotels / search_attractions. Do not reload or re-save flight keys when the last turn is not about flights.\n- Hotel dates come from the flight legs: check-in = outbound departure date, check-out = return-leg departure date, written as the user wrote them. The city is the flight destination. num_people is the traveler count stated for the flights. Put every hotel constraint from the last turn into this first search. 'At least a 5 star hotel with a kids club, pool, and breakfast' -> stars=[5, 5], has_kids_club=True, pool_present=True, breakfast_included=True. A named attraction plus a type is passed together.\n- Example (flights Memphis -> Anchorage, May 17-29, 2025, 5 people, user then asks for the hotel and attractions): `hotels = search_hotels(city=\"Anchorage\", checkin_date=[\"May 17, 2025\"], checkout_date=[\"May 29, 2025\"], num_people=5, stars=[5, 5], has_kids_club=True, pool_present=True, breakfast_included=True)`, `save_to_cache(key=\"hotels\", value=hotels)`, `attractions = search_attractions(city=\"Anchorage\", type=[\"Scenic\"], attraction_name=[\"Tony Knowles Coastal Trail\"])`, `save_to_cache(key=\"attractions\", value=attractions)`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

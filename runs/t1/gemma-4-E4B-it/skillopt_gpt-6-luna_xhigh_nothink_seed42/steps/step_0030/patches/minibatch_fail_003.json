@@ -1,0 +1,41 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_mismanagement",
+      "count": 2,
+      "description": "Agents reprocessed unchanged cached domains and/or searched a scope already covered by cache instead of filtering it."
+    },
+    {
+      "failure_type": "unsupported_parameter_inference_and_entity_normalization",
+      "count": 1,
+      "description": "An agent inferred a party size from vague trip context and shortened the user's full neighborhood phrase."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the no-action rule explicit for unchanged domains, add a literal retrieve-filter-save pattern for restaurant budget and rating updates, and clarify that occupancy is never guessed and neighborhood names remain intact.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no cached result can cover the changed scope.",
+        "content": "\n- For an unchanged domain or leg, take no cache action merely because another scope changed: do not retrieve, filter, search, or save it. Retrieve an unchanged result only when it is needed as input to a requested operation or the user asks to receive it."
+      },
+      {
+        "op": "insert_after",
+        "target": "```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "\nFor a same-scope restaurant follow-up that adds a rating threshold or budget, filter the compatible cached results rather than repeating the base search:\n```python\nprior_restaurants = get_results_from_cache(key=\"<exact compatible restaurant key from summary>\")\nfiltered_restaurants = filter_restaurants(prior_results=prior_restaurants, rating=[<minimum rating>, 5], budget=<maximum per-person budget>)\nsave_to_cache(key=\"<descriptive filtered restaurant key>\", value=filtered_restaurants)\n```"
+      },
+      {
+        "op": "insert_after",
+        "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+        "content": "\nNever default `num_people` or `num_rooms` from an occasion or vague trip description such as “weekend getaway”; use these only when the user states a count or an explicit descriptor makes it unambiguous."
+      },
+      {
+        "op": "insert_after",
+        "target": "For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; do not treat a request to stay in a named district as a proximity search.",
+        "content": " Preserve the complete neighborhood phrase exactly as supplied; do not shorten a city-qualified neighborhood name when passing it as `neighborhood`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

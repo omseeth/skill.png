@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_refinement_misuse",
+      "count": 4,
+      "description": "Agents searched despite compatible cached results, replayed earlier constraints, or omitted a newly requested filter."
+    },
+    {
+      "failure_type": "result_lifecycle",
+      "count": 5,
+      "description": "At least one result-producing call was left unassigned or its result was not saved to cache."
+    },
+    {
+      "failure_type": "missing_information_and_domain_coverage",
+      "count": 2,
+      "description": "Agents invented missing mandatory dates or let one incomplete domain block an independently actionable request."
+    },
+    {
+      "failure_type": "time_range_mapping_or_format",
+      "count": 1,
+      "description": "A flight call omitted the requested departure deadline and supplied an invalid arrival-time range."
+    },
+    {
+      "failure_type": "invalid_tool_import",
+      "count": 1,
+      "description": "The agent imported tools instead of calling the provided functions directly."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers cache refinement and saving every tool result, so duplicating those instructions is not warranted. The clearest remaining gaps are how to handle independently actionable domains when another domain lacks required inputs, and how to translate comparative time requests into valid field-specific ranges.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+        "content": "Check each required tool field against explicit values in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Partition requested actions by domain: execute and save every action whose own mandatory inputs are available, even when another requested action is blocked by missing inputs. Make one `seek_information` call asking only for the missing mandatory information for blocked actions; do not invent values or use defaults. Resolve references such as “there” or “nearby” to a previously stated destination only when that destination is unambiguous."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- Map comparative time language to a range for the correct field: “by” or “no later than X” means start-of-day through X; “after” or “no earlier than X” means X through end-of-day; “at X” means X to X. Apply departure constraints to `departure_time` and arrival constraints to `arrival_time`. Use the time syntax accepted by the specific tool; do not assume seconds or end-of-day sentinels are valid."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

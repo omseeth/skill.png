@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_incremental_filtering",
+      "count": 6,
+      "description": "Follow-up constraints often triggered fresh searches or used a less-refined cached result instead of retrieving and filtering the most relevant cached result."
+    },
+    {
+      "failure_type": "incomplete_tool_sequence_or_result_persistence",
+      "count": 7,
+      "description": "Plans omitted required follow-up calls, itinerary legs, or saving of generated results despite having enough context to complete the workflow."
+    },
+    {
+      "failure_type": "nearest_input_selection",
+      "count": 3,
+      "description": "Proximity plans omitted a related cached domain, used an irrelevant result set, or passed an invalid null input to nearest search."
+    },
+    {
+      "failure_type": "entity_or_category_fidelity",
+      "count": 3,
+      "description": "Plans substituted similar category labels or failed to search for the specifically named attraction."
+    },
+    {
+      "failure_type": "unsupported_preference_inference",
+      "count": 1,
+      "description": "A family-friendly request was incorrectly mapped to a pet-friendly hotel preference."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make cache selection explicitly incremental and prefer the most refined compatible result, clarify the exact two-result requirement for proximity searches, and reinforce faithful handling of affirmative replies and category labels. Make the round-trip call sequence operationally explicit. The existing skill already requires saving every result, so no duplicate save rule is added.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- At each turn, inspect cache summaries before searching. If a relevant result exists for the same domain, city, dates, and itinerary leg, retrieve it with its exact key using `get_results_from_cache`, then apply the matching `filter_*` tool with that result as `prior_results` and the newly supplied constraints. If no suitable cached result exists, run a new search. Apply new preferences to all relevant cached results or itinerary legs, but do not repeat valid searches or regenerate unaffected domains.",
+        "content": "- At each turn, inspect cache summaries before searching. For an updated domain, retrieve the most refined cached result that matches the existing city, dates, itinerary leg, and constraints, using its exact key; apply the matching `filter_*` tool with only the newly supplied constraints. Do not restart from a broader cached result or repeat a valid search. If the cache does not represent a newly requested specific entity or category, make a focused search for that missing request rather than substituting a broader result. Leave unaffected domains unchanged."
+      },
+      {
+        "op": "replace",
+        "target": "- When the user requests proximity, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "- Treat an explicit proximity request, or an affirmative reply to the immediately preceding assistant question about proximity, as a request for `search_nearest`. Supply exactly two valid, non-`None` result objects for the requested related domains (for example, hotels and attractions, or hotels and restaurants); retrieve or search for either result if needed. Never call `search_nearest` with only one domain or with `None`. Set `groupBy` to the domain the user wants prioritized."
+      },
+      {
+        "op": "replace",
+        "target": "Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to both legs, and do not combine distinct legs by repeating keyword arguments in one call.",
+        "content": "Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, make one outbound search and one return search in the reverse direction, using the return date as the return search's `departure_date`; never encode the return as `arrival_date` on the outbound search. Assign each search to a distinct variable and save each result immediately under a unique key. Apply an explicitly requested flight class to both legs, and do not combine distinct legs by repeating keyword arguments in one call."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool results and constraints",
+        "content": "- Resolve brief affirmative replies against the full conversation, especially the immediately preceding assistant question, and carry forward the exact proposed constraint. Preserve category labels and entity names verbatim, including attraction types; do not replace them with synonymous or normalized labels from tool examples. For a specifically named attraction, use the attraction-name criterion rather than substituting a broad attraction type."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

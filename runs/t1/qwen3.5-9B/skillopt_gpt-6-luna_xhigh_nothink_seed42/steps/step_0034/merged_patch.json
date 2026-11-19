@@ -1,0 +1,29 @@
+{
+  "reasoning": "Prioritized the cache-base clarification and the proximity distinction, which are supported across patches and address recurring decision errors. Made the existing save requirement more operational with a compact call template. Left the protected section untouched and omitted one-off expansions on multi-stop flights, amenity mappings, and rating interpretation to keep the patch focused.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Write every result-producing search, filter, sort, or `search_nearest` call in two steps: assign its returned result to a variable, then save that exact, complete result object with `save_to_cache` under a fresh, descriptive key. Do not extract `.search_results`, rebuild, or merge tool output before saving. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save.",
+      "content": "For every result-producing search, filter, sort, or `search_nearest` call—including initial searches—emit the pattern `result = tool(...)` followed by `save_to_cache(key=\"<fresh descriptive key>\", value=result)`. Save the complete returned object unchanged; never leave the call bare, extract `.search_results`, rebuild, or merge its output. Use distinct keys for domains, itinerary legs, and updated results.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "If a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only the new same-domain filter and save the update under a fresh relevant key.",
+      "content": "For an unmet deliverable with a new constraint, use the latest suitable cache result in the same domain, location, and itinerary leg that already reflects all prior constraints still in force; this may be a combined nearest result. Retrieve it by its exact key into a variable in this turn, apply one same-domain filter with only the new constraint(s), and save the exact output under a fresh key. Do not fall back to a broader base, replay prior filters, rely on earlier-turn variables, or process and re-save unrelated deliverables already satisfied.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain.",
+      "content": "Use `search_nearest` only for an explicit proximity relationship. If “near X” names an area or district, treat X as a `neighborhood` constraint and do not call nearest. Otherwise, identify the anchor and target domains, retrieve or search for their results, pass exactly two distinct relevant domain inputs once each, and set `groupBy` to the target domain the user wants returned or recommended (for example, hotels near restaurants uses `groupBy=\"hotel\"`).",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

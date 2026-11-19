@@ -1,0 +1,56 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "dropped_or_wrong_facet_tool",
+      "count": 5,
+      "description": "A clause got the wrong sibling or no call: Asos 'search X' mapped to countries/list (T1); 'both Asos and Wayfair' lost the Asos call (T7); 'detailed information' dropped the generic detail tool (T3); get-home-services dropped (T4); a Zappos product ID sent to the search tool instead of the detail-by-ID tool (T5)."
+    },
+    {
+      "failure_type": "param_missing_or_misplaced",
+      "count": 6,
+      "description": "Wayfair reviews/list lacked page=1 or page=2 (T1, T5, T7). postalCode was put on get-images (T4). Aliexpress q/page were put in required although the schema says none (T3). sellerId was dropped and keyword/page invented on the store search (T5). Asos lang was written as `en` (T3, T6)."
+    },
+    {
+      "failure_type": "wrong_enum_or_empty_value",
+      "count": 2,
+      "description": "'Most helpful' reviews were mapped to sort_order=IMAGE (T7). `star` was emitted with an empty value (T1)."
+    },
+    {
+      "failure_type": "padding_call_and_provider_choice",
+      "count": 1,
+      "description": "An unrequested Twelve Data VAR call was added for a 'market context' clause, and the Mboum upgrade/downgrade tool was chosen over the Yahoo Finance_v2 one the query's provider also offers (T2)."
+    },
+    {
+      "failure_type": "duplicate_optional_key",
+      "count": 1,
+      "description": "A filled `optional parameters` list was followed by a second empty one, which erased the `filters` value (T6)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures are in one repeated tool family (Wayfair, Asos, Aliexpress, Zappos). Each shows the same pattern: the agent ignores prose rules and misses a facet, a sibling or a per-tool schema fact. The two format-only edits tried earlier in this epoch were rejected, and only 1 of 7 trajectories here has the duplicate-key bug, so no new format edit is proposed. The edits add concrete per-tool line shapes and clause-to-endpoint mappings: reviews page and sort_order values, Asos search versus countries, detail plus facet calls, postalCode only on home-services, ID lookup versus search, all-optional Aliexpress tools with storeId and sellerId, and the finance no-padding case. Each is one rule with a good/bad example.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Which calls to make",
+        "content": "\n- WAYFAIR / ASOS LINE MAP (one line per clause; copy these shapes):\n  - Reviews: `Wayfair: reviews/list` with required `sku`, optional `page`=`1` and `sort_order`. 'Most helpful' -> `HELPFUL`, 'most recent/latest' -> `DATE_DESCENDING`, 'highest rated' -> `RATING_DESCENDING`, 'relevance' -> `RELEVANCE`. `IMAGE` means reviews with photos, so it is never 'helpful'. A later 'more reviews' call for the same SKU uses `page`=`2`. Omit `star` rather than writing an empty value.\n  - 'Search/look up X on Asos' -> `Asos: v2/auto-complete` (`q`=X). `Asos: countries/list` is only for 'which countries Asos sells to'. 'Autocomplete on both Asos and Wayfair' -> BOTH `Asos: v2/auto-complete` AND `Wayfair: auto-complete`. Asos `lang` for US English is `en-US`, never `en`.\n  - `Wayfair: products/search`: required `keyword`; optional `curpage`=`1`, `itemsperpage`=`10`, `sortby`=`0`. Recent gold uses 10, which overrides the 48 in the strategic block. Add `filters`=`masterClID~180` when the clause says 'category ID 180'."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n- DETAIL CLAUSES. 'Detailed information about SKU X, including A and B' = the generic detail tool that is actually listed (`Wayfair: products/v2/detail (Deprecating)` or `Wayfair: products/get-common-info`) PLUS one call per named facet (images -> `get-images`, similar items -> `get-similar-items`, home services -> `get-home-services`, financing -> `get-financing-offers`). Skip the generic call only if neither is listed. A qualifier goes only on the tool whose own schema lists it. `postalCode` exists only on `get-home-services`. BAD: `get-images` with `postalCode`=`10001`. GOOD: `get-home-services` with `sku` + optional `postalCode`=`10001`, and `get-images` with only `sku`.\n- ID LOOKUP. 'Details of the product with ID 9098084' -> the tool whose required param is that ID (`Zappos Realtime Data: Zappos product detail by Product ID`, `product_id`=`9098084`). Never put an ID into `keyword` or `q` of a search tool (BAD: `Zappos Realtime Data: Zappos search product` with `keyword`=`9098084`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Parameters",
+        "content": "\n- ALL-OPTIONAL TOOLS AND IDS. Every `Aliexpress DataHub` search/store variant lists `Required parameters: none`, so `q`, `page`, `region`, `currency`, `sort`, `storeId` and `sellerId` all go in `optional parameters` (BAD: `q` and `page` under `required parameters`). A clause like 'store 1102051418 (seller ID 231651707)' -> `storeId` AND `sellerId`, with nothing borrowed from a neighbouring clause (no `keyword`, no `page`). ENUM values use the schema's token spelling, uppercase with underscores (e.g. 'sorted by best match' -> `sort`=`BEST_MATCH`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "\n- NO INDICATOR PADDING, KEEP THE NAMED PROVIDER. A context clause ('compare within the broader US mutual fund market') is ONE call to the list tool that names it (`Twelve Data: MFs Family List`, optional `country`). Do not add statistic or indicator endpoints (`VAR`, `MACD`, `DEMA`, `LINEARREGINTERCEPT`) or crypto tools that no clause names. When the query names a provider for one clause ('news from Yahoo Finance') and that provider's list also has the endpoint for a neighbouring clause, use it (`Yahoo Finance_v2: stock/upgrade-downgrade-history`) before a lookalike (`Mboum Finance: stock/upgrade-downgrade-history/{stock}`). Use the other provider only for endpoints the first lacks (e.g. balance sheet)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

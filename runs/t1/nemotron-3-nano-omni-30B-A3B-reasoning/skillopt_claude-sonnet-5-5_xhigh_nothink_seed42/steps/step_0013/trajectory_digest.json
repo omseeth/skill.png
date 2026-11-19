@@ -1,0 +1,64 @@
+{
+  "step": 13,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 26,
+  "failure_patterns": [
+    {
+      "pattern": "wrong_domain_scope: Re-searched or re-filtered domains already in CACHE (flights re-searched, flights/hotels re-filtered) instead of acting on the domain the last turn changed (new restaurant search, hotel dates only, one-way or return-only flight).",
+      "count": 26,
+      "task_ids": [
+        "hotel:train:15:57:1",
+        "hotel:train:6:3:2",
+        "flighthotelattraction:train:11:27:2",
+        "hotelrestaurant:train:13:45:0",
+        "hotelattraction:train:10:21:5",
+        "flighthotelrestaurant:train:16:43:1",
+        "flighthotelrestaurant:train:5:19:3",
+        "attraction:train:23:42:1",
+        "flight:train:14:4:1",
+        "hotelattraction:train:25:10:4",
+        "flight:train:23:57:2",
+        "flighthotelrestaurant:train:6:30:1",
+        "flighthotelattraction:train:2:22:1",
+        "hotel:train:6:21:4",
+        "restaurant:train:25:45:1",
+        "hotelattraction:train:25:21:3",
+        "flighthotelrestaurant:train:9:19:4",
+        "hotelrestaurant:train:17:53:3",
+        "flighthotelattraction:train:4:32:4",
+        "hotelrestaurant:train:7:37:4",
+        "hotel:train:10:15:3",
+        "flighthotelrestaurant:train:19:35:2",
+        "hotel:train:13:3:1",
+        "flighthotelrestaurant:train:25:34:3",
+        "flighthotel:train:15:13:3",
+        "restaurant:train:14:15:3"
+      ]
+    }
+  ],
+  "score_before": 0.415,
+  "score_after": 0.375,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "- Exception to the 'a date in the reply IS the departure_date' bullet below: a reply that gives only an ARRIVAL date or arrival time ('I need to arrive on May 30, 2025 by 01:22 PM') does not supply departure_date. departure_date is the mandatory arg, and arrival_date and arrival_time are optional. If no departure date was ever stated, output only `seek_information(\"We need the departure date for the flight.\")`. Do not call search_flights and do not move the arrival date into departure_date. If a departure date IS known and the user adds an arrival time or date, pass it as arrival_time / arrival_date on the search.",
+      "target": "## Rule 24: Dates, stay length and domain completeness (supplements Rules 6, 7, 9, 14)"
+    },
+    {
+      "op": "insert_after",
+      "content": "- Opening turns that name only a destination plus an occasion ('a trip to Colorado Springs for my birthday', 'planning a trip from Anchorage to Las Vegas with a layover in St. Louis') have no complete domain. The whole output is ONE short seek_information call. Do not search, save or load anything. Ask only for the missing mandatory items: the departure date if flights are clearly implied (origin and destination given), otherwise the dates or the service needed (flight or hotel).",
+      "target": "## Rule 7: Writing seek_information, including multi-domain requests"
+    },
+    {
+      "op": "replace",
+      "content": "a timing worry ('make sure we arrive on time'), an arrival deadline ('I need to arrive by 1:22 PM'), a layover preference ('with a layover in St. Louis')",
+      "target": "a timing worry ('make sure we arrive on time')"
+    },
+    {
+      "op": "append",
+      "content": "\n## Rule 29: Hotel parameter mapping (search_hotels and filter_hotels)\n- Only these amenity kwargs exist: gym_present, pool_present, breakfast_included, smoking_allowed, air_conditioning_present, heating_present, free_wifi_included, airport_shuttle_present, is_pet_friendly, has_spa_services, has_room_service, has_beach_access, has_business_center, has_fitness_class, has_laundry_service, has_valet_parking, has_balcony, has_rooftop_bar, has_inroom_kitchen, has_kids_club, has_meeting_rooms, has_electric_vehicle_charging, has_hot_tub, has_sauna, has_free_parking, is_wheelchair_accessible, has_skiing_lodging, has_ocean_view_rooms_present, has_city_view_rooms_present. Anything else raises a ValidationError ('meeting rooms' -> `has_meeting_rooms=True`, never `meeting_rooms`).\n- A requested feature with no matching parameter ('large dining area', 'spacious', 'quiet') is omitted silently; pass only the features that map. Example: 'Yes, meeting rooms and a large dining area' -> `filter_hotels(prior_results=x, has_meeting_rooms=True)`.\n- Style or context words ('kid-friendly', 'family-friendly', 'family vacation', 'large group', 'business trip', 'anniversary', 'weekend getaway') are not amenities. Never turn 'kid-friendly' into pool_present or has_kids_club unless the user literally says pool or kids club.\n- Map: 'hotel with a kitchen' -> has_inroom_kitchen=True; 'near the beach' / 'beach access' -> has_beach_access=True; 'city view' -> has_city_view_rooms_present=True. When the first search_hotels finally runs (dates arrive late), include EVERY amenity stated in ANY earlier turn.\n- Neighborhood: an area named in ANY turn goes in `neighborhood=[...]` in the user's wording INCLUDING the city ('Downtown St. Louis', 'Midtown Atlanta'). Never shorten it and never drop it, even when it arrives in the same turn as the dates. Example: earlier 'hotel in St. Louis, meeting room, business facilities, rating at least 4.5', last turn 'arriving December 12, 2025, leaving December 14, 2025, in Downtown St. Louis' -> `search_hotels(city=\"St. Louis\", checkin_date=[\"December 12, 2025\"], checkout_date=[\"December 14, 2025\"], neighborhood=[\"Downtown St. Louis\"], rating=[4.5, 5], has_meeting_rooms=True, has_business_center=True)`.\n- num_people comes ONLY from an explicit headcount ('5 people', 'there are 4 of us'); never default to num_people=1 and never infer it from context words. num_rooms comes ONLY from a stated room count ('we need 3 rooms' -> `num_rooms=3`); never copy a room count into num_people. A reply that only gives counts ('There are 4 of us and we need 4 rooms') is `filter_hotels(prior_results=x, num_rooms=4, num_people=4)` and nothing else.",
+      "target": ""
+    }
+  ]
+}

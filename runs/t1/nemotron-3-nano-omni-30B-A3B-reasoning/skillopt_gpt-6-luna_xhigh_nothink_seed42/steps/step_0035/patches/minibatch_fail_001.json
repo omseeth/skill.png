@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_pending_actions",
+      "count": 3,
+      "description": "New or contextually accepted domain requests were omitted while the agent repeated unrelated cached flight work or handled only part of a multi-domain request."
+    },
+    {
+      "failure_type": "missing_result_binding_or_persistence",
+      "count": 6,
+      "description": "Required searches or refinements were not bound to variables and saved, including initial searches and cache-based refinements."
+    },
+    {
+      "failure_type": "incorrect_cache_branch",
+      "count": 1,
+      "description": "A new budget constraint was searched from scratch instead of filtering the compatible cached restaurant results."
+    },
+    {
+      "failure_type": "inferred_or_misencoded_criteria",
+      "count": 3,
+      "description": "The agent inferred hotel details or dates not explicitly supplied, or encoded a round-trip return as an outbound arrival with invented time ranges."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the existing planning rules more executable: checklist every pending domain and process each independently, recognize affirmative replies to concrete assistant questions as actionable, and make result persistence an explicit step for every tool call. Clarify the ambiguous mapping from broad family-friendly language to specific hotel fields.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "- Before emitting code, make a checklist of every still-pending user action across all domains, recording its exact target, location or flight leg, criteria, and any requested relation. Assess each item independently: retrieve and use a listed compatible cache result if it covers the full request; if it covers earlier criteria but lacks a new constraint, retrieve it and apply only that delta with the appropriate filter; search only when no compatible result exists and all mandatory inputs are explicit. Do not call a blocked action with invented values: ask once for missing mandatory inputs while completing other ready items. A cached result for another domain or target does not complete an item. Use `print(\"No planning needed\")` only when every pending action is covered by valid results."
+      },
+      {
+        "op": "replace",
+        "target": "- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. Interpret replies in the context of the assistant's concrete question or suggestion, not only their literal wording: a direct answer can supply the asked-for amenity or preference, and asking what is available after an area is suggested makes that area an actionable search target. A direct answer can also introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the reply says a criterion applies to “both,” apply it independently to every still-pending domain referenced in context (for example, hotels and restaurants), using each domain’s appropriate filter and latest compatible cached result; do not apply it only to the last-mentioned domain. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.",
+        "content": "- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests. Interpret replies in context: a direct answer can supply the asked-for preference or introduce a new target or criterion, and asking what is available after an area is suggested makes that area actionable. An affirmative answer to a concrete assistant question or offer to search a supported travel domain makes that specific search pending; do not treat it as mere confirmation that existing results suffice. Apply “both” to every still-pending referenced domain, using each domain’s appropriate filter. Apply still-valid criteria independently to each named location and create a distinct result for each."
+      },
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- For every required search, filter, sort, or nearest-results call, immediately bind its exact return value to a local variable and save that same object with `save_to_cache` under a unique, descriptive key. This applies to initial searches as well as refinements and to every result when multiple calls are required. Save refined results under a new key; do not substitute hand-built dictionaries or redefined models."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not infer exact party or room counts from broad descriptions such as “family.”",
+        "content": "“Family-friendly” or “kid-friendly” alone also does not specify a particular amenity such as a kids club or an exact traveler count."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Slot-type discipline worked on most items. 'this capital city' -> Stockholm, 'this man' -> John Fogerty, 'this prison' -> Bastille, 'this Spanish city' -> Seville, 'state capital on the Alabama River' -> Montgomery. The agent gave the bare entity of the asked type, with no 'Conference', 'Opera' or 'Hardware store' wrappers and no clue words repeated.",
+    "Verbatim archive hits were copied directly. J! Archive and GitHub dumps gave 'Ace Hardware' and 'a fall'. This held even when the clue began with a host or video aside ('Jimmy of the Clue Crew grapples with...') that the archive shows separately from the clue body.",
+    "A nickname clue that gave the REAL name and asked for the moniker ('William Marcy Tweed's better known moniker') was answered with the bare nickname 'Boss'. It was not 'Boss Tweed' and not the real name. This is the opposite direction of the existing nickname bullet, which only covers a clue that gives the nickname and wants the real name.",
+    "Clues with a quoted fragment plus 'this <type>' ('Barber of' this Spanish city) were answered with only the missing word or city ('Seville'), not the full title.",
+    "When the passages were noisy and never stated the fact (Michael Nobel's birthplace), the agent used its own knowledge, checked it against weak passage hints, and committed to a specific entity of the right type."
+  ],
+  "patch": {
+    "reasoning": "Most successes are already covered by existing rules (type slot, delete-clue-words, verbatim archive copy). Two gaps remain. First, the existing nickname bullet only covers the nickname-to-real-name direction, which could mislead the agent on a real-name-to-moniker clue like the Tweed one. Editing the older rule resolves that conflict without adding a new bullet. Second, archive matching should skip the host or video aside at the start of a clue, because the archive splits it from the clue body. That is how the 'a fall' clue was matched.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- For nickname clues about a person ('known as \"Uncle Walter\"'), answer with the real name as it appears in the context (Walter Cronkite), not the nickname. Still apply the person-name rule above.",
+        "content": "- Nickname clues: check the DIRECTION. If the clue gives the nickname ('known as \"Uncle Walter\"'), answer with the real name as it appears in the context (Walter Cronkite). If the clue gives the real name and asks for the 'moniker / nickname / better-known name' ('William Marcy Tweed's better known moniker'), answer with ONLY the nickname word as the passages give it ('Boss'), not the real name and not the nickname plus the surname ('Boss Tweed'). Still apply the person-name rule when naming a real person."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 3: Look for the clue repeated verbatim in the context",
+        "content": "- Many clues begin with a host or video aside in parentheses ('(Jimmy of the Clue Crew grapples with another clue...)', '(Alex: We'll give you the horse...)'). Archives often store the aside separately from the clue body. When scanning passages, search on the distinctive words AFTER the aside (e.g. 'shoulders have to be pinned to the mat for 1 second'), then copy the answer after the '|' (e.g. 'a fall')."
+      }
+    ]
+  },
+  "source_type": "success"
+}

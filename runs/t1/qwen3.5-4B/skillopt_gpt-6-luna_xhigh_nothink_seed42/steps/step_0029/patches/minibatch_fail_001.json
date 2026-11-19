@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "stateful_request_completion",
+      "count": 7,
+      "description": "Agents missed or incompletely handled a requested refinement, independent domain action, or cached-result update."
+    },
+    {
+      "failure_type": "result_persistence_and_parameter_propagation",
+      "count": 2,
+      "description": "A search or filter was not fully saved, or an explicit hotel party size was omitted."
+    },
+    {
+      "failure_type": "proximity_intent_interpretation",
+      "count": 2,
+      "description": "Agents missed a proximity search implied by the user's request or ran one based only on an unaccepted assistant offer."
+    },
+    {
+      "failure_type": "runtime_namespace_violation",
+      "count": 1,
+      "description": "The agent imported tools from a nonexistent module instead of calling injected functions directly."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that short answers to questions and follow-ups about proposed places can refine an active request and require an update, not just a cache read or no-op. Also distinguish a user's explicit proximity request from an assistant's unaccepted suggestion. Existing persistence, runtime, and independent-domain rules already cover the other failures, so they are left unchanged.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Interpret brief replies in the context of the immediately preceding assistant question or proposal, including follow-up questions about a proposed place. Carry forward any newly supplied city, neighborhood, party size, amenity, or other criterion as a refinement of the still-active requested domain. When a compatible result is cached, retrieve and filter it for the new criterion, then save the update; a cache read or “No planning needed” alone does not fulfill a refinement."
+      },
+      {
+        "op": "replace",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- Call `search_nearest` when the user explicitly requests results near, close to, or with access to another result type (for example, lodging near attractions). Do not infer that request from an assistant's unaccepted offer or from an earlier suggestion when the latest user turn requests a separate refinement. Ensure compatible results for both types are available, apply relevant new filters before the nearest call, and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "In most trajectories the [TLE] passage titles and the top-ranked passages repeatedly named the answer entity (Cyprus, Bullfighting, The King and I, One-child policy, Leduc/Edmonton). The agent read those headlines, confirmed the entity fit the clue's slot type, and answered with it.",
+    "Clues with host or stage-direction parentheticals ('(Jimmy of the Clue Crew at the St. James Theatre...)') or media pointers ('whose flag is seen here') were solved by ignoring that framing and answering from the remaining descriptors.",
+    "When a passage named a related place or item (the Leduc oil well, 'futbol' as Mexico's popular sport), the agent chose the entity that satisfied the clue's own constraints ('175 miles north of Calgary', 'Known as corrida de toros') rather than the nearest or most frequent name.",
+    "The agent gave bare answers, a single word or short title, with no descriptors. A leading 'The' was kept only for a proper title ('The King and I'). The plural was kept when the clue said 'these' ('horses')."
+  ],
+  "patch": {
+    "reasoning": "The skill covers verbatim archive hits, slot typing and formatting well. It does not yet say that passage headlines and repeated titles are a strong signal for the answer entity, which is the quickest route when no archive hit exists. It also does not say how to treat parenthetical host notes and 'seen here' pointers, or that a named related entity (the discovery site, the popular rival sport) must lose to the clue's own constraints. The patch states these narrowly, reinforcing existing rules without repeating the previously rejected broad edits.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "\n- Read the passage titles ([TLE] headings such as 'Cyprus - Wikipedia', 'Bullfighting - Wikipedia', 'The King and I - Wikipedia'). When several top passages are titled around, or keep repeating, one entity that also matches the clue's descriptors, that entity is very likely the answer. Confirm that it is the right TYPE for the slot (Rule 2), then answer it directly without overthinking."
+      },
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- Ignore framing that is not part of the fact: a leading parenthetical such as '(Jimmy of the Clue Crew at the St. James Theatre...)', or pointers to unseen media such as 'whose flag is seen here'. Answer from the remaining descriptors ('troubled Mediterranean island nation' -> Cyprus). Never say the image or video is missing."
+      },
+      {
+        "op": "insert_after",
+        "target": "Anchor on the clue's most specific unique detail",
+        "content": " (distances, dates, capital/largest status, a foreign-language term in quotes). A passage's own subject can be a nearby or related entity rather than the answer. Examples: the oil strike at Leduc No. 1 is not the answer when the clue says 'city 175 miles north of Calgary' and 'oil capital' (Edmonton); a passage saying 'futbol is most popular in Mexico' is not the answer when the clue says 'known as \"corrida de toros\"' (bullfighting). Choose the entity that satisfies the unique detail."
+      }
+    ]
+  },
+  "source_type": "success"
+}

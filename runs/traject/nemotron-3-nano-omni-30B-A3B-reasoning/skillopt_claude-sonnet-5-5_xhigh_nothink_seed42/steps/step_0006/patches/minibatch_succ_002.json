@@ -1,0 +1,30 @@
+{
+  "batch_size": 1,
+  "success_patterns": [
+    "For a long multi-topic query, the agent split it into one call per comma-separated item and joined nouns ('islands and stats' became two calls). It made no extra calls and left out unnamed sibling endpoints such as Lost Ark engravings.",
+    "No-argument endpoints (stores info, stats, list-all, random card) were called with empty parameter lists when a clause named them. Only the one required parameter was filled ('level 3' became level=\"3\").",
+    "Same-provider siblings were separated by the clause's time or ownership wording: 'upcoming' went to Upcoming, 'my recent history' went to Played. Distractor tools (Steamcharts, Valorant, Chess, Hearthstone, OpenCritic) were ignored even though 'Steam' appeared in the query.",
+    "A platform name in the query ('Steam') pointed to the giveaway tool's platform filter, not to the Steamcharts tools. The agent did not fill that filter, though, and the gold answer had platform=steam and type=game. The optional lists scored only 0.44."
+  ],
+  "patch": {
+    "reasoning": "The agent got every tool and required parameter right for a 9-clause query. The one visible gap was optional parameters: the query's 'free Steam game giveaways' implies platform=steam and type=game, and the agent left them empty. The skill's existing example covers only 'pc'. The other edits encode how the agent handled a long list query and sibling endpoints, which a short rule can reinforce.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "'free PC game giveaways' -> platform `pc`, type `game`;",
+        "content": "'free PC game giveaways' -> platform `pc`, type `game`; 'free Steam game giveaways' -> platform `steam`, type `game` (a platform named in the clause is a filter value, not a reason to call that platform's chart or search tools);"
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "- For a long comma-separated query, map each item to exactly one call. Split 'X and Y' into two calls when they need different endpoints (e.g. 'islands and stats'). Items that need no input ('store information', 'character listings', 'a random card draw') still get a call with `[]` parameter lists, because the clause names them. Skip sibling endpoints of the same provider that no item names (e.g. engravings when only raids, islands and stats are asked for)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Never pick a tool just because a parameter value fits",
+        "content": "- Between sibling endpoints from one provider, let the clause's time or ownership wording decide: 'upcoming' -> the Upcoming endpoint, 'my recent history' or 'played' -> the Played endpoint, 'trending' vs 'top' vs 'record' -> the endpoint whose name says so. Ignore tools from other games or domains that merely share a keyword."
+      }
+    ]
+  },
+  "source_type": "success"
+}

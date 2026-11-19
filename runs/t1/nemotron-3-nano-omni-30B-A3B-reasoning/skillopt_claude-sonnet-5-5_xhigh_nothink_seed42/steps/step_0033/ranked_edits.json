@@ -1,0 +1,26 @@
+{
+  "reasoning": "Failure-driven edits are all kept (they are the corrective set). Together they fix the one-leg flight under-fire, the missing-key flight crash, hotel-domain replies (party size, rooms, nearest_hotels key choice), date fabrication from skill examples, hygiene (bare search_*, nested loads, undefined names) and invented num_people/num_rooms/airline values. Each one replaces or tightens existing sentences instead of adding a new gate, in line with the meta-skill's shrink and de-conflict guidance. The three success edits cover points no failure edit touches: the filter_attractions(city=...) exception to Rule 13's 'no city in a filter', which matches the slow block and removes a contradiction; seek_information for any restaurant request with no city, so no placeholder city is ever written; and vague location words ('anywhere', 'flexible') adding no kwarg. None of them conflicts with a failure edit. Their targets are separate sentences from the failure targets, so they apply independently. The protected SLOW_UPDATE block is not touched. Failure edits go first, success edits last. [optimizer-ranked: selected 2/11 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "2 keys -> 2 blocks, 3 keys -> 3 blocks; stopping after the first key is wrong.",
+      "content": "Count LEGS, not keys: a raw key and its filtered_* version are ONE leg (load only the most refined one). 2 legs -> 2 blocks, 3 legs -> 3 blocks; stopping after the first leg is wrong (with `flights` and `return_flights` cached, a class reply needs a block for each). This rule applies only when a flight key is literally in CACHE. With NO flight key, a date range or 'just the return flight' reply is a first search of the requested leg(s) (plus the hotel if requested); never load a flight key that is not in CACHE.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "At most `x = get_results_from_cache(key=\"<flight key>\")` for each cached flight key.",
+      "content": "\n   - A hotel-domain reply when a hotels-type key IS in CACHE (stars, amenity words mapped via Rule 27, neighborhood, per-night budget, party size, rooms, or a 'Yes' to the assistant's hotel-amenity offer): exactly three lines. Load the most refined hotel key (hotels, filtered_hotels*, final_hotels*, hotels2 or nearest_hotels: the one created last / highest suffix, so a nearest_hotels built on filtered hotels beats filtered_hotels), `h2 = filter_hotels(prior_results=h, <only kwargs from the last message>)`, then save under an unused key. 'N of us' -> `num_people=<N>`; 'M rooms' -> `num_rooms=<M>`; both go in the same call. Never route it to attractions, never re-run search_nearest, write ZERO flight lines, and do not re-pass stars, neighborhood or amenities already in the summary.",
+      "support_count": 2,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 6 rewrites the flight rule (-1) that caused last epoch's regressions: it counts legs not keys, and requires a flight key to be literally in CACHE, so it covers both over-fire and one-leg under-fire and avoids None-load crashes (support 3). Edit 7 is a reply-type table row for hotel-domain replies (party size, rooms, amenity, budget) naming the most refined key including nearest_hotels and forbidding flight lines; this hits multiple persistent failures. Edit 8 is a good small de-conflict but the slow block already overrides it and it affects one task type. Edit 0 adds a long new gate, which the meta-skill warns against. Edits 1-5 are rewordings, duplicates or hygiene with modest gain, and 9 and 10 are single-case.",
+    "selected_indices": [
+      6,
+      7
+    ]
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_cache_refinement",
+      "count": 6,
+      "description": "Agents ignored compatible cached results, re-searched instead of refining, or stopped without applying new constraints."
+    },
+    {
+      "failure_type": "pending_action_coverage",
+      "count": 4,
+      "description": "Agents omitted ready domain actions, itinerary legs, or the required follow-up for missing hotel information."
+    },
+    {
+      "failure_type": "tool_schema_and_usage",
+      "count": 3,
+      "description": "Agents used invalid time or date arguments, imported tools, or passed results from the wrong domain to a filter."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers general cache use, mandatory inputs, and return-leg semantics, so these edits avoid restating those rules. They target the remaining concrete gaps: applying a new flight preference to each cached itinerary leg, encoding flight time ranges in the accepted format, and preventing invalid cross-domain filter inputs or tool imports.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Represent flight legs separately",
+        "content": "\n- When a new flight preference applies to an itinerary, apply it independently to every still-pending leg. Retrieve each compatible listed leg result and refine it with `filter_flights` for only the new preference; search only for a leg without a compatible cached result."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "\n- Encode flight time-range endpoints in the tool-accepted 12-hour `AM/PM` format, not `HH:MM:SS` (for example, an afternoon departure window is `[\"12:00 PM\", \"5:00 PM\"]`)."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Tool and result domain safety\n- Call provided tools directly; do not import or redefine them. A filter's `prior_results` must be a valid result for that same domain. If a requested domain has no compatible cached result, search that domain when its mandatory inputs are available. For an explicit proximity request, pass the separately retrieved or searched domain results to `search_nearest`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

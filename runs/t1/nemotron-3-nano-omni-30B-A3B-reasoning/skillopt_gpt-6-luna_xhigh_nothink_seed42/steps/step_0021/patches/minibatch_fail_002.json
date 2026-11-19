@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_cache_and_refinement_misuse",
+      "count": 4,
+      "description": "Agents ignored the latest update or its compatible cached result, doing unnecessary work or declaring no planning needed instead of refining the right result."
+    },
+    {
+      "failure_type": "missing_input_and_domain_readiness",
+      "count": 2,
+      "description": "Agents invented hotel dates and omitted ready hotel-independent requests rather than asking for missing dates and completing available searches."
+    },
+    {
+      "failure_type": "flight_leg_coverage_and_direction",
+      "count": 2,
+      "description": "Agents omitted explicitly stated flight legs or treated a return date as an arrival date instead of searching the reverse route."
+    },
+    {
+      "failure_type": "tool_schema_and_argument_validation",
+      "count": 1,
+      "description": "An agent passed an unsupported party-size argument to flight filters and incorrectly encoded an exact hotel star rating."
+    }
+  ],
+  "patch": {
+    "reasoning": "The recurring gaps are failures to operationalize rules already present in the skill. These edits turn cache selection, per-domain readiness, and flight-leg coverage into explicit pre-call audits. They avoid duplicating the existing schema guidance, which already covers the isolated schema failure.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "- After resolving the latest turn, make a brief action ledger for every still-pending request: domain, target, constraints, compatible cache key, and what remains unsatisfied. Compare the cache summary against the full request, retrieve the latest compatible result for each affected domain, and refine it with the appropriate filter when new constraints remain. Save the refinement under a new key. Do not repeat a completed search or proximity operation when the compatible result already exists; search only when no compatible base result exists and mandatory inputs are available. Before emitting code, verify that every pending ready action is covered by a planned call and that no unchanged domain is being reprocessed."
+      },
+      {
+        "op": "replace",
+        "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness independently for each requested domain and, where applicable, each city or leg: proceed with searches or refinements for domains whose required inputs are available even if another is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across blocked domains. Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood. Optional preferences are not mandatory inputs.",
+        "content": "Before any call, check required-input slots independently for every requested domain and, where applicable, every flight leg. Fill required fields only from explicit conversation values or a compatible cached result. If a required value is missing, do not call that search or invent a default: hotel searches require explicit check-in and check-out dates, which must not be taken from flight dates, examples, or assumptions. Still perform other requested searches or refinements whose inputs are ready—for example, search requested restaurants when their city is known even if hotel dates are missing. Make one `seek_information` call asking only for missing mandatory inputs across blocked actions; optional preferences are not mandatory."
+      },
+      {
+        "op": "replace",
+        "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.",
+        "content": "- Enumerate all explicitly described flight legs in the full conversation and audit the final plan against that list before emitting code: every leg must be covered by one compatible cached result or one new search, and no stated leg may be omitted. Each new search must use that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose; apply a class to both legs only when explicitly requested. Reuse a cached directional result only if it covers that leg and its criteria, and bind and save each newly searched leg result."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

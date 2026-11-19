@@ -1,0 +1,26 @@
+{
+  "batch_size": 6,
+  "success_patterns": [
+    "Every passing answer used the one-object-per-line layout. Each object had exactly one `required parameters` and one `optional parameters` list. Calls with no-input tools were written with `[]` and `[]`.",
+    "Narrative queries were split into one call per clause or platform, each routed to that provider's own endpoint, with no padding calls (Rocket League/Chess/Dice, Kanji/Random Words/Drillster/dcj9, Wayfair/Asos/Ikea).",
+    "Within one provider, scope or noun words in the clause picked the sibling endpoint. 'Most recent articles' mapped to `Get all the latest articles` and 'this month's top articles' mapped to `Get the month's top articles`. 'List of news categories' mapped to `Moka News: categories`, not `Sources List (New)`.",
+    "Headings with non-Latin script or an extra colon were copied verbatim (`Arabic news API: Youm7 - اليوم السابع`, `Kubric: The Comprehensive Movie News API: Basic Search`).",
+    "Query qualifiers were mapped to the schema's own field names: 'up to 15 results' -> `limit`, '90210 postal code' -> `postalCode`, 'US region with USD' -> `country` and `currency`, 'between 5-10 characters' -> `minLength` and `maxLength`. Enum words went into required fields ('weekly challenges' -> `type`=`weekly`)."
+  ],
+  "patch": {
+    "reasoning": "All six trajectories passed, mostly through behaviour the skill already encodes. Two small gaps showed up in the successes. First, picking between sibling endpoints of one provider by the clause's scope words ('latest' vs 'month's top', 'categories' vs 'sources list') is only implied by the generic wording-match rule. Second, verbatim copying of non-Latin or multi-colon headings is not stated. Both edits are one-sentence additions with an example. They avoid the output-format and bracket sections, whose edits were rejected in recent steps, and they add no new warnings about the duplicate-key bug.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "When a sibling's name merely contains yours, re-read both descriptions.",
+        "content": "\n- SCOPE WORDS PICK THE SIBLING WITHIN ONE PROVIDER. Match the clause's scope and noun words to the words in the endpoint name: 'most recent developer articles from dev.to' -> `dev-to-api: Get all the latest articles`, but 'this month's top articles' -> `dev-to-api: Get the month's top articles`; 'a complete list of news categories from Moka News' -> `Moka News: categories`, not `Moka News: Sources List (New)`. Such no-input feeds take `[]` and `[]`, with no invented `limit` or `page`."
+      },
+      {
+        "op": "replace",
+        "target": "Do not shorten or 'fix' them.",
+        "content": "Do not shorten or 'fix' them. This includes non-Latin script (`Arabic news API: Youm7 - اليوم السابع`) and headings with extra colons (`Kubric: The Comprehensive Movie News API: Basic Search`): paste the whole `### ` line."
+      }
+    ]
+  },
+  "source_type": "success"
+}

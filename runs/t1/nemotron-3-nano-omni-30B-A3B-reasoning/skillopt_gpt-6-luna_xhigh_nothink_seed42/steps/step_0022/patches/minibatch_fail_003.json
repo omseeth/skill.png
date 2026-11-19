@@ -1,0 +1,31 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_tool_result_lifecycle",
+      "count": 4,
+      "description": "Every trajectory omitted binding and saving the returned result under a new cache key."
+    },
+    {
+      "failure_type": "incremental_cache_refinement",
+      "count": 2,
+      "description": "One trajectory ignored the new rating constraint; another searched afresh instead of refining the compatible cached restaurant results."
+    },
+    {
+      "failure_type": "missing_mandatory_inputs_and_domain_omission",
+      "count": 2,
+      "description": "Hotel searches invented missing stay dates and omitted the ready restaurant search when hotel dates were unavailable."
+    }
+  ],
+  "patch": {
+    "reasoning": "The failures share a gap between recognizing a request and planning a complete, executable call sequence. Replacing the opening audit rule with a short per-action dispatch check makes cache use, new-constraint arguments, missing-input handling, independent domain readiness, and result saving explicit before code is emitted.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "- Before emitting code, resolve the latest turn against the preceding assistant question and all pending requests, then list one action for each requested domain or flight leg. For each action, choose its path from the listed cache and available mandatory inputs: use a compatible result directly if it already satisfies the request; otherwise retrieve the latest compatible result into a local variable and filter it with the new constraint(s); if no compatible result exists, search only when mandatory inputs are explicit; if required inputs are missing, do not search that action and ask for them. Decide independently for each action so a blocked domain does not suppress ready domains. Verify that every new constraint is passed as a schema-supported argument, and bind and save every search, filter, sort, or nearest result under a new descriptive key. Use `print(\"No planning needed\")` only when no requested action or constraint remains unsatisfied."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

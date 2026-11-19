@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every success answered with the entity of the slot type named in the clue. A person was needed for 'this actor/playwright/man' (Tony Curtis, David Rabe, Joseph McCarthy, Stuart Sutcliffe). An institution was needed for 'this institution'. A word was needed for 'this adjective' (preposterous). The other named entities in the clue (Lemmon, Jill Clayburgh, Dorff, Margaret Chase Smith) were treated as anchors.",
+    "When the clue names one member of a pair ('Lemmon & this actor', 'daughter of Jill Clayburgh & this playwright'), the agent answered the OTHER member that the passages pair with the anchor, filtered by the role noun. It did not answer the anchor or a different cast member.",
+    "For definition or etymology clues ('comes from the Latin for \"before behind\"', 'common Arabic name which means \"servant of Allah\"'), the agent took the headword that dictionary or name-list passages pair with the gloss. It gave the complete, most-repeated form ('Abdullah', not the prefix 'Abdul'), bare and with no gloss.",
+    "Where the clue's own slot noun is the head of a standard proper name ('this \"bubble\"', 'this institution'), the agent kept the head noun as passages repeat it ('South Sea Bubble', 'Smithsonian Institution'). It did not strip it, which is the correct outcome under the exception to the delete-clue-words test.",
+    "Verbatim archive hits and repeated clue phrases ('jeopardy/2549_Qs.txt ... | Joseph McCarthy.', a StudyStack flashcard cut off at 'DAVID...') were used directly. The agent ignored noisy Pinterest or forum passages."
+  ],
+  "patch": {
+    "reasoning": "Most success patterns are already covered (Rule 3 verbatim hits, slot typing, bare answers). Three small gaps remain, written as compact, checkable, clue-visible rules. (1) The pair clue ('X & this actor') is a recurring Jeopardy form, and its answer must not be the anchor or a third person. (2) Definition and etymology clues need a procedure: find the headword next to the gloss and take the full form. (3) The delete-clue-words test could wrongly strip a head noun that the clue's own slot supplies, so a short example reinforces the existing exception. These add little length and avoid the long mandatory template that was rejected earlier.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 2: Answer the referent, not a word from the clue",
+        "content": "\n- PAIR CLUES ('Lemmon & this actor', 'daughter of Jill Clayburgh & this playwright', 'X and this co-star'): the clue names one member of a pair or group, and the answer is the OTHER member the passages tie to the anchor. The role noun (actor, playwright, partner) filters candidates. A same-film actress is not 'this actor', and the anchor itself is never the answer. Give the person's name as the passages repeat it."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 1: Questions are Jeopardy-style clues; always answer with the missing entity",
+        "content": "\n- DEFINITION / ETYMOLOGY CLUES ('this adjective ... comes from the Latin for \"before behind\"', 'common Arabic name which means \"servant of Allah\"', 'term meaning ...'): the answer is the headword the passages pair with that gloss ('literally before-behind' -> 'preposterous'; 'Abdullah, Servant of Allah'). Pick the headword repeated across the most passages next to the gloss. Give the complete word or name that carries the whole meaning, not a prefix or fragment ('Abdullah', not 'Abdul'), and give only the word with no gloss."
+      },
+      {
+        "op": "replace",
+        "target": "Test: would a trivia answer key accept the bare word alone?",
+        "content": "A slot noun the clue itself supplies ('this \"bubble\"', 'this institution') stays when it is the head of the standard name that the passages repeat: 'South Sea Bubble', 'Smithsonian Institution'. The delete-clue-words test applies only to words the clue states OUTSIDE the slot. Test: would a trivia answer key accept the bare word alone?"
+      }
+    ]
+  },
+  "source_type": "success"
+}

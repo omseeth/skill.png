@@ -1,0 +1,40 @@
+{
+  "reasoning": "Failure-driven edits (Group 1) are preserved in full: the two replacements that resolve the Rule 6/7 'output ONLY seek_information' contradiction, the hotel hard stop, and new Rules 21-29. Both success-driven edits from Group 2 are kept because they cover points the failure edits do not. One carries optional earlier-turn constraints into the first search (Rule 14). The other says a flight date never supplies a hotel checkout date. They do not conflict with Group 1. Group 1's hotel hard stop says a flight date counts as the check-in date, and Group 2 says it never supplies the checkout. Group 1's Rule 28 allows adjust_date only when the user supplies both a date and a stay length, which matches Group 2's ban on guessed checkouts. The two inserts after the 'round-trip request' line complement each other and are both kept, with the failure edit listed first. There was no overlap needing deduplication between the groups. merge_level is dropped from the output, while support_count and source_type are carried forward. [optimizer-ranked: selected 4/14 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- A round-trip request still needs the departure date. Ask for it; do not assume a return date.",
+      "content": "- A hotel needs its own explicit checkout date. A flight departure date or arrival date supplies at most the check-in date. It never supplies a checkout date, and a one-night stay is never a default. If a hotel is requested and only one date is known (e.g. 'fly on May 13, 2025, hotel near Downtown'), do NOT call search_hotels with a guessed checkout and do NOT infer num_people from context. Output `seek_information(\"We need the check-out date for the hotel.\")`, naming only what is missing. If flights for the stated date are already cached, leave them as they are; do not re-filter them with a budget or other constraint their CACHE summary already lists.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- If any mandatory arg is missing, output ONLY a seek_information(...) call that names what is missing. Do not also emit a search call with placeholders.",
+      "content": "- Check mandatory args PER DOMAIN. If every requested domain is missing something (or the only requested domain is incomplete), output ONLY a seek_information(...) call naming what is missing, with no search call and no placeholders. If SEVERAL domains were requested and some already have all their mandatory args (e.g. 'hotel in Colorado Springs plus restaurant recommendations in the city' gives the restaurant city but no hotel dates), first run `x = search_*(...)` + `save_to_cache(key=\"<domain>\", value=x)` for each complete domain. Then add ONE seek_information(...) at the end naming only the incomplete domain's missing items. Example: `restaurants = search_restaurants(city=\"Colorado Springs\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. Never call search_hotels / search_flights with guessed values to fill the gap.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "append",
+      "content": "\n## Rule 22: Only pass parameters the tool really has, in the right format\n- Before sending any call, check that every keyword is in that tool's arg list in TOOL CONFIG, and drop any that is not. Never invent kwargs (there is no `fitness_present`).\n- search_restaurants / filter_restaurants have NO num_people, party-size, occasion, date or time parameters. A group size ('around 20 people') or occasion ('birthday party') only explains the request. Passing num_people to a restaurant call raises a ValidationError. num_people and num_rooms exist only on hotel tools. Flight tools have no party-size parameter.\n- Earlier-turn context is not a filter. On a refinement, pass only the LAST turn's new constraint plus earlier constraints the CACHE summary does not already list. Example: CACHE 'restaurants' says 'cuisine(s): [Balkan]' and the last turn is 'around 115 per person' -> `filter_restaurants(prior_results=r, budget=115)` only. No cuisine, city or num_people.\n- `stars` and `rating` always take exactly two values. '2 star' -> stars=[2, 2]; 'a 3.5 rating' -> rating=[3.5, 3.5]; 'at least 4' -> rating=[4, 5]. Never pass [2] or [3.5].\n- Hotel amenity wording: 'fitness center' or 'fitness classes' -> `has_fitness_class=True`; 'gym' -> `gym_present=True`.\n",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "append",
+      "content": "\n## Rule 21: Output form and first-search keys\n- Every search_*, filter_*, sort_results and search_nearest call is assigned to a variable and followed by `save_to_cache`, even for a one-turn attraction or restaurant request. Correct: `attractions = search_attractions(city=\"Tucson\", type=[\"Culinary\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. A bare `search_attractions(...)` with no assignment and no save is wrong.\n- Never write `import` or `from ... import ...` lines (e.g. `from cache import get_results_from_cache`). The tools are already defined, and an import raises ModuleNotFoundError.\n- First-search keys: a single or one-way flight search is saved as \"flights\". Only a round trip uses \"departure_flights\" and \"return_flights\" (Rule 9). Other domains use \"hotels\", \"restaurants\", \"attractions\".\n- search_attractions: a US state name or abbreviation ('GA', 'Georgia') goes in `state=\"GA\"`, never in city. 'Art and Scenic attractions in GA' -> `search_attractions(type=[\"Art\", \"Scenic\"], state=\"GA\")`. When the user names both an attraction type and a specific attraction, pass both: `search_attractions(city=\"St. Louis\", type=[\"Culinary\"], attraction_name=[\"City Museum\"])`.\n- Restaurants: 'a restaurant in Fresno that serves Persian food and is halal' -> `search_restaurants(city=\"Fresno\", cuisine=[\"Persian\"], has_halal_options=True)`, saved as \"restaurants\". Use a city given anywhere in the conversation, and never ask for a city the user already stated. Drop descriptors that have no parameter ('great view', 'romantic', 'business conference').\n",
+      "support_count": 4,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Ranked by systematic impact (support), complementarity, generality, and actionability. [1] has the highest support (8) and fixes a recurring hotel checkout-date failure. [2] resolves a contradiction between the Rule 6/7 text and the Quick decision order by searching complete domains and asking only for the rest; it is preferred over the overlapping [3]. [6] prevents widespread validation errors from invented or mis-formatted params. [5] fixes basic output-form issues (assign+save, correct first-search keys, state param). Narrower scenario-specific rules ([9]-[13]) and edits that duplicate existing content ([0], [3], [7]) rank lower.",
+    "selected_indices": [
+      1,
+      2,
+      6,
+      5
+    ]
+  }
+}

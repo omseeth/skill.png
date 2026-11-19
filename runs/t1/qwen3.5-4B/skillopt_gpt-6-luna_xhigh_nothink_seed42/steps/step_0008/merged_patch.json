@@ -1,0 +1,47 @@
+{
+  "reasoning": "Preserved all six failure-driven edits as the priority versions. The success edit overlaps the required-input guidance, so its distinct additions—flight starting location, hotel city, and restaurant city—are incorporated into that failure edit without allowing its no-partial-search rule to override proceeding with independent, complete searches. No edits target protected content.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available.",
+      "content": "- Identify only the travel services explicitly requested in the full conversation; generic trip context does not itself request hotels, attractions, or restaurants. Check mandatory inputs separately for each requested domain against the conversation and relevant cached results. Flight searches require a departure date and a usable starting location; hotel searches require a city plus check-in and checkout dates; restaurant searches require a city. A specific date remains supplied when phrased with a soft qualifier such as ideally or around; use the stated date rather than asking for it again. If a hotel check-in date and an explicit stay length in nights are given but checkout is missing, derive checkout with `adjust_date(date=..., delta_days=...)`; never infer an unstated stay length. If any requested domain still lacks required inputs, make exactly one `seek_information(...)` call listing only those missing values. Defer incomplete domains, but proceed in the same turn with independent requested searches whose required inputs are complete. Do not search an incomplete domain or pass `None` for a required value. Do not guess or invent values, and do not ask for optional preferences as if they were required.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, search each leg separately, reverse the outbound route for the return, and use the return leg’s departure date. Ask for an unknown endpoint rather than assuming a route.",
+      "content": "- Preserve user-provided dates, entity values, and casing. When the conversation establishes an explicit trip interval, use its first date for the outbound flight and hotel check-in, and its last date for the return-leg departure and hotel checkout when those services are requested for the same trip. When a requested flight has explicitly stated outbound and return dates, search each leg separately: search the outbound route on its date, then reverse the route and use the return date as that leg’s `departure_date`. Carry each applicable flight criterion to both legs. Ask for an endpoint or date only when it is genuinely unknown.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+      "content": "- Match arguments to the tool schema’s expected type, cardinality, and meaning; preserve user-provided date strings. For attraction searches, map a state name or abbreviation to `state`, not `city`; a supplied state can be sufficient when no city is given. Map a city to `city`. For a range-shaped field, encode one exact value as both endpoints (for example, `[n, n]` for one star rating); for a one-sided minimum or maximum, use the stated bound and the schema-supported limit for the other endpoint (for example, a minimum rating of 3 on a 0–5 scale is `[3, 5]`). Map non-stop or direct to `num_layovers=[0]`. For lodging in a named neighborhood or district, pass the parent city as `city` and the named area as `neighborhood`. Keep explicitly established traveler and room counts in their respective fields. Treat stated soft time-of-day preferences as actionable: translate them into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied in a search. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+      "content": "- On each turn, compare every current request and criterion with the full conversation and relevant cached result summaries. Reuse cached results only when their domain and subject match the request. Treat a summary as evidence that a criterion is satisfied only when it explicitly supports that criterion; a result’s existence alone is not enough. For an unmet new criterion, retrieve the closest compatible result with `get_results_from_cache(key=\"...\")`, use the returned object as `prior_results`, apply the matching filter to every affected compatible result set using only criteria not already satisfied, and save each updated result under a unique key. Do not filter unrelated results; search when the cache does not cover the requested domain, subject, entity, or category. Assign and save the returned result of every new search, filter, sort, or nearest-result call under a unique cache key; do not overwrite existing cache entries. Use “No planning needed” only when compatible cached results explicitly satisfy every current request and no further operation is needed.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+      "content": "- Resolve brief affirmations and contextual answers against the immediately preceding assistant question or proposal, and carry the accepted entity, category, preference, or action forward as stated. Treat a value or preference supplied in response as a new actionable criterion for the relevant domain; if compatible cached results exist, retrieve them, apply the matching filter, and save the updated result. When an affirmation accepts a proposed search or planning action, perform that action. Do not treat a contextual answer or accepted action as a no-op or return “No planning needed” when further work is required.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+      "content": "- When the user asks for one result type near a named or identified result of another type (for example, hotels near an attraction), ensure compatible results for both types are available: reuse matching cached results and search for any missing result set. Then call `search_nearest` and save its result; do not stop after an ordinary search or omit proximity because one result set was cached. If a current proximity request depends on an updated result, recompute `search_nearest` using that result and its compatible counterpart, then save the updated nearest result. Set `groupBy` to the requested organizing base; when lodging is the planned base, group by hotel.",
+      "support_count": 2,
+      "source_type": "failure"
+    }
+  ]
+}

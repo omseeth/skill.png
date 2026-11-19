@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "bare_search_no_assign_or_save",
+      "count": 3,
+      "description": "First-turn restaurant search was emitted as a bare `search_restaurants(...)` with no variable assignment and no save_to_cache. Rule 21 already forbids this but is buried deep in the skill."
+    },
+    {
+      "failure_type": "invalid_hotel_kwarg_and_refiltering_applied_constraints",
+      "count": 2,
+      "description": "Used `room_service=True` instead of `has_room_service=True`, which raised a ValidationError. One case also re-passed gym, wifi and neighborhood from earlier turns."
+    },
+    {
+      "failure_type": "changed_constraint_should_trigger_new_search",
+      "count": 1,
+      "description": "The user replaced a cuisine ('Actually only Pakistani') after a filtered Japanese result was cached. The agent filtered the stale raw key instead of running a fresh search_restaurants with the new constraints under a new key."
+    },
+    {
+      "failure_type": "reply_to_assistant_proposal_not_filtered",
+      "count": 1,
+      "description": "The assistant proposed '4th Avenue' and the user asked 'What's there?'. The agent re-ran search_attractions instead of filter_attractions(neighborhood=[...])."
+    },
+    {
+      "failure_type": "over_seeking_with_date_present",
+      "count": 1,
+      "description": "The user gave 'depart on May 15, 2025' plus time limits, and an earlier turn gave the arrival date and time. The agent still called seek_information for the departure date and ignored arrival_date and the time windows."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the eight failures are the same easy-to-prevent format error: a bare first search with no assignment or save. The existing Rule 21 sits too deep in the document to be followed, so a short non-negotiable template goes at the very top. The remaining edits cover unaddressed gaps. One covers hotel amenity kwarg naming (has_room_service) and passing only the last turn's constraints. One covers replacing a contradicted constraint with a fresh search, and treating a reply to an assistant-proposed neighborhood as a filter. One covers flight date and time-window mapping, so a stated departure date is never re-asked.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Non-negotiable output template (check before answering)\n- EVERY search_*, filter_*, sort_results and search_nearest call is written as `x = tool(...)` followed on the next line by `save_to_cache(key=\"...\", value=x)`. A bare line such as `search_restaurants(city=\"Memphis\", cuisine=[\"Turkish\"])` is ALWAYS wrong, even on the very first turn of a one-domain request. Correct: `restaurants = search_restaurants(city=\"Memphis\", cuisine=[\"Turkish\"], has_vegetarian_options=True)` then `save_to_cache(key=\"restaurants\", value=restaurants)`.\n- First-search keys are the plain domain names: \"flights\", \"hotels\", \"restaurants\", \"attractions\".\n- Never call seek_information when the needed value is already written anywhere in the conversation (see Rule 31)."
+      },
+      {
+        "op": "replace",
+        "target": "- Hotel amenity wording: 'fitness center' or 'fitness classes' -> `has_fitness_class=True`; 'gym' -> `gym_present=True`.",
+        "content": "- Hotel amenity wording: 'fitness center' or 'fitness classes' -> `has_fitness_class=True`; 'gym' -> `gym_present=True`; 'room service' -> `has_room_service=True` (NEVER `room_service=True`); 'spa' -> `has_spa_services=True`; 'laundry' -> `has_laundry_service=True`; 'kids club' -> `has_kids_club=True`; 'beach access' -> `has_beach_access=True`; 'business center' -> `has_business_center=True`; 'free parking' -> `has_free_parking=True`. Only gym_present, pool_present, breakfast_included, smoking_allowed, air_conditioning_present, heating_present, free_wifi_included, airport_shuttle_present and is_pet_friendly lack the `has_` prefix.\n- On a hotel refinement pass ONLY what the last user turn adds. Amenities, neighborhood or budget mentioned in earlier turns were already applied by the earlier search or filter call, even when the CACHE summary does not list every amenity. Example: the user said 'gym and wifi' and 'Downtown Raleigh' earlier, and the last turn says 'budget around 1050, room service would be nice' -> `h = get_results_from_cache(key=\"hotels\")`, `h2 = filter_hotels(prior_results=h, budget=1050, has_room_service=True)`, `save_to_cache(key=\"filtered_hotels\", value=h2)`. No gym, wifi or neighborhood."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 30: Replaced constraints and replies to assistant proposals\n- A user who REPLACES a constraint that is already applied in a cached key ('Actually we want only Pakistani', 'instead', 'change it to ...') contradicts that key, so filtering it cannot work (the old cuisine would filter everything out). Run a NEW `search_*` for that domain with the city (or other mandatory args) already established plus ALL current constraints (new cuisine, the budget from this turn, etc.) and save it under a NEW key that is not in the CACHE (e.g. `restaurants1`). Example: CACHE has restaurants and filtered_restaurants for Japanese in Fresno, and the last turn says 'around 120 per person. Actually only Pakistani' -> `restaurants1 = search_restaurants(city=\"Fresno\", cuisine=[\"Pakistani\"], budget=120)` then `save_to_cache(key=\"restaurants1\", value=restaurants1)`. Do not load or filter the old keys. A plain ADDITIONAL constraint is still load -> filter -> save.\n- A reply that engages with a place the assistant just proposed ('No, I haven't. What's there?', 'Tell me more', 'Sure') is acceptance of that place. With CACHE 'attractions' and the assistant asking 'Have you considered 4th Avenue?', output `a = get_results_from_cache(key=\"attractions\")`, `a2 = filter_attractions(prior_results=a, neighborhood=[\"4th Avenue\"])`, `save_to_cache(key=\"neighborhood_attractions\", value=a2)`. Never re-run search_attractions, and copy the name exactly as the assistant wrote it.\n\n## Rule 31: Flight dates and time windows given across turns\n- Dates and times from ANY turn count, in any phrasing. 'I need to depart as early as possible on May 15, 2025. Definitely by 04:33 AM' contains a departure date (May 15, 2025). 'I need to arrive on May 21, 2025 by 09:01 PM' from an earlier turn supplies the arrival date. If origin, destination and a departure date are present, do NOT call seek_information. Search once with everything stated: `departure_date=[\"May 15, 2025\"]`, `arrival_date=[\"May 21, 2025\"]`.\n- An 'arrive on <date>' statement maps to arrival_date and arrival_time, not departure_date. Time windows are two 12-hour strings. 'by T' or 'before T' -> `[\"12:00 AM\", \"T\"]`; 'after T' -> `[\"T\", \"11:59 PM\"]`. Use the user's own clock text (e.g. \"09:01 PM\", \"04:33 AM\"). Example: `flights = search_flights(start_airport_city=\"Anchorage\", end_airport_city=\"San Antonio\", arrival_date=[\"May 21, 2025\"], arrival_time=[\"12:00 AM\", \"09:01 PM\"], departure_date=[\"May 15, 2025\"], departure_time=[\"12:00 AM\", \"04:33 AM\"])` then `save_to_cache(key=\"flights\", value=flights)`. 'As early as possible' and 'tight schedule' add no parameter and no sort."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

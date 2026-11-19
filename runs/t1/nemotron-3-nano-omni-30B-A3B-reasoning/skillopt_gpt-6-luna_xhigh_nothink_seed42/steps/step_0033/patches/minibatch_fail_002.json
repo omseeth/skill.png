@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_tool_execution_or_persistence",
+      "count": 8,
+      "description": "Every trajectory omitted at least one required action, result retrieval, or required binding and cache save."
+    },
+    {
+      "failure_type": "cache_refinement_or_reuse_missed",
+      "count": 4,
+      "description": "Cached flight, restaurant, or hotel results were re-searched or treated as complete instead of retrieved and refined."
+    },
+    {
+      "failure_type": "pending_domain_or_ready_action_omitted",
+      "count": 3,
+      "description": "Actions were missed when a reply supplied criteria for an assistant-elicited domain or when another requested domain was ready."
+    },
+    {
+      "failure_type": "explicit_stay_duration_not_used",
+      "count": 1,
+      "description": "A hotel search was omitted despite an explicit check-in date and stay length that determine checkout."
+    },
+    {
+      "failure_type": "flight_time_bounds_misencoded",
+      "count": 1,
+      "description": "A flight search omitted the stated departure-time window and encoded the arrival cutoff in an invalid format."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the planning workflow explicitly account for assistant-elicited domains and every pending action, clarify the cache-refinement branch and require persisted tool results, and resolve two schema/readiness gaps shown by the batch: checkout from an explicit stay length and bounded flight-time encoding.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "- Before emitting code, resolve the latest turn against the immediately preceding assistant question or suggestion and all still-pending requests. Build a checklist of every new request, accepted action, and preference supplied in answer to a concrete assistant question. If the assistant elicits criteria for a supported domain that was not previously active (for example, restaurant preferences for recommendations), the user's answer makes that domain actionable. For each checklist item identify the target, domain, relation, stated criteria, supported arguments, readiness, and required action; do not omit it because the latest reply is brief. Leave unchanged domains alone."
+      },
+      {
+        "op": "replace",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "- For every pending checklist item, compare the exact target and criteria against the listed cache summaries. If a compatible cached result covers the target but lacks a new preference, retrieve it using its exact listed key and refine it with the appropriate filter, passing the retrieved object as `prior_results` when required. Apply every new constraint independently to each affected result, flight leg, or location; do not replace a cache-supported refinement with a new search. If the cache already covers the full request and the user expects results, retrieve and use that result directly. Search only when no compatible result exists and mandatory inputs are available; do not call tools for unchanged domains."
+      },
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- Never emit a bare search, filter, sort, or nearest-results call. Bind the exact returned object to a local variable and save it with `save_to_cache` under a unique, descriptive key. Save every refined result under a new key; do not substitute hand-built dictionaries or redefined models for tool result objects."
+      },
+      {
+        "op": "replace",
+        "target": "## Missing mandatory information\nBefore searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness independently for each requested domain and, where applicable, each city or leg: proceed with searches or refinements for domains whose required inputs are available even if another is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across blocked domains. Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood. Optional preferences are not mandatory inputs.",
+        "content": "## Missing mandatory information\nBefore each tool call, match its required fields to explicit values in the full conversation; related context does not automatically satisfy them. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not call a tool when required inputs are missing or substitute defaults. Assess readiness independently for each requested domain, city, and flight leg: proceed with ready actions while blocked actions wait, then make one `seek_information` call asking only for all missing mandatory inputs. Hotel dates are fully determined when the user provides a check-in date and an explicit stay length: derive checkout with `adjust_date`. Otherwise, hotel check-in and checkout must be explicit; do not borrow dates from unrelated flight details or infer a neighborhood. For flight time constraints, encode the stated interval as the schema-required pair using its accepted time format. A request to depart as early as possible by a stated cutoff means midnight through that cutoff; an arrival deadline means midnight through the stated deadline. Optional preferences are not mandatory inputs."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

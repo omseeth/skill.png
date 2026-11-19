@@ -1,0 +1,89 @@
+{
+  "reasoning": "Failure edits take priority and were kept intact: the Rule 2 and Rule 17 deletions of the 'plus earlier-stated constraints' clause, the narrowed flight-reply trigger with per-leg counting, the two SEARCH GATE exceptions (refusal retrieval, new attraction type), the Rule 6 fix that resolves the conflict with Rule 4b, and the compact MISSED-ROUTE CHECKS block. Success edits that duplicated failure edits were dropped in favour of the failure version: success 1 (same Rule 2 clause) and success 2 (same Rule 17 clause). Four success edits cover points the failure group does not touch and were kept. Rule 22 gets the same 'earlier constraints are already applied' fix. Rule 9 drops 'Add no other params', which contradicts the stated-class-goes-into-search rule. Rule 13 gets the filter_attractions(city=...) exception to 'never add city to a filter'. The party-size row now forbids num_people on flight tools. All edits are in-place replacements or deletions of contradictions. The only insert is the failure-sourced MISSED-ROUTE CHECKS block, kept at two rows. No edit targets the SLOW_UPDATE block.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Criteria to pass to filter_*: the constraints introduced in the LAST user turn, plus any earlier-stated constraint that the CACHE summary text (\"Additionally filtering for ...\" / search description) does not show as applied. Do NOT repeat filters or search parameters the summary already lists. Never call filter_* with only prior_results.",
+      "content": "- Criteria to pass to filter_*: ONLY the constraints introduced in the LAST user turn. Every earlier turn (its search and each filter) is already inside the cached entry, so never re-pass an earlier cuisine, dietary flag, stars, neighborhood, amenity, budget, class or dates, whether or not the summary text happens to list it. A budget reply on a restaurants entry is `budget=<n>` only. Never call filter_* with only prior_results.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Include an earlier-stated constraint only if the summary does NOT list it.",
+      "content": "Pass only the new constraint from the last message; values from earlier turns are already in the cached entry.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "-1. FLIGHT REPLIES = ONE BLOCK PER FLIGHT KEY. This applies only when the assistant's last question or the user's last message is about flight class, airline, flight time or ticket price (a class word such as 'economy'/'first', an airline code, 'under N' answering a flight-price question), even if a 'hotels' key is also in CACHE.",
+      "content": "-1. FLIGHT REPLIES = ONE BLOCK PER FLIGHT LEG. This fires ONLY when the user's LAST message itself contains a flight word (a class such as 'economy'/'first'/'business', an airline code, a departure/arrival time, or a ticket price) or answers an assistant question that asked about flight class, airline, time or ticket price. It NEVER fires for stars, amenities, neighborhood, a per-night hotel budget, a bare number after a hotel question, or any restaurant/attraction reply. A class chosen in an earlier turn is already in the flight keys' summaries, so those keys stay untouched: zero flight lines, even when flight keys sit in CACHE next to 'hotels'.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "2 keys -> 2 blocks, 3 keys -> 3 blocks; stopping after the first key is wrong.",
+      "content": "Count LEGS, not keys: outbound + return = exactly 2 blocks (a raw key and its filtered_* variants are ONE leg, so load only that leg's most refined key); a multi-city trip = one block per leg. Filtering only the outbound leg is wrong: 'I prefer <class>.' with an outbound key and a return key in CACHE means two filter_flights calls and two save_to_cache calls with the same flight_class value.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "or interest in the assistant's proposal such as 'Sure', 'Yes', 'What's there?'). Write exactly",
+      "content": "or interest in the assistant's proposal such as 'Sure', 'Yes', 'What's there?'). A place the assistant just proposed, answered with any of those, is `filter_attractions(prior_results=a, neighborhood=[\"<place as named>\"])` on the cached attractions key. EXCEPTION: an explicit refusal or no-preference reply ('Not really', 'I'm flexible', 'No preference') adds no constraint, so write only `x = get_results_from_cache(key=\"<most refined key of that domain>\")` with no search, no filter and no save. Otherwise write exactly",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "A search_* call is allowed only for a domain with NO key. Examples:",
+      "content": "A search_* call is allowed only for a domain with NO key. One exception: the assistant offered a NEW attraction type that the cached attractions entry does not cover (e.g. the cache shows only 'attraction name(s): [X]', the assistant asked about other '<Type>' attractions, the user says 'Yes'). Then run a fresh `attractions1 = search_attractions(city=<trip city>, type=[\"<offered type>\"])` saved under an unused key, and write no hotel filter. A proximity ('near the hotel'), city or neighborhood reply is NOT this exception. Examples:",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "do not call search_hotels with made-up dates, party size, amenities or rating. Output only",
+      "content": "do not call search_hotels with made-up dates, party size, amenities or rating. If the user ALSO asked for restaurants or attractions and a city is known (e.g. 'solo trip, budget 65 per night, plus restaurants in the city'), first write that search plus its save_to_cache, then the single seek_information for the hotel dates. Otherwise output only",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "# Travel Planning Skill",
+      "content": "\n## MISSED-ROUTE CHECKS (fire on words in the conversation)\n- RESTAURANT CITY: a cuisine or nationality word ('Latvian', 'Thai') is not a city, and a budget reply does not supply one. If no city appears in any turn (no hotel or flight destination either) and the CACHE has no 'restaurants' key, the whole output is `seek_information(\"We need the city for the restaurant.\")`, with no search_restaurants.\n- DATE-RANGE ANSWER ('X to Y') with flights and a hotel requested in any turn, even in turn 1 wording like 'a hotel stay' or 'for a special occasion': one block with the outbound flight search, the return flight search (cities swapped), AND `search_hotels(city=<destination>, checkin_date=[\"X\"], checkout_date=[\"Y\"], <each amenity the user named, mapped through the Rule 27 table>)`, each followed by its save_to_cache. A stated class or airline goes inside both flight searches only. Stopping after the outbound flight, or dropping the hotel, is wrong.\n",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "pass only the LAST turn's new constraint plus earlier constraints the CACHE summary does not already list.",
+      "content": "pass only the LAST turn's new constraint.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "Add no other params: no airline, flight_class, budget, times or num_people.",
+      "content": "Add no param the user did not state (never num_people, num_layovers or times). A class or airline the user did state goes into both searches.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "and do not add city to a filter.",
+      "content": "and do not add city to a hotel, restaurant or flight filter. The only exception is filter_attractions(city=...) when the user names a city for attractions cached at state level.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "Write no search and no filter. At most `x = get_results_from_cache(key=\"<flight key>\")` for each cached flight key.",
+      "content": "Write no search and no filter. Never pass num_people (or any party-size kwarg) to filter_flights or search_flights, because it raises a ValidationError. With only flight keys cached, a party-size reply needs no filter line at all.",
+      "support_count": 1,
+      "source_type": "success"
+    }
+  ]
+}

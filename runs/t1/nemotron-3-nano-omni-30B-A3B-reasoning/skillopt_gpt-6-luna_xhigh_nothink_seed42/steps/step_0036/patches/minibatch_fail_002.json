@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_tool_action_or_persistence",
+      "count": 6,
+      "description": "Required searches, flight legs, or result saves were omitted despite ready requests."
+    },
+    {
+      "failure_type": "cache_scope_or_refinement_error",
+      "count": 3,
+      "description": "Agents repeated covered filters, reprocessed unchanged domains, or failed to apply a refinement."
+    },
+    {
+      "failure_type": "proximity_context_misinterpretation",
+      "count": 2,
+      "description": "Agents missed proximity implied by access wording or an affirmative answer to a specific nearby-attraction question."
+    },
+    {
+      "failure_type": "hotel_dates_not_carried_forward",
+      "count": 2,
+      "description": "Hotel searches were omitted where the requested stay corresponded to an explicitly stated outbound-and-return trip range."
+    },
+    {
+      "failure_type": "schema_or_location_argument_misuse",
+      "count": 3,
+      "description": "Calls used an unsupported flight argument, incorrect exact-value encoding, or a state abbreviation as a city."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed omissions and argument errors are already covered by the skill, so repeating those rules would add little. The clear gaps are that the hotel-date guidance forbids using an explicitly stated trip range for the requested stay, and proximity guidance does not spell out access wording or affirmative replies to a concrete nearby-attraction question. These edits address those ambiguities and clarify that an exact named attraction missing from a general cached result needs a new attraction search.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood.",
+        "content": "Hotel check-in and check-out dates must be explicit. If the user requests a hotel for a trip and gives an unambiguous outbound and return date for that same trip, use the outbound date as check-in and the return date as checkout unless the user gives different hotel dates. Do not infer a hotel stay from a single flight date, an event date, or dates that do not define the trip."
+      },
+      {
+        "op": "replace",
+        "target": "## Proximity between travel domains\n- Call `search_nearest` only when the user explicitly requests proximity between supported domains. Before calling it, verify that each cached result covers the specific requested target, not merely the same domain or city. For example, a generic city attraction search does not cover a separately named attraction; search for the named attraction using `attraction_name` unless the cache summary shows that exact target is already covered.\n- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain), not the reference domain: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`.\n- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+        "content": "## Proximity between travel domains\n- Call `search_nearest` when the user requests proximity between supported domains. Wording such as “near,” “close to,” “with access to,” or “walking distance of” expresses proximity. Also treat an affirmative answer to the assistant’s concrete question or offer about nearby options as a proximity request; resolve any named place in the reply as the reference target. Mere interest in visiting or dining at a place, without such a proximity relation or contextual request, does not imply proximity.\n- Before calling, verify that each result covers the exact requested target and applicable criteria. A generic city or attraction-type result does not cover a separately named attraction. If that named attraction is missing from cache, use `search_attractions` with its city and `attraction_name`; do not use `filter_attractions` on a generic result as a substitute for searching for the exact target. Reuse compatible results for the other domain without reapplying covered filters.\n- Pass the relevant results for the domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain): hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`. Bind and save the nearest-results return value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

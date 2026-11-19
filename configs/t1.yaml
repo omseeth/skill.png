@@ -1,0 +1,41 @@
+# T1 (https://github.com/CapitalOne-Research/T1, Chakraborty et al., NeurIPS
+# 2025 Datasets & Benchmarks): multi-turn, multi-domain travel planning. At
+# each user turn the model writes Python that calls T1's tools against a
+# cache of earlier results; the code is executed and scored teacher-forced.
+# Zero-shot prompt only, on a fixed 400 / 200 / 1400 subset of user turns.
+# See src/skillpng/benchmarks/t1/t1.md.
+
+_base_: base.yaml
+
+model:
+  model_id: /path/to/local/vlm
+  # The paper's budget. Its decoding (temperature 0.1, top-k 10) is not the
+  # default here.
+  max_new_tokens: 4000
+  # Measured over the 2,000 shipped targets with the Qwen3.5-9B tokenizer,
+  # without eos or suffix: min 7, p50 59, p95 154, max 277.
+  max_target_tokens: 512
+  max_sequence_tokens: 16384
+
+benchmark:
+  name: t1
+  path: capitalone/T1
+  # Upstream's system text without its surrounding newlines and trailing
+  # space.
+  system_prompt: "You are an expert AI travel planner and your responsibility is to generate Python code using APIs or Tools."
+  options:
+    # cache_em is the headline: upstream's cache-summary exact match, the
+    # paper's functional equivalence. tool_f1 and code_success are the
+    # alternatives; the report prints all three regardless.
+    metric: cache_em
+    # Seconds generated code may run before its worker is killed and the
+    # turn recorded as a timeout.
+    exec_timeout_s: 30
+
+train:
+  run_dir: runs/t1
+  run_name: t1
+  eval_items: 200
+
+injection:
+  site: pre_query

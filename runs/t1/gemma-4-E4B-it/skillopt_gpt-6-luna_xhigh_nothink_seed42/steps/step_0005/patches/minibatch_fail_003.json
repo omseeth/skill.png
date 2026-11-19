@@ -1,0 +1,47 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_incremental_filtering",
+      "count": 2,
+      "description": "Follow-up restaurant constraints caused a fresh search instead of retrieving and filtering compatible cached results."
+    },
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 4,
+      "description": "Search or filter results were not assigned and saved to cache, including results from standalone or final calls."
+    },
+    {
+      "failure_type": "required_argument_validation",
+      "count": 1,
+      "description": "A hotel search was called without the mandatory checkout date instead of requesting the missing detail."
+    },
+    {
+      "failure_type": "nearest_grouping_semantics",
+      "count": 1,
+      "description": "The nearest-results call grouped by the hotel anchor rather than the requested restaurant results."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits make cached-result reuse and persistence more operationally explicit, clarify that incomplete domains should prompt for missing mandatory details while complete independent domains proceed, and distinguish the entity being prioritized in proximity results from its location anchor.",
+    "edits": [
+      {
+        "replace": "At each turn, inspect cache summaries before searching. If a relevant result exists for the same domain, city, dates, and itinerary leg, retrieve it with its exact key using `get_results_from_cache`, then apply the matching `filter_*` tool with that result as `prior_results` and the newly supplied constraints. If no suitable cached result exists, run a new search. Apply new preferences to all relevant cached results or itinerary legs, but do not repeat valid searches or regenerate unaffected domains.",
+        "content": "At each turn, inspect cache summaries and identify which domains or itinerary legs the latest turn changes. For each changed request, retrieve by exact key a compatible cached result for the same domain, location, dates, and leg whenever its candidate set can be narrowed to the request. It need not already include newly supplied filterable criteria such as cuisine, budget, rating, or amenities. Apply the matching `filter_*` tool to that result with the new constraints, retaining constraints already embodied in the cached result. Do not repeat a base search just to add filterable criteria. Search only when no compatible cached result exists or the request's scope has changed; leave unaffected domains and legs alone."
+      },
+      {
+        "replace": "- Assign every search, filter, sort, and nearest-results output to a variable, then immediately save it with `save_to_cache` under a unique, descriptive key before using it in later calls. Pass the assigned prior result to filters, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally.",
+        "content": "- Assign every search, filter, sort, and nearest-results call to a variable and immediately save that result with `save_to_cache` under a unique, descriptive key, even when it is the final call. Do not call these tools inline or print their results instead of saving them. Pass the assigned result to later filters or nearest calls, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally."
+      },
+      {
+        "replace": "Before calling a travel tool, check its required parameters against the full conversation and available context. If any required details are missing, use `seek_information` to ask only for those details; do not invent values, pass `None`, or run a partial search. For requests spanning multiple domains, bundle missing required details for all requested domains into the same information request. Do not ask for optional preferences.",
+        "content": "Before calling a travel tool, validate its mandatory parameters separately for each requested domain and itinerary leg using the full conversation and available context. If any are missing, do not call that incomplete tool or run a partial search; use one `seek_information` request listing only the missing mandatory details across incomplete requests. Continue with fully specified independent domains or legs, and save their results. Never invent values, pass `None`, or ask for optional preferences."
+      },
+      {
+        "insert_after": "- When the user requests proximity, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "\n  Interpret `groupBy` as the type of result the user wants prioritized, not the location anchor. For example, for restaurants near a hotel, pass both result sets and use `groupBy=\"restaurant\"`; for hotels near an attraction, use `groupBy=\"hotel\"`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

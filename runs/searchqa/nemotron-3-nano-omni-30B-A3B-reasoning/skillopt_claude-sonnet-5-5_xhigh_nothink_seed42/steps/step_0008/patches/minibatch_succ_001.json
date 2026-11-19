@@ -1,0 +1,35 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Pun or wordplay clue ('Marquess of this had a large \"steak\"'). The agent identified the entity from the factual descriptors (first 20th-century PM, Marquess) and treated the pun (Salisbury steak) only as confirmation.",
+    "Bare date plus place fragment ('February 6, 1911 in Tampico, Illinois'). The agent answered with the person the passages repeatedly tie to that date and place, as a bare name, instead of the event or the place.",
+    "Distinctive clue details (22-year marriage and Dieudonne; Act IV Scene 1 at Agincourt; 'union' for a Russian spacecraft; Crane 1982 restored text) repeat across many passages. The agent took the entity that recurs with all of them and gave its standard name, with regnal numerals, hyphens and leading 'The' as shown in the passages ('Louis XIV', 'Henry V', 'Winnie-the-Pooh', 'The Red Badge of Courage').",
+    "'One of these <noun>' clue where the missing part is only a modifier ('one of these bombs' -> 'hydrogen bomb'). The agent gave the standard compound name, not the bare modifier, and dropped role words such as 'play', 'king', 'spacecraft'."
+  ],
+  "patch": {
+    "reasoning": "Every success in this batch was a clean, well-supported match, but three behaviours go beyond the current text. First, date/place fragments should resolve to a person. Second, a pun should be resolved from the factual descriptors first and used only as confirmation. Third, a modifier-only missing part ('hydrogen') needs its head noun to be a valid answer, which 'give only the MISSING part' could wrongly forbid. Encoding these small clarifications reinforces what worked without rewriting rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- A bare date + place (or date + event) fragment such as 'February 6, 1911 in Tampico, Illinois' asks for the person (or named thing) that the passages repeatedly tie to exactly that date and place, here the person born there that day. Give the bare name ('Ronald Reagan'), not the event, the place or the date."
+      },
+      {
+        "op": "replace",
+        "target": "- A word in quotation marks inside the clue (a 'drag', a nickname) is usually a pun or hint tied to the answer. Look for passages where that word appears next to a candidate and answer with that candidate.",
+        "content": "- A word in quotation marks inside the clue (a 'drag', a nickname, 'steak') is usually a pun or hint tied to the answer. First identify the candidate from the plain factual descriptors ('Marquess', 'first 20th-century prime minister' -> Salisbury). Then use the pun as confirmation: passages where that word sits next to the candidate ('Salisbury steak') show it fits. Answer with the candidate, never the pun word."
+      },
+      {
+        "op": "insert_after",
+        "target": "do not append that role word to the answer.",
+        "content": "\n- Exception for compound names: if the missing part is only a modifier that cannot stand alone ('one of these bombs' -> 'hydrogen bomb', not 'hydrogen'), give the standard compound term with its head noun in the form the passages use. Test: would an answer key list the bare modifier as a name? If not, keep the head noun. Role words that merely label the category ('play', 'king', 'spacecraft', 'novel') are still dropped: 'this play' -> 'Henry V'."
+      },
+      {
+        "op": "insert_after",
+        "target": "For people, prefer the form used in a verbatim answer from the context (Rule 3); otherwise use the name form most natural for the clue.",
+        "content": "\n- For kings, plays, characters and works, use the full standard name exactly as it recurs in the passage titles and headers, including regnal numerals, hyphens and a leading 'The' that belongs to the title ('Louis XIV', not 'Louis' or 'Louis Dieudonne'; 'Henry V'; 'Winnie-the-Pooh'; 'The Red Badge of Courage'). Quotation marks around the title do not matter."
+      }
+    ]
+  },
+  "source_type": "success"
+}

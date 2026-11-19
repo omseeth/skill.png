@@ -1,0 +1,26 @@
+{
+  "batch_size": 6,
+  "success_patterns": [
+    "Agents picked the entity of the type the clue asked for ('this constellation', 'this city-state', 'this cheek cosmetic', 'this sport') and ignored the anchor details (Kevin Sorbo, Helots, lipstick and Vaseline). The existing type-check and anchor rules were applied correctly.",
+    "A flashcard-dump hit (StudyStack: 'CLUE IN CAPS, ANSWER') was copied verbatim and trusted over the noisy topical passages. This is covered by Rule 3.",
+    "When the clue was a near-paraphrase of a passage sentence ('if you've run out of blush ... mix a little lipstick with Vaseline'), the agent filled the slot with the plain common noun, with no added modifiers.",
+    "For a clue of the form 'Known as <foreign term>, this sport...', the agent answered with the English generic name that the passages gloss the term with (Bullfighting). This is only partly covered by the lambi/Conch example.",
+    "For an options clue ('Of 2, 5 or 10 ...'), the agent chose one listed option. Passages gave a breakdown (two compound eyes plus three simple eyes), so the agent summed the parts to get the total, 5."
+  ],
+  "patch": {
+    "reasoning": "Most successes were driven by rules already in the skill: type-check, verbatim archive scan, and bare-noun formatting. Two small gaps remain. The foreign-term gloss rule is stated only for a 'local word', not for 'Known as \"<foreign phrase>\"' clues. The options-clue rule does not say how to choose when passages give components instead of a single stated total. Two short additions to existing bullets cover these without adding new sections.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "look for the passage that glosses it ('locally referred to as lambi') and answer with the common English name (Conch).",
+        "content": "look for the passage that glosses it ('locally referred to as lambi') and answer with the common English name (Conch). The same applies to 'Known as \"<foreign phrase>\", this sport/dish/term ...': find passages that equate the foreign phrase with an English term ('Spanish-style bullfighting is called corrida de toros') and answer with that English generic name (Bullfighting), not the foreign phrase and not a country or region from the clue."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Clue lists its own options ('Of North Park, East Park, West Park or South Park, it's where...'): the answer is exactly one of the listed options, copied verbatim. Use the context to pick which.",
+        "content": "- For numeric options ('Of 2, 5 or 10, the number of ...'), test each option against the passages. If they give a breakdown ('two compound eyes and three simple eyes') rather than one stated total, add the parts and pick the option that equals the sum. Do not pick the option attached to only one component."
+      }
+    ]
+  },
+  "source_type": "success"
+}

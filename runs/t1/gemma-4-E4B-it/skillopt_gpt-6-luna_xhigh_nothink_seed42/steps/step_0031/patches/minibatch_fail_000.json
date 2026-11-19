@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache-state selection and constraint resolution",
+      "count": 3,
+      "description": "Follow-ups re-searched or chose a less-constrained cache result, or failed to interpret the latest preference using the preceding question."
+    },
+    {
+      "failure_type": "offer and proximity routing",
+      "count": 3,
+      "description": "The agent inferred nearest-search intent from a category offer, prioritized the wrong domain for a proximity recommendation, or treated a suggested locality as an attraction entity."
+    },
+    {
+      "failure_type": "mandatory-input validation and independent-domain progress",
+      "count": 2,
+      "description": "The agent attempted an incomplete hotel search or failed to search a complete independent restaurant request while asking for hotel dates."
+    },
+    {
+      "failure_type": "unsupported-constraint handling",
+      "count": 1,
+      "description": "A traveler count unsupported by flight tools triggered redundant searches despite compatible cached flight results."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the turn-resolution order explicit where tool choice begins, including how to select and filter cached results, carry out an accepted offer, and orient proximity results. Clarify neighborhood-versus-entity mapping for attractions, reinforce independent mandatory-input checks with a concrete example, and make the no-op path explicit for unsupported flight passenger counts.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.",
+        "content": "**Turn classification (apply in order):** Read the full conversation, the preceding assistant offer, and the cache summaries; identify only the scopes changed by the latest turn. First, resolve replies against the offer and carry out the offered operation and scope: accepting a category or entity offer is not a proximity request. Next, if a changed scope is covered by a compatible cached result, retrieve the exact key for the most constrained compatible result that embodies the greatest number of active criteria, then filter for active supported criteria not already embodied and newly supplied filterable constraints; save the filtered result. Do not base-search a covered scope or regenerate unaffected scopes. Search with all active supported criteria only for a genuinely new or uncovered scope. If there is no supported actionable change and the cache covers active requests, take the no-op path. Use `search_nearest` only for explicit proximity requests, and set `groupBy` to the domain the user wants recommended—for example, for restaurants near a hotel, group by `restaurant`."
+      },
+      {
+        "op": "insert_after",
+        "target": "For attractions, put the requested category in `type` with its exact value (for example, if the requested type is `Scenic`, pass `type=[\"Scenic\"]`).",
+        "content": "\n\nMap a named place according to its role in context: use `neighborhood` when it is being treated as a neighborhood or locality, and `attraction_name` when it is a specific attraction being searched for. Do not treat every capitalized place suggested by the assistant as an attraction entity."
+      },
+      {
+        "op": "replace",
+        "target": "Before calling a travel tool, validate its mandatory parameters separately for each requested domain and itinerary leg using the full conversation and available context. If any are missing, do not call that incomplete tool or run a partial search; use one `seek_information` request listing only the missing mandatory details across incomplete requests. Continue with fully specified independent domains or legs, and save their results. Never invent values, pass `None`, or ask for optional preferences. For hotels, when the check-in date and an explicit stay length in nights are known but checkout is not, use `adjust_date` to calculate checkout. Do not infer a stay length; ask when a required date cannot be obtained or derived from explicit information.",
+        "content": "Validate mandatory inputs independently for each requested domain and itinerary leg using the full conversation. Execute and save every complete independent request even when another request is incomplete; do not call a tool for an incomplete request. Use one `seek_information` request listing only missing mandatory details for incomplete requests. For example, if hotel dates are missing but the requested restaurant city is known, search and save the restaurant, then ask only for the hotel dates. Never invent values, pass `None`, or ask for optional preferences. For hotels, use `adjust_date` to calculate checkout only when check-in and an explicit stay length in nights are known; otherwise ask for the missing date rather than inferring a stay length."
+      },
+      {
+        "op": "insert_after",
+        "target": "If the outbound leg is already compatibly cached, search only the newly requested return leg.",
+        "content": "\n\nFlight tools do not support passenger counts. If a follow-up only supplies a traveler count for an already-covered flight request, do not search or filter the flight legs; when no other supported change is requested, take the no-op path."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

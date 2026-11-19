@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_calls",
+      "count": 2,
+      "description": "Long or narrative queries were under-enumerated: 2 of 8 calls in one case, and a missing Asos 'searching for iPhone cases' call in another."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 4,
+      "description": "The chosen tool's schema could not express the query: Moka By Source with an invented source 'United States' instead of News Network (category, region); Tomorrow.io (no wind-unit field) instead of Foreca Daily; Item Search 3 instead of Item Search; MailCheck instead of the same-provider fast Email verifier disposable-domain tool."
+    },
+    {
+      "failure_type": "format_parse_error",
+      "count": 2,
+      "description": "Bracket errors (`], [` between calls) and repeated `optional parameters` keys, giving zero parsed calls in one case. 'Fast Email verifier' was also capitalised differently from the heading."
+    },
+    {
+      "failure_type": "parameter_placement_and_values",
+      "count": 4,
+      "description": "Optional-schema param placed in required (starid); Amazon domain given as 'US' or '1' instead of the marketplace TLD; `loc` used instead of `region`; implied page/count/sort values omitted; invented `windunit` on a tool lacking it."
+    }
+  ],
+  "patch": {
+    "reasoning": "Prior bundled edits that added many long rules were rejected, so these four edits are short and each targets a failure that recurs in this batch. They cover enumerating every clause, checking schema fit before committing to a tool, tie-breaking between sibling providers, and a final structural check on brackets, key casing and parameter lists. A small block of value-mapping rules covers recurring eCommerce parameters.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+        "content": "\n- Long or narrative queries ('The user first checked X, then searched Y, explored Z...') are checklists with one or more calls per sentence. Write the checklist out first and count it. An 8-clause query that yields 2 calls has stopped early. Every named platform, ASIN, SKU or ID, and every 'checking countries', 'browsing categories', 'searching for X' or 'reading reviews' action gets its own call. If a clause names a provider and an action (e.g. 'searching for iPhone cases' on Asos), use that provider's closest endpoint for it (e.g. its auto-complete or search endpoint), even when the match is loose. Ignore closing commentary about the user's purpose ('likely comparing...')."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Never pick a tool just because a parameter value fits (e.g. a country code). Prefer the tool whose parameters can express every constraint in the query (e.g. a forecast tool with day-count, temperature-unit and wind-unit params, and a location field that accepts the given ID format).",
+        "content": "\n- Schema-fit check before committing to a tool. Every qualifier in the clause must map to a parameter name that exists in that tool's own schema, and every required parameter must be fillable with a literal taken from the query. If you would need a parameter the tool lacks (e.g. `windunit` or `periods` on a tool without them), or a value you must guess (e.g. `source`=`United States` when the query only gives a country and a category), you have the wrong tool. Switch to the sibling whose schema has those fields (e.g. `category`=`business` plus `region`=`us`; a forecast tool with `periods`, `tempunit` and `windunit`; a Wayfair endpoint with `postalCode` for 'delivery to postal code').\n- When several providers offer the same check, prefer the provider whose other endpoints the query also needs. For example, if other clauses need `fast Email verifier` FreeDomain and Role Account, use its disposable-domain endpoint too, and make one call per domain named."
+      },
+      {
+        "op": "insert_after",
+        "target": "- The answer is one flat, bracket-balanced list `[{...}, {...}]` inside `<answer>` tags. Do not close the list early or leave stray brackets.",
+        "content": "\n- Copy tool names character for character, including lowercase initials (`fast Email verifier: FreeDomain`, not `Fast Email verifier: ...`). Separate calls only with `}, {` inside the single outer `[ ]`. Never write `], [` or `}],` between calls.\n- Final per-call check: each object has exactly one `optional parameters` key, with all optionals in that one list. Every parameter sits under the same heading as in the schema. `Required parameters: none` means `\"required parameters\": []`, and a main input listed under Optional (e.g. `starid`) goes in `optional parameters`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+        "content": "\n- Value conventions seen in eCommerce queries: an Amazon 'US marketplace' -> `domain` = `com` (the marketplace TLD, never `US` or `1`). 'Filtering for US customers' -> `region` = `US` and 'in USD' -> `currency` = `USD`, using the tool's `region` field if it has one rather than `loc`. 'First page of 20 results sorted by default' -> page field `1`, per-page field `20`, sort field `0` (its default). 'Most relevant reviews, first page' -> `sort_order` = `RELEVANCE`, `page` = `1`. 'Searching ... on BestBuy' with a required `page` -> `page` = `1`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

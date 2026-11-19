@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_or_identifier",
+      "count": 4,
+      "description": "Some calls used a less suitable endpoint for the requested resource or facet, or did not use the exact full tool identifier."
+    },
+    {
+      "failure_type": "parameter_binding_and_serialization",
+      "count": 8,
+      "description": "Arguments were misbound, placed in the wrong schema bucket, given noncanonical values, or serialized in the wrong form."
+    },
+    {
+      "failure_type": "scope_control_omission",
+      "count": 4,
+      "description": "Calls omitted documented controls needed to express an unrestricted/random selection or standard search scope."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the general rules for schema placement and exact tool names, so this patch avoids repeating them. It makes three recurring gaps more actionable: match endpoints to per-measure unit controls, treat regional context as potentially multi-field, and bind unrestricted random selections across their separate dimensions. It also clarifies that the wrapper's string representation takes precedence over endpoint primitive types.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- For overlapping endpoints, compare the exact input type and every requested output facet, not just the broad topic. If the user explicitly names a source or issuing authority, treat it as a constraint and prefer its matching endpoint over a different provider's similar result.",
+        "content": "\n- When a request specifies different units for different measures, prefer an endpoint with documented controls for each measure. Use a generic units parameter only when its documented semantics cover all requested units."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use each endpoint's exact parameter names and required/optional placement. Bind every constraint only to the call it modifies; do not carry dates, limits, filters, or pagination across operations.",
+        "content": "\n- Treat a requested market or region as potentially composite: populate each directly relevant documented field (such as country/store, currency, language/locale, or size schema) with a canonical value unambiguously determined by the request and tool documentation. Do not assume one field sets the others or invent unsupported values."
+      },
+      {
+        "op": "replace",
+        "target": "- Include an optional parameter whenever it directly encodes a requested facet, even if the user phrases it in prose or the endpoint has a default. For an unfiltered, random, or full/standard result, use a documented “all” or unfiltered selector when needed to preserve that scope. Do not add options that are neither requested nor needed to express it, or invent values. For missing required values, use only a documented default or a value unambiguously derivable from the query.",
+        "content": "- Include an optional parameter whenever it directly encodes a requested facet, even if the user phrases it in prose or the endpoint has a default. For random or unfiltered results, inspect each selection dimension independently: put a requested property in its matching field and use a documented all/unfiltered token for unconstrained dimensions when needed to preserve the requested scope. Do not use one property's value in another field, add unrelated options, or invent values. For missing required values, use only a documented default or a value unambiguously derivable from the query."
+      },
+      {
+        "op": "replace",
+        "target": "- In this answer format, encode scalar `value` fields as JSON strings, including numeric and boolean-like parameter values, unless the task's response contract explicitly requires native JSON numbers or booleans.",
+        "content": "- In this answer format, encode every scalar `value` as a JSON string, including numeric and boolean-like values, even when the endpoint schema marks the parameter NUMBER or BOOLEAN. Use native JSON numbers or booleans only when the task's response contract explicitly requires them; the endpoint schema still determines which values are valid."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

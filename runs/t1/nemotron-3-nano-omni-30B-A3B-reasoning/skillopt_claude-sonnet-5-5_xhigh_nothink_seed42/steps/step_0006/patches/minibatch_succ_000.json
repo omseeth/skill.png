@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Refinement turns on a cached domain (restaurants, hotels, flights) were solved as three straight-line statements: load the most refined key, filter only the new constraints, save under a new key. Constraints already listed in the CACHE summary were not repeated. This is already covered by Rules 2, 13 and 17.",
+    "A short 'Yes, that would be nice' answer to an assistant proposal (breakfast) was treated as a new hotel filter, and 'Yes, we prefer first' became flight_class on the latest filtered key. This is already covered by Rule 10.",
+    "Hotel or flight requests with no concrete dates ('last-minute', 'family reunion') produced only a one-sentence seek_information. This is already covered by Rule 6.",
+    "Trajectory 7 only worked because the agent treated an event date ('The reunion is on May 26, 2025') as missing departure info and asked for the departure date. The rules do not state explicitly that an event date is not a travel date.",
+    "Trajectory 2 passed only through lenient scoring: the agent invented the city 'Dallas' for a restaurant request that never named a city, where the gold was seek_information for the city. Trajectory 8 re-ran search_attractions on a 'Not really' reply instead of retrieving from the cache, so its tool F1 was 0. Both are latent failures that existing rules already target but the agent did not follow."
+  ],
+  "patch": {
+    "reasoning": "Most successful patterns are already encoded. Two small gaps remain. First, an event date ('the reunion is on...', 'the wedding is on...') is easily mistaken for a departure date. Second, a restaurant request with cuisine or budget but no city was answered with a fabricated example city and still passed the lenient scorer. Both edits are short clarifications that reinforce Rule 6's mandatory-argument discipline without changing other behavior.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not search, and do not ask about class, airline, time, return date, or passenger count.",
+        "content": "\n- An event date is not a travel date. 'The reunion is on May 26, 2025', 'the wedding is June 3' or 'the conference starts May 5' do not give the flight departure_date or the hotel check-in/check-out dates. Unless the user says they fly or check in on that day, still output only the seek_information for the missing departure date (or hotel dates)."
+      },
+      {
+        "op": "insert_after",
+        "target": "  - search_restaurants: city.",
+        "content": "\n  - A restaurant request that gives only cuisine, budget, rating or dietary needs ('I'm looking for German food', 'we want to spend around 70') and no city anywhere in the conversation is missing the city. Output only `seek_information(\"We need the city for the restaurant.\")`. Never invent a city or borrow one from the tool examples (Dallas, Boston, Phoenix, ...). Do not call search_restaurants without a user-stated city."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Three of the eight (Welsh, Rhapsody, Grasshopper pie) had the clue echoed in a flashcard or trivia-archive passage, with the answer attached or recoverable from the other passages. The agent copied the repeated entity, which Rule 3 already covers.",
+    "For a 'this <type>' clue the agent answered with the entity of that type (language, constellation, ethnic group, film, book, person) and not with an anchor word from the clue.",
+    "The agent ignored joke asides ('looks nothing like Kevin Sorbo') for the core answer, but the aside was in fact a corroborating hint (the actor's famous role, Hercules).",
+    "A fractional or approximate quantity in the clue ('about 1/5 the population') was matched to the passages' own figure ('21 percent') to select among several candidate groups.",
+    "A dish name kept its head noun ('Grasshopper pie') when the clue described the modifier only indirectly ('insect name', 'green'), so the bare modifier would not name the dish."
+  ],
+  "patch": {
+    "reasoning": "Most of this batch is already handled by existing rules (archive hits, type slot, bare short answers). Three small gaps showed up. First, numeric paraphrase matching (1/5 -> 21%) is not stated anywhere and is a common way to disambiguate between several plausible entities. Second, the skill says jokes are pure decoration, yet the Kevin Sorbo aside was a real corroborating pointer to the answer. Third, the head-noun exception needs a food-dish example where the clue states the category noun ('pie') but not the modifier ('Grasshopper'), to balance the many 'drop the head noun' rules. All three are low-risk, carry no task-specific facts beyond one-line examples, and do not touch Rule 3's verbatim-override behavior or the protected block.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 3: Look for the clue repeated verbatim in the context",
+        "content": "\n- NUMERIC / FRACTION clues ('about 1/5 the population', 'nearly half', 'a third of the world's X'): convert the clue's quantity to the percentage or figure the passages use (1/5 = about 20%, here a passage saying '21 percent') and pick the candidate whose stated share fits. Reject candidates whose figures are clearly different (10%, 17%, 30%)."
+      },
+      {
+        "op": "replace",
+        "target": "are decoration. Answer from the factual core plus the anchor term.",
+        "content": "are mostly decoration. Answer from the factual core plus the anchor term. If an aside names a person or work tied to the answer (an actor's famous role, 'looks nothing like <actor>'), use it only as corroboration of the candidate your factual core already gives, never as the answer itself."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 4: Exact-match formatting of the final answer",
+        "content": "\n- FOOD / DISH names keep their head noun when the clue states the category noun but only hints at the modifier ('Southern pie with an insect name ... green, cookie-crumb crust' -> 'Grasshopper pie', since bare 'Grasshopper' does not name the dish). Drop the head noun only when the clue itself states the modifier ('A \"hasty\" dessert' -> 'pudding'). Copy the capitalization/wording used in the passages."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "stateful_request_and_cache_workflow",
+      "count": 6,
+      "description": "Agents repeated completed work, missed new affirmative requests, touched unrelated domains, or failed to assign and save new results."
+    },
+    {
+      "failure_type": "flight_leg_interpretation",
+      "count": 2,
+      "description": "Agents failed to use an already supplied return date or omitted a return leg established by the trip context."
+    },
+    {
+      "failure_type": "runtime_namespace_violation",
+      "count": 2,
+      "description": "Agents imported tools from a nonexistent module despite the injected-namespace requirement."
+    },
+    {
+      "failure_type": "schema_or_location_mapping",
+      "count": 2,
+      "description": "Agents put a state abbreviation in the city field or passed unsupported fields to a tool."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the no-import rule and schema/location constraints, so those failures do not expose a missing instruction. The edits sharpen the cache workflow where agents repeatedly mishandled incremental requests, and clarify how a stated trip interval maps to flight legs in an established flight request.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- On each turn, consider the full conversation and cache summaries, and handle only the domain(s) the current request changes or newly requests. For each, reuse the closest result matching both domain and subject; apply only criteria not already applied, and leave completed unrelated domains untouched. If the requested category or entity is not represented, run a new search rather than filtering a different subject. Assign every new search, filter, sort, or nearest-result output to a variable and save it with `save_to_cache` under the established base key for a new search or a distinct key for a transformation. A bare result-producing call or merely re-saving unchanged cached data does not complete an action. Use “No planning needed” only when the cache satisfies every current request and no action remains."
+      },
+      {
+        "op": "replace",
+        "target": "Use an end date as the return-leg departure date only when return travel is requested or established by context; do not infer a return flight solely from a date interval.",
+        "content": "In an existing flight request, when the user gives the dates for that trip as “traveling from [date] to [date],” use the first date for the outbound and the second for the return leg, unless the user specified one-way travel. Do not infer a return flight from an interval unrelated to the requested flight, such as an event or lodging interval."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

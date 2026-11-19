@@ -1,0 +1,42 @@
+{
+  "reasoning": "Preserved all failure-driven edits as the priority, including the cache workflow, proximity distinction, return-only flight handling, date-string handling, and explicit-criteria audit. Retained both success-driven edits because they add guidance not directly covered by the failure patches. No edits target the protected section. [optimizer-ranked: selected 4/7 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- **Handle follow-ups incrementally through the cache:** Treat a short answer to an assistant's clarification question as an explicit user-provided value or preference; an affirmative answer accepting an offered domain or option is a request to proceed. On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns, then decide separately for every requested or clearly pending domain. If a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only the new same-domain filter and save the update under a fresh relevant key. If no suitable base exists and required inputs are available, search and save. If required inputs are missing, ask for them while still completing other requested domains whose required inputs are available. A result summary satisfies a request only when it reflects all current constraints. For updates affecting multiple results, such as outbound and return legs, retrieve, filter, and process each independently. Do not repeat completed work, reapply constraints, or touch unrelated results. Never return no-planning merely because a cache entry exists. Compare the cache summary with the current conversation and follow the cache-update, search, or missing-input rules above for any unmet request or pending deliverable. Return no-planning only when every requested or pending deliverable reflects all current constraints and the latest turn adds no request, accepted offer, or new constraint.",
+      "content": "- **Handle follow-ups incrementally through the cache:** Treat a short answer to a clarification question as an explicit value or preference, and an affirmative reply accepting an offered domain or option as a request to proceed. Reconcile the full conversation and cache, including pending requests, and decide separately for each requested or clearly pending domain: (1) If a required input is missing for a domain, seek only that information, but complete and cache every other requested domain whose required inputs are available. (2) If the user explicitly corrects or replaces a same-domain criterion (for example, “actually,” “instead,” or “only”), treat the conflicting earlier criterion as superseded; do not filter a result narrowed by it. Search afresh using the replacement and all other currently active explicit criteria, then save the result. (3) If the latest suitable cached result reflects all current constraints, leave it untouched; retrieve it only when needed for a requested downstream operation or an accepted offer. (4) If a suitable cached base lacks a new same-domain constraint, retrieve it using its exact cache-summary key, assign the returned result, apply only the new constraint, and save the update under a fresh relevant key. (5) If no suitable base exists and required inputs are available, search and save. Never rely on variables from earlier turns. A result summary satisfies a request only when it reflects all current constraints. For updates affecting multiple results, such as outbound and return legs, process each independently. Do not repeat completed work, reapply constraints, or touch unrelated results. Return no-planning only when every requested or pending deliverable reflects all current constraints and the latest turn adds no request, accepted offer, or new constraint.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation.",
+      "content": "Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation. Keep generated code limited to necessary tool calls, required assignments, and cache operations; omit presentation-only prints, loops, and formatted summaries.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "`search_hotels` and `search_restaurants` require `city`.",
+      "content": "`search_hotels` and `search_restaurants` require `city`. A flight request between places also needs an established origin and destination; use the appropriate airport or city fields and do not guess missing endpoints. When a clearly established trip destination applies, reuse it as the flight destination and ask for any missing endpoint, especially the departure city.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results. Do not pass the attraction name as a `neighborhood` value or approximate proximity with a neighborhood filter. If a later constraint changes an underlying domain result, such as filtering the hotel set, recompute and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call.",
+      "content": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, and provide exactly two result-domain arguments among `hotels`, `attractions`, and `restaurants`, with `groupBy` set to the requested anchor domain. A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results. By contrast, “near” a named neighborhood, district, or area is a location constraint: use the appropriate `neighborhood` filter with the full provided area phrase, not `search_nearest`. Do not pass an attraction name as a `neighborhood` value or approximate attraction proximity with a neighborhood filter. If a later constraint changes an underlying domain result, such as filtering the hotel set, recompute and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call.",
+      "support_count": 2,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 0 closes a broad follow-up gap by distinguishing replacement criteria from incremental filters, preventing stale or over-narrowed results. Edit 5 gives concrete, broadly applicable code-generation guidance and has strong support. Edit 6 fills a consequential gap around missing flight endpoints. Edit 1 clarifies proximity handling for named areas and the required inputs, but applies to a narrower class of requests.",
+    "selected_indices": [
+      0,
+      5,
+      6,
+      1
+    ]
+  }
+}

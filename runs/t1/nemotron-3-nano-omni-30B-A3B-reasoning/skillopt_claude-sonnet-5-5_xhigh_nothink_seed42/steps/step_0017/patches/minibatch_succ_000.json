@@ -1,0 +1,35 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "First-time attraction requests that give a city plus a type are emitted as `attractions = search_attractions(city=..., type=[...])` followed by `save_to_cache(key=\"attractions\", value=attractions)`, with nothing else added (3 trajectories).",
+    "A round-trip date reply is split into two assigned and saved search_flights calls, under the keys departure_flights and return_flights. The return date goes in its own departure_date list.",
+    "When the assistant proposed an amenity and asked only for the checkout date, and the user replied 'Yes ... check out on <date>', the agent ran one search_hotels call. The city was the flight destination, check-in was the cached flight departure date, and checkout was the user's stated date, copied verbatim. It also carried the accepted amenity and the explicit headcount from turn 1 ('2 travelers' became num_people=2).",
+    "Gold behaviour for a 'no preference' reply with a populated cache is a pure `get_results_from_cache` and no new search. Gold behaviour for a flight or hotel request with vague timing and no concrete date is a single seek_information. The agent did not always reach this in the batch: it re-searched in one case, wrote `departure_date=[\"<departure_date>\"]` in another, and invented `type=[...]` on search_hotels in a third."
+  ],
+  "patch": {
+    "reasoning": "The common clean successes (first attraction searches, round-trip splits, and the hotel search that picked up a flight date plus an accepted amenity) are already covered. The same batch shows three failures that the existing rules should have caught: a placeholder date, an invented `type` kwarg on hotels, and a re-search where the gold was a pure cache read. These edits add concrete examples taken from the batch next to the existing rules. They also add an example of the accepted-amenity-plus-checkout pattern, which is worth locking in.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 6: Never fabricate mandatory parameters (dates especially)",
+        "content": "- A placeholder is a fabricated value. Never write `departure_date=[\"<departure_date>\"]`, `checkin_date=[]` or any bracketed stand-in. If you cannot point to the mandatory value in the user's own words, the whole output is one `seek_information(...)` call, with no search_* line at all. Example: 'a one-way ticket from San Antonio to St. Louis for a business meeting' -> `seek_information(\"We need the departure date for the flight.\")` only. Example: 'a hotel in Portland for a weekend getaway with a hot tub and sauna, rating at least 3.5' -> `seek_information(\"We need the check-in and check-out dates for the hotel.\")` only."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 8: Act on the latest turn and the cache",
+        "content": "- Concrete retrieval example: CACHE {'attractions': 'Attraction search results in San Jose. attraction type(s): [Culinary].'} and the last turn is 'Not really, just something fun.' (the answer to 'anything specific?'). Output exactly `attractions = get_results_from_cache(key=\"attractions\")`. Do not re-run search_attractions and do not save again. 'Fun', 'something nice' and 'no preference' add no parameter."
+      },
+      {
+        "op": "replace",
+        "target": "- Hotel amenity wording: 'fitness center' or 'fitness classes' -> `has_fitness_class=True`; 'gym' -> `gym_present=True`.",
+        "content": "- Hotel amenity wording: 'fitness center' or 'fitness classes' -> `has_fitness_class=True`; 'gym' -> `gym_present=True`; 'hot tub' or 'jacuzzi' -> `has_hot_tub=True`; 'sauna' -> `has_sauna=True`. search_hotels / filter_hotels have NO `type` kwarg. `type` exists only on the attraction tools, so never write `type=[\"Hot tub\", \"Sauna\"]` on a hotel call."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 24: Dates, stay length and domain completeness (supplements Rules 6, 7, 9, 14)",
+        "content": "- Accepted proposal plus the missing checkout date: if the assistant asked 'a hotel with free breakfast in Anchorage, and when would you like to check out?' and the user answers 'Yes, that would be great. I want to check out on May 18, 2025', the hotel is now searchable. Flights are already cached (searched June 1, 2025, 2 travelers) and the CACHE has no hotel key. Output one `hotels = search_hotels(city=\"Anchorage\", checkin_date=[\"June 1, 2025\"], checkout_date=[\"May 18, 2025\"], breakfast_included=True, num_people=2)` plus `save_to_cache(key=\"hotels\", value=hotels)`. The city is the flight destination. Check-in is the cached flight departure date. Checkout is the user's date copied verbatim, even if it looks earlier than check-in; do not 'correct' it or ask again. The 'Yes' maps to exactly the amenity the assistant proposed. An explicit headcount from any turn ('2 travelers') becomes num_people. Do not re-search or re-filter the cached flights."
+      }
+    ]
+  },
+  "source_type": "success"
+}

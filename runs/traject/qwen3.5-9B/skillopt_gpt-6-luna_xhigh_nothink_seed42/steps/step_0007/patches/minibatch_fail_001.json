@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_coverage",
+      "count": 5,
+      "description": "Selected an endpoint with the wrong result shape, called competing validators for the same item, or omitted a specialized call for a distinct requested result."
+    },
+    {
+      "failure_type": "parameter_binding_and_value_normalization",
+      "count": 6,
+      "description": "Calls contained missing or mismapped parameters, schema-incompatible values, native numeric scalars, or noncanonical casing."
+    },
+    {
+      "failure_type": "response_structure",
+      "count": 2,
+      "description": "Duplicate keys or malformed parameter objects caused arguments to be dropped or the response to fail parsing."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers capability matching, parameter semantics, and string-valued scalars. These edits clarify endpoint choice when cardinality or result type differs, guard against cross-product calls for multi-item requests, and make the JSON uniqueness check explicit without restating the existing parameter rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- For overlapping endpoints, compare the exact input type and every requested output facet, not just the broad topic. If the user explicitly names a source or issuing authority, treat it as a constraint and prefer its matching endpoint over a different provider's similar result.",
+        "content": "- Match the endpoint to the requested result shape as well as its subject: distinguish searches from detail lookups, single items from collections, and current conditions from forecasts. When distinct requested result types have dedicated endpoints, cover each with its best-matching endpoint rather than assuming a broader endpoint makes a specialized call unnecessary. For a list of targets, choose independently for each target and requested check; do not fan every target out across alternative endpoints unless independent cross-checks are requested."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Audit every call against its own schema and the decomposed request checklist. Ensure each call is relevant and has the exact full tool identifier and correctly formed parameter entries.",
+        "content": "- Check the assembled JSON for duplicate object keys as well as parseability. Each call object must contain each required top-level key exactly once; represent multiple parameters as entries in the appropriate parameter array, not by repeating a key."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

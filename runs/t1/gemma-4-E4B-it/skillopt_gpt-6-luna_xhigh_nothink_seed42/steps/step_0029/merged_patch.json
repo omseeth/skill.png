@@ -1,0 +1,37 @@
+{
+  "reasoning": "Consolidated the cache proposals into one operational boundary: search when no compatible candidate set covers the requested scope, and retrieve-filter-save when a compatible set can be narrowed. Kept the named-attraction field mapping and business-amenity clarification as distinct schema fixes. Combined the proximity wording while preserving the distinction between explicit requests or clear acceptance and mere co-mention. Omitted partial-completion and attraction save examples because the current skill already covers those behaviors.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.",
+      "content": "**Follow-up decision boundary:** Compare the requested domain, location, dates or leg, and candidate-set scope with the cache summary. If no compatible cached candidate set can cover the requested scope—for example, a new domain, date or leg, or specific entity outside the cached scope—make a base search with all active supported criteria. If a compatible set covers the scope and the user adds or changes only a filterable constraint, retrieve its exact cache key, apply the matching filter, and save the filtered result; a new filter value alone does not require a base search. This includes budget, amenity, cuisine, rating, and hotel occupancy changes such as `num_people` or `num_rooms` when supported by the relevant filter tool. A cached result may cover a narrower geographic request only when the relevant filter supports narrowing it; filters can narrow candidate sets, not broaden them. Repeat this retrieve-filter-save sequence for each affected leg.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "A result restricted to a different category or entity does not establish that a newly requested specific entity is included; search if the cached scope cannot cover it.",
+      "content": "A result restricted to a different category or entity does not establish that a newly requested specific entity is included; search if the cached scope cannot cover it. For a specifically named attraction, use `attraction_name` with the user's exact name rather than repeating a category-only search.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "content": "- Call `search_nearest` only for explicit proximity wording, such as “near,” “close to,” or “with access to” a requested attraction, restaurant, or hotel, or when the user clearly accepts a direct offer to find one domain near another. A mere co-mention of domains in the same city, an unaccepted assistant suggestion, or an answer to a separate hotel-amenity question does not authorize proximity work. For explicit or clearly accepted proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "If no supported argument captures an optional preference, omit it and proceed with the supported request without inventing a substitute or asking for unsupported details.",
+      "content": "\n\nDo not infer a specific amenity from a broad phrase: “business facilities” alone does not establish `has_business_center=True` or `has_meeting_rooms=True`. Use either field only when the user explicitly requests the corresponding amenity and the tool supports that field.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

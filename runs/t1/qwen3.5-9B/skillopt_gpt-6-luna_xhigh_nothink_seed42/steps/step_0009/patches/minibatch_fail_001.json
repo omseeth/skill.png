@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "follow-up and cache lifecycle",
+      "count": 4,
+      "description": "Agents ignored new constraints or accepted offers, reused unavailable prior-turn variables, or searched instead of updating a suitable cached result."
+    },
+    {
+      "failure_type": "request scope and deliverable reconciliation",
+      "count": 5,
+      "description": "Agents omitted pending requested work or added unrelated searches despite the conversation and established itinerary context."
+    },
+    {
+      "failure_type": "constraint and entity mapping",
+      "count": 5,
+      "description": "Agents lost explicit party size, mishandled hotel star thresholds or neighborhood names, or treated an assistant-suggested area as a new attraction search."
+    },
+    {
+      "failure_type": "tool-call discipline",
+      "count": 4,
+      "description": "Agents added imports, diagnostic output, or unnecessary tool and cache calls despite existing runtime-use rules."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers general caching, trip-date reuse, domain scope, and direct tool use, so those rules do not need repeating. These edits clarify gaps exposed by the batch: hotel stars must be mapped separately from numeric ratings, party-size updates should work on cached combined results, suggested areas should be filtered as areas rather than searched as attractions, and broad trip context should not be confused with accepting an offered service.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+        "content": "For numeric `rating` requests, a single value without minimum or “at least” language is exact `[x, x]`; “exactly x” is `[x, x]`, and “at least x” is `[x, 5]`. For hotel star-count requests, use the `stars` field, not `rating`: a bare count or “exactly x stars” is `[x, x]`, “at least x stars” is `[x, 5]`, and explicit ranges should be preserved."
+      },
+      {
+        "op": "replace",
+        "target": "For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed.",
+        "content": "For a hotel search, carry any explicitly stated party size from the full conversation into `num_people` (for example, “solo” means `num_people=1`). If the count is supplied after hotel results exist, retrieve and filter the latest suitable cached hotel result; a combined nearest result may be used as the base when supported. Apply the count with `filter_hotels(num_people=...)` and save the update under a fresh key rather than treating the answer as a no-op."
+      },
+      {
+        "op": "replace",
+        "target": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion. Retrieve the latest suitable cached result and apply the corresponding same-domain filter when needed. Use `search_nearest` only if the user requests proximity.",
+        "content": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant suggests an area or neighborhood and the user asks what is there or available, retrieve the latest suitable cached results for that domain and filter by `neighborhood`, preserving the full area name; do not search for the area as an `attraction_name`. If the suggestion is a specific attraction and the user asks for details, use the suitable cached attraction result or search for it if absent, supplying the established city or state required by the tool. Use `search_nearest` only if the user requests proximity."
+      },
+      {
+        "op": "replace",
+        "target": "- **Honor the user's request and values:** Use only explicitly requested domains; do not infer extra searches, preferences, amenities, or substitute similar categories.",
+        "content": "- **Honor the user's request and values:** Use only explicitly requested domains; do not infer extra searches, preferences, amenities, or substitute similar categories. General trip context (such as calling a trip a family vacation) does not by itself request a hotel, restaurant, or attraction search. An affirmative answer accepting an assistant's offer to add a service does request that domain; complete it using the destination and dates already established, even if other itinerary results are cached."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

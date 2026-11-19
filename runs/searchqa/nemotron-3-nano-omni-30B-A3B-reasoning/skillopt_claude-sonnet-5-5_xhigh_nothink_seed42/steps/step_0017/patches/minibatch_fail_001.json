@@ -1,0 +1,46 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "Answer carried extra words that a trivia key omits: a subtitle ('Studio 60 on the Sunset Strip' instead of 'Studio 60') or a league prefix ('NFL football' instead of 'Football'). Rule 4 already covers subtitles and category nouns."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A pronoun-led clue ('She played X on screen & Y on TV') asks for the person. The agent answered with the film title instead of the actress."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A bare 'Person + charge/event' fragment ('Henry Ward Beecher, for adultery') was answered with a specific year (1875) instead of the umbrella era ('the 19th century')."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "A bare list of three capitals ('Minsk,Monrovia,Manama') has a gold answer that is just the first item. The agent said 'capital cities'. This is not generalizable."
+    }
+  ],
+  "patch": {
+    "reasoning": "Earlier steps kept adding long, niche rules and were rejected, so these edits are few and short. Two failures were over-specific answers, a tagline and a league prefix, even though a similar rule already exists deep in Rule 4. A compact last-step check placed next to the answer-tag instruction makes it harder to skip. One edit covers the slot type for pronoun-led 'who played / who wrote / who did X' clues, where the agent named a work instead of the person. The last edit fixes granularity for the person-plus-charge fragment, where the key was an era rather than a year. The place-list case is left alone because its gold answer cannot be generalized.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- Pronoun-led clues ('She played Tina Turner on the big screen & Rosa Parks on TV', 'He wrote...', 'Her home is now a museum') ask for the PERSON, even without 'this'. A work, role, film, character or place named in the passages is evidence, never the answer. Find the person every passage ties to ALL the listed roles or deeds and give the plain 'First Last' name ('Angela Bassett', not 'What's Love Got to Do with It')."
+      },
+      {
+        "op": "insert_after",
+        "target": "Brief reasoning belongs before the tags.",
+        "content": "\n- LAST-STEP SHORT-FORM CHECK (run it on your final candidate): cut any tagline or subtitle ('X on the Sunset Strip', 'X: The Movie'), any league, brand or organization prefix on a generic sport, game or item ('NFL football' -> 'Football'; 'MLB baseball' -> 'Baseball'), and any category noun the clue already supplies ('sport', 'show', 'film'). For 'this sport / this game' the answer is the sport's own bare name, even when the passages give league-specific measurements or rules. Trivia keys list 'Studio 60' and 'Football', not the long forms."
+      },
+      {
+        "op": "insert_after",
+        "target": "(not Roman 'Cupid').",
+        "content": "\n- Granularity: a clue with no pointer word that is only a person plus a charge, deed or event ('Henry Ward Beecher, for adultery') often comes from a category whose answer is the umbrella era the passages place it in (century, decade, period). Passages repeating one year ('1875 trial') are just evidence. Answer at the coarser level ('the 19th century'), keeping a leading 'the', not the specific year."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

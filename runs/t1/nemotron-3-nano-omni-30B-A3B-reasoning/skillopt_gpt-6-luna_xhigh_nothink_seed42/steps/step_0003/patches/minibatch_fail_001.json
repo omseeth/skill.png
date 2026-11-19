@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_lifecycle_and_incremental_refinement",
+      "count": 6,
+      "description": "Agents omitted or gated cache saves, or refined results from an unsuitable cached base instead of preserving the already-covered constraints."
+    },
+    {
+      "failure_type": "conversation_scope_and_missing_information",
+      "count": 2,
+      "description": "Agents missed requested domains from earlier turns or failed to handle missing mandatory inputs independently for each domain."
+    },
+    {
+      "failure_type": "tool_argument_semantics",
+      "count": 4,
+      "description": "Agents confused state with city or encoded exact hotel location and star criteria inconsistently."
+    },
+    {
+      "failure_type": "tool_environment_violation",
+      "count": 2,
+      "description": "Agents imported tools or added unnecessary imports and custom logic instead of using the predeclared tools directly."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify how to proceed when one requested domain lacks mandatory information but another is ready, cover explicit stay-length date derivation, and make recurring field-encoding and tool-environment expectations more concrete. A cache note addresses empty-result branches without restating the existing general save requirement.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "## Missing mandatory information\nBefore searching, check the full conversation for all mandatory inputs required by each requested tool. If any are missing, do not invent values, use defaults, or run a partial search. Make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+        "content": "## Missing mandatory information\nBuild the requested actions from the full conversation, then check mandatory inputs separately for each requested domain. If information is missing for one or more domains, make one `seek_information` call asking only for those missing mandatory inputs; do not search a domain whose own mandatory inputs are incomplete. Still perform and cache searches for other requested domains whose mandatory inputs are complete. If the user gives an exact hotel check-in date and an explicit stay length in nights, use `adjust_date` to derive check-out; do not ask for a date that can be derived this way. Vague timing such as “a weekend” does not supply exact dates or a stay length."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- For attraction searches, a state name or abbreviation supplied without a city belongs in `state`, not `city`. Preserve complete user-stated neighborhood labels; do not strip a city qualifier from a compound neighborhood label. When `stars` represents a minimum/maximum pair, encode an exact N-star request as `[N, N]`.\n- In generated Python, call the predeclared tools directly. Do not import tool functions or define or redefine tool functions or tool models."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- Save each returned result even when its `search_results` is empty; do not make cache saving conditional on finding matches. An empty result from a new call is not a reason to print “No planning needed”—that response is only appropriate when existing cached results already satisfy every requested action and constraint."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

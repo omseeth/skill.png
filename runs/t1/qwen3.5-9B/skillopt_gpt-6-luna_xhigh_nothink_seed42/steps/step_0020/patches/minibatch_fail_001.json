@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "follow_up_state_reconciliation",
+      "count": 7,
+      "description": "Agents omitted pending work or active earlier-turn constraints, or performed unnecessary operations instead of reconciling each domain against the cache."
+    },
+    {
+      "failure_type": "cache_call_protocol",
+      "count": 3,
+      "description": "Agents nested cache retrievals or left result-producing calls unassigned or unsaved."
+    },
+    {
+      "failure_type": "overplanning_or_unsupported_operations",
+      "count": 3,
+      "description": "Agents added unrequested searches, duplicated attraction work, or inferred criteria not supported by the request."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains broad cache and tool-call rules, but failures show agents are not consistently tracking all active criteria and pending deliverables across turns. A domain-by-domain ledger makes that reconciliation explicit, while clarifying that filters must cover every active criterion missing from the cached result—not only the latest turn’s additions.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns, then decide separately for every requested or clearly pending domain.",
+        "content": "On each turn, make a domain-by-domain ledger from the full conversation and cache: include every requested, accepted, or pending deliverable and all still-active explicit criteria from every turn. Compare each criterion with the latest relevant cache summary, marking it satisfied, missing from the result, or blocked by a required input. Complete every actionable missing operation; seek information only for blocked operations, without letting one blocked domain prevent work on another. Do not add unrequested domains."
+      },
+      {
+        "op": "replace",
+        "target": "Apply only the new same-domain filter and save the update under a fresh relevant key.",
+        "content": "Apply one same-domain filter containing all active explicit criteria missing from the chosen cached base, including criteria stated in earlier turns—not just the latest additions—and save the update under a fresh relevant key."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

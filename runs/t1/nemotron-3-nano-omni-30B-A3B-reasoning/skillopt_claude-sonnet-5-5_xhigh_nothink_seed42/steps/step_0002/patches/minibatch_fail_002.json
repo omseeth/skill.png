@@ -1,0 +1,49 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "partial_multi_domain_handling",
+      "count": 2,
+      "description": "Request spans several domains with only some mandatory args missing. The agent emitted only seek_information (or a broken flight search) instead of searching the complete domains and asking for the rest. It also invented a return_date arg that search_flights does not have."
+    },
+    {
+      "failure_type": "wrong_domain_or_ignored_proposal",
+      "count": 2,
+      "description": "The agent filtered the wrong domain (hotels for a restaurant constraint), or printed 'No planning needed' when the user said 'yes' to an assistant-proposed option (Cultural attractions) that needed a new search."
+    },
+    {
+      "failure_type": "re_search_or_overcomplicated_refinement",
+      "count": 2,
+      "description": "A refinement on a cached domain was handled by re-running search_* with all old criteria, or by import statements plus if/else logic that inspects cache results, instead of load, filter and save."
+    },
+    {
+      "failure_type": "hallucinated_or_repeated_filter_params",
+      "count": 3,
+      "description": "Filters contained invented values (rating=[4,5] from 'formal', breakfast_included=False), criteria already shown in the cache summary (city, stars), or the wrong amenity param. Some calls also skipped save_to_cache or nested the cache call inline."
+    }
+  ],
+  "patch": {
+    "reasoning": "Two new rules and two rewritten bullets target the four failure groups. The Rule 6 and Rule 7 bullets forced 'seek_information only' and forbade partial searches, which contradicts the gold behaviour of searching complete domains and asking for the rest in one turn. A new rule routes each constraint to its own domain and treats a 'yes' to an assistant proposal as a new constraint. A final hygiene rule enforces straight-line load/filter/save code, no invented or repeated params and no vague-word mapping, and explicit amenity mapping. It also reinforces filter-not-search for neighborhood, budget and cuisine answers on cached domains, which Rule 2 states but the agent still violates.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- If any mandatory arg is missing, output ONLY a seek_information(...) call that names what is missing. Do not also emit a search call with placeholders.",
+        "content": "- Check mandatory args PER DOMAIN. For a domain with a missing mandatory arg, ask via seek_information(...) and never emit a search call with placeholders. For every other requested domain whose mandatory args are all stated, still emit its search_* call plus save_to_cache in the same code block. Example: the user wants flights + hotels in Anchorage and gave dates but no origin. Then call search_hotels(city=..., checkin_date=[...], checkout_date=[...]), save it, and add seek_information(\"We need the departure city for the flight\"). Dates the user gave once apply to both domains (departure_date / checkin_date, return date / checkout_date). If no requested domain is complete, output only seek_information.\n- Only use parameters that exist in the tool signature. search_flights has no return_date or round-trip arg. A return leg is a separate search_flights call with origin and destination swapped and departure_date=[return date]. Never use the destination city as the origin."
+      },
+      {
+        "op": "replace",
+        "target": "Do not run a partial search with made-up values for another domain.",
+        "content": "Do run the search for any domain whose mandatory args are complete (see Rule 6), e.g. search_restaurants once the city is known, but never fill made-up values into the incomplete domain. Check ALL requested domains, including flights, before writing the seek_information text."
+      },
+      {
+        "op": "append",
+        "content": "## Rule 9: Route the last turn to the right domain, and treat 'yes' to a proposal as a new constraint\n- Send each constraint in the last user turn to its own domain. Cuisine, dietary needs and restaurant rating go to restaurants. Amenities, stars and hotel budget go to hotels. Attraction types go to attractions. In multi-domain conversations, never filter hotels for a restaurant constraint (or the reverse), even if hotels were the domain filtered last turn. Never add params from another domain (e.g. breakfast_included) as filler.\n- A short affirmative ('Yes, that sounds wonderful') that answers an assistant question proposing a concrete option (an attraction type such as Cultural, a neighborhood, a cuisine, a flight class) means the user adopted that option. Apply it. If no cached result matches the new criteria, run search_* with the city already established and save it, e.g. `attractions = search_attractions(city=\"Lexington\", type=[\"Cultural\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. If a matching cache entry exists, filter it. This overrides the 'Okay, that sounds good' case in Rule 8 whenever the preceding assistant question introduced something new. Never print(\"No planning needed\") right after the user accepts a new proposal.\n- Rating phrasing: 'at least X' means rating=[X, 5]; a plain 'X rating' means rating=[X, X]. 'around N' for budget means budget=N."
+      },
+      {
+        "op": "append",
+        "content": "## Rule 10: Keep refinement code short, literal and non-redundant\n- A refinement on a cached domain is exactly three straight-line statements: `x = get_results_from_cache(key=\"<exact key>\")`, then `y = filter_<domain>(prior_results=x, <only the new constraints>)`, then `save_to_cache(key=\"filtered_<domain>\", value=y)`. For hotels use filtered_hotels, for restaurants filtered_restaurants, and so on. Use a different suffix only if that key already exists.\n- Never write imports, if/else, loops or inspection of search_results. Never nest get_results_from_cache inside the filter call. Never skip the save. A neighborhood, budget, cuisine, rating or amenity answer on a domain that has a cache key is always a filter, never a fresh search_* with the old criteria re-listed.\n- Pass ONLY what the last turn adds. Do not repeat anything the CACHE summary already shows (city, stars, neighborhood, cuisine, amenities, traveler count). Do not add city to a filter when the cache is already for that city.\n- Do not convert vague style words ('formal', 'fun', 'romantic', 'nice', 'budget-friendly' with no number) into rating, stars, budget or amenity params. Map only explicit values, plus the cuisine, dietary need or amenity the user actually names. 'Formal with a good Italian menu' means cuisine=[\"Italian\"] only.\n- When the user is answering an assistant question that named a specific amenity, pick the param matching the assistant's wording (e.g. 'fitness classes' means has_fitness_class=True, 'gym' means gym_present=True). Do not add several near-synonym params."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

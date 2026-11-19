@@ -1,0 +1,45 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle",
+      "count": 4,
+      "description": "Search results were not assigned and saved to cache."
+    },
+    {
+      "failure_type": "tool_execution_environment",
+      "count": 2,
+      "description": "Agents imported tools from unavailable modules instead of using the provided functions."
+    },
+    {
+      "failure_type": "entity_value_normalization",
+      "count": 3,
+      "description": "Agents changed supplied location or attraction-category values when forming tool arguments."
+    },
+    {
+      "failure_type": "followup_interpretation",
+      "count": 2,
+      "description": "Agents treated an accepted offer or a new follow-up constraint as a no-op despite unsatisfied work."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly requires saving every result, so repeating that rule would not patch a content gap. Add concise guidance for the uncovered runtime-import and exact-value issues, and clarify how to interpret affirmative replies as actionable updates.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "- Resolve brief affirmative replies against the immediately preceding assistant question or offer. Treat an acceptance as a request for the offered action or preference, then check whether valid cached results actually satisfy it; do not treat the reply as a no-op merely because related results exist."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- Preserve user-supplied names and category values verbatim when placing them in schema-supported fields. Choose the field that matches the user's meaning, but do not translate, normalize, or replace a supplied value with a presumed synonym."
+      },
+      {
+        "op": "append",
+        "content": "\n## Tool execution environment\n- Call the provided tool functions directly; do not import them, assume a tools package exists, or modify module paths to locate them."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

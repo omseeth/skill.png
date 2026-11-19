@@ -1,0 +1,56 @@
+{
+  "step": 27,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 23,
+  "failure_patterns": [
+    {
+      "pattern": "cache_scope_mismanagement: Agents repeated searches, filtered already-satisfied results, or acted on unaffected domains instead of using cached results for the changed scope.",
+      "count": 23,
+      "task_ids": [
+        "attraction:train:8:50:2",
+        "flighthotel:train:20:16:1",
+        "flight:train:23:16:2",
+        "flighthotelrestaurant:train:21:58:1",
+        "flight:train:3:60:3",
+        "flighthotel:train:4:50:2",
+        "flighthotel:train:19:39:4",
+        "attraction:train:3:53:0",
+        "hotelrestaurant:train:14:10:3",
+        "flight:train:3:8:2",
+        "flight:train:17:8:3",
+        "flighthotelattraction:train:11:26:1",
+        "flighthotelrestaurant:train:1:59:3",
+        "hotelattraction:train:12:9:0",
+        "flighthotel:train:23:29:1",
+        "flighthotelrestaurant:train:18:42:1",
+        "restaurant:train:8:7:1",
+        "attraction:train:7:50:2",
+        "flight:train:18:47:2",
+        "flighthotelattraction:train:6:24:1",
+        "attraction:train:13:2:0",
+        "hotelrestaurant:train:17:53:3",
+        "hotelrestaurant:train:14:41:1"
+      ]
+    }
+  ],
+  "score_before": 0.505,
+  "score_after": 0.47,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "\n- When a hotel is explicitly requested as part of the same itinerary and no separate lodging location or dates are given, use the itinerary destination as the hotel `city` and the trip's outbound and return dates as `checkin_date` and `checkout_date`. For a one-way trip with a stated hotel checkout, the outbound travel date may establish check-in when the hotel is explicitly tied to that destination trip. Do not apply these inferences to an unrelated hotel request or when trip dates are missing or unclear.",
+      "target": "- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- If the user accepts an offer to show or recommend results from an already searched scope, treat it as a read request: retrieve the compatible cached result once, without filtering or saving an unchanged result. If the reply adds only information unsupported by that domain's tools (such as traveler count for a flight search), make no tool call for that domain. Still process independent actionable requests and seek only mandatory details missing from incomplete requests.",
+      "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested."
+    },
+    {
+      "op": "replace",
+      "content": "Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. In a multi-city sequence, search only the consecutive legs the user describes (for example, A→B, B→C, C→D); do not add reverse searches for intermediate legs unless the user explicitly requests them. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date. Use the return date only as `departure_date` on the reverse-direction leg; do not pass it as `arrival_date` on the outbound search. Use `arrival_date` only when the user independently specifies an arrival date for that same outbound leg. Apply an explicitly requested flight class to every described leg. If a filterable preference is supplied after compatible per-leg flight results are cached, retrieve and filter each affected leg separately rather than repeating its base search. Do not combine distinct legs by repeating keyword arguments in one call.",
+      "target": "Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to every described leg. If a filterable preference is supplied after compatible per-leg flight results are cached, retrieve and filter each affected leg separately rather than repeating its base search. Do not combine distinct legs by repeating keyword arguments in one call."
+    }
+  ]
+}

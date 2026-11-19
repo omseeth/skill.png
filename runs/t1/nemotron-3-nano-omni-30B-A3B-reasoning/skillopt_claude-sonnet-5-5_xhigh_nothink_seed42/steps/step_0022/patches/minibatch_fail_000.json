@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "ignored_answer_re_asked",
+      "count": 2,
+      "description": "The user's reply supplied the missing mandatory value (a city, or a hedged 'around May 21 ... returning May 31' date pair) but the agent called seek_information again. In one case it also asked for hotel dates although no hotel was requested."
+    },
+    {
+      "failure_type": "invented_or_copied_values",
+      "count": 3,
+      "description": "Values were not traceable to the conversation. The agent invented num_people=1 from 'solo trip', copied the example dates 'May 16/18, 2025' into search_hotels, and copied the example budget=125 instead of neighborhood=['Downtown Memphis']."
+    },
+    {
+      "failure_type": "wrong_domain_routing_noop_save",
+      "count": 1,
+      "description": "A hotel neighborhood reply ('Downtown Colorado Springs is preferred for hotel') was applied to the restaurant key, which was then saved unchanged as final_restaurants."
+    },
+    {
+      "failure_type": "bare_call_and_dropped_seek",
+      "count": 1,
+      "description": "A first turn asking for a hotel plus a nearby Bangladeshi restaurant produced a bare search_restaurants call with no assignment, no save and no seek_information for hotel dates."
+    },
+    {
+      "failure_type": "noisy_gold_unlearnable",
+      "count": 1,
+      "description": "The Raleigh/Tucson return-leg gold repeats the outbound direction, which contradicts the standard reversed return leg used elsewhere. No rule written."
+    }
+  ],
+  "patch": {
+    "reasoning": "The failures cluster into four fixable behaviours. First, values not traceable to the conversation (invented num_people, example dates, example budget) are fixed by one top-level traceability check. Second, the agent re-asking for information the user just gave is fixed by an explicit 'answer = act' rule that also treats hedged dates as dates. Third, hotel replies being applied to a restaurant key is fixed by letting domain words in the reply choose the key and banning the unchanged load-and-save. Fourth, the first-turn hotel-plus-nearby-restaurant case gets a literal output template. All edits are placed in the editable, high-visibility parts (HARD OUTPUT RULES, CACHE GATE, decision order) and replace behaviour instead of adding sibling examples. The Raleigh/Tucson return-leg gold looks noisy, so it gets no rule.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- VALUE TRACE (last check before output): every value in your code must be traceable to words in the conversation. Example values in this skill (125, 'May 16, 2025', 'Midtown Atlanta', 'Downtown Memphis', example budgets and class names) are illustrations and must never be copied. Hotel dates: if you cannot quote a check-in AND a check-out date (or a flight date pair that serves as them) from the conversation, do not call search_hotels. Output only the seek_information for the dates, even when the last turn only gives rooms, party size or stars. num_people / num_rooms come only from a stated number ('2 rooms', '4 of us'). 'solo', 'couple', 'family' and 'alone' are not numbers, so pass no num_people. A neighborhood reply ('Yeah, Downtown Memphis would be great') passes neighborhood=[\"Downtown Memphis\"] and nothing else."
+      },
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\n- ANSWER = ACT. If the assistant's last message asked for a missing mandatory value (city, departure date, return date, hotel dates) and the user's reply supplies it, search NOW and never ask again. Hedges ('around', 'possibly', 'we're thinking of', 'as soon as possible', a typo like 'aroundMay') do not make a date missing. 'We're looking at Lexington' after a city question gives city=\"Lexington\": `restaurants = search_restaurants(city=\"Lexington\", cuisine=[\"Croatian\"])` plus save. It carries the cuisine from earlier turns and drops group size and occasion. 'around May 21 ... returning May 31', with origin and destination already known, is a round trip: two flight searches (outbound, then the return leg with origin and destination swapped, keys per Rule 9). Do not ask for hotel dates unless a hotel was requested somewhere in the conversation."
+      },
+      {
+        "op": "insert_after",
+        "target": "1. Copy the CACHE keys of each domain the LAST user turn touches (flights / hotels / restaurants / attractions, including filtered_*, nearest_*, hotels2, final_* names).",
+        "content": "\n   - DOMAIN WORDS IN THE REPLY DECIDE THE KEY. 'Downtown X is preferred for hotel', 'a hotel near Y', or stars/amenities/rooms -> hotels. Load the most refined HOTELS key (e.g. hotels2, even if filtered_restaurants / nearest_restaurants were created later) and run `filter_hotels(prior_results=h, neighborhood=[\"Downtown X\"])`. Save it under the next unused hotels key (hotels3). Never load a restaurant key for a hotel reply. A get_results_from_cache followed by save_to_cache of the same object (no filter in between) is always wrong."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Quick decision order for every turn",
+        "content": "\n- 'A hotel in <city> with a good restaurant nearby that serves <cuisine>' (CACHE `{}`, no hotel dates) is a hotel request plus a restaurant request. Output exactly: `restaurants = search_restaurants(city=\"<city>\", cuisine=[\"<cuisine>\"])`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. Never write the search without `restaurants =` and the save, and never drop the seek_information line. 'good' and 'nearby' are not parameters (no rating, and no search_nearest until a hotels key exists)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

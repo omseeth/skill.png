@@ -1,0 +1,46 @@
+{
+  "reasoning": "Kept only gaps not already covered by the skill. Combined the three proximity-related proposals into one replacement, including neighborhood-to-city mapping, local-area filtering, compatible counterpart searches, and grouping defaults. Preserved the distinct budget, affirmation, rating, and date clarifications. Support counts reflect the number of source patches contributing to each edit; the protected section is untouched. [optimizer-ranked: selected 4/5 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+      "content": "- Distinguish local-area requests from cross-domain proximity recommendations. A request for results “in” or “near” a named neighborhood or city area is a location constraint for that domain, not a reason to call `search_nearest`. Use the supported location fields; when a lodging or restaurant request names both a city and a neighborhood and the schema has both fields, pass the city as `city` and the stated neighborhood as `neighborhood`. Filter compatible cached results when available. For cross-domain proximity recommendations, identify the requested counterpart criteria, including any category, name, and known location. Reuse a cached counterpart only if its domain and subject match those criteria; a broad category result does not satisfy a newly requested named place. If no compatible counterpart is cached, first run its search using the known location and requested category or name, and save the result. Then call `search_nearest` with both compatible result sets and save its output; do not use `search_nearest` as a substitute for searching the requested category or place. Set `groupBy` to the domain the user wants as the organizing base; by default, group by the type being recommended unless the user explicitly wants the other type as the base. When lodging is the planned base, group by hotel.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg by setting `arrival_date` on the outbound search. Ask for an unknown endpoint rather than assuming a route. When a hotel stay is given as a check-in date plus an unambiguous duration in nights rather than a checkout date, call `adjust_date(date=<check-in date>, delta_days=<number of nights>)` and use its returned date as checkout; do not treat the duration as missing.",
+      "content": "- Preserve user-provided dates, entity values, and casing. For a round trip, make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg by setting `arrival_date` on the outbound search. If the user requests only the return flight and the route is known from the conversation, search the reversed route using the stated return date as `departure_date`; do not ask for the outbound date. Ask for an unknown endpoint rather than assuming a route. For a combined flight-and-hotel plan, when the user explicitly gives the overall trip span in response to a travel-date question, use its start and end as hotel check-in and checkout dates. When a hotel stay is given as a check-in date plus an unambiguous duration in nights rather than a checkout date, call `adjust_date(date=<check-in date>, delta_days=<number of nights>)` and use its returned date as checkout; do not treat the duration as missing.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+      "content": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity, category, or criterion as stated. Treat an affirmation accepting a filterable preference as a new active criterion and update the compatible cached result; do not return “No planning needed” unless the cache shows that criterion is already satisfied.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Reliable travel planning and tool use",
+      "content": "\n- Map approximate scalar budgets such as “around/about X” to X in the tool’s maximum-budget field; do not drop the preference or request an exact amount.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 4 addresses several recurring proximity-search failures and adds detail not covered by the current rule. Edit 1 clarifies important flight-date and hotel-stay interpretations. Edit 2 closes a multi-turn affirmation and cache-update gap. Edit 0 makes approximate budgets actionable; it is useful but narrower than the others.",
+    "selected_indices": [
+      4,
+      1,
+      2,
+      0
+    ]
+  }
+}

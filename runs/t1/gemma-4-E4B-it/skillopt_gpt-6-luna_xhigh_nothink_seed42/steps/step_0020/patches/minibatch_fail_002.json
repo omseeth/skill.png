@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_constraint_application",
+      "count": 4,
+      "description": "Agents repeated or replaced compatible cached searches instead of filtering the affected results and retaining active constraints."
+    },
+    {
+      "failure_type": "independent_domain_partial_execution",
+      "count": 2,
+      "description": "Agents asked for missing hotel dates but skipped a restaurant search whose city was already known."
+    },
+    {
+      "failure_type": "tool_result_binding_or_persistence",
+      "count": 3,
+      "description": "Agents used an undefined result variable, omitted required caching, or generated code that did not execute."
+    },
+    {
+      "failure_type": "parameter_or_itinerary_semantics",
+      "count": 3,
+      "description": "Agents mis-mapped a state or neighborhood, altered an attraction category, or represented a return flight as an outbound arrival date."
+    },
+    {
+      "failure_type": "proximity_grouping_ambiguity",
+      "count": 1,
+      "description": "For a request to find restaurants near a hotel, the agent grouped nearest results by restaurant rather than by the hotel anchor."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed failures already contradict explicit skill instructions, so repeating those rules is unlikely to close a skill gap. The proximity paragraph leaves the meaning of groupBy underspecified; clarifying that it identifies the reference domain addresses the observed mismatch.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the reference or anchor domain whose results should each be paired with their nearest results from the other domain. For example, for “restaurants near the hotel,” use `groupBy=\"hotel\"`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

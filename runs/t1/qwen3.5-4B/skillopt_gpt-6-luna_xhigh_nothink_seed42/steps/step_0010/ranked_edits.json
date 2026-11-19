@@ -1,0 +1,41 @@
+{
+  "reasoning": "Failure-driven guidance takes priority: incomplete domains remain unsearched, while independent requested domains with complete inputs may proceed in the same turn, overriding the success patch's broader pause on all planning calls. The overlapping cache, argument-matching, and follow-up edits are retained from the failure group. The success patch's distinct service-scope and location-input guidance is preserved separately, with its support count and source type. [optimizer-ranked: selected 4/5 edits]",
+  "edits": [
+    {
+      "op": "append",
+      "content": "- Plan only travel services explicitly requested in the full conversation; a general trip, occasion, destination, or flight layover does not by itself request hotels, restaurants, or attractions. In addition to the date requirements above, flights need a usable origin and known route endpoints; hotels and restaurants need a city. Never pass `None` for a required field.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+      "content": "- On each turn, form a checklist of current requested domains and criteria from the full conversation, then compare each criterion with compatible cached result summaries. Reuse results only when their domain and subject match, and treat a criterion as satisfied only when the summary explicitly supports it; a result’s existence, destination, or proximity to another result does not prove that it satisfies a criterion. When a user adds or accepts a criterion that is not already satisfied, retrieve the closest compatible result with `get_results_from_cache(key=\"...\")`, assign the returned result, pass it as `prior_results` to the matching filter, then assign and save the filtered result under a unique key. Apply new criteria to every affected compatible result set, including each affected flight leg, and do not repeat constraints already satisfied. Search when the cache does not cover the requested domain, subject, entity, or category; do not filter unrelated results or re-search a domain already covered by compatible cached results. After every new search, filter, sort, or `search_nearest` call, assign its return value and immediately save it under a unique cache key. Use “No planning needed” only when compatible cached results explicitly satisfy every current request and no further operation is needed.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+      "content": "- Match arguments to the tool schema’s supported parameters, meaning, expected type, and cardinality. Map each criterion only to a field that genuinely represents it; never invent an argument or repurpose an unrelated field merely because its type fits. If the tool has no matching parameter, omit that criterion rather than guessing (for example, atmosphere is not a neighborhood, and do not pass party size to a restaurant tool unless its schema supports party size). Treat an approximate single numeric budget (such as “around X” or “about X”) as amount X, mapping it to the schema-supported budget field; do not seek clarification unless the user gives an actual range or the tool requires information that is missing. Map a supplied state or state abbreviation for an attraction search to `state`, not `city`; a city need not be supplied when the state is sufficient. For a clearly named hotel or restaurant neighborhood or district, pass its parent city as `city` and preserve the named area in `neighborhood` (for example, `city=\"San Antonio\"`, `neighborhood=[\"Downtown San Antonio\"]`). For flight time ranges, use the accepted 12-hour `h:mm AM/PM` format, not `HH:MM:SS`. Interpret “by” or “no later than X” as the earliest supported time through X, and “from” or “at least X” as X through the latest supported time. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft time-of-day preferences as actionable: translate them into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+      "content": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal. Carry the accepted service, subject, and criteria into the current request and perform any search or filter they require; an affirmation is not a no-op. Treat a later explicit correction or restriction (for example, “actually,” “instead,” or “only”) as superseding conflicting earlier preferences, and do not ask again for information the conversation already supplied. Resolve contextual follow-ups such as “what’s there?” or “tell me about that” against the immediately preceding proposal. When it names a place or category relevant to an existing result set, treat it as a new criterion: retrieve the compatible result, apply the matching filter using the proposed value, and save the updated result rather than treating the follow-up as a no-op. Resolve contextual location references such as “there,” “here,” and “nearby” against the most recent unambiguous destination or place in the full conversation. Use that known location for the new domain rather than treating the reference as missing or inventing a different place.",
+      "support_count": 3,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 4 fills broad gaps around service scope and required locations; edit 2 strengthens cache use across many follow-up tasks. Edit 1 gives actionable, general schema-mapping safeguards, while edit 3 improves contextual follow-up handling but partly extends existing affirmation guidance. Edit 0 is narrower and has less support.",
+    "selected_indices": [
+      4,
+      2,
+      1,
+      3
+    ]
+  }
+}

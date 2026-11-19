@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_and_follow_up_reconciliation",
+      "count": 4,
+      "description": "Agents missed new constraints, skipped a pending domain, or treated an unmet follow-up as already complete."
+    },
+    {
+      "failure_type": "runtime_tool_and_cache_protocol",
+      "count": 4,
+      "description": "Agents omitted required result saves or cache retrievals, nested a cache call, reused unavailable variables, or imported and redefined runtime models."
+    },
+    {
+      "failure_type": "tool_selection_or_schema",
+      "count": 1,
+      "description": "A non-proximity area question triggered an invalid search_nearest call with only one result domain."
+    },
+    {
+      "failure_type": "flight_constraint_mapping",
+      "count": 1,
+      "description": "The return date was incorrectly added as an outbound arrival-date constraint, and user-provided dates were unnecessarily converted."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed errors already violate explicit skill rules, so repeating those rules would not fill a gap. Add guidance for the uncovered case where a user replaces an earlier same-domain preference, and specify search_nearest's required result-domain count to prevent the observed validation error.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Return no-planning only when every requested or pending deliverable reflects all current constraints and the latest turn adds no request, accepted offer, or new constraint.",
+        "content": "When the user explicitly corrects or replaces a prior same-domain criterion (for example, “actually,” “instead,” or “only”), treat the conflicting earlier criterion as superseded. Do not filter a result narrowed by that superseded criterion; search afresh using the replacement and other currently active explicit criteria, and save the result."
+      },
+      {
+        "op": "insert_after",
+        "target": "Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain.",
+        "content": "`search_nearest` requires exactly two result-domain arguments among `hotels`, `attractions`, and `restaurants`; do not call it with only one result or more than two."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

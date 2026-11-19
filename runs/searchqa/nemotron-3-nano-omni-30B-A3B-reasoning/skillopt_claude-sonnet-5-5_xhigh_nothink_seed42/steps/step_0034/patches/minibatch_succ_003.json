@@ -1,0 +1,25 @@
+{
+  "batch_size": 3,
+  "success_patterns": [
+    "Aggregator pages (e.g. 'fall - Search-ID.com') reproduce the clue verbatim in the snippet, and the page title is the answer. The agent matched the clue text and took the title word ('fall'). Rule 3 covers archive layouts but not this one.",
+    "The agent found the one passage sentence that restates the clue's distinctive facts with a named entity in the 'this X' slot ('In 711 or 712, a force of invading African Moors defeated the Visigoths'). It copied that entity in the passages' short form ('Moors'), not a longer or alternate name.",
+    "For an epithet or descriptor in the clue ('sweetheart of an actress'), the agent picked the passage that ties the epithet to a name alongside the clue's topic ('actress Mary Pickford who was dubbed America's sweetheart', in a mannequin passage). It ignored passages that merely contained the word ('The Engineer's Sweetheart').",
+    "All three answers were bare, short and of the right type (season, group, person), with no echo of clue words."
+  ],
+  "patch": {
+    "reasoning": "The three successes share two mechanisms the skill does not state. First, a search-result page whose [TLE] title is the answer and whose snippet repeats the clue. Second, a bridging read that finds the passage tying the clue's topic words and its epithet or descriptor to one named entity, ignoring bare keyword hits. These add a little to Rule 3 and Rule 2 without touching the slow-update block, and without a long mandatory template, which was rejected three times in this epoch.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "- Search-aggregator results (Search-ID, Quizlet-like, flashcard or 'answers' sites) often show the clue text inside the snippet while the [TLE] page title is the answer ('fall - Search-ID.com' + snippet 'a classic of this season; It follows pit, prat & rain' -> 'fall'). When a passage's snippet repeats the clue's distinctive words, check its title for the answer, and strip the site name. Use the title only when the snippet really repeats the clue; a title that merely shares a topic word is not evidence."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Anchor on the clue's most specific unique detail",
+        "content": " Look for the single passage sentence that restates the clue's facts with a name in the 'this X' slot ('In 711... invading African Moors defeated the Visigoths'), and answer with that entity in the short form the passages use ('Moors'). For an epithet in the clue ('sweetheart of an actress', 'the Iron Lady'), prefer the passage that links the epithet and the clue's topic word to one name ('actress Mary Pickford who was dubbed America's sweetheart' beside 'mannequins'). Ignore passages that only contain the epithet word in an unrelated title."
+      }
+    ]
+  },
+  "source_type": "success"
+}

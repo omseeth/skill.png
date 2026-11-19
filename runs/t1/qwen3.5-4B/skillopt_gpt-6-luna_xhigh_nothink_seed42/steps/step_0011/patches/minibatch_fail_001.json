@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool-namespace misuse",
+      "count": 2,
+      "description": "Imported tools from a nonexistent module despite the instruction to call injected functions directly."
+    },
+    {
+      "failure_type": "flight-itinerary decomposition and input handling",
+      "count": 2,
+      "description": "Failed to search round-trip or multi-city legs independently, and requested optional flight details as if required."
+    },
+    {
+      "failure_type": "cache lifecycle and refinement",
+      "count": 6,
+      "description": "Skipped needed filters for newly added criteria, performed unnecessary cache operations, or failed to save new search results."
+    },
+    {
+      "failure_type": "entity mapping and context carry-forward",
+      "count": 2,
+      "description": "Used the wrong geographic field or category value, changed a supplied date format, or omitted an applicable detail from earlier turns."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make readiness checks domain-specific, spell out separate searches for each flight leg, and clarify how to map and carry forward user values. Strengthen cache guidance so new criteria trigger filtering when needed and every new result is saved. The no-import failure is already explicitly prohibited by the skill, so no duplicate edit is warranted.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available.",
+        "content": "Check each requested domain separately against the full conversation and compatible cached results. Flight searches require a known route and departure date; hotel searches require a city, check-in date, and checkout date. If required inputs are missing, make exactly one `seek_information(...)` call listing only all missing required values. Never ask for optional preferences, such as flight times, as if they were required. Do not call a tool for a domain until its required inputs are available, but do proceed with other independent requested searches whose required inputs are complete. Do not guess or invent missing values."
+      },
+      {
+        "op": "replace",
+        "target": "Preserve user-provided dates, entity values, and casing. For a round trip, search each leg separately, reverse the outbound route for the return, and use the return leg’s departure date. Ask for an unknown endpoint rather than assuming a route.",
+        "content": "Preserve user-provided dates, entity values, and casing. For a round trip, make two independent flight searches: outbound on its departure date and return on its departure date with the route reversed. Do not combine the outbound and return legs in one call or treat the return date as another outbound date. For a multi-city itinerary, make a separate flight search for each explicitly stated leg, using that leg’s route and date. Ask for an unknown endpoint rather than assuming a route."
+      },
+      {
+        "op": "replace",
+        "target": "On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "On each turn, use the full conversation and compatible cache summaries to determine which criteria are already satisfied. If a user adds criteria not reflected in a matching cached result, retrieve the closest compatible result, apply only the new or unsatisfied criteria with the appropriate filter, and save the transformed result under a unique key. Do not use “No planning needed” merely because a base result is cached; use it only when cached results satisfy every current request. Leave already-satisfied cache entries untouched and do not retrieve or re-save them unnecessarily. Assign and save every new search, filter, sort, or `search_nearest` result immediately under a unique cache key."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "\n- Map values to schema fields by meaning: use the state field for a state or region and the city field for a city; do not replace a user-supplied category with a similar label. Carry forward every explicitly stated, applicable constraint from earlier turns, including party size, room count, and amenities, when building the search or filter."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

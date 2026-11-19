@@ -1,0 +1,24 @@
+{
+  "batch_size": 3,
+  "success_patterns": [
+    "Date-pair reply to the assistant's date question with origin and destination known: two assigned and saved search_flights calls (outbound, then return), saved as departure_flights / return_flights. No hotel was requested yet, so no hotel search, and no extra params.",
+    "Hotel reply that mixes a loose budget with an amenity ('around 500 per night, laundry facilities'): load 'hotels', make ONE filter_hotels call with budget=500 and has_laundry_service=True, and save as filtered_hotels. Flights and other domains stay untouched.",
+    "A cached domain that gets a 'Not really, just something fun' reply should be pure retrieval (gold is one get_results_from_cache line). The agent re-ran search_attractions instead. It still scored on cache_em, but tool_f1 was 0 because of the extra search and save."
+  ],
+  "patch": {
+    "reasoning": "Two tweaks, both merging into existing rules. (1) CACHE GATE step 2 says 'never call search_* ... write exactly three lines', which contradicts Rule 8's retrieval-only case and likely led the agent to re-search the attractions on a no-preference reply (tool_f1 0.0). Putting the retrieval exception in step 2 resolves that. (2) Rule 9 says round-trip legs are saved as departure_flights/return_flights, while strategic section E says the outbound leg is saved as 'flights'. The gold for the round-trip trajectory confirms departure_flights/return_flights when no hotel is requested yet. A one-line key-naming disambiguation removes the conflict. Neither edit adds an example for a single task.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "a 'yes'). Write exactly three lines:",
+        "content": "a 'yes'). EXCEPTION: an explicit refusal or no-preference reply ('Not really, just something fun', 'No preference', 'Anything is fine'; style words like 'fun' are not constraints) adds nothing to apply. The whole output is the single line `x = get_results_from_cache(key=\"<most refined key>\")`, with no search, no filter and no save. For every other reply write exactly three lines:"
+      },
+      {
+        "op": "replace",
+        "target": "- Use date strings exactly as the user wrote them (e.g. \"May 15, 2025\").",
+        "content": "- Use date strings exactly as the user wrote them (e.g. \"May 15, 2025\").\n- Flight key names for a round trip: no hotel requested anywhere in the conversation -> \"departure_flights\" and \"return_flights\". A hotel requested and searched in the same block -> \"flights\" and \"return_flights\" (strategic section E). In both cases the date reply gives the outbound and return dates, origin and destination come from earlier turns, and no extra params are added unless the user stated them."
+      }
+    ]
+  },
+  "source_type": "success"
+}

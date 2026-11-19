@@ -1,0 +1,77 @@
+{
+  "reasoning": "Consolidated the repeated cache guidance into an explicit per-scope decision rule, while keeping a separate operational example for filtering versus searching a newly uncovered entity. Preserved distinct schema, place-role, amenity, date, and party-size corrections without duplicating the general cache rule. No edits target the protected section. Support counts reflect the number of source patches supporting each edit.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "content": "```python\n# Same hotel scope; the user adds filterable preferences only.\nprior_hotels = get_results_from_cache(key=\"<exact compatible hotel key from summary>\")\nfiltered_hotels = filter_hotels(prior_results=prior_hotels, budget=<requested budget>, pool_present=True)\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered_hotels)\n\n# If no compatible cached attraction scope covers the newly requested entity, search only that scope.\nhotels = get_results_from_cache(key=\"<exact compatible hotel key from summary>\")\nattraction = search_attractions(city=\"<requested city>\", attraction_name=[\"<exact requested entity>\"])\nsave_to_cache(key=\"<descriptive attraction key>\", value=attraction)\n# Call and save search_nearest only when proximity was explicitly requested or offered and accepted.\n```",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+      "content": "- At each turn, resolve the latest reply against the preceding question and full conversation, inspect cache summaries, and act only on scopes changed by that turn plus pending requests that are now complete. For each changed scope: (a) if a compatible cached result already satisfies the unchanged request, make no tool call and do not save it again; (b) if only filterable constraints changed, retrieve the exact compatible cache key, apply the matching `filter_*` tool, and save the filtered result; or (c) if the requested scope, date, or leg is not covered by a compatible cache, make and save a base search with all active supported criteria. Repeat filtering or searching separately for each affected leg, and do not rerun unrelated cached domains or legs. An affirmative alone is not a proximity request unless proximity was offered or requested.",
+      "support_count": 4,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result.",
+      "content": "Apply the matching `filter_*` tool using each newly supplied filterable constraint not already embodied in `prior_results`; embodied constraints remain true because the cached candidate set already reflects them. For example, if cached attractions are already restricted to a requested type and the user then asks about a suggested neighborhood, filter by that neighborhood (such as `neighborhood=[\"<requested neighborhood>\"]`), not merely by repeating the type.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+      "content": "For hotels, interpret an N-star description as the hotel classification (`stars`) when guest-review context is absent; use `[N, 5]` for “at least N stars” and `[N, N]` for an explicitly exact classification. Use `rating` for hotel guest/review scores and restaurant ratings; interpret “N or higher” as `[N, 5]` unless an exact score is explicitly requested, in which case use `[N, N]`.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- When the user asks about a place, category, or entity the assistant just suggested (for example, “What's there?”), treat it as a request to inspect that scope: retrieve a compatible cached result and filter it to that scope, or search if no compatible result can cover it. An assistant's proximity suggestion alone does not authorize `search_nearest`; use it only when the user explicitly requests or accepts proximity.",
+      "content": "\nResolve named places by their role: map a geographic area or neighborhood to `neighborhood` (preserving the full neighborhood phrase) and provide the surrounding city separately; map a named hotel or attraction entity to `hotel_name` or `attraction_name`, preserving the user's entity text. Do not treat a point entity as a neighborhood or infer an attraction `type` from a proper name. If the user explicitly requests proximity to a named point entity, ensure the anchor result includes that entity (search for it if no compatible result covers it), obtain the requested counterpart results, and call `search_nearest` with `groupBy` set to the domain the user wants prioritized.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "For attractions, put the requested category in `type` with its exact value (for example, if the requested type is `Scenic`, pass `type=[\"Scenic\"]`).",
+      "content": "\nFor hotel amenities, map “free parking” to `has_free_parking=True` (not `free_wifi_included`), “free Wi-Fi” to `free_wifi_included=True`, and a gym or fitness center to `gym_present=True`; use `has_fitness_class=True` only when fitness classes are requested.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "For hotels, when the check-in date and an explicit stay length in nights are known but checkout is not, use `adjust_date` to calculate checkout.",
+      "content": "For hotels, when the check-in date and an explicit stay length in nights are known but checkout is not, call `adjust_date` rather than doing manual date arithmetic; use its returned date as checkout and preserve all active supported criteria. For example:\n```python\ncheckout = adjust_date(date=\"<check-in date>\", delta_days=<explicit nights>)\nhotels = search_hotels(city=\"<city>\", checkin_date=[\"<check-in date>\"], checkout_date=[checkout])\nsave_to_cache(key=\"<descriptive hotel key>\", value=hotels)\n```",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+      "content": "- Map explicit traveler descriptors to supported party-size fields only when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`, and stated party sizes can be used directly. Plural wording such as “we” or “us” establishes no exact count; do not infer a number from it or from vague terms such as “family.”",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not infer a stay length; ask when a required date cannot be obtained or derived from explicit information.",
+      "content": "\nWhen the user gives alternative outbound dates, include all alternatives in `departure_date`; search any supplied return date separately on the reverse route, not as `arrival_date` on the outbound call. For hotel stays with alternative check-in dates and one explicit shared checkout date, include all check-in alternatives in `checkin_date` and the shared date in `checkout_date` rather than choosing one.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

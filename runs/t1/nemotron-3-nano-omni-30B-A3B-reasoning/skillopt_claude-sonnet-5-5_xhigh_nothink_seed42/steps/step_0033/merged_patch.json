@@ -1,0 +1,82 @@
+{
+  "reasoning": "Failure-driven edits are all kept (they are the corrective set). Together they fix the one-leg flight under-fire, the missing-key flight crash, hotel-domain replies (party size, rooms, nearest_hotels key choice), date fabrication from skill examples, hygiene (bare search_*, nested loads, undefined names) and invented num_people/num_rooms/airline values. Each one replaces or tightens existing sentences instead of adding a new gate, in line with the meta-skill's shrink and de-conflict guidance. The three success edits cover points no failure edit touches: the filter_attractions(city=...) exception to Rule 13's 'no city in a filter', which matches the slow block and removes a contradiction; seek_information for any restaurant request with no city, so no placeholder city is ever written; and vague location words ('anywhere', 'flexible') adding no kwarg. None of them conflicts with a failure edit. Their targets are separate sentences from the failure targets, so they apply independently. The protected SLOW_UPDATE block is not touched. Failure edits go first, success edits last.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- SEARCH GATE (do this first): read the CACHE dict. If a domain's key is present, search_* is forbidden for that domain, whatever the reply adds (cuisine, rating, budget, time, amenity, neighborhood, or interest in the assistant's proposal such as 'Sure', 'Yes', 'What's there?').",
+      "content": "- DOMAIN-FIRST GATE (do this first): decide which domains the LAST user message touches from its own words. A date, 'X to Y', 'return' or 'for N nights' -> the requested flight and/or hotel that has no key. Cuisine, allergy or dietary word -> restaurants. Stars, amenity, rooms, per-night price or neighborhood -> hotels. Class, airline, time of day or ticket price -> flights. Attraction type or name -> attractions. An untouched domain gets ZERO lines even if its key is in CACHE: the cached entry already holds every earlier turn's constraint. A touched domain with NO key gets its first search_* now, carrying every constraint stated in any turn (city = trip destination; hotel check-in/out = the flight dates). 'For N nights' -> `checkout_date = adjust_date(date=\"<check-in as written>\", delta_days=N)`, with the hotel search in the same block as the flight search. A touched domain whose key is present: search_* is forbidden for that domain, whatever the reply adds (cuisine, rating, budget, time, amenity, neighborhood, a 'Yes' or 'What's there?'). Pass only the NEW constraint from the last message (a place answering a neighborhood question -> neighborhood=[\"<place>\"] only).",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "A search_* call is allowed only for a domain with NO key.",
+      "content": "A search_* call is allowed only for a domain with NO key. Flights are the one exception to 'three lines': write one such block per flight LEG (see rule -1), never only the first leg.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "find the date the user literally wrote in the conversation (e.g. 'May 16, 2025'). Found -> search with it.",
+      "content": "find the date the user literally wrote in a USER message. A flight class, airline, budget, stars, amenity, 'family' / 'weekend' or party-size reply is never a date. Found -> search with it. No user message with a concrete date (even a first-turn flight + hotel request) -> no search_flights / search_hotels, whatever dates you remember from this skill's examples.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Never use a TOOL CONFIG example date such as '2025-08-03', and never reuse a date that appears only in this skill's examples (May 16/18/19/26, 2025 and similar).",
+      "content": "Never use a TOOL CONFIG example date such as '2025-08-03', and never use any date that is not written in a user message of the CONVERSATION. Dates inside this skill's examples are illustrations only.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Never write a bare `search_attractions(...)`. Never write `save_to_cache(value=search_...(...))`. Never repeat a search call, and never nest a search inside save_to_cache.",
+      "content": "Never write a bare `search_*(...)` for any domain. Never write `save_to_cache(value=search_...(...))`. Never repeat a search call. Load each cached key on its own line (`h = get_results_from_cache(key=\"...\")`) and pass that variable. Never nest get_results_from_cache inside search_nearest, filter_* or save_to_cache, and never use a name you did not assign earlier in the same block.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Pass only values the user literally stated. Never invent an airline from words like 'kid-friendly'.",
+      "content": "- Pass only values the user literally stated. num_people / num_rooms come only from a number the USER wrote ('we'll need 2 rooms' -> num_rooms=2 only; 'family' or the assistant's wording gives no num_people). Never invent an airline from words like 'kid-friendly', a city name or an amenity.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "2 keys -> 2 blocks, 3 keys -> 3 blocks; stopping after the first key is wrong.",
+      "content": "Count LEGS, not keys: a raw key and its filtered_* version are ONE leg (load only the most refined one). 2 legs -> 2 blocks, 3 legs -> 3 blocks; stopping after the first leg is wrong (with `flights` and `return_flights` cached, a class reply needs a block for each). This rule applies only when a flight key is literally in CACHE. With NO flight key, a date range or 'just the return flight' reply is a first search of the requested leg(s) (plus the hotel if requested); never load a flight key that is not in CACHE.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "At most `x = get_results_from_cache(key=\"<flight key>\")` for each cached flight key.",
+      "content": "\n   - A hotel-domain reply when a hotels-type key IS in CACHE (stars, amenity words mapped via Rule 27, neighborhood, per-night budget, party size, rooms, or a 'Yes' to the assistant's hotel-amenity offer): exactly three lines. Load the most refined hotel key (hotels, filtered_hotels*, final_hotels*, hotels2 or nearest_hotels: the one created last / highest suffix, so a nearest_hotels built on filtered hotels beats filtered_hotels), `h2 = filter_hotels(prior_results=h, <only kwargs from the last message>)`, then save under an unused key. 'N of us' -> `num_people=<N>`; 'M rooms' -> `num_rooms=<M>`; both go in the same call. Never route it to attractions, never re-run search_nearest, write ZERO flight lines, and do not re-pass stars, neighborhood or amenities already in the summary.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "and do not add city to a filter.",
+      "content": "and do not add city to a filter (sole exception: filter_attractions(city=...) when the user names a city for attractions cached at state level).",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "and to a restaurant request with dietary needs but no city",
+      "content": "and to ANY restaurant request with no city (dietary needs, cuisine, or only an occasion such as 'find a restaurant for my birthday'; never write a placeholder city)",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- Do not convert vague style words ('formal', 'fun', 'romantic', 'nice', 'budget-friendly' with no number) into rating, stars, budget or amenity params.",
+      "content": "- Do not convert vague style words ('formal', 'fun', 'romantic', 'nice', 'budget-friendly' with no number) into rating, stars, budget or amenity params. 'Flexible on the location', 'anywhere' and 'no preference' add no neighborhood or other kwarg.",
+      "support_count": 1,
+      "source_type": "success"
+    }
+  ]
+}

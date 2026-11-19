@@ -1,0 +1,47 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_misuse",
+      "count": 5,
+      "description": "Repeated searches or skipped filtering of relevant cached results when the user added constraints."
+    },
+    {
+      "failure_type": "missing_result_persistence",
+      "count": 8,
+      "description": "Search and filter results were not reliably assigned and saved; one trajectory also referenced undefined result variables."
+    },
+    {
+      "failure_type": "itinerary_leg_modeling",
+      "count": 3,
+      "description": "Round-trip or multi-city flight legs were combined or confused instead of handled as separate directional searches."
+    },
+    {
+      "failure_type": "constraint_grounding",
+      "count": 4,
+      "description": "Optional constraints were inferred or mapped to the wrong field or range."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add operational guidance for the most frequent failures: continue from relevant cached results with filters, represent distinct flight legs separately, bind and persist every tool result, and encode only supported constraints using the right field and range.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n### Incremental updates from cache\nWhen the cache contains a relevant result for the same domain, city, dates, and itinerary leg, retrieve it with its exact cache key and apply the corresponding `filter_*` tool for newly supplied constraints. Do not repeat a broad search or regenerate another domain's results when its cached result remains valid. Save each refined result under a new, unique key."
+      },
+      {
+        "op": "append",
+        "content": "\n\n### Flight itinerary legs\nTreat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the return as a second flight in the reverse direction using the return date as that leg's departure date; do not represent the return flight with `arrival_date` on the outbound search. Never combine distinct legs by repeating keyword arguments in one call."
+      },
+      {
+        "op": "append",
+        "content": "\n\n### Tool result variables and persistence\nAssign every search, filter, sort, and nearest-tool result to a variable, then save that variable with `save_to_cache` before using it in later calls. For filters, pass the retrieved or newly assigned prior result as `prior_results`. Never reference a result variable unless it was assigned earlier in the generated code, and give separately generated legs or domains distinct variable and cache keys."
+      },
+      {
+        "op": "append",
+        "content": "\n\n### Ground constraints in the conversation\nPass optional criteria only when the conversation supports them, and map them to fields that express the same constraint rather than an approximate proxy. Distinguish hotel star category (`stars`) from guest review rating (`rating`). For threshold requests such as “at least N stars,” use the supported inclusive range from N to the field's maximum; for an exact category, use the same value as both bounds. Do not add unrelated amenities or preferences."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

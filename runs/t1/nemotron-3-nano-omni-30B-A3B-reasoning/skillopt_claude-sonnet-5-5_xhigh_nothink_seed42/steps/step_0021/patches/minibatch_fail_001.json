@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "dropped_searchable_domain_on_multi_domain_first_turn",
+      "count": 2,
+      "description": "Hotel + restaurant (Memphis) and hotel + attractions (Raleigh) first turns output only seek_information. The restaurant/attraction city was known and should have been searched first. Step 4b's 'ONLY output' wording conflicts with the later exception."
+    },
+    {
+      "failure_type": "asked_for_date_already_given",
+      "count": 1,
+      "description": "User replied 'We're thinking of May 16, 2025' with origin and destination known. The agent called seek_information instead of search_flights."
+    },
+    {
+      "failure_type": "no_op_load_save_instead_of_filter",
+      "count": 2,
+      "description": "Load and re-save of an unchanged cache entry. In one case the reply named an airline and hotel amenities, and the agent skipped both filters. In the other, a pure-retrieval turn ('Okay, that sounds good') was given a save_to_cache that overwrote 'attractions'."
+    },
+    {
+      "failure_type": "refinement_treated_as_new_search",
+      "count": 1,
+      "description": "The assistant proposed a neighborhood for cached attractions and the user asked 'What's there?'. The agent re-ran search_attractions instead of filter_attractions(neighborhood=...)."
+    },
+    {
+      "failure_type": "output_hygiene_syntax",
+      "count": 1,
+      "description": "Bare search_hotels call with no assignment or save, plus a stray </parameter> tag, produced a SyntaxError."
+    },
+    {
+      "failure_type": "state_code_in_city",
+      "count": 1,
+      "description": "'Social attractions in NV' was written as city=\"NV\" instead of state=\"NV\"."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the eight failures come from rules that exist deep in the document but were ignored (multi-domain first turn, date reply to search, state= for two-letter codes). Step 4b also says 'the ONLY output is one seek_information', which contradicts the exception and pushes the agent the wrong way. I therefore add short, positive, trigger-based bullets near the top: one in HARD OUTPUT RULES, one in the CACHE GATE, and a pre-flight line before the rules. The no-op load/save and the wrong 'unchanged save' on retrieval get explicit one-line fixes. A multi-domain reply gets a filter per named domain, which the single-domain routing in the protected section does not cover. A neighborhood proposal for cached attractions or restaurants gets an explicit filter rule, since only hotels were covered before. No new task-specific sibling examples are added, and the new rules are merged into existing locations.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "# Travel Planning Skill",
+        "content": "# Travel Planning Skill\n\nPRE-FLIGHT SCAN (run on your finished code, every turn):\n(a) EVERY search_*, filter_* and search_nearest line starts with `name = ` and is followed by `save_to_cache(key=..., value=name)`. This includes search_hotels, search_flights and search_restaurants. A line that starts with `search_hotels(` is a bug.\n(b) The block ends with the last tool call. Nothing follows it, no `</parameter>`, no text.\n(c) A US state name or any two-letter state code (NV, CA, OR, GA, CO, TX...) goes in `state=\"NV\"`, never `city=\"NV\"`. 'Social attractions in NV' -> `attractions = search_attractions(type=[\"Social\"], state=\"NV\")`.\n(d) A pure retrieval turn ('Okay, that sounds good', 'No preference') is ONE line, `x = get_results_from_cache(key=\"...\")`, with NO save_to_cache. Never save a loaded result back under any key."
+      },
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- MULTI-DOMAIN FIRST TURN (overrides the 'ONLY output is one seek_information' wording of step 4b). If the user asked for a hotel AND a restaurant or attraction, and the restaurant or attraction city or state is known while hotel dates are missing, write: `x = search_restaurants(city=...)` or `x = search_attractions(city=..., type=[...])` (add only stated constraints) + its save_to_cache, THEN one closing `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. A seek_information alone is wrong here. Only when no other requested domain is searchable is seek_information the whole output.\n- DATE REPLY = SEARCH. If the assistant asked for the travel date and the user's last turn gives one ('We're thinking of May 16, 2025', 'around May 22', 'It's May 22'), and the origin and destination appear anywhere in the conversation, the output is `flights = search_flights(start_airport_city=..., end_airport_city=..., departure_date=[\"<date as written>\"])` + `save_to_cache(key=\"flights\", value=flights)`. Do NOT call seek_information. Occasion words ('anniversary', 'something special') are not missing information."
+      },
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\n-1. REPLY NAMES SEVERAL DOMAINS -> ONE FILTER BLOCK PER NAMED DOMAIN. If the user's last turn states constraints for two domains (e.g. 'Yes, AA and a hotel with a gym and pool' = airline for flights + amenities for hotels), write a separate load -> filter -> save block for EACH named domain, each using its own most refined key and only its own new constraint (airline=[\"AA\"] on every flight key; gym_present=True, pool_present=True on hotels). The single-domain routing in the strategic section applies only when the reply names ONE domain. A block that loads and saves the same object without a filter_* call is always wrong."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 25: A reply to the assistant's question or proposal is a new constraint, so filter every affected key",
+        "content": "- NEIGHBORHOOD PROPOSALS FOR ATTRACTIONS AND RESTAURANTS. If the assistant's last message proposed a neighborhood (e.g. 'Have you considered Midtown Atlanta?') and the user accepts or is curious ('Yes', 'Actually, I haven't. What's there?'), take the neighborhood from the ASSISTANT's message and filter the cached domain: `a = get_results_from_cache(key=\"attractions\")`, `a2 = filter_attractions(prior_results=a, neighborhood=[\"Midtown Atlanta\"])`, `save_to_cache(key=\"filtered_attractions\", value=a2)` (use filter_restaurants for restaurants). Never re-run search_attractions or search_restaurants when that domain already has a cache key. If the cache summary already lists that neighborhood and the user just says 'Okay, that sounds good', output only the one-line retrieval with no save."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

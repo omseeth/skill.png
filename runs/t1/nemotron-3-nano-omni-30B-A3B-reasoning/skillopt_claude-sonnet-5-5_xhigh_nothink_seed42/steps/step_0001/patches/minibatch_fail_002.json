@@ -1,0 +1,47 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_save_to_cache_and_assignment",
+      "count": 6,
+      "description": "Search/filter calls were emitted bare, without assigning the result to a variable or calling save_to_cache, so cache state was wrong (trajectories 2-6, 8)."
+    },
+    {
+      "failure_type": "cache_not_used_for_refinement",
+      "count": 4,
+      "description": "On a follow-up preference turn the agent ran a new search, referenced an undefined variable like `hotels`, filtered a stale or less relevant key, or printed 'No planning needed' instead of loading the latest cache entry and calling filter_* (trajectories 1, 6, 7, 8)."
+    },
+    {
+      "failure_type": "round_trip_multi_leg_not_split",
+      "count": 2,
+      "description": "Round-trip and multi-city requests were put into one search_flights call, with return dates merged into departure_date or an arrival_date invented. They should be separate one-way searches per leg (trajectories 2, 5)."
+    },
+    {
+      "failure_type": "hallucinated_optional_params",
+      "count": 3,
+      "description": "Optional params were filled that the user never explicitly gave: num_people=1 from 'solo', num_people=4 and is_pet_friendly=True from 'kid-friendly', and fabricated arrival dates. 'At least 3 stars' was also mapped to rating instead of stars (trajectories 3, 4, 5, 6)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Nearly every failure is a structural code-generation error, not a tool-knowledge error. The code never saves results to the cache, refinement turns don't chain from cached results, multi-leg trips aren't split into one search per leg, and optional params get invented. The four edits give general rules for each, with short illustrative patterns, and clarify when 'No planning needed' is allowed.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Rule 1: Always assign and save every result\n- Every search_*, filter_*, sort_results and search_nearest call must be written as `var = tool(...)` and followed by `save_to_cache(key=\"<unique_descriptive_key>\", value=var)`. Never emit a bare tool call.\n- Use a distinct key for each result. Do not reuse an existing cache key. Good keys: `hotels`, `hotels2`, `filtered_hotels2`, `departure_flights`, `return_flights`, `filtered_return_flights`.\n- Never use a variable from an earlier turn, such as `hotels`, unless you first load it with `x = get_results_from_cache(key=\"...\")` in the same code.\n- Pattern: `hotels = search_hotels(...)` then `save_to_cache(key=\"hotels\", value=hotels)`."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 2: Refinement turns must filter cached results\n- If the CACHE already holds results for the domain and the user adds a new preference (amenity, stars, budget, class, party size, neighborhood, airline, etc.), do NOT run a new search_*. Load the most relevant cache key, call filter_* on it with only the new criteria, and save under a new key.\n- Pattern: `x = get_results_from_cache(key=\"hotels\")`, then `y = filter_hotels(prior_results=x, gym_present=True)`, then `save_to_cache(key=\"hotels2\", value=y)`.\n- Pick the most specific and most recent key. If an earlier turn already filtered (e.g. `filtered_hotels1`), chain from it. If the user is working with nearest-results (e.g. `nearest_hotels`), filter that key. Never filter a stale, broader key.\n- If cached flights exist for both outbound and return legs (e.g. `departure_flights` and `return_flights`), apply the new flight filter to EACH cached leg, with a separate load, filter and save per leg.\n- Print \"No planning needed\" only when the last user turn adds no new constraint or request and the cache already satisfies everything. A new preference always means a filter call."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 3: One search per flight leg\n- search_flights is one-way. For a round trip (depart date A, return date B), make two calls: outbound with `departure_date=[A]`, and return with start/end cities swapped and `departure_date=[B]`. Save each under its own key, e.g. `departure_flights` and `return_flights`.\n- For multi-city trips (X->Y then Y->Z), make one search per leg with that leg's own departure date, e.g. X->Y with the first date and Y->Z with the later date. Save each leg separately.\n- Never put outbound and return dates together in one `departure_date` list. Never invent `arrival_date` values or compute dates the user did not state.\n- Do not add extra searches for hotels or other domains the user has not asked about. Do not re-search a domain that is already in the cache."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 4: Only use values the user explicitly stated\n- Fill an optional parameter only if the user stated that exact value. Do not infer from descriptive words: 'solo trip' does not mean num_people=1, 'family' or 'kid-friendly' does not mean num_people=N or is_pet_friendly=True, and 'near X' does not mean a neighborhood. A party size counts only when a number is given, e.g. 'there are 3 of us' means num_people=3, 'for 5 people' means num_people=5.\n- Map the user's words to the correct field: 'N star(s)' or 'at least N stars' means `stars=[N, 5]` (not `rating`); 'rating' or 'rated' means `rating`; 'business/economy/first class' means `flight_class=[...]`; 'budget around N' means `budget=N`; gym or wifi means `gym_present=True`, `free_wifi_included=True`.\n- Keep the user's exact entity strings and date text, e.g. \"May 25, 2025\"."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

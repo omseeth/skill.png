@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_planning_and_cache_selection",
+      "count": 5,
+      "description": "Agents missed a newly supplied constraint or domain, or repeated work for already-satisfied domains instead of acting on the latest update."
+    },
+    {
+      "failure_type": "schema_and_missing_input_validation",
+      "count": 3,
+      "description": "Agents confused a state with a city, invented missing hotel dates, or used unsupported flight arguments and return-date encoding."
+    },
+    {
+      "failure_type": "result_lifecycle",
+      "count": 2,
+      "description": "New search results were not consistently bound to variables and saved under cache keys."
+    }
+  ],
+  "patch": {
+    "reasoning": "The additions clarify when an assistant-solicited preference activates a new travel domain, make the recurring hotel-budget update operational, strengthen the hotel-date readiness gate, and turn round-trip leg handling into an explicit completeness check. They target observed failures without changing the protected slow-update section.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "\n- If the assistant asks for preferences to support recommendations in an additional domain (for example, cuisine or allergies for restaurant recommendations) and the user answers, treat that domain as a pending request. Use the clearly established trip city or destination from the conversation when it supplies the domain’s required location; do not let cached results for other domains suppress this request. Search with the supplied criteria and save the result."
+      },
+      {
+        "op": "insert_after",
+        "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+        "content": "\n- For hotel updates, a newly stated per-night amount such as “around N” is a `budget=N` criterion. If a compatible hotel result is cached, retrieve it and pass that budget, together with any other newly stated hotel criteria, to `filter_hotels`; do not resend dates, location, or amenities already represented in the cached result."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Missing mandatory information",
+        "content": "\n- Treat explicit hotel check-in and check-out dates as a hard gate for a new hotel search: if either is missing and no compatible cached hotel result already covers the request, call `seek_information` for the missing date(s) only. Never substitute example dates, defaults, flight dates, or guessed dates, and do not make hotel-dependent proximity calls while hotel inputs are blocked."
+      },
+      {
+        "op": "replace",
+        "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.",
+        "content": "- Before emitting flight code, enumerate every explicitly described leg and verify that each is covered by a compatible directional cache result or its own search with the exact origin, destination, and departure date. A round trip requires an outbound origin-to-destination leg on D1 and a separate return destination-to-origin leg on D2; D2 is not an `arrival_date` or `return_date`. Bind and save each new leg result. Send only schema-supported flight arguments; do not include party size unless the flight schema supports it. Do not infer `flight_class` from trip purpose, and reuse a cached directional result only if it covers that leg and its criteria."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

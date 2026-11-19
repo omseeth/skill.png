@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle_and_incremental_execution",
+      "count": 7,
+      "description": "Searches or refinements were left unsaved, or the agent reprocessed unrelated work instead of applying only the latest change."
+    },
+    {
+      "failure_type": "flight_intent_translation",
+      "count": 3,
+      "description": "Flight date ranges, one-way requests, and time cutoffs were not translated into the correct legs or constraints."
+    },
+    {
+      "failure_type": "schema_and_value_mapping",
+      "count": 2,
+      "description": "A state was passed as a city, and an exact star rating used the wrong endpoint-list encoding."
+    },
+    {
+      "failure_type": "cache_selection",
+      "count": 2,
+      "description": "A compatible cached result was bypassed or an unaffected domain was processed again."
+    },
+    {
+      "failure_type": "runtime_tool_usage",
+      "count": 1,
+      "description": "The agent imported tools instead of calling the pre-defined runtime functions directly."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent lifecycle and cache-selection errors are already explicitly prohibited by the skill, so repeating those rules is unlikely to help. These edits address flight interpretations and runtime usage that are not stated as directly in the current skill.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.",
+        "content": "\n- “One-way” describes the requested travel direction, not the number of stops. Do not infer nonstop service or set `num_layovers=[0]` unless the user explicitly requests no stops."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Represent flight legs separately",
+        "content": "\n- Translate flight time wording into the schema’s accepted time-range format. For “by T” or “no later than T,” use the earliest valid time as the lower endpoint and T as the upper endpoint; when the user also says “as early as possible,” the lower endpoint is the start of the day. Apply departure and arrival time constraints to their respective fields, and do not invent seconds-based values or other unsupported formats."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- The tools listed in the prompt are already defined in the execution environment. Call them directly; do not import tool modules or redefine tools or their models."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

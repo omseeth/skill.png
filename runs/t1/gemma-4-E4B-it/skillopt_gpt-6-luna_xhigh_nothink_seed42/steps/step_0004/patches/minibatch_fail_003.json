@@ -1,0 +1,41 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_incremental_filtering",
+      "count": 2,
+      "description": "Follow-up constraints triggered fresh searches instead of retrieving and filtering applicable cached results."
+    },
+    {
+      "failure_type": "cache_persistence",
+      "count": 5,
+      "description": "Search or filter outputs were not consistently assigned and saved as required."
+    },
+    {
+      "failure_type": "required_argument_validation",
+      "count": 1,
+      "description": "A hotel search was called without mandatory check-in and checkout dates rather than seeking the missing details."
+    },
+    {
+      "failure_type": "tool_format_mapping",
+      "count": 1,
+      "description": "Flight times were converted to a 24-hour seconds format rejected by the tool."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers cache retrieval, filtering, and saving, so repeating those rules would not patch a content gap. The actionable gaps are the conflict between generic time examples and the accepted flight-time format, and ambiguity about proceeding with complete domains when another requested domain lacks mandatory inputs.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Tool results and constraints",
+        "content": "- For flight time ranges, use the accepted 12-hour AM/PM format (for example, `08:23 PM`); do not convert to 24-hour or seconds strings, even if generic tool examples show them. Represent an exact time as `[time, time]`; represent “arrive by time” as `[\"12:00 AM\", time]`."
+      },
+      {
+        "op": "replace",
+        "target": "Before calling a travel tool, check its required parameters against the full conversation and available context. If any required details are missing, use `seek_information` to ask only for those details; do not invent values, pass `None`, or run a partial search. For requests spanning multiple domains, bundle missing required details for all requested domains into the same information request. Do not ask for optional preferences.",
+        "content": "Before any call, validate mandatory inputs separately for each requested tool or domain and each flight leg. If a requested tool lacks a mandatory input, do not call it or run a partial search; ask for only the missing mandatory details in one `seek_information` request across all incomplete domains or legs. Continue with every other requested domain whose mandatory inputs are complete, assigning and caching its result. Never invent values, pass `None`, or ask for optional preferences."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "answer_format",
+      "count": 4,
+      "description": "Answers included supplied name parts or excess specificity, or returned a full compound/subtype instead of the requested shared or generic term."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 3,
+      "description": "Bare names, a catchphrase, and a list of performers were echoed or matched to a nearby title instead of resolving the clearly supported associated relation."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "The coin answer ignored the clue's current-production constraint and selected a historical coin rather than comparing eligible coins by physical size."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already addresses exact granularity and implicit clues, but these failures show that the checks need more discriminative decision tests. The edits operationalize a final specificity check, clarify when a bare prompt calls for a supported association rather than repetition, and make temporal eligibility an explicit filter for comparisons.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- For completion or compound clues, identify the missing shared component that makes the alternatives fit; do not repeat a clue-supplied component or return one full compound. For partial-name prompts, give only the requested unknown name part. Omit components already stated in the question unless they are needed for unambiguous identification.",
+        "content": "- For completion, double-definition, or partial-name clues, determine the requested answer unit before copying a context phrase: return the shared missing component, not one complete compound, or only the name part the prompt leaves unknown. As a final specificity check, remove components already supplied in the prompt and modifiers or subtitles the clue does not need to distinguish the target. Retain a full conventional name or subtype when the question requests it or omission would make the answer ambiguous."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Treat terse statements, quoted fragments, and incomplete phrases as information-seeking clues when appropriate. Infer the answer slot from the wording, then use the context to identify the entity or value that satisfies the clue.",
+        "content": "\n- For a bare place name, list of people, or slogan/catchphrase, do not automatically echo the input or select a nearby title based only on matching words. Use context to infer a salient associated relation—such as a place's country, a shared work for performers or characters, or the source work/franchise for a catchphrase—and answer with that relation only when it is clearly supported. If a quoted catchphrase also appears in a derivative work's title, distinguish the phrase's source from that title; if the intended relation remains ambiguous, do not guess."
+      },
+      {
+        "op": "replace",
+        "target": "- For comparative and superlative clues, preserve the stated comparison dimension: for example, distinguish physical size from denomination or value, and compare candidates on the property the clue actually names.",
+        "content": "- For comparative and superlative clues, first apply every stated eligibility constraint, including time or status (for example, currently produced), then preserve the comparison dimension: distinguish physical size from denomination or value, and compare only eligible candidates on the property the clue actually names."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,8 @@
+# Question Answering Skill
+
+(No learned rules yet. Rules will be added through the reflection process.)
+
+## Type, Relation, and Span Before Answering
+For a clue-like or fragmentary prompt, identify both the semantic type requested and the relation and level of scope cued by the clue. Distinguish an entity from a related one, such as an organization from one of its campuses or a source work from an adaptation’s genre. Preserve the head noun in phrases such as “this phenomenon”: answer with a phenomenon, not an associated personification. In “a person like X” constructions, treat X as an example and give the relevant shared role or category. If a declarative clue describes an entity using a pronoun, resolve the pronoun’s referent rather than treating the statement as a request to judge its truth. Reject candidates that are associated with the answer but are not the requested kind of thing or relation.
+
+Return the value that fills the requested slot, at the appropriate level of specificity. For a moniker, give the nickname itself; for a publication or work, retain its attested title. In a blank inside a recognized fixed name, give the complete conventional name, not just the missing token. For ordinary descriptive clues, give the direct term without an unnecessary subtype, head noun, or near-synonym. In demonstrative fragments such as “this book,” “this type,” or “these,” resolve the demonstrative to its referent or category rather than a modifier or associated medium. For concise definition clues, choose the closest directly supported lexical match and stop rather than cycling through speculative alternatives.

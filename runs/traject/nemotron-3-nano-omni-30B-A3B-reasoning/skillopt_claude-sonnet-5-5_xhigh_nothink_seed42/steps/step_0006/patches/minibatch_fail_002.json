@@ -1,0 +1,51 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 4,
+      "description": "The agent picked a sibling or generic tool instead of the one whose description echoes the query. Examples: a generic Japanese alphabet tool instead of the Kanji meaning and Onyomi tools, Custom dice rolls instead of Custom dice, and the email validators and disposable checkers swapped."
+    },
+    {
+      "failure_type": "missing_or_incomplete_calls",
+      "count": 2,
+      "description": "Calls were omitted, or one clause was split into two calls. The agent answered with 2 of 5 calls and dropped the kanji calls. It also split CheapShark into two calls, one with limit and one with title."
+    },
+    {
+      "failure_type": "parameter_placement_or_omission",
+      "count": 3,
+      "description": "A parameter went in the wrong list (starid put in required although the tool has no required params). A repeated `optional parameters` key silently emptied the TED filters. A query qualifier was not mapped to a fitting optional parameter (enable for Yohkoh, STEREO_A, STEREO_B)."
+    },
+    {
+      "failure_type": "output_format_tool_name",
+      "count": 1,
+      "description": "The tool name was the Provider description text ('Miza — A multipurpose API...') instead of the `### Provider: API` heading, so every call scored zero."
+    }
+  ],
+  "patch": {
+    "reasoning": "These edits target the batch's recurring errors. (1) A tool-name format error zeroes every call, so the name rule gets a concrete wrong/right example. (2) Calls were dropped or one clause was split across two calls, so completeness and one-clause-one-call rules are added, plus a rule that each attribute named in a clause gets its own specific tool. (3) Sibling and wording-matched tool choice failed (dice variants, email validators, disposable domain checker), so literal phrase matching and a dice rule are added. (4) Parameter placement and mapping failed (duplicate optional key, wrong list when the tool has no required params, unmapped list-valued qualifiers), so a pre-emit schema check is added.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+        "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely. Copy only the text of the `### ` heading line. Never use the Provider description that follows ' — ' on the `Provider:` line as the name (wrong: `Miza — A multipurpose API that includes...`; right: `Miza: Song search`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+        "content": "\n- Do not stop early. Long queries ('Also...', 'finally...', comma-separated lists) need one call per clause. Write the checklist first, and the final list must have at least that many calls. A 2-call answer to a 5-clause query is wrong. Always end with the closing `]` and `</answer>`.\n- One clause = one call. Put every qualifier (title AND limit, speaker AND topic AND duration) into that single call. Never emit the same tool twice with the parameters split between the calls, unless the query gives different inputs for each.\n- If one clause names two different attributes of a topic (e.g. a kanji's English meaning AND its onyomi reading), use the specific endpoint for each attribute, one call each (e.g. `Kanji English meaning` with kem=`parent`, `Onyomi reading` with on=`シン`). Do not substitute a generic list or alphabet tool for them."
+      },
+      {
+        "op": "insert_after",
+        "target": "'generate a fake business email' -> `Email API: Get Fake Email Address`).",
+        "content": "\n- When several sibling tools could fit, pick the one whose description repeats the query's own wording. 'validate the format and authenticity' -> the tool that describes format + authenticity checks (`Easy Email Validation: Validate Email`). 'deliverable and working' -> the tool whose description says 'deliverable and working' (`Email Address Validator: Validate Email Address`). 'disposable or temporary domain' -> a domain-specific disposable checker (`MailCheck: Domain`) rather than a generic email/domain validator. Do not assign the same tool to two clauses when another tool matches the second clause's wording better.\n- Dice: 'N dice with S sides' rolled once, with no repeat count -> `Custom dice` (dice, sides). Use the `... rolls` variants only when the query asks for repeated rolls. 'Regular dice' rolled several times -> `Regular dice rolls` (dice, rolls)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+        "content": "\n- Before writing each call, re-read that tool's schema. If it says `Required parameters: none`, every value goes in `optional parameters`, including the query's main input (e.g. `starid`=`4`). Build ONE `optional parameters` list holding all filters, and never write a second `optional parameters` key after it (a duplicate key wipes the first list, e.g. the TED speaker/topic/min_duration/date filters).\n- Map descriptive qualifiers to fitting optional params. 'special interest in Yohkoh, STEREO_A, STEREO_B' -> `enable`=`Yohkoh,STEREO_A,STEREO_B` (comma-separated list). 'first 15 posts' -> per_page `15` and page `1`. 'talks from 2017 onwards' with no publish verb -> `from_record_date`=`2017-01-01`. When a param description says to pass a 'slug', use the lowercase underscore form (`yuval_noah_harari`)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

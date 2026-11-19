@@ -1,0 +1,36 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "result_cache_protocol",
+      "count": 3,
+      "description": "Searches or filters were left unsaved, or cached retrieval was nested instead of assigned before use."
+    },
+    {
+      "failure_type": "incremental_cache_reconciliation",
+      "count": 2,
+      "description": "Follow-up constraints were handled with an inappropriate cached base or by repeating searches instead of updating cached results."
+    },
+    {
+      "failure_type": "unsupported_count_inference",
+      "count": 1,
+      "description": "A hotel traveler count was inferred from a generic description of a family with kids."
+    },
+    {
+      "failure_type": "pending_domain_omission",
+      "count": 1,
+      "description": "A restaurant request with sufficient location information was skipped while seeking missing hotel dates."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already directly covers result assignment and saving, incremental cache updates, and completing available domains when another domain lacks required inputs, so repeating those rules would not patch a gap. Clarify that a generic family description does not establish a hotel headcount, addressing the one concrete ambiguity that led to an unsupported optional parameter.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+        "content": "For a hotel search, map an explicitly stated headcount or party size with a clearly specified number to `num_people` (for example, “solo” means `num_people=1`). Generic descriptions such as “a family” or “a family with kids” do not specify a traveler count; leave `num_people` unset unless the user provides one. Apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

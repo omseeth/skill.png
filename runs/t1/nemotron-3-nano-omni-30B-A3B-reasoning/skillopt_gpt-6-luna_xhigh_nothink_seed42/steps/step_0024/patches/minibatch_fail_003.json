@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache/action coverage",
+      "count": 5,
+      "description": "Agents missed pending actions, refined or retrieved the wrong results, or reprocessed unrelated domains."
+    },
+    {
+      "failure_type": "tool-result lifecycle",
+      "count": 6,
+      "description": "Agents omitted binding and saving results for searches or failed to produce a required result."
+    },
+    {
+      "failure_type": "schema and intent preservation",
+      "count": 2,
+      "description": "Agents inferred unsupported hotel criteria or mapped a state abbreviation to the city field."
+    },
+    {
+      "failure_type": "proximity direction",
+      "count": 1,
+      "description": "The agent chose the wrong focal domain when finding hotels with nearby restaurants."
+    }
+  ],
+  "patch": {
+    "reasoning": "The dominant lifecycle and cache-coverage failures are already addressed explicitly in the skill, so repeating those instructions is unlikely to help. Add two targeted examples for the observed ambiguities: state abbreviations belong in the state field, and proximity wording determines which domain is focal.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+        "content": "\n- For attraction searches, treat a state name or postal abbreviation (for example, `OR`) as `state`, not `city`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain), not the reference domain: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`.",
+        "content": "\n- Read proximity phrasing directionally: “a hotel with restaurants nearby” asks to rank hotels (`groupBy=\"hotel\"`); “restaurants near a hotel” asks to rank restaurants (`groupBy=\"restaurant\"`)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

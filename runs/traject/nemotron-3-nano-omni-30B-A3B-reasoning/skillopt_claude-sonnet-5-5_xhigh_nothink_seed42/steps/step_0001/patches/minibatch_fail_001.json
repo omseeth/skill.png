@@ -1,0 +1,53 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "optional_params_omitted_or_misclassified",
+      "count": 6,
+      "description": "Query qualifiers (counts, page, filters, category, 'all', 'template') were not mapped to optional parameters, or optional parameters were listed under required (starid, country, FlightNumber, DepartureAirport, etc.)."
+    },
+    {
+      "failure_type": "format_or_tool_name_error",
+      "count": 3,
+      "description": "Tool names were not copied verbatim from the tool heading (provider prefix dropped or altered). Parameters were emitted as bare strings instead of {name, value} objects, extra keys such as 'description' were added, and JSON was malformed."
+    },
+    {
+      "failure_type": "wrong_tool_selected_or_extra_tool",
+      "count": 4,
+      "description": "Wrong or extra tools were called: a Spotify-URL tool was fed album IDs, an unrelated Booking languages call and a Spotify Search were added, 'Regular dice rolls' was used instead of 'Regular dice', and the explicit disposable/suggest-domain request got no matching tool."
+    },
+    {
+      "failure_type": "missing_requested_call",
+      "count": 2,
+      "description": "A requested sub-task was dropped (Asos countries call described as 'less relevant'; disposable/suggested-domain check)."
+    },
+    {
+      "failure_type": "invented_or_placeholder_values",
+      "count": 3,
+      "description": "Values not in the query were invented (dice=6, 'YOUR_API_KEY', value 'test') or were in the wrong form."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures come from a few systematic issues. First, the output schema is sloppy (tool names not verbatim, bare-string params, malformed JSON). Second, required and optional parameters are confused, and qualifiers in the query are not turned into optional parameters. Third, tool choice is wrong, with extra tools, missing tools, or the wrong sibling endpoint. The edits give a strict output/naming contract, a parameter-classification and qualifier-mapping procedure, and tool-selection and coverage rules. This is general guidance with no task-specific values.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Output contract (check before answering)\n- `tool name` must be copied verbatim from the tool's `### ` heading, in the form `Provider: API` (e.g. `BestBuy Product Data: BestBuyProductData`, `periodicTable: periodic table`). Never shorten it, re-space it, or drop the provider part.\n- Every parameter is an object `{\"name\": \"x\", \"value\": \"y\"}`. Never emit bare names such as `[\"all\"]`. Values are strings (`\"556\"`, `\"1\"`).\n- Every call has exactly three keys: `tool name`, `required parameters`, `optional parameters`. Use `[]` when empty. Do not add other keys such as `description`. Each key appears once per object.\n- Close all brackets and output valid JSON inside `<answer>` tags. Sort calls by tool name.\n- Make one call per distinct item (one per ID, email, or entity) unless the tool explicitly accepts a list."
+      },
+      {
+        "op": "append",
+        "content": "\n## Required vs optional parameters\n- Put a parameter under `required parameters` ONLY if the tool lists it under 'Required parameters'. Anything under 'Optional parameters' goes in `optional parameters`, even if the query supplies it as the main input (e.g. flight number, airport codes, star id, country). A tool with 'Required parameters: none' therefore has an empty required list.\n- Supply a value for every required parameter. Include an optional parameter whenever the query states or clearly implies a value for it.\n- Turn every qualifier in the query into a parameter. Check the tool's optional list for a match:\n  - counts or sizes ('20 posts' -> per_page=20, 'three dice' -> dice=3)\n  - 'first page' -> page=1\n  - filters ('blue' -> a filters param, following the format example in its description such as `colorList~Blue`)\n  - sorting ('default sorting' -> sortby=0)\n  - category, language or country ('science and technology', 'English', 'US-based' -> category/language/country)\n  - 'complete/all' info -> all=true\n  - 'template' -> get_test=template\n  - a specific card ('Ace') -> value=A\n- Use enumerated options, codes and formats exactly as the parameter description gives them. Prefer short codes when the tool is code-like (state codes, language codes).\n- Never invent values. Do not use placeholders like YOUR_API_KEY, and do not guess numbers the query does not give (e.g. dice sides). If a key or value is truly unspecified, use a minimal neutral value such as an empty string or `demo`, and do not make up identifiers."
+      },
+      {
+        "op": "append",
+        "content": "\n## Choosing tools\n- Walk through the query clause by clause and name one tool for each requested action. Cover EVERY clause, including ones the user calls 'less relevant' or 'also checked'. Add no tool that no clause asks for (no 'helper' calls such as languages lists, search-then-get, or generic lookups).\n- Pick the endpoint whose name, description and parameters directly match the clause and the kind of input given. Do not pass an ID where a URL or other input type is required. Do not use an artist or playlist endpoint for an album ID.\n- Distinguish sibling endpoints by quantity semantics:\n  - plural 'dice' with a count -> the 'Regular dice' endpoint (dice=N)\n  - a single die -> 'Regular die'\n  - 'N dice rolled M times' -> 'Regular dice rolls'\n  - a single card -> 'Card'; several cards -> 'Cards'\n- If the query names specific capabilities (disposable status, suggested domain, role account, MX records), use the tool whose name or description states that capability for each one.\n- When several providers expose near-identical endpoints for the same function (e.g. several 'Get albums' or email-validation tools) and the query lists multiple items, spread the items across different matching variants rather than repeating the same variant. Use only variants whose description fits the input type.\n- If a query names a provider (BestBuy, Wayfair, Asos, Spotify), use that provider's endpoint."
+      },
+      {
+        "op": "append",
+        "content": "\n## Final self-check\nBefore writing `<answer>`, verify each call against these points:\n1. The tool name matches its heading character for character.\n2. Required parameters are exactly the tool's required list, and everything else is under optional.\n3. Every number, filter, page, category and keyword in the query is used in some parameter.\n4. No extra calls and no missing clauses.\n5. The JSON is balanced and every param is a name/value object."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

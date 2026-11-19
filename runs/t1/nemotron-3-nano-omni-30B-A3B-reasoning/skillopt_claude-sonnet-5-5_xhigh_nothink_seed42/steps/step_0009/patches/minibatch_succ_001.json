@@ -1,0 +1,18 @@
+{
+  "batch_size": 2,
+  "success_patterns": [
+    "Origin and destination given with a party size, but the user says they are unsure of the dates. The agent output only one short seek_information naming the missing departure date. It made no search call, did not ask about the optional passenger count, and invented no date.",
+    "On a vague 'Okay, that sounds good' turn with an attraction cache already in place, the agent loaded the cached key, filtered with the assistant's proposed neighborhood, and saved the result. These were three straight-line statements with no re-search and no import. Re-saving under the existing key left the cache state unchanged, so it passed. The gold answer was retrieval-only, and I do not propose a rule for it because the evidence does not show it matters."
+  ],
+  "patch": {
+    "reasoning": "Both trajectories already follow existing rules: the seek-only rule for flights without a date, and load, filter and save for a cached domain. Trajectory 2 passed through a cache-state match even though the gold was retrieval-only, so I propose nothing for that case. Earlier attempts to encode a retrieval exception were bundled with other edits and rejected, so I am not repeating it. One small gap is that 'I'm not sure about the dates yet' is a common phrasing the 'Context is not a date' bullet does not list. Naming it keeps the agent on a bare seek_information and away from guessing dates.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not search, and do not ask about class, airline, time, return date, or passenger count.",
+        "content": "\n- Uncertainty about dates is not a date either. 'I'm not sure about the dates yet', 'dates are flexible' or 'haven't decided when' on a request that gives an origin and destination (even with a party size like '5 people') still means only `seek_information(\"We need the departure date for the flight.\")`. Never substitute a placeholder or guessed date, and never run search_flights to explore."
+      }
+    ]
+  },
+  "source_type": "success"
+}

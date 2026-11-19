@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_update_omission",
+      "count": 4,
+      "description": "Agents returned “No planning needed” despite new hotel criteria that required filtering compatible cached results."
+    },
+    {
+      "failure_type": "requested_domain_and_input_handling",
+      "count": 2,
+      "description": "Agents blocked ready work or requested inputs for domains that were not requested, instead of processing each requested domain independently."
+    },
+    {
+      "failure_type": "result_persistence",
+      "count": 1,
+      "description": "An agent generated a hotel search but did not save its result to the cache."
+    },
+    {
+      "failure_type": "tool_invocation_contract_violation",
+      "count": 1,
+      "description": "An agent imported the unavailable tools module despite the direct-call instruction."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify domain-by-domain readiness so missing hotel dates do not block a requested attraction or flight search, and unrequested services are not added. Make cache updates operational and require checking each criterion before declaring no planning is needed. Extend affirmation resolution to cover accepted amenity preferences. The import failure is already explicitly prohibited by the skill, so no duplicate edit is warranted.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available.",
+        "content": "- First identify only the travel domains explicitly requested in the full conversation; trip context alone does not request every travel service. Check required inputs separately for each requested domain against the conversation and relevant cache. Flight searches require a departure date; hotel searches require check-in and checkout dates. If a requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only those missing values for requested domains. Defer only the incomplete domain: in the same turn, proceed with independent requested domains whose inputs are complete. Never ask for information about an unrequested domain or let its missing inputs block ready work. Do not guess or invent values, and do not ask for optional preferences as if they were required."
+      },
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- On each turn, make a checklist of requested domains and criteria from the full conversation, and compare each item with compatible cached result summaries. Reuse a result only when its domain and subject match; treat a criterion as satisfied only when the summary explicitly supports it. For each unmet criterion, retrieve the closest compatible result with `get_results_from_cache(key=\"...\")`, assign it, pass it as `prior_results` to the matching filter, assign the filtered result, and save it under a unique key. Apply a new criterion to every affected compatible result set; for example, a location requested for both hotels and restaurants requires filtering both sets, including when one was previously combined in a nearest-result operation. Search when no compatible result covers the requested domain, subject, entity, or category. Assign and save every new search or transformation result under a unique key. Use “No planning needed” only when compatible cached results explicitly satisfy every checklist item and no further operation is needed."
+      },
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal. Carry forward all accepted details, including preferences and boolean amenities as well as entities or categories; for example, accepting proposed hotel amenities means setting their corresponding supported flags to `True`. Treat each accepted detail as a criterion to process against compatible cached results or a new search, rather than as a no-op."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

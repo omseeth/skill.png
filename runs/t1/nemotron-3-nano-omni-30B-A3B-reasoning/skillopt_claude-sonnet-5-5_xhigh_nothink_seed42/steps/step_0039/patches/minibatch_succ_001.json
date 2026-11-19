@@ -1,0 +1,15 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Single-domain refinement replies (hotel budget + amenity, restaurant rating + budget) load that domain's most refined cache key, pass only kwargs from the last message, and write zero lines for other cached domains (flights, hotels).",
+    "A requested domain with no cache key and known mandatory args gets a first search straight away. The restaurant city comes from the flight destination. Hotel dates come from the user's 'X to Y' reply, 'solo trip' becomes num_people=1, and amenities from turn 1 are carried into the search.",
+    "A date reply to the assistant's date question becomes departure_date in a search with the origin and destination from earlier turns, with no extra params. Occasion words like 'anniversary' are ignored.",
+    "When the date is missing, the whole output is one short seek_information naming only the missing mandatory items. Party size and 'special occasion' do not count as dates, and a flight+hotel request gets one combined ask.",
+    "Summary-listed filters (traveler count, gym, air conditioning, budget) are not re-passed on later filters. Value shapes are correct: rating=[4.5, 5] for 'at least 4.5', has_balcony=True for 'balcony'."
+  ],
+  "patch": {
+    "reasoning": "All eight successes follow rules that already exist: route the reply to one domain, pass only last-message kwargs, search a keyless domain first, and ask only for missing dates. The two partial successes are not worth encoding. Trajectory 4 passed cache_em despite malformed bare/nested search calls and a lower tool F1. Trajectory 6 passed cache_em with a '<date>' placeholder but failed execution; its gold was a seek_information. Prior epoch steps show that adding gate text or rewriting Rule 2/17/-1 wording caused regressions, and the meta-skill advises shrinking rather than appending. Proposing no edits avoids adding noise to an already long prompt.",
+    "edits": []
+  },
+  "source_type": "success"
+}

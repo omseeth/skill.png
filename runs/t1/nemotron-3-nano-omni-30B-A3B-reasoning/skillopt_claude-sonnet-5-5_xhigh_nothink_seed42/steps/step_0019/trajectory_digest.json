@@ -1,0 +1,59 @@
+{
+  "step": 19,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 26,
+  "failure_patterns": [
+    {
+      "pattern": "wrong_domain_routing: Cuisine or dietary replies were sent to the wrong tool: search_attractions with a cuisine kwarg, or a hotel re-filter for a dairy-allergy reply. The 'hotel with good restaurants nearby' request needed filter_restaurants plus search_nearest.",
+      "count": 26,
+      "task_ids": [
+        "hotelrestaurant:train:12:12:4",
+        "flighthotel:train:10:9:2",
+        "hotelattraction:train:23:13:4",
+        "flight:train:17:8:3",
+        "flighthotelattraction:train:6:59:4",
+        "hotelattraction:train:24:38:1",
+        "restaurant:train:13:21:3",
+        "restaurant:train:1:28:2",
+        "hotelattraction:train:12:38:1",
+        "attraction:train:8:59:0",
+        "flighthotel:train:17:29:1",
+        "attraction:train:7:50:2",
+        "hotelattraction:train:16:34:3",
+        "hotelrestaurant:train:16:3:0",
+        "flighthotelrestaurant:train:18:42:1",
+        "flighthotelattraction:train:23:27:1",
+        "restaurant:train:3:45:1",
+        "restaurant:train:20:8:0",
+        "flighthotelattraction:train:7:34:1",
+        "flighthotel:train:22:15:2",
+        "flight:train:3:60:3",
+        "flighthotelrestaurant:train:4:1:2",
+        "restaurant:train:21:8:1",
+        "flighthotelrestaurant:train:21:27:1",
+        "flight:train:16:11:1",
+        "flighthotelattraction:train:7:36:4"
+      ]
+    }
+  ],
+  "score_before": 0.47,
+  "score_after": 0.425,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "\n  - Flight + hotel where only a one-way flight date is known and CACHE has no flights key (e.g. turn 1 'one-way flight from San Jose to Atlanta and a hotel', reply 'It's May 15, 2025'): the block is the flight search `flights = search_flights(start_airport_city=\"San Jose\", end_airport_city=\"Atlanta\", departure_date=[\"May 15, 2025\"])` plus `save_to_cache(key=\"flights\", value=flights)`, FOLLOWED BY one `seek_information(\"We need the check-out date for the hotel.\")`. Do not drop the seek_information just because the flight search ran, and do not call search_hotels.",
+      "target": "do not re-filter them with a budget or other constraint their CACHE summary already lists."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n5. Domain has NO key and a mandatory arg is still missing (e.g. a hotel reply about budget, stars, neighborhood or amenities while no check-in/check-out dates were ever given, or only a flight date exists and no checkout date) -> the ONLY output is one `seek_information(...)` naming the missing items. Another domain's cached result (flights, attractions, restaurants) is never a substitute. Never write `x = get_results_from_cache(key=\"<other domain key>\")` followed by `save_to_cache` of the same value, because a loaded result saved unchanged is always wrong. Example: CACHE holds only 'attractions' (Anchorage, Culinary), the user asked for a hotel for 5 and says 'around 80 per night' -> `seek_information(\"We need to ask for the check-in and check-out dates\")` only. Example: CACHE holds 'flights' and 'filtered_flights' for May 20, and the user says 'Yes, near Downtown Anchorage with a 4 star rating' for the hotel -> `seek_information(\"We need to ask for the checkout date\")` only.",
+      "target": "4. Domain has NO key and all its mandatory args are known -> first search (`x = search_*(...)` then `save_to_cache`)."
+    },
+    {
+      "op": "insert_after",
+      "content": "- FIRST attractions search exception: if the CACHE has NO 'attractions' key and the user names a specific attraction together with its type ('Yes, we want to visit Pittock Mansion, which is a Social attraction.', with 'hotels' cached for Portland), this is the first attractions search, not a proximity follow-up. Write only `attractions = search_attractions(city=\"Portland\", attraction_name=[\"Pittock Mansion\"], type=[\"Social\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. Pass both name and type as stated. Do not load hotels, do not call search_nearest and do not filter_hotels. The name-only + search_nearest flow below applies only when an 'attractions' key already exists from an earlier type search.",
+      "target": "## Rule 26: Proximity requests ('near the hotel', 'near <attraction>') need search_nearest (overrides the 'do not touch the hotel cache' and 'type if stated' parts of Rule 10)"
+    }
+  ]
+}

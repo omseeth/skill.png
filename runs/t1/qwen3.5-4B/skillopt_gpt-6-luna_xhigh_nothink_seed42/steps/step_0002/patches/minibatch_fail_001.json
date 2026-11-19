@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool invocation contract violation",
+      "count": 7,
+      "description": "Agents imported tools despite the runtime contract requiring direct calls to provided functions."
+    },
+    {
+      "failure_type": "incremental planning and cache misuse",
+      "count": 6,
+      "description": "Agents ignored new criteria or did unrelated/redundant work instead of updating only the affected cached results."
+    },
+    {
+      "failure_type": "schema and preference encoding",
+      "count": 2,
+      "description": "Agents used an incorrect field or representation for a requested criterion, including a single value for a min/max range."
+    }
+  ],
+  "patch": {
+    "reasoning": "The import and incremental-cache patterns are already explicit in the task contract and were covered by previously rejected edits, so I avoid repeating them. These additions target distinct gaps: encoding exact values for range-shaped fields and interpreting a vague daypart preference as a usable filter.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Schema-faithful preference encoding\n- Match arguments to the tool schema's expected type and cardinality. When a field represents a minimum/maximum range and the user requests one exact value, provide that value as both endpoints (for example, one requested star rating becomes `[n, n]`).\n- Treat stated soft preferences as actionable when filtering. If the user gives a standard time-of-day preference without exact bounds, translate it into a reasonable interval in the tool's expected format (for example, afternoon as `12:00 PM`–`5:00 PM`) rather than ignoring it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

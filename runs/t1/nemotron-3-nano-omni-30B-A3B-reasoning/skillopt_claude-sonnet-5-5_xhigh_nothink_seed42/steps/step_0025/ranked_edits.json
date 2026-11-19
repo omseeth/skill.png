@@ -1,0 +1,34 @@
+{
+  "reasoning": "Failure-driven edits are kept in full. The success group is hygiene-only (a DATE GATE plus repointing dangling rule references), and its content does not overlap the failure edits, so all of it is kept. One collision was resolved: Group 2 rewrites the Rule 14 header (removing the dangling 'supplements Rule 11'), while Group 1 inserts a bullet after that same header. If applied separately, the second edit's target would no longer match, so I folded both into one replace that outputs the cleaned header followed by the restaurant-no-city bullet. The DATE GATE (no literal date -> seek_information) and the failure group's 'DATE ANSWER = SEARCH NOW' (a date in the reply -> search, never re-ask) are compatible. The first covers the no-date case and the second the date-given case, so both stay. No edit touches the SLOW_UPDATE block. The print(\"No planning needed\") carve-out for the party-size-only reply is kept as a failure fix, and its wording marks it as the single allowed print. [optimizer-ranked: selected 3/11 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "## HARD OUTPUT RULES (check before EVERY response)",
+      "content": "\n- DATE GATE (before any search_flights / search_hotels): find the date the user literally wrote in the conversation (e.g. 'May 16, 2025'). Found -> search with it. Not found -> that domain gets `seek_information(...)` naming only the missing date(s) and NO search call. It is the whole output unless another requested domain is searchable (see 4b). 'One-way', 'N travelers', 'solo trip', 'weekend getaway', 'birthday' and 'special occasion' are context, not dates. Never use a TOOL CONFIG example date such as '2025-08-03'. search_flights never takes num_people or num_layovers.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "## CACHE GATE (run this before writing any code, every turn)",
+      "content": "\n-2. DATE ANSWER = SEARCH NOW (beats every seek_information rule below, including the 'vague timing' paragraph of Rule 6). If the assistant just asked for dates and the user's reply holds a date or an 'X to Y' range, never ask again. Hotel requested anywhere and a city known: `hotels = search_hotels(city=\"<city from any turn>\", checkin_date=[\"<X>\"], checkout_date=[\"<Y>\"], <neighborhood / stars / amenities / budget the user stated>)` + `save_to_cache(key=\"hotels\", value=hotels)`. Copy date strings as written. 'Solo trip' / 'just me' -> `num_people=1`; any other party size only from a stated number. Flight requested: outbound `departure_date=[\"<X>\"]` saved as \"flights\" and return `departure_date=[\"<Y>\"]` with the cities swapped saved as \"return_flights\" (each assigned and saved). A class or airline the user stated goes INSIDE both flight searches, and a block that searches a domain never also filters it ('kid-friendly', 'family', 'cheap' are never airlines). Never load another domain's key and re-save it as a stand-in for the missing search.\n-1. FLIGHT REPLIES = ONE BLOCK PER FLIGHT KEY. This applies only when the assistant's last question or the user's last message is about flight class, airline, flight time or ticket price (a class word such as 'economy'/'first', an airline code, 'under N' answering a flight-price question), even if a 'hotels' key is also in CACHE. Count the flight keys in CACHE (flights, return_flights, flights2, first_departure_flights, ...), take each leg's most refined key, and write a three-line block for EACH: `x = get_results_from_cache(key=\"<flight key>\")`, `y = filter_flights(prior_results=x, <kwarg>)`, `save_to_cache(key=\"<new key not in CACHE>\", value=y)`, with the same new kwarg in every block. 2 keys -> 2 blocks, 3 keys -> 3 blocks; stopping after the first key is wrong. Write no hotel line for that reply. Every value comes from the user's last message ('I'd prefer economy' -> `flight_class=[\"economy\"]` on each flight key; 'keep it under 1150' after a flight-price question -> `budget=1150` on each key). Conversely, when the last message is about hotels or restaurants, write no flight line.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## HARD OUTPUT RULES (check before EVERY response)",
+      "content": "\n- SEARCH GATE (do this first): read the CACHE dict. If a domain's key is present, search_* is forbidden for that domain, whatever the reply adds (cuisine, rating, budget, time, amenity, neighborhood, or interest in the assistant's proposal such as 'Sure', 'Yes', 'What's there?'). Write exactly `x = get_results_from_cache(key=\"<most refined key of that domain>\")`, `y = filter_<domain>(prior_results=x, <new constraint from the last message>)`, `save_to_cache(key=\"<new key not in CACHE>\", value=y)`. A search_* call is allowed only for a domain with NO key. Examples: 'restaurants' cached + 'Yes, I'm looking for Finnish.' -> `filter_restaurants(prior_results=r, cuisine=[\"Finnish\"])`; 'okay with at least 3.0' -> `rating=[3.0, 5]`; attractions cached + a neighborhood the assistant proposed -> `filter_attractions(prior_results=a, neighborhood=[\"<as the assistant proposed it>\"])` saved as filtered_attractions.",
+      "support_count": 2,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 1 (DATE GATE, support 8) is a short top-of-skill hygiene rule with a positive trigger, covering the recurring date/seek_information failures. Edit 2 gives a positive routing rule that scopes flight filtering to flight turns and requires one block per flight key, which targets cross-domain leakage, and it also fixes the multi-domain date-answer case. Edit 0 promotes 'key present means filter, never search' to the top, which makes accepted-proposal replies like 'Yes' a filter. Edits 4-8 are single-task, duplicate existing rules, or risk contradicting guidance (edit 8 reintroduces print). Edits 9-10 are harmless cleanup with negligible behavioral impact.",
+    "selected_indices": [
+      1,
+      2,
+      0
+    ]
+  }
+}

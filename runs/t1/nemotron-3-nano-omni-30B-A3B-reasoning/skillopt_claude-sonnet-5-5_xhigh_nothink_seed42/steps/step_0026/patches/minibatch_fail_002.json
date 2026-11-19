@@ -1,0 +1,51 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_or_key_routing",
+      "count": 3,
+      "description": "Hotel replies hit the wrong key or domain. 'Hotel with pool and room service' filtered attractions when no hotels key existed. 'There are 4 of us' loaded raw 'hotels' instead of 'nearest_hotels' and invented a neighborhood from an attraction name. A budget reply re-loaded raw 'hotels' and re-passed dates, rooms and people instead of loading 'filtered_hotels' and passing only the budget."
+    },
+    {
+      "failure_type": "accepted_proposal_misrouted",
+      "count": 1,
+      "description": "'That would be great' to a Touristy-attractions-near-hotel proposal re-filtered flights with an invented economy class and the hotel stars. The correct action was search_attractions plus search_nearest, since no attractions key existed."
+    },
+    {
+      "failure_type": "incomplete_flight_legs",
+      "count": 1,
+      "description": "A class reply filtered only departure_flights and skipped return_flights."
+    },
+    {
+      "failure_type": "time_constraints_dropped_in_first_search",
+      "count": 1,
+      "description": "The first flight search omitted the stated arrival date, arrival time and departure time ('arrive May 21 by 09:01 PM', 'depart by 04:33 AM'). The 'never invent time windows' rule suppressed user-stated times."
+    },
+    {
+      "failure_type": "dropped_domain_and_output_form",
+      "count": 1,
+      "description": "For 'hotel in Lexington with a good restaurant nearby that serves Mediterranean', the restaurant search was a bare unassigned, unsaved call and the closing seek_information for hotel dates was missing."
+    }
+  ],
+  "patch": {
+    "reasoning": "These edits put short, checkable triggers at the top of the skill, as the meta-skill advises. Edit 1 covers three failing tasks with one routing rule: hotel words go only to hotels, a missing hotels key means search or seek, the most refined hotels key is loaded (nearest_* included), and each domain gets its own budget-only filter. Edit 2 pairs the 'no invented times' prohibition with its positive trigger (user-stated arrive/depart times go into the first search) and adds a mechanical per-flight-key count for filters. Edit 3 handles two cases where a domain without a key is dropped or misrouted: hotel plus restaurant with no dates, and a bare 'yes' to an attractions-near-hotel proposal.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- ROUTE CHECK (hotel replies): (a) Hotel words in the last turn (stars, pool, room service, wifi, rooms, 'N of us', per-night budget, neighborhood) act ONLY on hotels. If CACHE has no hotels-domain key (hotels, filtered_hotels*, nearest_hotels, final_hotels*): dates known anywhere -> search_hotels; dates missing -> the whole output is one seek_information for the check-in/check-out dates. Never filter attractions, restaurants or flights for a hotel reply. (b) With a hotels-domain key, load the MOST RECENT one, not raw 'hotels'. A nearest_hotels key beats hotels, and filtered_hotels beats hotels. Save under a key not in CACHE. 'There are 4 of us' with a hotel requested -> `filter_hotels(prior_results=<latest hotels key>, num_people=4)` and nothing else. A neighborhood kwarg needs a neighborhood the user typed; an attraction name is never a neighborhood. (c) A turn with two budgets ('950 for the flight and 105 per night for the hotel') -> one block per domain, each loading its own latest key and passing only `budget=<n>`. Do not re-pass dates, rooms, people or stars that the summary already lists."
+      },
+      {
+        "op": "insert_after",
+        "target": "search_flights never takes num_people or num_layovers.",
+        "content": "\n- FLIGHT TIMES AND LEGS: (a) A time the user DID state in any turn goes into the first search_flights call, in 12-hour strings. 'Arrive on May 21, 2025 by 09:01 PM' -> `arrival_date=[\"May 21, 2025\"], arrival_time=[\"12:00 AM\", \"09:01 PM\"]`. 'Depart as early as possible on May 15, 2025, by 04:33 AM' -> `departure_date=[\"May 15, 2025\"], departure_time=[\"12:00 AM\", \"04:33 AM\"]`. 'After X' -> [\"X\", \"11:59 PM\"]. Only invent nothing the user did not say. (b) Mechanical check for flight class, airline, time or price replies: the number of filter_flights calls must equal the number of flight keys in CACHE. With departure_flights AND return_flights present that is 2 load/filter/save blocks, never 1."
+      },
+      {
+        "op": "insert_after",
+        "target": "4. Domain has NO key and all its mandatory args are known -> first search (`x = search_*(...)` then `save_to_cache`).",
+        "content": "\n4a. NO-KEY DOMAINS (do not drop them, do not misroute them):\n   - Hotel + restaurant wording with no hotel dates and CACHE `{}` ('a hotel in Lexington with a good restaurant nearby that serves Mediterranean') -> exactly `restaurants = search_restaurants(city=\"Lexington\", cuisine=[\"Mediterranean\"])`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then ONE `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. A bare unassigned search call, or a missing seek_information line, is wrong. 'Good' and 'nearby' are not parameters, and search_nearest needs a hotels key first.\n   - A bare 'yes' / 'that would be great' to the assistant's 'Would you like to visit any <Type> attractions near your hotel?' with a hotels key in CACHE and NO attractions key -> `attractions = search_attractions(city=\"<trip city>\", type=[\"<Type>\"])` + save 'attractions', then `h = get_results_from_cache(key=\"<latest hotels key>\")`, `nearest_hotels = search_nearest(hotels=h, attractions=attractions, groupBy=\"hotel\")` + save 'nearest_hotels'. Write no filter_* line at all, no flight lines, and no flight_class that the user did not say in this turn."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

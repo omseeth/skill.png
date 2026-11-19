@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "schema_and_argument_mapping",
+      "count": 7,
+      "description": "Calls used incorrect parameter names or required/optional buckets, omitted compatible filters, or supplied noncanonical values."
+    },
+    {
+      "failure_type": "endpoint_capability_matching",
+      "count": 3,
+      "description": "A generic or mismatched endpoint was chosen over one better suited to the requested content or validation."
+    },
+    {
+      "failure_type": "structured_output_completeness",
+      "count": 2,
+      "description": "The final call list was malformed or not emitted, collapsing or omitting requested calls."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch repeatedly shows schema details being lost during call construction, plus a lack of preference for genuinely specialized endpoints and failures to reserve the final response for a complete machine-readable payload. These edits make those decisions more explicit without changing the existing call-planning framework.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Treat endpoint eligibility as a gate: confirm the endpoint's own operation and schema support the requested result kind and granularity, and can represent every compatible explicit qualifier. A topical neighbor or broader operation is not sufficient. A named provider or source is a hard constraint for that outcome; do not fulfill or supplement it with another provider when a fitting named-source endpoint exists.",
+        "content": "- Treat endpoint eligibility as a gate: confirm the endpoint's own operation and schema support the requested result kind and granularity, and can represent every compatible explicit qualifier. Among endpoints that pass this gate, prefer one explicitly specialized for the requested content type or operation over a generic search or lookup. Specialization does not excuse a mismatch in result kind, granularity, source, or qualifier. A named provider or source is a hard constraint for that outcome; do not fulfill or supplement it with another provider when a fitting named-source endpoint exists."
+      },
+      {
+        "op": "replace",
+        "target": "For exact quantities, use an exact-value field or matching lower and upper bounds when supported.",
+        "content": "For an exact requested quantity, prefer a documented exact-value field. If none exists, set both minimum and maximum to that value when supported; never encode equality with only one bound. Do not combine an exact-value field with bounds when the schema disallows it."
+      },
+      {
+        "op": "replace",
+        "target": "For each selected endpoint, use only its own schema for exact parameter names, declared types, and required/optional placement; never borrow fields from similar operations. For parameters you include, put every required field in the required bucket and every non-required field in the optional bucket, even when the user explicitly requests an optional setting; never duplicate a field.",
+        "content": "For every selected call, first make a checklist from that endpoint's schema: put every required argument, including required path parameters, in the required bucket; put selected non-required arguments in the optional bucket. List each exact parameter name once and use its declared type. Use only fields in that endpoint's schema—never borrow names from similar operations or invent parameters such as undocumented credentials, callbacks, or defaults."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate before responding",
+        "content": "\n- When the required final format is machine-readable, keep planning and intermediate drafts out of the response. Emit only the complete requested payload, compactly, and reserve enough output for one separate call object for every planned invocation."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

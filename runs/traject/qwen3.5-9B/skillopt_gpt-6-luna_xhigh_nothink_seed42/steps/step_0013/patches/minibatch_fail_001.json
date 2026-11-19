@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "facet_coverage_omission",
+      "count": 3,
+      "description": "A distinct requested operation or search was missed, including a kanji-stroke lookup, company overview, and retailer searches narrated as prior workflow."
+    },
+    {
+      "failure_type": "composite_endpoint_selection",
+      "count": 2,
+      "description": "For email checks requesting both validity or format and disposability, the chosen endpoint did not explicitly cover both facets."
+    },
+    {
+      "failure_type": "canonical_value_or_schema_binding",
+      "count": 3,
+      "description": "Calls used noncanonical selectors or codes, an unsupported list encoding, or the wrong required/optional placement."
+    },
+    {
+      "failure_type": "incomplete_tool_identifier",
+      "count": 1,
+      "description": "The tool name omitted the endpoint portion of the exact identifier."
+    },
+    {
+      "failure_type": "configurable_endpoint_selector_omission",
+      "count": 1,
+      "description": "A generic configurable endpoint was not used for a requested data product that could be selected through its operation parameter."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed failures are already addressed by the skill’s coverage, endpoint-matching, schema-binding, canonical-token, and exact-identifier rules, so duplicating them is unlikely to help. Add only a narrow instruction for generic endpoints whose operation is chosen through a selector parameter, as this addresses the missed company overview without weakening the rule against inventing unsupported values.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- For overlapping endpoints, compare the exact input type and every requested output facet, not just the broad topic. If the user explicitly names a source or issuing authority, treat it as a constraint and prefer its matching endpoint over a different provider's similar result.",
+        "content": "- For a generic or configurable endpoint with an operation selector (such as `function`), treat that selector as choosing the requested data product: map the requested result to the endpoint's documented or canonical selector and bind identifiers to their own schema fields. Do not overlook a matching endpoint merely because its name is generic; if the selector mapping is not supported by the available documentation, do not guess."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

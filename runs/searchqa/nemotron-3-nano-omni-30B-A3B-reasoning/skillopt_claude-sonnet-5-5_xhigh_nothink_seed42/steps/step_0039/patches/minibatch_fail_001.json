@@ -1,0 +1,40 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Over-extended answers that keep words the clue already states or a descriptor: 'Roanoke Island' (gold 'Roanoke'), 'University of Wisconsin-Superior' (clue already says 'Superior'), and 'Madge the Manicurist' despite a verbatim archive line ending '| Madge.'."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "Wrong slot: 'Rome' (a city) for 'this empire' (Roman Empire), and 'Ted Kennedy' (one list item) for a bare list of two senators' names, which asks for the shared state."
+    }
+  ],
+  "patch": {
+    "reasoning": "Every failure had an existing rule that was ignored; the skill even contains the 'Madge' and 'Roanoke' examples. Earlier attempts to force a mandatory reasoning line at the top were rejected, and one scored badly. So these edits avoid new output-format requirements. They sharpen the exact rules that were missed, putting the Rule 3 copy rule and the list-of-real-people rule where the agent reads them. They add a short geography/empire bullet next to the slot-type rules. They also add a brief recency-positioned final gate after the protected block, restating only the over-extension and wrong-slot cases seen here, keyed to visible clue features so stable passes are not hit.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "If the list is of real people, answer with the team, state or other entity they share.",
+        "content": "If the list is of real people (even just two bare names like 'Person A, Person B' with no other words), answer with the ONE thing they share: the state, country, team, party, office or group they belong to (two senators -> the state they represent). NEVER answer with one of the listed people or a first-name variant of one. Look for the place, team or office that recurs next to both names across the passages."
+      },
+      {
+        "op": "replace",
+        "target": "Do not lengthen it with descriptors ('Madge', not 'Madge the Manicurist').",
+        "content": "Copy ONLY the text between '|' and '. right:'/'wrong:'. If that text is one word, your answer is one word. Never lengthen it with descriptors, the clue's role noun, or a fuller name taken from other passages ('Madge', not 'Madge the Manicurist'), even when the other passages use the longer form."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 2: Answer the referent, not a word from the clue",
+        "content": "\n- GEOGRAPHY / REALM slots: for 'this island / river / lake / mountain / city / state' where the passages write '<Name> Island' etc., answer the bare <Name> when that bare name is itself a recognised name for the place ('this island off North Carolina' -> 'Roanoke', not 'Roanoke Island'). An EMPIRE/KINGDOM/DYNASTY slot wants the realm, never its capital or one city: 'incorporated into this empire' -> 'Roman Empire' (not 'Rome'). A city, region or building named in the clue (e.g. 'at Superior', 'in Dijon') is an anchor: strike it from an institution's name ('this state university at Superior' -> 'University of Wisconsin')."
+      },
+      {
+        "op": "append",
+        "content": "\n## FINAL GATE (re-read right before the answer tags; no extra output needed)\n1. A passage with the clue followed by '| X. right:' means answer exactly X, nothing added.\n2. Strike from your candidate every word the clue already states: a place name ('at Superior'), a role noun ('manicurist'), a type word ('island'). Keep a head noun only when the bare word would not name the thing (Roman Empire, Gadsden Purchase).\n3. A bare list of names, or 'this <realm>' (empire, kingdom), asks for the shared state/team/country or the realm itself. Never answer with one list member or a capital city.\n4. A first name or nickname alone is never the answer."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

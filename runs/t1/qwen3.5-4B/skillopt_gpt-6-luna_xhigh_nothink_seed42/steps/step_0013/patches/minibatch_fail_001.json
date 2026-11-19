@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_namespace_import_misuse",
+      "count": 4,
+      "description": "Agents imported a nonexistent tools module despite the skill and prompt explicitly requiring direct calls to injected functions."
+    },
+    {
+      "failure_type": "cache_result_lifecycle",
+      "count": 4,
+      "description": "Agents skipped updates for newly added hotel criteria or repeated filtering instead of applying only criteria not already satisfied."
+    },
+    {
+      "failure_type": "itinerary_date_interpretation",
+      "count": 2,
+      "description": "Agents mishandled return-leg dates and hotel dates that were supplied as the overall trip span."
+    },
+    {
+      "failure_type": "incomplete_nearest_search_inputs",
+      "count": 2,
+      "description": "Agents called search_nearest without first obtaining results matching the requested attraction category or named place."
+    }
+  ],
+  "patch": {
+    "reasoning": "The import and cache behaviors are already explicitly covered by the skill, so repeating those instructions would not patch a documentation gap. The edits clarify two underspecified workflows: interpreting return-only requests and trip dates, and preparing compatible search results before a proximity search.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg by setting `arrival_date` on the outbound search. Ask for an unknown endpoint rather than assuming a route. When a hotel stay is given as a check-in date plus an unambiguous duration in nights rather than a checkout date, call `adjust_date(date=<check-in date>, delta_days=<number of nights>)` and use its returned date as checkout; do not treat the duration as missing.",
+        "content": "- Preserve user-provided dates, entity values, and casing. For a round trip, make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg by setting `arrival_date` on the outbound search. If the user requests only the return flight and the route is known from the conversation, search the reversed route using the stated return date as `departure_date`; do not ask for the outbound date. Ask for an unknown endpoint rather than assuming a route. For a combined flight-and-hotel plan, when the user explicitly gives the overall trip span in response to a travel-date question, use its start and end as hotel check-in and checkout dates. When a hotel stay is given as a check-in date plus an unambiguous duration in nights rather than a checkout date, call `adjust_date(date=<check-in date>, delta_days=<number of nights>)` and use its returned date as checkout; do not treat the duration as missing."
+      },
+      {
+        "op": "replace",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- For recommendations near another result type, identify the requested counterpart criteria from the conversation, including any category, name, and known location. Reuse a cached counterpart only if its domain and subject match those criteria; a broad category result does not satisfy a newly requested named place. If no compatible counterpart is cached, first run its search using the known location and requested category or name, and save the result. Then call `search_nearest` with both compatible result sets and save its output; do not use `search_nearest` as a substitute for searching the requested category or place. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

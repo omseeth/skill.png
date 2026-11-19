@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "ignored_answer_re_asked",
+      "count": 2,
+      "description": "The user's reply gave the departure date (one case also with an 'anniversary' occasion), but the agent called seek_information again instead of searching flights (and, in the flight+hotel case, asking only for the checkout date)."
+    },
+    {
+      "failure_type": "searched_instead_of_filtered",
+      "count": 2,
+      "description": "The CACHE already held the domain, but the agent re-ran search_*. It rebuilt both flight legs with flight_class when a class reply should filter the cached legs. It re-searched attractions when the user asked about the Buckhead neighborhood the assistant had proposed."
+    },
+    {
+      "failure_type": "dropped_stated_constraint",
+      "count": 2,
+      "description": "Constraints the user stated were left out. 'German' was dropped from a restaurant filter. The earlier 'economy' class and 'Downtown St. Louis' neighborhood were dropped from the first searches. The restaurants key already in CACHE was searched again."
+    },
+    {
+      "failure_type": "invented_param_and_bad_form",
+      "count": 2,
+      "description": "The agent invented a city from a cuisine nationality ('Latvian' -> city='Latvia') and an amenity from a descriptive word ('kid-friendly' -> has_kids_club). Both cases also wrote a bare search plus save_to_cache(value=search_...(...))."
+    }
+  ],
+  "patch": {
+    "reasoning": "The failures fall into four groups. (1) A concrete date in the last message was treated as 'context only', because the 'Context is not a date' bullet outweighs Rule 24. I add an explicit date-answer guard that includes the flight+hotel case. (2) A cached domain was re-searched instead of filtered, including class replies with flight keys cached and attraction neighborhood proposals. I add targeted bullets under Rule 25, which is the reply-to-proposal rule. (3) Under-passing and over-passing: the 'minimal filter' rules plus the hard rule 'never add flight_class' suppress values the user did state in the last message or an earlier turn. I clarify that minimality only drops earlier values already in the cache, and I let first searches carry stated class and neighborhood. (4) Invented params and the nested-search form error. I add a short WRONG/RIGHT form check and a rule that descriptive words and cuisine words are not params or cities. All four edits are short and placed in the top-of-skill or reply rules where they will be read, to avoid the regressions seen with large bundled blocks.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- Form check: `search_hotels(...)` on its own line followed by `save_to_cache(key=\"hotels\", value=search_hotels(...))` is WRONG (a bare call plus a nested call). RIGHT is exactly two lines: `hotels = search_hotels(...)` then `save_to_cache(key=\"hotels\", value=hotels)`.\n- Values come only from the user's words. Descriptive words ('kid-friendly', 'family vacation', 'romantic', 'special occasion') are not amenity or party-size params: 'kid-friendly hotel in Portland' plus dates -> `search_hotels(city=\"Portland\", checkin_date=[...], checkout_date=[...])` with no has_kids_club. A cuisine or nationality ('Latvian food') is not a city: a restaurant request with no city stated anywhere -> only `seek_information(\"We need the city for the restaurant.\")`, even after the user gives a budget."
+      },
+      {
+        "op": "replace",
+        "target": "Never add default time windows, flight_class, budget, num_layovers or num_people on flights.",
+        "content": "Never invent default time windows, num_layovers or num_people on flights, and never invent a flight_class, airline or budget. But a flight_class, airline or budget the user DID state in any earlier turn ('economy') goes into the first search_flights call of EVERY leg, and a hotel neighborhood stated in any turn ('Downtown St. Louis') goes into the first search_hotels. A domain whose key is already in CACHE (e.g. 'restaurants') is not searched again in the same block."
+      },
+      {
+        "op": "replace",
+        "target": "- Context is not a date. A flight request with origin and destination but no date is still missing departure_date,",
+        "content": "- A date in the user's LAST message answers the assistant's date question ('It's May 15, 2025', 'We're thinking of May 21, 2025'): it IS the departure_date. With origin and destination known, write `flights = search_flights(...)` + save, and never call seek_information for the date again. Occasion words ('anniversary', 'something special') do not change this. If a hotel was also requested and only this one date is known, write the flight search first, then ONE `seek_information(\"We need the check-out date for the hotel.\")`. The next bullet applies only when NO concrete date appears anywhere in the user's messages.\n- Context is not a date. A flight request with origin and destination but no date is still missing departure_date,"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 25: A reply to the assistant's question or proposal is a new constraint, so filter every affected key",
+        "content": "\n- If the CACHE already holds the domain's key, the reply is a filter, never search_*. Class, airline, time or price words with flight keys cached (e.g. departure_flights + return_flights) -> `filter_flights` on EACH leg, even though the dates arrived earlier in the same conversation. Do not rebuild the flights with flight_class inside search_flights.\n- The assistant proposes a neighborhood for attractions or restaurants ('Have you considered Buckhead?') and the user asks about or accepts it ('No, I haven't. What's there?', 'Yes') -> `a = get_results_from_cache(key=\"attractions\")`, `a2 = filter_attractions(prior_results=a, neighborhood=[\"Buckhead\"])`, `save_to_cache(key=\"filtered_attractions\", value=a2)`. Use filter_restaurants for restaurants. Never re-run the earlier type search.\n- Every constraint in the LAST user message gets its own kwarg unless the loaded CACHE summary literally lists it. 'I'm looking for German, and the restaurant should have a rating of at least 3.0' with a summary that shows no cuisine -> `filter_restaurants(prior_results=r, cuisine=[\"German\"], rating=[3.0, 5])`. The 'pass only the new constraint' rules drop values from EARLIER turns; they never drop values spoken in the last message."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

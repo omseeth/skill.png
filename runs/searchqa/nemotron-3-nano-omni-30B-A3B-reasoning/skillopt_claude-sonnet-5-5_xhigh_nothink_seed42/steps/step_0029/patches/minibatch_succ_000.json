@@ -1,0 +1,37 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "The agent answered with the entity that recurs across many passages beside the clue's distinctive anchor (a gloss, a slogan, a place, an event). It ignored the clue's media wording ('seen here') and the passage noise.",
+    "Slot type was respected. 'In this city' returned the city rather than the church named in the clue. 'This film' returned the film title with its leading 'The'. 'His discovery' returned a person.",
+    "Where the clue gave only the head noun ('type of irrigation', 'this empire'), the agent kept the fixed modifier + head term from the passages ('drip irrigation', 'Roman Empire'), because the bare modifier or head would not be an acceptable key.",
+    "Derivative or promotional names (a tribute band, a campaign button slogan) were resolved to the original band or the person they stand for, never the quoted name itself.",
+    "Meaning-gloss clues ('name which means X') were answered with the complete, most-repeated glossed name ('Abdullah'), not the shared component ('Abd', 'Abdul').",
+    "A passage that only repeated the clue and was followed by the next clue, with no answer, was correctly not treated as an archive hit. The agent answered from the topical passages."
+  ],
+  "patch": {
+    "reasoning": "All eight were stable passes, so no existing rule should be weakened. A few successful behaviors are only implicit or sit in tension with other rules. DELETE-CLUE-WORDS can push the agent to strip the head noun in 'type of <noun>' clues. Meaning-gloss, tribute/slogan and answerless-archive-line cases are not stated anywhere. Four short, mutually non-conflicting additions encode them without lengthening the skill much. Each one extends an existing bullet or sits next to it.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "The 'do not repeat clue words' rule is for a separate modifier already stated in the clue ('hasty' + pudding).",
+        "content": " Likewise, when the clue supplies only the head noun ('the type of irrigation used in Israel') and the passages' fixed term is modifier + head ('drip irrigation'), keep both words: the bare modifier ('drip') is not a standalone answer. Strip clue words only when what remains is itself a complete, accepted name."
+      },
+      {
+        "op": "insert_after",
+        "target": "answer with the common English name (Conch).",
+        "content": "\n- Meaning-gloss clues ('common Arabic name which means \"servant of X\"', 'word meaning ...'): find the passages that gloss a term with that exact meaning and answer with the COMPLETE standard form that recurs most often with the gloss ('Abdullah'). Do not answer with a shared component or prefix ('Abd', 'Abdul'), a feminine variant, or a word from the gloss."
+      },
+      {
+        "op": "insert_after",
+        "target": "Give the bare name ('Ronald Reagan'), not the event, the place or the date.",
+        "content": "\n- A clue that is only a derivative or promotional name asks for the thing it points to. 'Rock group <X>' where passages call X a 'tribute band' or 'cover band' means the ORIGINAL band it imitates. A campaign button or slogan ('I Like <Nickname>') means the person it was made for, in the full name form the passages print. Never answer with the quoted name itself."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "\n- A passage that shows the clue (often inside a trivia-site list, followed by the NEXT clue) but no answer is not an archive hit. Do not copy the next clue or its category. Take the answer from the topical passages that paraphrase the clue's facts, or from your own knowledge when the clue's person or thing is well known."
+      }
+    ]
+  },
+  "source_type": "success"
+}

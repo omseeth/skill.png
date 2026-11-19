@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_update_or_persistence",
+      "count": 6,
+      "description": "The agent searched instead of filtering a compatible cached result, stopped after retrieval, skipped a newly requested filter, or failed to save a search result."
+    },
+    {
+      "failure_type": "runtime_tool_namespace_violation",
+      "count": 2,
+      "description": "The agent imported tools from a nonexistent module instead of calling injected functions directly."
+    },
+    {
+      "failure_type": "conversation_state_misread",
+      "count": 1,
+      "description": "The agent requested a flight date that was already explicitly associated with an itinerary leg."
+    },
+    {
+      "failure_type": "schema_field_mapping",
+      "count": 1,
+      "description": "The agent passed a state abbreviation as a city instead of using the state field."
+    },
+    {
+      "failure_type": "controlled_choice_casing",
+      "count": 1,
+      "description": "The agent title-cased a controlled flight-class value instead of using the schema’s accepted literal."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the no-import rule and covers itinerary dates and location mapping, so those failures do not indicate missing guidance. Cache handling is also described, but several agents still treated retrieval or re-saving unchanged results as completion. A focused completion check makes that shortcut explicit and reinforces saving initial searches as well as updates. Clarifying schema-literal casing addresses the remaining controlled-choice mismatch.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "\n\n**Update completion check:** Compare each new criterion with the summaries of compatible cached results and start from the most specific result that already includes the earlier criteria. If the new criterion is not represented, retrieve that result, apply the corresponding filter using only the new criterion, assign the output, and save it under a distinct key. Retrieval alone or re-saving an unchanged result does not complete an update. For every initial search—including each independent itinerary leg—assign and save its result under the established domain key."
+      },
+      {
+        "op": "replace",
+        "target": "For controlled-choice fields, use a choice and spelling or casing accepted by the schema, while preserving the user's casing for free-form entity values.",
+        "content": "For controlled-choice fields, use the choice exactly as accepted by the schema; do not title-case or otherwise alter its literal spelling or casing. Preserve the user's casing for free-form entity values."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

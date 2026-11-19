@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "follow_up_cache_reconciliation",
+      "count": 4,
+      "description": "Agents missed newly enabled or updated work, including filtering cached results and completing domains whose required inputs were available."
+    },
+    {
+      "failure_type": "unnecessary_or_duplicate_operations",
+      "count": 3,
+      "description": "Agents repeated searches or processed unrelated cached domains and proximity results beyond what the current turn required."
+    },
+    {
+      "failure_type": "cache_protocol",
+      "count": 2,
+      "description": "A result-producing call was left unsaved or duplicated instead of assigning and caching the intended result."
+    },
+    {
+      "failure_type": "parameter_mapping",
+      "count": 2,
+      "description": "Agents placed a state in the city field or shortened a combined neighborhood-and-city value."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already gives explicit instructions for saving results, reconciling follow-ups, and mapping locations, so repeating those rules would not address a documented gap. However, it currently directs agents to refresh a completed nearest result whenever an underlying domain changes, which can cause unnecessary work on a later turn that only updates that domain. Narrowing that instruction addresses the clearest avoidable overplanning pattern.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "If a later constraint changes an underlying domain result used by a proximity result, refresh and save `search_nearest` using the updated result and the latest suitable cached result for the other domain.",
+        "content": "If a later constraint changes an underlying domain result used by a previously completed proximity result, do not automatically rerun `search_nearest`; update only the domain affected by the current turn. Recompute and save the nearest result only when the current turn explicitly asks to refresh proximity or that proximity task remains explicitly pending or unfulfilled. When recomputing is warranted, use the updated result and the latest suitable cached result for the other domain."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

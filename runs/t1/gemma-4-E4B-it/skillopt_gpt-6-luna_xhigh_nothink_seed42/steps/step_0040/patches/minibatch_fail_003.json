@@ -1,0 +1,21 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_failure",
+      "count": 1,
+      "description": "A budget-only update to cached outbound and return flights triggered fresh searches instead of retrieving and filtering each leg; the new searches also misused arrival_date for the trip span."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already says to filter cached flight legs, but does not give a concrete per-leg retrieve-filter-save example. Adding one makes the correct action for filter-only flight updates explicit and reinforces that such updates leave the cached route and dates unchanged.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "If the outbound leg is already compatibly cached, search only the newly requested return leg.",
+        "content": "\n\nFor a later filter-only update to cached flight results, retrieve and filter each affected leg separately; do not rerun `search_flights` or change its route or dates. For example, for a new budget constraint:\n```python\noutbound_prior = get_results_from_cache(key=\"<exact outbound cache key from summary>\")\noutbound_filtered = filter_flights(prior_results=outbound_prior, budget=<requested maximum>)\nsave_to_cache(key=\"<unique filtered outbound key>\", value=outbound_filtered)\n\nreturn_prior = get_results_from_cache(key=\"<exact return cache key from summary>\")\nreturn_filtered = filter_flights(prior_results=return_prior, budget=<requested maximum>)\nsave_to_cache(key=\"<unique filtered return key>\", value=return_filtered)\n```\nKeep each leg's original direction and departure date; a filter-only update does not turn a return date into `arrival_date`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

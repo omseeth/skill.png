@@ -1,0 +1,53 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 6,
+      "description": "Sibling or look-alike tool picked instead of the one whose name or inputs match the clause. Examples: Kabupaten count instead of Kecamatan list, warranty instead of financing-offers, get-common-info instead of the tool that has postalCode, Shopee shop search for a product search, Newscatcher keyword search instead of the by-source tool for CNN."
+    },
+    {
+      "failure_type": "incomplete_coverage",
+      "count": 4,
+      "description": "Whole clauses were dropped or merged. Missing: company overview, analyst upgrades/downgrades and mutual-fund context (2 of 5 calls made), 'general global news', 'iPhone accessories', 'financing options'. Extra unrequested calls (pricing, warranty, a second Arabic headlines call) were added instead."
+    },
+    {
+      "failure_type": "tool_name_format",
+      "count": 3,
+      "description": "Tool name shortened to the API part only ('Aljazeera', 'BBC Arabic', 'BestBuyProductData', 'Zappos search product') instead of the full 'Provider: API' heading."
+    },
+    {
+      "failure_type": "malformed_call_structure",
+      "count": 3,
+      "description": "Parameters given as a dict instead of a list of {name,value} objects, a duplicated 'optional parameters' key that overwrote the first one, or a missing key. Parameters were lost as a result."
+    },
+    {
+      "failure_type": "parameter_omission_or_misfill",
+      "count": 5,
+      "description": "Query qualifiers not mapped to tool parameters: 'free shipping' -> switches, 'category technology', region/locale sets (country, currency, store, sizeSchema, lang 'en-US'), and 'US region' on mutual funds. One clause was split across two calls (title and limit separate)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Earlier attempts were long, sprawling rule dumps that were rejected. This patch uses four short, non-overlapping rules aimed at the failures seen repeatedly: exact 'Provider: API' names, a well-formed list-of-objects call structure, a coverage check that also maps indirect clauses to tools, and tool selection that uses the query's own wording and inputs to separate sibling endpoints. It adds one compact rule on mapping query qualifiers to locale and filter parameters. It does not mention numeric quoting, because the grader treats '5' and 5 the same.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Rule 1: Output contract (a malformed call loses its parameters)\n- `tool name` is the tool's `### ` heading copied exactly, in the form `Provider: API`. Examples: `Arabic news API: Aljazeera`, `Zappos Realtime Data: Zappos search product`, `BestBuy Product Data: BestBuyProductData`. Never output only the API part. The provider prefix is always required.\n- Each call object has exactly three keys, each appearing once: `tool name`, `required parameters`, `optional parameters`. Use `[]` for an empty list. A repeated key silently overwrites the first one, so put all parameters of a list in a single list.\n- Both parameter keys hold a LIST of `{\"name\": \"x\", \"value\": \"y\"}` objects. Never use a dict such as `{\"sku\": \"W1\"}`.\n- Put each parameter in the list where the chosen tool's own schema puts it. Under 'Required parameters' it goes in `required parameters`. Under 'Optional parameters' it goes in `optional parameters`, even when it carries the query's main subject. Use only parameter names that appear in that tool's schema.\n- One query clause is one call carrying ALL of that clause's parameters (e.g. title and limit together in the same call). Do not split a clause into several calls. Repeat a tool only when the query gives it different inputs."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 2: Cover every clause, but only what was asked\n- Before answering, list every atomic request: each comma or 'then / also / and / finally' clause, each list item, and each named platform. Make at least one call per item. Re-read the first and last clause before finalizing.\n- Vague or indirect clauses still need a call. Examples: 'key company overview metrics', 'broader US mutual fund market environment', 'general global news', 'iPhone accessories'. Map each to the closest tool by function. A generic endpoint with a `function` or `q` parameter counts, e.g. function=OVERVIEW with the ticker. A tool for a related list or market, e.g. a mutual-fund families list filtered by country, also counts.\n- If the query names N entities for a one-value tool (N ids, items, or search terms), make N calls.\n- Add no calls for aspects the query did not name. If the query asks for 'images and financing options', call the images tool and the financing tool, not pricing or warranty tools. Do not duplicate a call with a different language or country 'just in case'."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 3: Choose the tool whose name and inputs match the clause\n- Match the query's noun, verb and scope literally to the endpoint title. Examples: 'financing options' -> `get-financing-offers`; 'list of schools in a Sub-District' -> the Kecamatan list tool, not the Kabupaten/Kota count tool; 'upgrades and downgrades' -> an `upgrade-downgrade-history` tool; 'similar items' -> `get-similar-items`; 'categories' -> `categories/list`; 'details of a SKU' -> a detail tool, not a search or autocomplete tool.\n- When sibling tools look alike, use the inputs the query supplies to decide. Pick the sibling whose schema actually lists those parameters. If the query gives a postal code, choose the sibling that has a postalCode parameter. If it gives a price range or 'free shipping', choose the search tool with price and shipping-filter parameters. Never place a parameter into a tool whose schema lacks it.\n- A named outlet or source ('latest news from CNN') -> a 'By Source' / by-publisher tool with the source as the value, not a keyword-search tool. 'General or global latest news' -> a 'Recent / Latest' feed tool. A named outlet that has its own dedicated endpoint (BBC Arabic, Aljazeera) -> that endpoint.\n- A named provider ('Yahoo Finance', 'BestBuy', 'Zappos', 'Wayfair', 'ASOS') -> that provider's endpoint.\n- Use the marketplace tool that can search products (item search) for 'find X / show me some X'. Do not use shop-search, shop-items, review or store-specific tools when the query asks about products."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 4: Map query qualifiers to parameters\n- Every qualifier in a clause maps to a parameter of the chosen tool when one exists. Copy ids, SKUs, ASINs, codes and keywords verbatim. Examples:\n  - category words ('technology') -> category; 'US' -> country; 'English' -> language\n  - '$600-$900' -> startPrice and endPrice; 'free shipping' -> switches=freeShipping when a switches or filter parameter exists\n  - 'limit to 10' -> limit; 'page 1' -> page; 'sorted by best sellers' -> sort with the listed value (e.g. best_seller)\n  - 'German site' -> domain `de`; 'US' mutual funds -> country filter 'United States'\n  - a search subject goes in q or keyword using the query's own words\n- A region or market qualifier ('US region settings', '$ prices', 'US market') fills ALL locale-type optional parameters the tool has (country, region, store, currency, sizeSchema, lang/locale), consistently, e.g. US, USD, US, en-US. Use the hyphenated form `en-US` for language or locale codes unless the schema lists other codes.\n- Do not invent other optional values (defaults, format flags, placeholders). Never emit an empty value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

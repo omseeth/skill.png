@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "follow_up_constraint_omission",
+      "count": 2,
+      "description": "A new flight-class constraint was ignored, or a new hotel star requirement was incorrectly treated as already satisfied."
+    },
+    {
+      "failure_type": "tool_call_and_code_contract_violation",
+      "count": 3,
+      "description": "Generated code imported or redefined runtime schemas, or left result-producing calls unsaved or improperly nested."
+    },
+    {
+      "failure_type": "multi_leg_itinerary_mapping",
+      "count": 1,
+      "description": "A sequenced multi-city flight itinerary was mapped to the wrong legs and dates."
+    },
+    {
+      "failure_type": "flight_time_range_mapping",
+      "count": 1,
+      "description": "An exact departure time and an arrival deadline were not converted into two-bound time ranges."
+    },
+    {
+      "failure_type": "pending_hotel_domain_omission",
+      "count": 1,
+      "description": "The agent asked for hotel dates even though the conversation had established the trip dates, and did not search for the requested hotel."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers cache updates, saving tool results, and avoiding unsupported code, so those rules are not duplicated. These edits clarify uncovered distinctions for hotel star counts, exact and deadline flight times, sequenced multi-stop flights, and reusing known trip dates for hotel searches.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+        "content": "For hotel and restaurant review scores, map rating requests to `rating`: a single numeric score without minimum or “at least” language is exact `[x, x]`, “exactly x” is `[x, x]`, and “at least x” is `[x, 5]`. For hotel star-count requests, use `stars` instead: “exactly x stars” is `[x, x]`, “at least x stars” is `[x, 5]`, and a stated range uses its stated bounds."
+      },
+      {
+        "op": "replace",
+        "target": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X” uses `[\"12:00 AM\", X]`, and “after X” uses `[X, \"11:59 PM\"]`, preserving the stated AM/PM value.",
+        "content": "- For flight times, treat “at X” as an exact time range `[X, X]`. For an upper bound such as “by X,” “no later than X,” or “before X,” use `[\"12:00 AM\", X]`; for “after X,” use `[X, \"11:59 PM\"]`. Preserve the stated AM/PM value."
+      },
+      {
+        "op": "replace",
+        "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+        "content": "- **Search round-trip and multi-leg flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. For a simple round trip, search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. For an explicitly sequenced multi-stop itinerary, search each stated consecutive route leg and any explicitly stated final return to the origin; use each leg's stated travel date as its `departure_date`. Cache each leg separately. Do not treat a later leg's departure date as an `arrival_date` constraint on an earlier leg unless the user explicitly states it as one. Do not infer a return flight from hotel stay duration alone. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg."
+      },
+      {
+        "op": "replace",
+        "target": "When lodging is requested for an explicitly planned trip and both trip dates are known, use the trip start and end dates as hotel check-in and check-out.",
+        "content": "When lodging is requested for an explicitly planned trip and both trip dates are known, use the trip start and end dates as hotel check-in and check-out, including when those dates were supplied earlier in response to flight planning. Do not ask for the same dates again unless the user indicates different hotel stay dates."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

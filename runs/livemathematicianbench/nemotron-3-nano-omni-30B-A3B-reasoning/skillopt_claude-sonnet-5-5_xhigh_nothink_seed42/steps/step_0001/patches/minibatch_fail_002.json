@@ -1,0 +1,48 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "strength_mismatch",
+      "count": 4,
+      "description": "The agent chose an option that was too weak (a bare consequence such as 'is rational' instead of the exact formula) or too strong (extra 'conversely/every Γ/endpoint' claims, or an over-strong extremum conclusion) relative to what is actually proved."
+    },
+    {
+      "failure_type": "option_confusion",
+      "count": 3,
+      "description": "Options were near-duplicates differing in one constant, divisor, bound or clause. The agent did not diff them or derive the deciding detail, and picked the cleanest-looking one."
+    },
+    {
+      "failure_type": "condition_miss",
+      "count": 2,
+      "description": "The agent changed the stem's parameter range (closed endpoint instead of the open range given) or ignored an assumption already in the stem, and so judged an equivalence or bound incorrectly."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "The agent picked a plausible-sounding structural characterization as 'equivalent' without checking both directions or the collapse of complexity classes."
+    }
+  ],
+  "patch": {
+    "reasoning": "All six runs answered in one step, committing to an option that sounded natural without comparing it clause by clause to its siblings. The errors fall into two groups: choosing a true but weaker corollary over the exact statement, and choosing a version with an unsupported extra clause (an unproved 'conversely', an extended endpoint, a wrong constant, a false vanishing conclusion). The skill therefore adds (1) a mandatory option-diffing workflow, (2) a two-sided strength-calibration rule, (3) a rule for verifying the deciding detail in near-identical options by derivation, and (4) rules for stem-given parameter ranges and for equivalence/collapse questions.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Core Workflow (always follow, even when committing quickly)\n1. Restate what the stem asks for: 'exact', 'strongest', 'complete list', 'equivalent to', 'for every'. Note every hypothesis and parameter range given in the stem.\n2. Diff the options. Write down the specific clauses where they differ: constants, inequality direction or strictness, range of parameters, quantifiers, divisor or set conditions, and extra 'because/conversely/in particular' clauses. When options share most of their text, the answer is decided only by these differing clauses.\n3. Check each differing clause independently: derive it, test a small or limiting case, or compare with a known theorem. Do not choose by which option looks cleanest, most general, or most impressive.\n4. Choose the option in which every clause is verified and nothing unsupported is added. Eliminate any option with a single false or unjustified clause."
+      },
+      {
+        "op": "append",
+        "content": "## Strength Calibration (two-sided)\n- If the stem says 'exact', 'precisely', 'complete description', or 'strongest valid', a bare true corollary loses to the option that gives the full explicit formula or characterization. Example: 'the quantity is rational' is weaker than 'the quantity equals an explicit expression', which implies it. Do not settle for the consequence when the explicit statement is available and correct.\n- Conversely, an option that looks stronger loses if any added piece is unsupported. Typical add-ons are: 'conversely, every such value actually occurs'; 'holds for every set / every parameter' where only a restricted class works; a 'because ...' justification that is false or irrelevant; a dropped dependence on a parameter; a conclusion such as 'equals 0' or 'is always projective' that the hypotheses do not imply.\n- For generalized or weak notions (generalized derivatives, relaxed continuity, weaker projectivity or compactness properties), classical conclusions such as vanishing at extrema, 'true for all index sets', or exact equality may fail. Verify that the stated conclusion is what the weaker notion actually gives (often an inequality or bound instead of equality), and check whether the property truly extends beyond the countable or separable case."
+      },
+      {
+        "op": "append",
+        "content": "## Near-Duplicate Options: Derive the Deciding Detail\n- When options differ only in a constant (1 vs sqrt(n), gcd vs sum, a+1 vs a), a divisor condition (divides m vs divides 2m, even divisor, m1 != 1), or a normalization (v vs v/||v||), compute the correct value yourself. Use Cauchy-Schwarz, a small example such as n=1 or n=2, or a degenerate case. Do not guess.\n- Prefer the option whose differing detail you have derived. Reject options that insert an extra clause, such as an existence or 'conversely' claim, when the base statement already answers the question. Reject options that restrict to a single test vector or special case when the stem asks for a general statement.\n- Sanity-test formulas on tiny cases (smallest parameters, trivial or boundary instances) to separate, for example, a gcd formula from a sum formula."
+      },
+      {
+        "op": "append",
+        "content": "## Stem-Given Ranges, Equivalences, and Collapses\n- Respect the exact parameter range in the stem. If the stem says 'for every 0<beta<c', do not accept an option that silently extends to the endpoint (<= c) or beyond (a larger c, such as 1/kappa instead of 1/(2 kappa)). An option that simply states the conclusion for the stem's beta, without altering the range, is usually the faithful one. Constants, neighborhoods, or thresholds that depend on the parameter can often be absorbed by shrinking the neighborhood, so a constant-free form is not automatically too strong. Check whether the stem already supplies the quantification.\n- For 'which statement is equivalent to X', check both directions. A condition that merely sounds like a natural structural characterization, or that mostly restates assumptions already in the stem, is not automatically equivalent. In gap or collapse theorems, several complexity or growth bounds (log^2, polylog, log) can be equivalent to the tightest one. Look for the option that states the optimal or lowest bound exactly, and check whether other options require extra parameters (width, specific forbidden objects) that the equivalence does not mention."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,22 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Refinement turns load the most refined key of the domain the reply names and filter only with kwargs taken from the last message. Examples are budget + has_laundry_service, has_room_service + has_fitness_class, and airline + flight_class. Values already listed in the cache summary (rating, business center, rooms, budget) are not re-passed.",
+    "When one reply names two domains (airline + hotel amenities), the agent writes one load/filter/save group per domain, each on its own most refined key (filtered_flights, filtered_hotels), and nothing for other domains.",
+    "First-turn requests with no cache key are searched immediately. A state code goes in state=, a named city goes in city=, and every call is assigned and followed by save_to_cache.",
+    "A flight request with no departure date, even with a home airport ('I normally fly from LEX'), gets a single seek_information for the date and no search.",
+    "A named attraction with a cached hotels key gets the most refined hotels key loaded, a name-only search_attractions saved under a new key, then search_nearest(groupBy='hotel') saved. Hotels are not re-filtered.",
+    "Save-key names varied freely across the successes (filtered_flights_AA, final_hotels, attractions_pittock, filtered_hotels3) and all scored cache_em=1.0. Only 'a new, unused key' mattered."
+  ],
+  "patch": {
+    "reasoning": "Every pattern in this batch is already covered by existing rules, and all 8 trajectories passed without needing any new guidance. Recent epochs showed that adding gate text or rewriting the flight/filter routing rules caused regressions, so I avoid touching routing. The one useful observation is that save-key naming does not affect the score. Rule 23's naming scheme is verbose and conflicts with the slow block's final_* scheme, so I shorten it to a single clear constraint (any unused name, never an existing key). This removes length and contradiction without changing behavior.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- The key to SAVE must be a name that does NOT appear in CACHE. If 'filtered_<domain>' exists, save as 'filtered_<domain>1', then 'filtered_<domain>2', and so on. Never save a filter result under the key you loaded or under any existing key.",
+        "content": "- The key to SAVE can be any name that does NOT appear in CACHE (the exact name is not scored, e.g. filtered_<domain>, filtered_<domain>1, final_<domain>). Never save under the key you loaded or under any existing key."
+      }
+    ]
+  },
+  "source_type": "success"
+}

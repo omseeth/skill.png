@@ -1,0 +1,56 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "fabricated_mandatory_args",
+      "count": 2,
+      "description": "A hotel search with invented check-in/out dates after a budget-only reply, and a flight search with invented dates (plus bare and nested calls) for a 'weekend getaway' round trip. The right output was a single seek_information."
+    },
+    {
+      "failure_type": "invented_optional_params",
+      "count": 1,
+      "description": "'family vacation ... kid-friendly' became num_people=4 and has_kids_club=True, neither of which the user stated."
+    },
+    {
+      "failure_type": "wrong_cache_key_or_domain",
+      "count": 1,
+      "description": "A hotel neighborhood reply loaded the restaurant-side nearest_restaurants key and re-saved it unfiltered, instead of filtering the hotel key hotels2."
+    },
+    {
+      "failure_type": "refinement_treated_as_new_search",
+      "count": 1,
+      "description": "A reply to the assistant's suggestion of '4th Avenue' re-ran search_attractions when the cache held attractions. It should have run filter_attractions(neighborhood=[...])."
+    },
+    {
+      "failure_type": "incomplete_multi_domain_turn",
+      "count": 2,
+      "description": "When the dates arrived, the hotel search omitted the search_nearest step against the cached attraction. A multi-city trip with hotels in each city produced flight searches only, using round-trip key names."
+    }
+  ],
+  "patch": {
+    "reasoning": "Five of seven failures are planning-completeness or discipline errors that the long skill already describes but the model ignores. The date-gate and the invented-hotel-params guard are placed at the very top, because those rules are buried deep and the model fabricates dates, copying them from skill examples. Cache-key domain matching and the 'assistant-proposed place name means neighborhood filter' rule fix the two refinement failures. The last two edits cover the remaining multi-request gaps: a hotel near a cached attraction needs search_nearest, and a multi-city trip with hotels needs one flight search and one hotel search per city. No edit duplicates content already in the skill.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "- DATE GATE (run before every search_hotels / search_flights): quote the exact date(s) from the USER's own messages. A hotel needs BOTH a check-in and a check-out date. A flight needs a departure date. If you cannot quote them, write NO search for that domain and invent no dates. Dates such as 'May 15, 2025', 'May 17, 2025' or 'May 18, 2025' in this document are illustrations only; never reuse them. A reply that gives only a budget, people count, rooms, stars, amenities, neighborhood or a purpose ('weekend getaway', 'round-trip ... getaway') is NOT a date. In that case output only the seek_information call, even if another domain (e.g. attractions) is already cached. Examples: 'hotel in Memphis for 3 people' then 'around 100 per night' with no dates -> `seek_information(\"We need to ask for the check-in and check-out dates\")`. 'round-trip flight from Portland to Memphis for a weekend getaway' -> `seek_information(\"We need to ask for the departure dates\")`, with no search_flights call and no multi-date list.\n- Hotel params: pass only what the user literally said. 'kid-friendly', 'family vacation', 'solo trip', 'birthday' produce NO params (no has_kids_club, no pool_present, no num_people). num_people comes only from an explicit headcount ('3 people', 'there are 4 of us'). Example: 'family vacation in Portland, kid-friendly hotel' + dates -> `hotels = search_hotels(city=\"Portland\", checkin_date=[...], checkout_date=[...])` and nothing else."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 25: A reply to the assistant's question or proposal is a new constraint, so filter every affected key",
+        "content": "- Load a key from the SAME domain as the constraint. A hotel neighborhood, stars, amenity or budget reply loads the latest HOTEL key (e.g. 'hotels2'), even if a restaurant-side key such as 'filtered_restaurants' or 'nearest_restaurants' is newer. Never save a loaded value back under another key without a filter_* call in between. Example: CACHE has hotels, hotels2 (stars applied), filtered_restaurants, nearest_restaurants and the last turn is 'Downtown Colorado Springs is preferred for hotel' -> `h = get_results_from_cache(key=\"hotels2\")`, `h2 = filter_hotels(prior_results=h, neighborhood=[\"Downtown Colorado Springs\"])`, `save_to_cache(key=\"hotels3\", value=h2)`.\n- A place or area name the assistant just suggested ('Have you considered 4th Avenue?') followed by 'No, I haven't. What's there?' / 'Sure' is a neighborhood filter on the cached domain. Example with CACHE 'attractions': `a = get_results_from_cache(key=\"attractions\")`, `a2 = filter_attractions(prior_results=a, neighborhood=[\"4th Avenue\"])`, `save_to_cache(key=\"filtered_attractions\", value=a2)`. If the CACHE already has the domain's key, never re-run search_attractions / search_hotels / search_restaurants for such a reply."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 14: Straight-line first search once mandatory args become complete (supplements Rule 11)",
+        "content": "- Hotel NEAR a cached attraction: if the user asked for a hotel near an attraction ('hotel in San Antonio near Tower of the Americas') and the CACHE already has that attractions key, the turn that supplies the hotel dates must output ALL of: `hotels = search_hotels(...)`, `save_to_cache(key=\"hotels\", value=hotels)`, `attractions = get_results_from_cache(key=\"attractions\")`, `nearest_hotels = search_nearest(hotels=hotels, attractions=attractions, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`. A hotel search alone is incomplete."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 9: Round-trip flights (+ hotel) are separate search calls",
+        "content": "- MULTI-CITY trip ('flights from Fresno to Raleigh and then Raleigh to San Jose, and hotels in each city') is NOT a round trip. Do not use departure_flights/return_flights. Once each leg has a date, write one search per leg saved as \"flights\" and \"flights2\". Do not drop the hotels requested in turn 1: write one search_hotels per stay city, saved as \"hotels\" and \"hotels2\". Use the trip's own dates (checkin_date = first leg's date, checkout_date = last leg's date). Example: `flights = search_flights(departure_date=[\"May 21, 2025\"], start_airport_city=\"Fresno\", end_airport_city=\"Raleigh\")`, `save_to_cache(key=\"flights\", value=flights)`, `flights2 = search_flights(departure_date=[\"May 30, 2025\"], start_airport_city=\"Raleigh\", end_airport_city=\"San Jose\")`, `save_to_cache(key=\"flights2\", value=flights2)`, `hotels = search_hotels(city=\"Raleigh\", checkin_date=[\"May 21, 2025\"], checkout_date=[\"May 30, 2025\"])`, `save_to_cache(key=\"hotels\", value=hotels)`, `hotels2 = search_hotels(city=\"San Jose\", checkin_date=[\"May 21, 2025\"], checkout_date=[\"May 30, 2025\"])`, `save_to_cache(key=\"hotels2\", value=hotels2)`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

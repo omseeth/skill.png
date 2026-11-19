@@ -1,0 +1,35 @@
+{
+  "batch_size": 3,
+  "failure_summary": [
+    {
+      "failure_type": "cache_update_base_and_delta",
+      "count": 2,
+      "description": "Follow-ups used broad or stale cached results and repeated earlier constraints instead of applying only the new preference to the already-filtered result."
+    },
+    {
+      "failure_type": "tool_argument_format",
+      "count": 1,
+      "description": "A cached 24-hour flight-time display value was replayed as a filter argument, causing schema validation failure."
+    },
+    {
+      "failure_type": "initial_search_location_mapping",
+      "count": 1,
+      "description": "A state abbreviation was passed as a city in an attraction search."
+    },
+    {
+      "failure_type": "initial_search_result_not_saved",
+      "count": 1,
+      "description": "The initial attraction search was left bare rather than assigned and saved."
+    }
+  ],
+  "patch": {
+    "reasoning": "The main recurring gap is choosing the correct cached base on follow-ups. An explicit selection-and-delta branch clarifies that prior constraints belong in the base result, not in the new filter arguments, and avoids replaying display-normalized values. The initial-search location and saving rules are already stated explicitly, so they are not duplicated.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n**Cache-update branch:** For a follow-up, select the cached result for the same domain, itinerary leg, and location whose summary reflects all prior constraints; prefer that filtered result over the original broad search. Retrieve its exact cache key into a variable, filter it once using only the new turn's constraint(s), then save the exact output under a fresh key. Do not replay old constraints or copy display-normalized values from a cache summary (such as 24-hour flight times) into filter arguments; use the tool's accepted format."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

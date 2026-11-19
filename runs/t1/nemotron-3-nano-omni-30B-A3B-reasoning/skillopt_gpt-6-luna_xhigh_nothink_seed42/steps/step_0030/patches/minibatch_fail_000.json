@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "redundant_or_inferred_tool_calls",
+      "count": 3,
+      "description": "Agents repeated filters after searches already covered the criteria or added unsupported extra operations."
+    },
+    {
+      "failure_type": "incomplete_pending_action_or_result_lifecycle",
+      "count": 3,
+      "description": "Agents omitted a requested flight leg or domain, or failed to save a completed search result."
+    },
+    {
+      "failure_type": "cache_key_confusion",
+      "count": 2,
+      "description": "Agents used a cache description or an unlisted key instead of the actual listed cache key."
+    },
+    {
+      "failure_type": "contextual_affirmation_omission",
+      "count": 2,
+      "description": "Agents treated an affirmative reply to a concrete preference or proximity question as requiring no action."
+    },
+    {
+      "failure_type": "argument_or_value_mismatch",
+      "count": 3,
+      "description": "Agents used an invalid time range, an inexact star encoding, or a state abbreviation as a city."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits clarify how to use displayed cache keys, prevent filters that merely repeat a complete search, and turn affirmative replies into the specific requested action. A flight preflight check also targets the missing return leg and invented time bounds. Other observed errors, such as star-range encoding and state-versus-city mapping, are already addressed by the skill and do not need duplicate rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- If the latest turn adds no criterion and a compatible listed cache result already covers the outstanding request—including when the user says they are flexible or accepts an offer to provide recommendations—retrieve that result with its exact listed key into a local variable and use it directly. Do not search or filter again, and do not use `print(\"No planning needed\")` in place of retrieving a result the user is expecting.",
+        "content": "\n- In a cache listing, use the listed key as the `key` argument, not its human-readable summary. For example, if the listing is `restaurants: \"Restaurant search results in ...\"`, retrieve with `get_results_from_cache(key=\"restaurants\")`. The summary helps assess coverage; it is not the key. Never pass a missing or invalid cache result as `prior_results`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.",
+        "content": "\n- When no compatible prior result exists, include all explicitly stated criteria for that request in its initial search and save the result. Do not immediately filter that new result just to repeat criteria already used in the search. Filter only to apply genuinely new criteria to a compatible prior result, and save the refinement under a new key."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "\n- Resolve an affirmative short reply to the specific preceding yes/no question or offer. If it accepts a preference, apply that preference to the latest compatible result with the appropriate filter; if it accepts a proposed proximity search, retrieve the relevant compatible results and call `search_nearest`. Bind and save the resulting object. Do not treat the affirmative reply as a no-op merely because base results are cached."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Represent flight legs separately",
+        "content": "\n- Before emitting flight calls, check each explicitly stated leg against a compatible directional cache result or its own search with the exact route and departure date. A round trip must cover outbound and return directions separately; do not encode the return as an arrival date or combine both dates into one outbound search. Include `departure_time` or `arrival_time` only when the user provides an actual time window; never invent all-day bounds."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

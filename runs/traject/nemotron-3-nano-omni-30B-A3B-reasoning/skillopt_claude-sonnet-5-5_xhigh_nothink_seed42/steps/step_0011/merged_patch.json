@@ -1,0 +1,60 @@
+{
+  "reasoning": "Failure edits keep priority. Four anchors were targeted by both groups, so each is now a single merged edit with the failure content kept in full and the success content folded in. (1) The tool-name replace joins the failure NAME CHECK (literal BAD/GOOD strings, no ' — ', only real headings) with the success 'copy long or odd headings verbatim' clause. They are compatible. (2) The '## Tool selection' insert keeps all four failure bullets and adds the success sibling-qualifier bullet. The success math/trivia example was dropped because the failure 'Number facts' bullet already covers it. (3) The '## Which calls to make' insert combines the failure sweep-every-sentence and narrative bullets with the success current-plus-forecast weather bullet. (4) The 'helper' bullet was a failure insert_after and a success replace, so it is now one insert_after. The success rule that trailing interpretive sentences get no call is narrowed so it does not contradict the failure rule 'never drop a hedged or background action clause'. Only a purely interpretive sentence naming no action is skipped. Non-overlapping success edits are kept as-is: value forms under Parameters, adjective and category qualifiers, and the 'Finally… more similar items' repeat. The failure FINAL SELF-CHECK is appended after the protected block. No edit touches content inside the SLOW_UPDATE markers. The success rules are kept short, with one concrete example each, per the meta-guidance.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+      "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely. NAME CHECK: copy the name from the `### ` heading line only, and ignore the `Provider: X — blurb` line under it. The separator is `: ` (colon + space). The name must never contain ` — ` or a descriptive sentence, and a bare provider with no colon is wrong. BAD `Lost Ark — get engravings`, `Wayfair — This API helps to query...`, `BestBuy Product Data`. GOOD `Lost Ark: get engravings`, `Wayfair: products/search`, `BestBuy Product Data: BestBuyProductData`. A dash name scores zero even when everything else is right. If the query quotes `'Provider: Endpoint'`, copy it verbatim. Only emit names that exist as `### ` headings in the tool list; never invent an endpoint. Copy long or odd headings exactly, including parentheses, hyphens and provider typos (e.g. `Weee grocery API (sayweee.com) - browsing/searching/details: product details (zipcode, product_id)`, `Priceline com Provider: Download states`). Do not shorten or 'fix' them.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Tool selection",
+      "content": "\n- Near-identical sibling tools: choose by the ID parameter name matching the entity level in the query, not by the endpoint title. Province ID -> the tool taking `kode_wilayah_propinsi_id`; district ID -> `kode_wilayah_kabupaten_id`; sub-district ID -> `kode_wilayah_kecamatan_id`. Two different levels mean two different tools, never the same tool called twice with different IDs.\n- Siblings under one provider also differ by a qualifier word in their name. Copy that word from the query and take only that sibling: 'this month's top' -> `Get the month's top articles` (not all-time or latest); 'today's' -> `/today`; 'number of schools' -> the Number-of tool vs 'list schools' -> the List tool; a named site (Youm7, France24) -> that site's endpoint. Do not add the other siblings.\n- When a clause has qualifiers such as source, sentiment, count, country, language or category, prefer the endpoint whose optional parameters express them (e.g. a News tool with source, sentiment, limit; a sources tool with country, language, category) over a keyword-search endpoint that stuffs them into `q`. A named outlet ('BBC latest stories') maps to a source-id endpoint (`BizToc: News / Source`, source_id `bbc`).\n- Number facts: 'mathematical properties/facts about N' -> `Numbers: Get math fact`; 'trivia about N' -> `Numbers: Get trivia fact` (one call per number). `Numbers Translator` only spells digits as words, so never use it for facts.\n- The same endpoint requested twice with different settings (reviews 'sorted by most helpful', later 'more reviews sorted by most recent') means two calls: page `1` then page `2`, each with its own sort value.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Which calls to make",
+      "content": "\n- SWEEP EVERY SENTENCE, the first one too. Write a one-line checklist (clause -> tool) before the JSON, and make the object count equal the checklist count. 'Autocomplete on both ASOS and Wayfair' is two calls, one per named provider, each to its own endpoint (`Asos: v2/auto-complete`, `Wayfair: auto-complete`). 'US and UK markets' or 'both X and Y' is one call per market or platform. Each Asos call carries its own market values (UK -> `country`=`GB`, `lang`=`en-GB`). Reviews 'on the first page' -> `page`=`1`. 'Starting from the first result with offset 0' -> required `offset`=`0`. Take required values from the query wording and never leave a required param out.\n- Narrative or past-tense queries ('The user searched...', 'They also explored...', 'I also checked X, though this seems less relevant') are still lists of calls. Never drop a clause because it sounds background or irrelevant. 'Also checked which countries Asos sells to' -> `Asos: countries/list`. An opening clause like 'searched Wayfair for ergonomic office chairs' -> `Wayfair: products/search`, even when later clauses focus on one SKU. 'A specific store (ID X, seller ID Y)' -> the store tool taking `storeId`/`sellerId`, in one call.\n- A query asking for two time scopes of the same place ('current weather AND forecast for the next 3 days') is two calls: the realtime/current tool, then a forecast tool carrying the day-count optional (`num_of_days`=`3`). Do not drop either, and do not add a third weather tool.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+      "content": "\n- Call count = distinct entities x distinct checks the query names. 'Verify two emails and check whether a domain is disposable' is exactly 3 calls: ONE validator tool (the same one for both emails) once per email, plus one domain-tool call. Never run 2-4 different validators on the same email, and never repeat an identical call to pad the answer unless the query asks for it twice. If your answer has more objects than your checklist, delete the extras.\n- When the query says 'search for X and Y' without naming a store, give each item ONE call to the single marketplace whose catalog fits it (clothing -> Asos; furniture, lamps, home -> Wayfair). Do not fan each item out across Shopee, Lazada, AliExpress and others.\n- Domain checks: 'disposable status' or 'suggested domain' of a bare domain -> `fast Email verifier: disposable Domain and Suggest Domain`. `FreeDomain` only tests domain availability, so do not use it for disposable checks. 'Role account' -> `fast Email verifier: Role Account`. Each distinct domain or email is its own call.\n- In narrative queries ('The user first... then... finally...'), each action sentence is one call, even a hedged one ('also checked X'). Only a purely interpretive trailing sentence that names no action ('this suggests...', 'likely for travel planning') gets no call. A numeric limit in an action sentence ('limited to 100 results') is still an optional param (`limit`=`100`).",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Parameters",
+      "content": "- Value forms that recur. 'since / after / from <date>' -> the lower-bound field (`from`); 'before / until' -> `to`. Never put a 'since' date into `to`. 'N-letter word' -> the single `wordLength`=`N`, not minLength+maxLength. 'limited to N characters' -> the tool's limit-type field. Copy IDs and codes from the query exactly as strings, keeping leading zeros (`026000`). Copy a place as written (`Whistler, British Columbia`).",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).",
+      "content": "- A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).\n  - Adjectives that name a filter are qualifiers too. 'active federal politicians' -> `active`=`true` AND `level_of_government`=`federal` (two optionals, not just `active`). Check each adjective against the optional list, including boolean and ENUM fields.\n  - A natural-language category becomes the schema's own token. 'toys and games' -> category `toysgames` when the schema lists `toysgames`. 'seasonal challenges' -> required ENUM `type`=`seasonal`.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "An action the query explicitly requests twice (e.g. 'recheck Asos categories') means two identical calls.",
+      "content": "An action the query explicitly requests twice (e.g. 'recheck Asos categories') means two identical calls. This includes a closing clause such as 'Finally, show me more similar items to the original product' after the list already asked for similar items: emit that similar-items call a second time.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "append",
+      "content": "\n## FINAL SELF-CHECK (run on the finished answer, character by character)\n1. Every entry in either parameter list is a `{\"name\": \"x\", \"value\": \"y\"}` object. BAD `\"required parameters\": [\"page_id\"]`. GOOD `\"required parameters\": [{\"name\": \"page_id\", \"value\": \"main\"}]`.\n2. Brackets: BAD `...}], {\"tool name\": ...` (list closed after the first call) and BAD ending `}]]}]` or `]]`. GOOD `...}, {\"tool name\": ...` and ending exactly `}]`. There is exactly one `]` closing the whole answer. A stray bracket makes the answer unparseable and scores 0.\n3. Keys: BAD `\"optional parameters\": [{...}], \"optional parameters\": []` (the second key erases the first list), and BAD an object with no `\"optional parameters\"` key. GOOD exactly one each of `tool name`, `required parameters`, `optional parameters` per object, using `[]` when empty.\n4. No list contains the same `name` twice. BAD one call with three `email` entries, or `country` twice (US and GB). GOOD one call per value, each its own object.\n5. A param goes in `required parameters` only if the schema lists it under 'Required parameters'. If the schema says 'Required parameters: none', the list is `[]` and every value goes in `optional parameters` (e.g. CheapShark `title`, `limit`; Flight Info `FlightNumber`).\n6. Every tool name has `: ` and no ` — `, and is copied from a `### ` heading. The object count equals the number of distinct clauses, entities and markets in the query, last sentence included, with no padding calls.",
+      "support_count": 3,
+      "source_type": "failure"
+    }
+  ]
+}

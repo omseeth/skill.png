@@ -1,0 +1,56 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_cache_update_misapplied",
+      "count": 5,
+      "description": "Agents ignored a newly supplied location or preference, repeated already-applied criteria, re-searched instead of filtering, or treated an exploratory follow-up as a no-op."
+    },
+    {
+      "failure_type": "runtime_tool_namespace_violation",
+      "count": 3,
+      "description": "Agents imported tools from a nonexistent module instead of calling injected functions directly."
+    },
+    {
+      "failure_type": "missing_result_persistence",
+      "count": 2,
+      "description": "Agents generated search or filter results but did not save them to the cache."
+    },
+    {
+      "failure_type": "nearest_action_scope_error",
+      "count": 1,
+      "description": "An agent repeated a completed proximity workflow instead of handling the latest hotel-filter request."
+    },
+    {
+      "failure_type": "itinerary_date_and_domain_interpretation",
+      "count": 1,
+      "description": "An agent failed to use a supplied trip interval for the established flight itinerary and requested dates for an unrequested hotel domain."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make trip-date interpretation and incremental cache updates more operational, including separate outputs for distinct locations and assistant-proposed places. Clarify when a completed nearest result should not be repeated, and make result persistence an explicit call-by-call step. The injected-tool prohibition is already explicit, so no redundant edit is proposed.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Treat a stated route as one flight leg unless the user explicitly requests return travel or provides additional legs.",
+        "content": "When the user answers a question about trip dates with a start-to-end interval for an already described vacation or trip with a known route, treat that context as establishing outbound and return legs: use the start date for the outbound and the end date for the reversed return route. This is not an inference from a date interval in isolation. Do not request lodging dates or start a hotel search unless lodging was requested."
+      },
+      {
+        "op": "replace",
+        "target": "If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result.",
+        "content": "If the user adds a criterion to an existing result, retrieve the closest compatible cache entry and use its summary to distinguish criteria already applied from the new one; apply only the new criterion with the domain's filter tool rather than issuing a fresh base search or repeating prior filters. If multiple distinct values require separate outputs, make one filtering call per value and save each separately. Treat a follow-up asking about a place or category just proposed by the assistant (for example, “what’s there?”) as a request to explore that proposal, not as a no-op."
+      },
+      {
+        "op": "replace",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- Call `search_nearest` when a requested proximity result is not already satisfied by a compatible cached nearest result, or when the user explicitly asks to update it. Do not repeat a completed nearest search merely because proximity was mentioned earlier when the latest turn adds a separate filter. For an uncompleted or explicitly updated proximity request, prepare compatible results for both types, apply relevant new criteria, then call and save `search_nearest`. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel."
+      },
+      {
+        "op": "replace",
+        "target": "Save each newly generated search or transformation result under a unique cache key.",
+        "content": "For every new search, filter, sort, or nearest call, assign its output to a variable and immediately save that exact output with `save_to_cache` under a unique key. Never leave a result-producing call unsaved, including on a first turn or when no later transformation follows."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,36 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_tool_execution_or_persistence",
+      "count": 6,
+      "description": "Generated code omitted requested actions, failed to save tool results, or treated cache retrieval as completing a new refinement."
+    },
+    {
+      "failure_type": "incremental_cache_or_schema_misapplication",
+      "count": 3,
+      "description": "New preferences were skipped or applied to the wrong result or schema field, including a request applying to both hotel and restaurant results."
+    },
+    {
+      "failure_type": "multi_leg_multi_domain_coverage",
+      "count": 1,
+      "description": "A multi-city request was reduced to one flight leg and did not account for the separately requested hotels."
+    }
+  ],
+  "patch": {
+    "reasoning": "The recurring gap is execution completeness: agents sometimes retrieve a result without applying the requested delta, omit later actions, or fail to persist tool returns. Strengthen the completion gate and make lodging in multi-city plans explicit, while retaining the rule not to infer hotel dates. Existing skill text already specifies the fitness-center field and solo traveler handling, so no duplicate mapping edits are needed.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- Execution is complete only when every ready, uncovered checklist item has its required tool action in the emitted code. For each search, filter, sort, or `search_nearest` call, bind the exact return value to a local variable and immediately save that same object with `save_to_cache` under a unique descriptive key; save refinements under new keys. Do not leave required calls unsaved, treat cache retrieval as applying a new constraint, or stop after completing only one domain or leg. Do not substitute hand-built result objects. Use `print(\"No planning needed\")` only when no requested action remains."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "\n- If lodging is requested in multiple cities, track a separate hotel action for each requested city; flight searches do not fulfill hotel requests. Use explicit hotel check-in and check-out dates only. If those dates are missing, ask for them while proceeding with ready flight legs rather than borrowing dates from the flight itinerary."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

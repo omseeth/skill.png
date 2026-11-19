@@ -1,0 +1,34 @@
+{
+  "reasoning": "Preserved all failure-driven edits, which take priority and address distinct tool validation, cache reuse, budget mapping, and deferred requests. Included the success-driven clarification because general trip context without a specified domain is not addressed by the failure patches. The patches are at the same merge level, and none targets the protected section. [optimizer-ranked: selected 3/5 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "## Required-argument checks",
+      "content": "\n- If the user provides only general trip context (such as a destination, occasion, or party size) without specifying a travel domain or task, do not infer what to search or assume a hotel request, and do not return a no-op. Use `seek_information` to ask what they want help finding; ask for hotel dates only if a hotel search was actually requested. Once the domain is clear, gather only its missing mandatory details. Apply traveler counts only to domains whose tools support party size; flight tools do not accept a passenger-count field.",
+      "support_count": 10,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Required-argument checks",
+      "content": "\n- Track each requested domain or flight leg deferred solely because mandatory information is missing as pending, retaining its established route, dates, and supported preferences. When a later user turn supplies the missing information, revalidate and execute each pending request that is now complete without requiring the user to restate it. Keep incomplete requests pending and seek only their missing mandatory details; do not rerun completed, unchanged domains.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not add unrelated preferences.",
+      "content": "\n- Before each tool call, verify every keyword against that specific tool's declared arguments and ensure the user's preference semantically matches the field's supported values. Do not invent conversational aliases, pass unsupported fields, or put qualitative descriptors into categorical fields unless they name a valid option (for example, do not pass “kid-friendly” as an airline). If no supported argument captures an optional preference, omit it and proceed with the supported request without inventing a substitute or asking for unsupported details.",
+      "support_count": 2,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 4 addresses a broad intent gap: general trip context alone should not trigger an assumed search. Edit 3 makes deferred requests actionable when missing details arrive, preventing lost tasks across turns. Edit 0 adds a general tool-argument validation safeguard, though it partly overlaps existing guidance. The other edits are narrower or substantially duplicate current cache and rating guidance.",
+    "selected_indices": [
+      4,
+      3,
+      0
+    ]
+  }
+}

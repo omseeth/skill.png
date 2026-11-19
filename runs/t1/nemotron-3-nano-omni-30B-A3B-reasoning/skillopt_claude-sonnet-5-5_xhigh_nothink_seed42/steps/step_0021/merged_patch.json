@@ -1,0 +1,96 @@
+{
+  "reasoning": "All 13 edits are kept. Group 1 (failure-driven, priority) is carried forward intact because it covers the persistent failures: cross-domain leakage, minimal filters that still keep last-turn values, multi-domain first turns, date replies that must trigger a search, and 'accepted proposal' replies. Each of its prohibitions is paired with a positive trigger, as the meta-skill requires. Group 2 (success-driven) is hygiene-only and does not overlap Group 1's targets. It fixes dangling rule references (11, 15, 18), adds a 'leave out unused kwargs instead of passing None' rule, and folds the 'drop descriptors with no parameter' point into the existing Rule 21 sentence instead of adding a new bullet. No edit touches the protected SLOW_UPDATE section. Every target string was checked against the current skill text. The Rule 25 insert gets a leading newline for consistent formatting. The merge_level field is dropped because it is not in the output schema.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "# Travel Planning Skill",
+      "content": "# Travel Planning Skill\n\nPRE-FLIGHT SCAN (run on your finished code, every turn):\n(a) Every search_*, filter_* and search_nearest line starts with `name = ` and is followed by `save_to_cache(key=..., value=name)`. A line that starts with `search_hotels(` or `search_flights(` is a bug.\n(b) The block ends with the last tool call: no trailing text, no `</parameter>`.\n(c) A US state name or two-letter state code goes in `state=\"NV\"`, never `city=\"NV\"`.\n(d) A pure retrieval turn ('Okay, that sounds good', 'No preference') is ONE line, `x = get_results_from_cache(key=\"...\")`, with NO save_to_cache. A loaded result is never saved back unchanged. If you wrote load + save with no filter_*, either the turn adds a constraint and you forgot the filter, or it is retrieval-only and the save must be deleted.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+      "content": "\n- LAST-TURN LITERAL MAP: split the user's LAST message into its separate values and give each its own parameter in ONE call. 'N of us' / 'for N people' -> num_people=N and 'N rooms' -> num_rooms=N (hotel tools only; pass both when both appear). '2 rooms and around 1125' -> `filter_hotels(prior_results=h, num_rooms=2, budget=1125)`. 'Yes, near/in <place>' -> neighborhood=[\"<place as stated>\"]. A bare number after a per-night / per-person / per-ticket question -> budget=N. 'Minimal filters' means dropping values from EARLIER turns that are already in the cache. It never means dropping a value stated in the last turn. 'Budget only' applies solely when the reply is nothing but a number.\n- Params listed in the loaded CACHE summary ('Additionally filtering for has_room_service, has_fitness_class', 'Number of room(s): 4, budget: $1175') are DONE, and re-passing them is the most common wrong answer. Rooms or headcount that the summary does NOT list are not yet applied. When the summary already lists the amenities and the user says 'Yes, near Downtown X', output only neighborhood=[\"Downtown X\"].\n- Descriptive words from earlier turns ('kid-friendly', 'family', 'school trip') are not amenity params on a refinement. A reply about how many people or rooms is num_people / num_rooms, not has_kids_club.\n- A neighborhood answer on hotels is `filter_hotels` on the most refined hotels key (a nearest_* key counts if it is the latest). search_nearest is only for 'near the hotel' / 'near <attraction>' requests.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## CACHE GATE (run this before writing any code, every turn)",
+      "content": "\n-2. REQUESTED-DOMAIN TRIGGER (do this first). Scan every user turn for flight/fly, hotel/stay/room, restaurant(s)/dining, attraction(s). Each requested domain with no CACHE key must appear in this turn's code: searched if its mandatory args are known, otherwise named in ONE closing seek_information.\n   - Hotel AND restaurant or attraction requested, the restaurant or attraction city/state known, hotel dates missing (overrides the 'ONLY output is one seek_information' wording of step 4b): `restaurants = search_restaurants(city=\"<city>\")` (or `search_attractions(city=..., type=[...])`, stated constraints only) + its save_to_cache, THEN one `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. A seek_information alone is wrong here. Hotel budget, party size and 'family-friendly' do not go into the restaurant search. seek_information is the whole output only when no other requested domain is searchable.\n   - Flight keys cached (outbound and return dates known) and the turn describes a hotel (stars, neighborhood, amenities) with no 'hotels' key -> `search_hotels(city=<flight destination>, checkin_date=[<outbound date>], checkout_date=[<return date>], <every stated hotel constraint>)` + save 'hotels'. Do not search or filter flights again. Class words from earlier turns are already applied.\n   - A hotel was requested in an earlier turn and this turn supplies the dates (even as the answer to a flight question) -> the flight search(es) AND search_hotels in the same block, carrying amenity words from any turn ('beach' -> has_beach_access=True, 'pool' -> pool_present=True, 'wifi' -> free_wifi_included=True). Cached restaurants stay untouched.\n   - DATE REPLY = SEARCH. If the assistant asked for the travel date, the user's last turn gives one ('May 16, 2025', 'around May 22'), and the origin and destination appear anywhere in the conversation -> `flights = search_flights(start_airport_city=..., end_airport_city=..., departure_date=[\"<date as written>\"])` + `save_to_cache(key=\"flights\", value=flights)`. Do NOT call seek_information. Occasion words ('anniversary', 'school trip', 'something special') are not missing information.\n-1. REPLY NAMES SEVERAL DOMAINS -> ONE load -> filter -> save BLOCK PER NAMED DOMAIN. If the user's last turn states constraints for two domains (e.g. 'Yes, AA and a hotel with a gym and pool' = airline for flights + amenities for hotels), write a separate block for EACH domain the last turn names, each with its own most refined key and only its own new constraint (airline=[\"AA\"] on every flight key; gym_present=True, pool_present=True on hotels). A domain mentioned only in earlier turns does not count. The single-domain routing in the strategic section applies when the reply names ONE domain. A block that loads and saves the same object without a filter_* call is always wrong.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "A party-size-only reply ('There are 5 of us') when NO hotel has been requested adds no constraint, because flight and restaurant tools have no party-size parameter.",
+      "content": "A party-size or room-count reply ('There are 5 of us', 'we need 4 rooms') when a hotel HAS been requested and a hotels key is cached is a hotel constraint: load the most refined hotels key, `filter_hotels(prior_results=h, num_people=5, num_rooms=4)` (only the numbers stated and not already listed in the summary), save under a new key. Do not substitute an amenity from an earlier descriptor such as 'kid-friendly'. With no hotels key and dates known, put them in the first search_hotels. When NO hotel has been requested, a party-size-only reply adds no constraint, because flight and restaurant tools have no party-size parameter.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Do not run a partial search with made-up values for another domain.",
+      "content": "Never search with made-up values. A requested domain whose mandatory args are all known is still searched in the same block (see the REQUESTED-DOMAIN TRIGGER in the CACHE GATE).",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Rule 9: Round-trip flights (+ hotel) are separate search calls",
+      "content": "\n- A date reply to a flight question is a search (see the DATE REPLY trigger in the CACHE GATE). 'May 17, 2025 to May 25, 2025' -> outbound origin->destination on the first date and return destination->origin on the second, as two assigned and saved searches. Never put the second date in arrival_date, and never ask for a departure city the user already gave.\n- Multi-leg itinerary ('A to B and then B to C', later 'I head back to A'): one search per named leg, with dates assigned in order of mention (leg 1 A->B on date 1, leg 2 B->C on date 2, final C->A on the last date). Do not collapse it into two legs. A flight-only multi-leg trip uses the keys first_departure_flights, second_departure_flights, first_return_flights. A hotel-bundled multi-city trip uses flights / flights2.\n- 'Just the return flight' with a date pair -> search only the reverse leg (destination->origin) on the LATER date, saved as \"flights\". If a hotel was requested anywhere, also run search_hotels with check-in on the earlier date and check-out on the later date.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Rule 25: A reply to the assistant's question or proposal is a new constraint, so filter every affected key",
+      "content": "\n- NEIGHBORHOOD PROPOSALS FOR ATTRACTIONS AND RESTAURANTS. If the assistant's last message proposed a neighborhood ('Have you considered Midtown Atlanta?') and the user accepts or is curious ('Yes', 'Actually, I haven't. What's there?'), take the neighborhood from the ASSISTANT's message and filter the cached domain: load its most refined key, `filter_attractions(prior_results=a, neighborhood=[\"<neighborhood>\"])` (or filter_restaurants), save under a new key. Never re-run search_attractions / search_restaurants when that domain already has a cache key. If the cache summary already lists that neighborhood and the user just says 'Okay, that sounds good', output only the one-line retrieval with no save.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "A bare numeric reply to the assistant's last question",
+      "content": "A bare numeric reply (the reply is ONLY a number; if it also states rooms or people, pass those too per the LAST-TURN LITERAL MAP) to the assistant's last question",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "## Rule 14: Straight-line first search once mandatory args become complete (supplements Rule 11)",
+      "content": "## Rule 14: Straight-line first search once mandatory args become complete",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "(Rules 2, 13, 17, 18)",
+      "content": "(Rules 2, 13, 17, 23)",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "(Rules 14, 15)",
+      "content": "(Rules 14, 21)",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "Use only kwargs listed in TOOL CONFIG.",
+      "content": "Use only kwargs listed in TOOL CONFIG, and leave out every kwarg you do not need instead of passing None (write `search_attractions(type=[\"Art\", \"Scenic\"], state=\"GA\")`, never `city=None`).",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "Drop descriptors that have no parameter ('great view', 'romantic', 'business conference').",
+      "content": "In every domain, drop descriptors that have no parameter ('great view', 'romantic', 'business conference', 'large dining area', 'sit together') and pass only the parameters the user's words map to ('meeting rooms and a large dining area' -> has_meeting_rooms=True).",
+      "support_count": 1,
+      "source_type": "success"
+    }
+  ]
+}

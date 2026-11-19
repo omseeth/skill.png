@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_selection_and_grounding",
+      "count": 3,
+      "description": "Agents invented or abbreviated a tool identifier, or overlooked a requested capability exposed through a generic configurable endpoint."
+    },
+    {
+      "failure_type": "parameter_schema_slot_binding",
+      "count": 3,
+      "description": "Arguments needed for the request were placed in the required-parameter list even though the tool schema marked them optional."
+    },
+    {
+      "failure_type": "argument_value_formatting",
+      "count": 6,
+      "description": "Calls differed from expected endpoint-specific casing, code, serialization, or output-option conventions."
+    }
+  ],
+  "patch": {
+    "reasoning": "The tool-selection and parameter-slot failures recur despite the skill's broad guidance, so the edits make those checks more operational. Other value-format discrepancies are already covered by the existing instructions, and some conflict with declared schema types, so no additional conversion rule is warranted.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Break the request into distinct operations and match each to an endpoint by its documented capability and parameter schema—not merely by provider or broad topic. Use the exact full tool identifier from the available-tools list. Do not substitute a tangential endpoint or call several similar alternatives for the same requested result.",
+        "content": "- Treat the available-tools list as a closed set: copy an exact listed tool identifier; never infer or invent a plausible endpoint. When a listed endpoint is generic or customizable, inspect its documented function/action selectors and use a matching supported mode for the requested result rather than overlooking it because the endpoint name is broad."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use each endpoint's exact parameter names and required/optional placement. Bind every constraint only to the call it modifies; do not carry dates, limits, filters, or pagination across operations.",
+        "content": "- Before rendering, partition each call's arguments into the schema's required and optional lists exactly as listed. A parameter can be essential to satisfying the user's request yet still belong in the optional list; task importance does not change schema placement."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

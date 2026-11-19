@@ -1,0 +1,35 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Refinement turns (flight class 'first', hotel budget + pool, restaurant neighborhood) were written as load most refined key, filter only the last message's new kwargs, save under a new key. No search, no earlier constraints re-passed, no other domain touched.",
+    "Round-trip date replies became two assigned and saved search_flights calls, and only the domains actually requested so far were searched (no hotel or restaurant search yet).",
+    "A first turn (CACHE {}) with a missing mandatory arg should be seek_information only. This worked when dates were missing for flight+hotel. It failed in two trajectories (restaurant with no city, flight with a layover city and no date) where the agent wrote a placeholder like '<city>' or '<date>' into a search call.",
+    "Success evidence is weak for hygiene. A nested save_to_cache(value=search_...) and a bare search call scored only because cache_em compared an empty or equivalent cache; the code itself was wrong."
+  ],
+  "patch": {
+    "reasoning": "The batch mostly confirms behavior the skill already encodes: filter only new kwargs from the most refined key, and ask for missing mandatory args when CACHE is empty. The remaining weakness is placeholders in search calls ('<city>', '<date>') on first turns where the gold output is seek_information. These edits extend existing sentences rather than adding gates. The flight-preference clause ('with a layover in St. Louis') extends the 'context is not a date' list. The two removals fix contradictions: one with the 'no comments' rule, one with the protected block's filter_attractions(city=...) case. This follows the meta-guidance to shrink and de-conflict, not to add paragraphs.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Never write a placeholder such as '<date>' or '<X>' as an argument.",
+        "content": "Never write a placeholder such as '<date>', '<city>' or '<X>' as an argument: a missing mandatory arg (flight date, hotel dates, restaurant city) means that domain gets seek_information and NO search call (a restaurant request with only an allergy, dietary need or cuisine and no city -> `seek_information(\"We need the city for the restaurant.\")`)."
+      },
+      {
+        "op": "replace",
+        "target": "or a home-airport habit ('I normally fly from LEX')",
+        "content": "a home-airport habit ('I normally fly from LEX'), or a flight preference such as a layover city ('with a layover in St. Louis'), airline or class"
+      },
+      {
+        "op": "replace",
+        "target": "- Do not write long reasoning in code comments; use at most a one-line comment per step. A response that ends mid-comment without finishing the calls is a failure.",
+        "content": "- Write no comments in code."
+      },
+      {
+        "op": "replace",
+        "target": "and do not add city to a filter.",
+        "content": "and do not add city to a filter (sole exception: `filter_attractions(city=...)` when attractions cached at state level are narrowed by a city the user named)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

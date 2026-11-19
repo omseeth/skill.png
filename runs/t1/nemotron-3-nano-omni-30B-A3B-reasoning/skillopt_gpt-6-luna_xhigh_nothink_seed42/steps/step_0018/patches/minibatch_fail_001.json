@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "pending_request_scope_or_itinerary_omission",
+      "count": 3,
+      "description": "Plans dropped previously requested domains or described flight segments while handling the latest dates or narrowing the flight request."
+    },
+    {
+      "failure_type": "cached_refinement_omission",
+      "count": 4,
+      "description": "Plans retrieved or ignored compatible cached results without applying a newly requested constraint."
+    },
+    {
+      "failure_type": "result_persistence_omission",
+      "count": 4,
+      "description": "Searches or refinements were left unbound or their returned objects were not saved to cache."
+    },
+    {
+      "failure_type": "schema_semantic_mapping",
+      "count": 2,
+      "description": "Location or amenity wording was mapped to the wrong field, and a criterion was applied outside its intended domain."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that a turn narrowing one domain does not cancel other pending requests, and close two specific mapping gaps exposed by the batch: explicit room and guest counts, and beach access versus a neighborhood. Cache refinement and result persistence failures are already directly addressed in the skill, so those rules are not duplicated.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "\n- Preserve pending requests across updates: answering a question about one domain, or narrowing it (for example, requesting only a return flight), does not cancel other explicitly requested domains. Remove an earlier request only when the user explicitly retracts it. Keep each criterion scoped to the item and domain it was given for; for example, a rating supplied in response to a dining question applies to restaurants, not hotels. Continue all other still-pending actions."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+        "content": "\n- When exact hotel room and guest counts are explicitly stated, map them independently to `num_rooms` and `num_people`; do not infer one from the other. If supplied after a compatible hotel result exists, apply the newly stated count or counts in a hotel refinement."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`.",
+        "content": "\n- For a hotel requested near a beach, use `has_beach_access=True` when that field is supported; do not encode “beach” as a neighborhood unless the user names an actual neighborhood."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "A bare list of real names ('X, Y') asks for the shared state or country. The rule was buried at the end of the fictional-character bullet. The agent answered with one of the listed people (or a variant of a name) instead."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "The agent kept the clue's own descriptor noun in the answer ('Roanoke Island' for 'this island', 'Sirius Satellite Radio' for 'this satellite radio company'). The gold answer is the bare name, and the head-noun exception and delete-clue-words test were not applied."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "The agent answered with a word or stem already in the clue ('spring' for 'one of these holes' and 'Double' for 'A double that visually resembles another'). The gold answers were a different term (a compound ending in 'hole', and a dictionary synonym)."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "The agent used the formal given name ('James Doolittle') where the key uses the popular nickname form ('Jimmy Doolittle')."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "The key 'Forbes magazine' keeps a type word that the clue ('a journal') did not state. This is idiosyncratic and not addressed."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four of the eight failures are two repeated mechanisms. The first is a bare list of real names, where the existing rule was buried at the end of the fictional-names bullet, so I replace that sentence with a prominent, concrete rule. The second is the agent leaving the clue's own descriptor noun in the answer, so I add a short high-priority bullet at the top of Rule 4. Two more failures were the agent echoing a clue word instead of finding the different term the clue defines, which I address with a self-echo check in Rule 2. One failure was formal-versus-nickname name form, which gets a small conditional rule in Rule 4. All edits are procedural and conditional on visible clue features, use generic examples, and do not weaken Rule 3.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "If the list is of real people, answer with the team, state or other entity they share.",
+        "content": "- BARE LIST OF REAL NAMES ('Name A, Name B' with no verb or other words, or two people who held the same kind of post) asks for the ONE entity they share, never a listed person. Senators, governors, mayors -> the state or city they represent; kings, queens, presidents, prime ministers -> the country they ruled; athletes -> their team or country; band members -> the band. Do NOT answer with one of the listed names, a relative, or a regnal/variant form of a listed name. Find the place or group that the passages put beside EVERY name, and give its bare common name ('Spain', not 'Kingdom of Spain'). Write the slot in your reasoning line first (e.g. 'SLOT = state they both represent')."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 4: Exact-match formatting of the final answer",
+        "content": "- STRIP THE CLUE'S OWN DESCRIPTOR (apply before every answer): when the clue says 'this island / this river / this city / this magazine / this satellite radio company / this airline', the answer is the bare proper name WITHOUT those words ('this island' -> 'Capri', not 'Capri Island'; 'this ride-hailing company' -> 'Uber', not 'Uber Technologies'). Passages that print the long form ('X Island', 'X Satellite Radio') do not change this. If any descriptor word from the clue appears in your answer, delete it. Keep an extra word only when it is inseparable from the name (Salt Lake City, Dead Sea) or the head-noun exception below applies (events, treaties, laws, dishes, body parts, where the bare word is not a name)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 2: Answer the referent, not a word from the clue",
+        "content": "- SELF-ECHO CHECK: if your answer, or its singular/plural stem, is a word already in the clue, it is almost surely wrong. Ask what DIFFERENT term the clue defines. (a) A clue ending 'one of these <noun>s' after descriptors wants a compound or phrase that ends in that noun, found by asking which kind of <noun> fits every descriptor (a 'one of these holes' clue wants a compound like 'pothole' or 'sinkhole', never the place named in the clue). (b) A bare definition clue with no 'this' ('Someone who cannot sleep') wants the standard dictionary or thesaurus term for that definition. Look for the passage (Thesaurus, dictionary, glossary) where the definition's words are glossed by a term, and copy that term with its internal hyphens. Never answer with the clue's own key word ('double', 'spring')."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Put only the bare answer in the answer tags. Do not write a sentence, restate the clue, or add dates, qualifiers or alternatives. Brief reasoning belongs before the tags.",
+        "content": "- PERSON NAME FORM: name a person the way the passages' titles and headlines most often do, including a popular nickname form ('Jimmy', 'Ted', 'Bill'). Do not expand it to a formal given name taken from a rank or biography line ('James', 'Edward'), because keys are written with the popular form. Apply this only when the clue asks for a person. Do not use it to answer a bare list of names (see the BARE LIST rule in Rule 1)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

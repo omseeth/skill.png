@@ -1,0 +1,42 @@
+{
+  "reasoning": "Kept the failure-driven proximity, parameter-format, and cache-audit fixes as the controlling edits. Where the success-driven parameter guidance overlapped, retained only its additional exact schema-field examples and guest-rating-floor rule as a separate success edit. Preserved the non-overlapping lodging-date and flight-origin requirements with their original support counts and source types. [optimizer-ranked: selected 4/6 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "## Required-argument checks",
+      "content": "\nFor each flight leg, require a `departure_date` and at least one starting-airport identifier: `start_airport_city`, `start_airport`, or `start_airport_code`. Treat this conditional origin requirement as mandatory even though each field is individually optional; ask for any missing required detail before searching.",
+      "support_count": 6,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Tool results and constraints",
+      "content": "\n- Use exact supported field names when mapping criteria: hotel hot tubs and saunas map to `has_hot_tub=True` and `has_sauna=True`; a nightshade-allergy accommodation request maps to the supported restaurant field `has_tomato_allergy_options=True`. For a guest-rating floor, use `[N, 5]`; reserve equal bounds for explicitly exact ratings or categories.",
+      "support_count": 6,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+      "content": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Check argument types against the tool schema: a single airport name or code is a scalar string (for example, `end_airport=\"ANC\"`), not a one-item list. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`): for “at least N stars,” use the inclusive range from N to the field's maximum; for an exact category, use equal bounds. For flight-time constraints, use the format accepted by the flight tool, such as 12-hour AM/PM strings. Do not copy a time verbatim from a cache summary if it is displayed in a different format; express an exact-time request with identical range endpoints and an “arrive by” request as a range from midnight to the stated time. Do not add unrelated preferences.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- When the user requests proximity, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "content": "- Treat a request to stay “in” or “near” a named neighborhood or district as a hotel `neighborhood` constraint, not a `search_nearest` request. Do not use `search_nearest` as a substitute for an on-site hotel feature or amenity. Use it when the user wants proximity between two distinct domains (hotels, attractions, or restaurants): provide exactly two compatible result objects, one for each domain, and ensure one includes any named target (run a focused exact-name search if needed). For hotels near attractions, search for both hotels and the requested attraction category, then set `groupBy` to hotels. In other cases, set `groupBy` to the domain the user wants prioritized.",
+      "support_count": 2,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Prioritize clarifying mandatory flight-leg inputs and frequently misapplied supported fields, then improve broad argument typing and time-format guidance. The proximity edit addresses useful distinctions but is less broadly supported. The cache audit largely duplicates existing save requirements, and the date inference rule is narrow.",
+    "selected_indices": [
+      5,
+      2,
+      1,
+      0
+    ]
+  }
+}

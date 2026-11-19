@@ -1,0 +1,45 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "over_seeking_information",
+      "count": 2,
+      "description": "Agent called seek_information for departure_date even though the last user turn gave an explicit date or date range (e.g. 'We're thinking of May 16, 2025', 'from May 16, 2025 until May 26, 2025'). It over-applied the 'context is not a date' rule."
+    },
+    {
+      "failure_type": "cache_refinement_errors",
+      "count": 3,
+      "description": "Agent re-ran search_flights instead of filtering the cached key, invented cache keys that are not in CACHE, filtered flights on a hotel-only turn, loaded a stale raw key instead of the filtered_* key, repeated filters the summary already listed, and passed stars=[3] instead of [3,3]."
+    },
+    {
+      "failure_type": "code_hygiene_and_missing_save",
+      "count": 2,
+      "description": "First search had no variable assignment and no save_to_cache. Another response used import, if/else, a bare print and a long comment block. It also skipped the hotel search and the adjust_date checkout derived from '4 nights'."
+    },
+    {
+      "failure_type": "missing_search_nearest",
+      "count": 1,
+      "description": "The user said 'Yes' to 'near any specific Guided attractions?' with hotels and attractions both cached. Agent printed 'No planning needed' instead of calling search_nearest(groupBy='hotel')."
+    }
+  ],
+  "patch": {
+    "reasoning": "The failures repeat rules the skill already has. The agent misses them because they are scattered, so a short checklist at the top addresses the hygiene, save, cache-key and stale-key failures. A new rule fixes the over-seeking on explicit dates, which Rule 6's 'context is not a date' text seems to trigger wrongly. A value-conversion rule covers 'arrive by'/'depart at' times and stay-length checkouts. A search_nearest rule covers proximity requests, which the skill never mentions.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## TOP CHECKLIST (read before writing any code)\n1. Output only straight-line tool calls, with no import, if/else, loops, f-strings, helper variables for keys, print(), or comment blocks. Never reason inside comments.\n2. Every search_*, filter_*, sort_results and search_nearest result is assigned to a variable and saved: `x = search_attractions(city=\"Portland\", type=[\"Culture\"])` then `save_to_cache(key=\"attractions\", value=x)`. A bare `search_attractions(...)` with no assignment or save is wrong, including on the very first turn.\n3. Only load keys that literally appear in the CACHE summary. Never invent keys such as \"departure_flights\" when the CACHE only has \"flights\". If the CACHE holds both a raw key and a filtered_*/nearest_* key for the same domain, load the filtered/nearest one. It already contains the earlier constraints, so do not re-pass them (cuisine, halal, city, dates, etc.).\n4. If the CACHE has a key for a domain, a new time, budget, class, airline, amenity or neighborhood preference is `load -> filter_* -> save` on that key. Never call search_* again for that domain.\n5. Refine only the domain(s) the last user turn talks about. A hotel-only answer never touches the flight keys.\n6. `stars` and `rating` take a two-value range: '3 star' -> stars=[3, 3]; 'at least 4' -> rating=[4, 5].\n7. Never reply print(\"No planning needed\") when the last turn contains any new constraint or an affirmative answer to an assistant proposal."
+      },
+      {
+        "op": "replace",
+        "target": "## Rule 7: Writing seek_information, including multi-domain requests",
+        "content": "## Rule 19: A date the user actually wrote is never 'missing' (check the LAST turn first)\n- Before any seek_information, scan EVERY user turn, especially the last one, for explicit calendar dates (month + day + year). 'We're thinking of May 16, 2025', 'traveling on May 20, 2025' and 'from May 16, 2025 until May 26, 2025' all supply dates. Tentative wording ('thinking of', 'around', 'hoping for') still counts. Rule 6's 'context is not a date' applies ONLY when no calendar date appears anywhere.\n- When the last turn supplies the missing date and the origin/destination came from earlier turns, search immediately: `flights = search_flights(start_airport_city=\"San Jose\", end_airport_city=\"Fresno\", departure_date=[\"May 16, 2025\"])` then `save_to_cache(key=\"flights\", value=flights)`. Do not ask again.\n- A date pair ('from X until Y', 'leaving X, back Y') is a round trip: two search_flights calls (Rule 9), outbound departure_date=[X] and return departure_date=[Y] with origin and destination swapped, each saved under its own key. If the last turn also gives a time constraint, put it on the outbound call, e.g. arrival_time per Rule 20.\n- If a hotel is also requested and its dates are derivable from stated flight dates or a stay length (Rule 20), include the hotel search in the same block.\n\n## Rule 7: Writing seek_information, including multi-domain requests"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 20: Value conversions for times and stay length\n- Time windows are always a two-element list in 12-hour style (use the user's exact minutes). 'depart at 08:23 PM' -> departure_time=[\"08:23 PM\", \"08:23 PM\"]. 'arrive by 09:24 PM' -> arrival_time=[\"12:00 AM\", \"09:24 PM\"]. 'depart before T' -> departure_time=[\"12:00 AM\", \"T\"]. 'depart/arrive after T' -> [\"T\", \"11:59 PM\"]. Use the matching departure_/arrival_ param for each.\n- If flights are already cached (any flight key), apply these times with filter_flights on each cached leg's most refined key (load, filter, save under a new key). Never re-run search_flights. If no flights are cached, pass the same lists in search_flights.\n- Stay length is an offset, so adjust_date is allowed. When the user gives a check-in date (or the flight date) plus a stay length ('4 nights', 'for 3 days'), derive checkout with `checkout_date = adjust_date(date=\"May 20, 2025\", delta_days=4)`, then `search_hotels(city=<destination>, checkin_date=[\"May 20, 2025\"], checkout_date=[checkout_date])` and save under \"hotels\". Do not ask for check-out dates in that case.\n- In a flight + hotel conversation, once the flight date arrives in the last turn, run BOTH the flight search (with any stated class, e.g. flight_class=[\"business\"]) and the hotel search in the same block, each followed by its own save_to_cache.\n\n## Rule 21: Proximity requests use search_nearest\n- When the user wants hotels near attractions/restaurants (or the reverse), including a short 'Yes' / 'That would be great' to an assistant question like 'Are you looking for a hotel near any specific Guided attractions?', and both domains are in the CACHE, do NOT print 'No planning needed' and do NOT re-filter by neighborhood. Load the most refined key of each domain and call search_nearest:\n  `hotels = get_results_from_cache(key=\"hotels\")`\n  `attractions = get_results_from_cache(key=\"attractions\")`\n  `nearest_hotels = search_nearest(hotels=hotels, attractions=attractions, groupBy=\"hotel\")`\n  `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`\n- groupBy names the domain the user is choosing among: hotel near attractions -> \"hotel\"; attractions near a hotel -> \"attraction\"; hotel near restaurants -> hotels=..., restaurants=..., groupBy=\"hotel\"; restaurants near attractions -> restaurants=..., attractions=..., groupBy=\"restaurant\" (or \"attraction\" if the user picks the attraction first).\n- If one of the two domains has no cache key but its mandatory args are known, run search_* and save it first in the same block, then call search_nearest."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

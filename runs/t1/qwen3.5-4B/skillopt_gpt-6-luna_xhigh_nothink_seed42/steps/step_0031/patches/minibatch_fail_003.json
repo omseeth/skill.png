@@ -1,0 +1,46 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "cache_persistence_omission",
+      "count": 4,
+      "description": "New searches or filters were returned without assigning and saving their results to cache."
+    },
+    {
+      "failure_type": "location_field_mapping",
+      "count": 2,
+      "description": "A state abbreviation was treated as a city, or an unprovided city was added to an attraction search."
+    },
+    {
+      "failure_type": "explicit_criterion_mapping",
+      "count": 2,
+      "description": "An explicit hotel party-size or amenity criterion was omitted or mapped to unrelated fields."
+    },
+    {
+      "failure_type": "runtime_import_error",
+      "count": 1,
+      "description": "The generated code imported a nonexistent tools module despite the runtime contract."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures omitted required cache saves, so make the existing requirement an explicit tool-call sequence. Clarify state-only location mapping to address both attraction errors. Tighten completeness and the demonstrated hotel fitness-center mapping for the remaining explicit-criterion errors. The import prohibition is already explicit, so repeating it would not address the observed failure.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Save each newly generated search or transformation result under a unique cache key.",
+        "content": "For every search, filter, sort, or `search_nearest` call that produces results, assign its return value to a variable and immediately call `save_to_cache(key=<unique key>, value=<that variable>)`. This applies to initial searches as well as follow-up transformations; never emit a results-producing call without its matching cache save."
+      },
+      {
+        "op": "replace",
+        "target": "Map location values by kind: put a named district or neighborhood in a supported `neighborhood` field while retaining its containing city in `city`, and put state names or standard postal abbreviations in `state`, not `city`. For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+        "content": "Map location values by kind: put a named district or neighborhood in a supported `neighborhood` field while retaining its containing city in `city`. Put a state name or standard postal abbreviation in `state`, never `city`; do not expand an abbreviation or duplicate it as a city. For attraction searches, use each location field the user explicitly provided in its matching schema field. When only a state is provided and state-level search is supported, search by state alone without asking for or inventing a city."
+      },
+      {
+        "op": "replace",
+        "target": "A field's presence alone does not make every wording a valid value. For fields expecting named choices (such as `airline` or `hotel_name`), pass only explicitly named choices. Map ordinary-language descriptions to a supported schema criterion when the meaning is unambiguous (for example, map “laundry facilities” to `has_laundry_service` when that field is in the tool schema); if no field represents a preference, omit it rather than adding an unsupported argument.",
+        "content": "A field's presence alone does not make every wording a valid value. For fields expecting named choices (such as `airline` or `hotel_name`), pass only explicitly named choices. Map each explicit preference to its matching supported schema criterion, without omitting supported criteria or adding unrelated ones. For example, map “laundry facilities” to `has_laundry_service`, “room service” to `has_room_service`, and “fitness center” to `has_fitness_class` when those fields are available. If no field represents a preference, omit it rather than adding an unsupported argument."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

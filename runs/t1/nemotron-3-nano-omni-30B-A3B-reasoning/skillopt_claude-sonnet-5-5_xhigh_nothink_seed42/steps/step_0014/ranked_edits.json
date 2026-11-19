@@ -1,0 +1,34 @@
+{
+  "reasoning": "Failure-driven edits are all kept (checklist replacing the placeholder, Rule 9 round-trip template, Rule 21 location slots, Rule 24 partial multi-domain example, Rules 26/27/30/31/32). The success-driven edits cover patterns the failure edits do not, so all five are kept: the arrival-time-without-date extension, the flight+hotel no-dates seek_information, the multi-city per-leg date ranges, the refined-key naming and single-domain-turn reminders, and the narrowed search_nearest exception. The success edits are not duplicated elsewhere, and none conflicts with the failure edits. The two insert_after edits on the Rule 9 header (round-trip template and multi-city per-leg rule) are independent and can be applied in either order. I tweaked the success replace so the grammar reads cleanly in the 'Context is not a date' bullet (it now sits between 'a timing worry ...' and ', or a home-airport habit'). Failure edits keep their original support counts. Success edits carry the supports reported by the pre-merge. [optimizer-ranked: selected 3/10 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "## Rule 9: Round-trip flights (+ hotel) are separate search calls",
+      "content": "- Multi-city trips with ONE date range per leg ('Las Vegas to Atlanta, then Atlanta to Anchorage; June 19 to July 2 and then July 8 to July 17'): run one search per leg. Use the FIRST date of each range as that leg's departure_date (`departure_date=[\"June 19, 2025\"]` for leg 1, `[\"July 8, 2025\"]` for leg 2). Do not add extra return searches for the range end dates and do not use arrival_date for them. Save each leg under its own key (e.g. first_flights / second_flights).",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Rule 23: Load the most refined CACHE key; never overwrite a key",
+      "content": "- Refined keys can have ANY name (hotels2, final_hotels, filtered_hotels1). Judge refinement by the summary text: the key whose summary has extra 'Additionally filtering for ...' lines (e.g. 'hotels2' showing 'stars range') is the one to load, not the raw 'hotels'. Save to a name not already in CACHE.\n- When the last turn answers only ONE domain (e.g. hotel amenities in a hotel + restaurant conversation), output only that domain's load -> filter -> save. Do not reload or re-save another domain's already-refined key (e.g. 'filtered_restaurants'); doing so adds extra calls that count as errors.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "a timing worry ('make sure we arrive on time')",
+      "content": "a timing worry ('make sure we arrive on time'), an arrival-time constraint with no date ('we need to arrive before 06:36 PM', 'a specific arrival time')",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Prioritized edits with highest support (8) that add guidance not already present. [7] fills a real gap (multi-city legs with date ranges) not covered by Rule 9. [8] generalizes Rule 23 about arbitrarily-named refined keys and restricts output to the single domain addressed by the last turn. [5] extends Rule 6 to a common missing-date pattern (arrival-time constraint without a date) with minimal, precise wording. [6] is largely duplicated by Rules 7 and 24; [0],[1],[2],[3] mostly restate existing Rules 9/21/22/6 with lower support; [4] is a large bundle with partial duplication and lower support; [9] is a narrow exception.",
+    "selected_indices": [
+      7,
+      8,
+      5
+    ]
+  }
+}

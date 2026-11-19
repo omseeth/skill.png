@@ -1,0 +1,32 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Where no archive line gave the answer, the agent picked the entity that recurred across many topical passages beside the clue's anchor details (neighborhood of the 1965 riots, play with the four named children, president of the Royal Society 1703-1727). It ignored list pages that only repeated the clue with no answer.",
+    "When a verbatim archive line did exist (a flashcard dump with the answer after the clue's last word, or a J! Archive snippet), the agent copied that bare answer without extra descriptors.",
+    "The agent kept the plural group name when the clue asked for 'this group of ...' (a muscle group), instead of singularizing it.",
+    "The agent kept the type word when it was part of the standard proper name, even though the clue said the generic word ('Moscow park' -> the full park name). The bare modifier alone would have named a person.",
+    "The agent used the full titled form for a conventionally knighted person and the bare common name for the others, as the existing rules say.",
+    "For a double-meaning clue, the agent gave one word that satisfies both halves, a river-mouth landform and a song title."
+  ],
+  "patch": {
+    "reasoning": "Most successes are already covered by Rules 2-4 and the strategic guidance, so the patch is small and targets the few behaviors that are only implicit. First, plural handling for 'group of' clues is not stated. Second, the skill never says that a page merely repeating the clue with no answer is not an archive hit, and that the entity recurring across topical passages should win instead. Third, there is a tie-breaker between the DELETE-CLUE-WORDS test and the head-noun exception when the clue uses a lowercase generic noun ('Moscow park'). Each edit is one or two lines, so the skill does not grow much and no existing rule is weakened.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "or when the clue says 'these'/'ones'.",
+        "content": "or when the clue says 'these'/'ones' or asks for a 'group / set / pair of' things (give the group's own plural name as the passages print it, not one member)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "\n- A passage that only repeats the clue, with no answer after it (a quiz index listing the clue among other clues, a forum question), is NOT an archive hit. Skip it. Take the entity that recurs across the topical passages next to the clue's most specific anchors (names, dates, places), and give it in its short common form."
+      },
+      {
+        "op": "insert_after",
+        "target": "The 'do not repeat clue words' rule is for a separate modifier already stated in the clue ('hasty' + pudding).",
+        "content": "\n- Tie-breaker for a lowercase generic noun in the clue ('Moscow park', 'this river'): strike the type word only if what remains is itself an accepted name. If the bare modifier alone would name a person or some other thing (a surname such as 'Gorky'), keep the type word as the passages print it ('Gorky Park')."
+      }
+    ]
+  },
+  "source_type": "success"
+}

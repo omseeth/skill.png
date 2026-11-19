@@ -1,0 +1,37 @@
+{
+  "reasoning": "The skill already covers many cache and schema rules, so the merged edits focus on actionable clarifications not already stated. The call-planning checklist and result-binding rule reinforce the optimizer’s preferred workflow. For hotel dates, the patches conflict on whether itinerary or flight dates can supply stay dates; the merged rule keeps the skill’s explicit prohibition on borrowing flight dates, while allowing checkout to be calculated from an explicitly stated stay length. The party-size and optional-field guidance is combined into one edit because it targets the same paragraph. No edits target the protected section. [optimizer-ranked: selected 3/10 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+      "content": "- Before emitting code, make a short call plan by diffing the latest user turn against the full conversation and listed cache entries. List each still-pending action separately by domain and location, and each explicitly stated flight leg, including a reversed return leg. For each, identify only the newly introduced constraints, the compatible listed cache result (if any), and whether mandatory inputs are available; choose direct cache reuse, refinement from that result, a new search, or a request for missing inputs. Include every ready action even if another is blocked, skip unchanged domains, and verify that every planned action has its required call or valid cache disposition. Use `print(\"No planning needed\")` only when no requested action or constraint remains unsatisfied by valid cached results.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+      "content": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Omit optional fields the user did not state rather than setting them to `False`. Keep each constraint attached to its stated domain; for example, a flight budget is not a hotel budget. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. Map an explicitly stated number of hotel travelers to `num_people` when the schema supports it; if added in a later turn, refine the latest compatible hotel result using only this new constraint. A traveler count is not a flight-search parameter unless the schema provides one.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain), not the reference domain: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`.",
+      "content": "\n- For an explicit request for hotels or restaurants near a named attraction, treat “near” as a cross-domain relation: do not pass the attraction name as a hotel or restaurant `neighborhood`. Ensure the exact attraction result is available, then call `search_nearest` with the relevant results and the requested focal domain.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 0 best operationalizes the latest-turn diff against listed cache entries and ensures ready actions are not missed. Edit 2 adds broadly applicable guidance for keeping constraints with their domain and handling explicitly stated traveler counts. Edit 9 fills a concrete proximity gap by distinguishing a named attraction from a hotel or restaurant neighborhood. Other edits are narrower or substantially duplicate existing guidance.",
+    "selected_indices": [
+      0,
+      2,
+      9
+    ]
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 5,
+      "description": "Search or refinement results were not consistently assigned and saved to cache, leaving required result objects and cache entries missing."
+    },
+    {
+      "failure_type": "cache_coverage_and_key_errors",
+      "count": 4,
+      "description": "Agents guessed cache keys, treated unrelated or absent results as satisfying requests, or filtered without a compatible cached result."
+    },
+    {
+      "failure_type": "flight_leg_and_date_handling",
+      "count": 3,
+      "description": "Agents merged a return date into outbound dates, dropped an alternative outbound date, or searched instead of refining cached flight results."
+    },
+    {
+      "failure_type": "schema_or_runtime_misuse",
+      "count": 4,
+      "description": "Calls used an unsupported or mismatched argument, a missing filter input, or imports for tools already provided by the runtime."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits make result persistence an explicit code-generation step, clarify how alternative dates map to flight legs, and close cache-key and missing-result gaps that led to redundant, skipped, or invalid calls. A short runtime rule addresses the import failure. Existing guidance already covers state-versus-city mapping and supported arguments, so it is not duplicated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- In generated code, bind the exact return value of every search, filter, sort, and nearest-results call to a local variable, then immediately save that same object with `save_to_cache` under a unique, descriptive key before reassigning it or finishing the plan. Save refined results under a new key. Do not omit a save because a result is already held in a variable, and do not substitute hand-built dictionaries or redefined models for tool result objects."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "- If the user gives multiple alternative departure dates for the same flight leg, include all of them in that leg’s `departure_date` list. Keep outbound and return dates in separate searches; reverse the route for the return."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "- For cache lookups, copy a key exactly from the supplied cache listing; never guess a conventional key name. Confirm the listed result’s summary covers the requested domain and criteria before filtering or treating the request as satisfied. Never call a filter with a missing or `None` result; if no compatible listed result exists and mandatory inputs are available, search."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Tool runtime\n- Travel tools are already available in the execution environment. Call them directly; do not import them, redefine them, or add module paths."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,85 @@
+{
+  "reasoning": "Consolidated the overlapping schema-mapping proposals into one edit, keeping only cautious, schema-supported allergy guidance. Strengthened input auditing, stateful cache updates, result persistence, and nearest-result preparation without editing the protected section. The support counts reflect how many of the four source patches support each merged edit.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- **Runtime contract:** Tool functions are injected directly into the execution namespace; there is no `tools` module. Generated code must contain no `import` statements. Call provided tools directly by name without importing, redefining, or wrapping them; before returning code, scan for and remove any imports. Use keyword arguments except for `seek_information`, and return code in the required format.",
+      "content": "\n- **Final runtime gate:** Before emitting code, reject any `import` or `from` statement and any `tools.` reference. Remove these rather than trying another import path; invoke injected bare function names directly.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Check required inputs for each requested domain against the full conversation, compatible cached results, and the tool schema. Flight searches require a known route and departure date; hotel searches require a city, check-in date, and checkout date; restaurant searches require a city. Count a date only when its stated meaning matches the required field: an event date, such as a reunion or celebration, is not automatically a flight departure date or hotel check-in or checkout date. Never fill missing travel dates from examples, defaults, or assumptions. If required values are missing, make exactly one `seek_information(...)` call listing only all missing required values across the requested domains. Do not search or filter an incomplete domain, guess values, or ask for optional preferences as if they were required. Still perform every independent requested search or update whose own required inputs are complete in the same turn.",
+      "content": "- **Required-input audit before clarification:** Extract the explicit requests and check each requested domain against the full conversation, compatible cached results, and the tool schema. Re-read the latest answer to any earlier assistant question before declaring a value missing. Flights require a known route and departure date for each requested leg; hotels require a city, check-in date, and checkout date; restaurants require a city. Count a date only when its stated meaning matches the required field; an event date alone does not supply a travel date. Never invent values. Execute every requested search or update whose required inputs are complete, even when another domain is incomplete. After this audit, if values remain missing, make exactly one `seek_information(...)` call listing only those genuinely missing required values across the requested domains. Do not search or filter an incomplete domain or ask for optional preferences as mandatory.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Use an end date as the return-leg departure date only when return travel is requested or established by context; do not infer a return flight solely from a date interval.",
+      "content": "Use an end date as the return-leg departure date when return travel is requested or established by context. If flights have already been requested and the user replies to a question about travel dates that they are traveling “from [date] to [date],” treat that as an outbound and return itinerary and use the first and final dates for those legs. Do not infer a return flight from a date interval supplied only for lodging or general trip context without an established flight request.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`.",
+      "content": "For range-shaped fields, encode a bare stated rating or star value (for example, “a 3.5 rating” or “3 stars”) as an exact value with both endpoints (for example, `[n, n]`). Use `[n, schema_max]` only when the user expresses a minimum, such as “at least” or “3.5 or better.”",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Never pass a preference as an unsupported extra argument or place it in an unrelated field.",
+      "content": "Pass only schema-declared fields that apply to an explicit request or an unambiguous mapping. Omit unstated optional fields rather than sending `None`, and omit unrelated Boolean preference or allergy fields rather than sending `False`.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "When party size is explicit for the hotel stay, pass it as `num_people` (use `1` for an explicitly solo trip), but do not infer `num_rooms`.",
+      "content": " If a later turn supplies or changes the hotel party size, treat it as a new criterion: retrieve a compatible hotel result that is not constrained by a conflicting traveler count, apply only the new `num_people=<explicit count>` criterion through the supported filter, and save the transformed result under a distinct key. If a nearby recommendation remains in scope, use the filtered hotel input with the compatible other result set to rebuild and save the recommendation. A cached result with a different traveler count does not satisfy the request; retrieval alone or “No planning needed” is not completion.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Map ordinary-language descriptions to a supported schema criterion when the meaning is unambiguous (for example, map “laundry facilities” to `has_laundry_service` when that field is in the tool schema); if no field represents a preference, omit it rather than adding an unsupported argument.",
+      "content": "Map ordinary-language descriptions to a supported schema criterion when the meaning is unambiguous (for example, map “laundry facilities” to `has_laundry_service` when available). For a hotel request for a fitness center or gym, use `has_fitness_class=True` when that field is available in the selected tool schema; do not substitute `gym_present`. For allergy requests, set `True` only for a corresponding supported allergy-option field; omit unrelated allergy flags and do not substitute a different allergy option when there is no clear match. If no field represents a preference, omit it rather than adding an unsupported argument.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Save each newly generated search or transformation result under a unique cache key.",
+      "content": "For every search, filter, sort, or nearest-result call, assign the returned value and save that exact result with `save_to_cache` before returning. Use established canonical keys for reusable base results and distinct suffixes only for additional or transformed results that must coexist; do not leave a result-producing call bare.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Use “No planning needed” only when cached results already satisfy every current request.",
+      "content": " Before using this fallback, inventory the requested domains, actions, and latest criteria, then verify that compatible cache summaries satisfy each one. A cache hit for a domain alone is not completion; a supplied answer or affirmation still requires any search, filter, or recommendation that remains incomplete.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+      "content": "\n- `search_nearest` joins existing result sets; it does not search for a missing target. Search or retrieve each relevant type separately, apply any new filters to the corresponding inputs before the call, pass both result sets to `search_nearest`, and save its result.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

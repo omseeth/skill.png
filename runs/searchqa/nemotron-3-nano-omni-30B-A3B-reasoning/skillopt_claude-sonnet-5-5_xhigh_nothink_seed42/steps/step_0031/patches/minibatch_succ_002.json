@@ -1,0 +1,32 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every success returned a bare answer of the exact type the clue's noun asked for: a person for 'he/this king/knighted Englishman', a country for 'this country', a single term for 'this term', and an instrument for 'this instrument'. In none of them did the answer echo a clue anchor such as the canal, the ship or the 'I Like Ike' button.",
+    "Two clues were matched verbatim to a quiz-archive line ('... | tambourine. right: ...', '... | Emperor. right: ...') and the answer was copied in its own form. These are the cases Rule 3 already covers.",
+    "The 'Title held in different countries by A, B & C' clue (A, B and C are real people) was answered with the shared role noun, 'Emperor'. It was not answered with a person, a country or a full title such as 'Emperor of Vietnam'. This is only partly covered today.",
+    "The 'referred to by this term' clue was answered with the glossary headword ('Apogee'). The agent found the passage line 'TERM: <definition restating the clue>' and returned the headword, not the definition's words.",
+    "Person answers followed the name form repeated in the passage titles and headings ('Dwight D. Eisenhower', 'Charles Evans Hughes', 'Louis XIV' with its numeral, 'Sir Francis Drake'). The agent did not shorten or lengthen them on its own.",
+    "The agent picked the entity that recurred across many independent passages together with the clue's distinctive details (22-year marriage, 1638, Dec 31 1999, 1916/1930), rather than a one-off passage."
+  ],
+  "patch": {
+    "reasoning": "The agents already behave correctly on type, archive-copying and bare-answer form, so the stable behaviours are left alone. The first edit puts one short, visible check line at the top of the editable part. The slow-update block has a longer version of this line that the agent skips. The second edit closes a small gap in Rule 1 for 'title held by X, Y & Z' clues. The third edit covers glossary-style 'this term' clues by telling the agent to answer with the defined headword. All three are procedural, clue-visible mechanisms with low risk to the stable passes.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Question Answering Skill",
+        "content": "\n## Answer procedure (do this before EVERY answer)\nWrite ONE visible line, then the answer tags. This is the check line the strategic guidance below refers to:\n`Type: <noun the clue asks for> | Evidence: <quoted passage line, or own fact> | Check: <candidate is not a clue word, fits the blank, and matches the clue's number and form>`\n- Type comes from the noun after 'this/these/he/she' (person, country, term, instrument, title). Name the type before you pick a candidate.\n- Evidence is a short quote. If a passage repeats the clue verbatim with an answer (archive line), quote that line and copy its answer.\n- Check: read the clue with your candidate in the blank. Reject it if it repeats a clue word or is the wrong kind of thing.\n"
+      },
+      {
+        "op": "replace",
+        "target": "If the list is of real people, answer with the team, state or other entity they share.",
+        "content": "If the list is of real people, answer with the team, state or other entity they share. A 'Title/Term/Position held by A, B & C' clue asks for the ONE common role noun all of them held ('Emperor', not 'Emperor of Vietnam' and not one person's name)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "- Definition clues ('referred to by this term', 'is called this', 'this term for...'): look for a glossary or dictionary line of the form 'TERM: <definition that restates the clue>' and answer with the headword TERM itself, as one word. Do not answer with words from the definition. Passage lines such as 'Apsis', 'Perigee' or related terms that define the opposite or a neighbouring concept are distractors, so match the clue's exact property (farthest vs closest)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,51 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "unrequested_or_duplicate_tool_calls",
+      "count": 3,
+      "description": "Agents added unrelated searches or filters, or repeated a search instead of making only the necessary calls."
+    },
+    {
+      "failure_type": "result_persistence",
+      "count": 2,
+      "description": "Result-producing calls were left unsaved, including an extra bare search call."
+    },
+    {
+      "failure_type": "cache_update_failure",
+      "count": 1,
+      "description": "A follow-up constraint triggered a new hotel search instead of filtering the suitable cached result."
+    },
+    {
+      "failure_type": "round_trip_leg_omission",
+      "count": 1,
+      "description": "A stated return date was treated as an outbound arrival-date constraint rather than a separate return-leg departure."
+    },
+    {
+      "failure_type": "schema_and_domain_mapping",
+      "count": 2,
+      "description": "Agents used an unsupported hotel-pool field or failed to map a category variant to a supported label."
+    },
+    {
+      "failure_type": "proximity_pairing_error",
+      "count": 1,
+      "description": "A hotel-near-attraction request was instead paired with restaurant results."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache, round-trip, persistence, and proximity rules already cover the other observed failures, so repeating them would not patch a skill gap. These edits clarify two schema-mapping cases: use accepted canonical category labels for grammatical variants, and map a pool request to the supported hotel field without inferring unrelated filters.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Preserve complete names, categories, criteria, and date strings unless a tool requires a format conversion.",
+        "content": "Preserve complete names, criteria, and date strings. For enum or category fields, use the supported canonical label that matches the user's intent; normalize grammatical variants such as “cultural” to a supported label such as `Culture`, rather than passing an unsupported literal or choosing a different category."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not map vague amenity wording to a narrower tool flag without clear equivalence.",
+        "content": "Map an explicit hotel pool request to the schema field `pool_present=True`, not an unsupported alias such as `has_pool`. Qualifiers such as “kid-friendly” do not by themselves request a kids' club or restaurant filter."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

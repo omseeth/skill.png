@@ -1,0 +1,34 @@
+{
+  "batch_size": 3,
+  "success_patterns": [
+    "Each clause of the query (including narrated 'First / Then / Finally' steps and numbered items) was turned into exactly one call, with no extra helper calls. In all three tasks the number of calls equalled the number of clauses.",
+    "The chosen tool was the endpoint whose name and description literally mirror the clause's verb, object, and provider. Examples: 'domains, codes, currencies, locales from Hotels.com' -> Domains List; 'MX records' -> Get the MX Records; 'disposable' -> Check for Disposable emails; 'deliverable' -> Validate Email Address; 'domain available' -> FreeDomain. Look-alike tools (languages, send-mail, temp-mail, account-info, other Priceline downloads) were ignored.",
+    "When one tool took a single value and the query named several entities, the same tool was called once per entity (FreeDomain called twice, once per domain).",
+    "Query constraints were mapped to the tool's own parameter names with values copied verbatim: 'first page, 10 per page' -> page '1' and pageSize '10'; 'limiting to 25' -> limit '25'; 'contain Majora' -> name 'Majora'; 'in English' -> language_code 'en-us'; 'ID 6733503' -> hotel_id.",
+    "Required parameters came from the query text only. Optional parameters appeared only when the query stated or implied a value, so no defaults or placeholders were added.",
+    "Tool names were copied exactly from the tool heading in the form 'Provider: API', and every value was a quoted string."
+  ],
+  "patch": {
+    "reasoning": "Earlier long rule dumps were all rejected and lowered the score. These patterns are the minimal behaviours shared by the successful runs: one call per clause, a literal match of clause to endpoint, one call per entity, and parameters limited to what the query states or implies. They are written as short, general rules. They avoid the heavy, task-specific detail that likely distracted the agent in earlier rejected steps.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Workflow: one call per clause\n- Before answering, split the query into atomic requests: each sentence, each 'first / then / also / additionally / finally' clause, each numbered item, and each narrated step. Make one call per request. Re-read the first and last clause before answering to confirm none was dropped.\n- Add no call that no clause asks for. Skip helper calls such as languages lists, search-before-get, account info, send-mail, or temp-mail generators.\n- If a clause lists several aspects of one thing (e.g. 'reviews and images'), check whether one endpoint covers them all. If it does, call it once."
+      },
+      {
+        "op": "append",
+        "content": "\n## Tool selection\n- Match each clause's verb, object, and provider literally to a tool's name and description, and prefer the dedicated endpoint over a generic one. Examples: 'MX records' -> the MX-records tool; 'disposable/temporary' -> the disposable-check tool; 'deliverable and functioning' -> the validate/verify tool; 'domain available for registration' -> the domain-availability tool; 'average gas prices across states' -> the all-states price tool; 'convert slug to ID' -> the slug-convert tool.\n- If the query names a provider or site (Hotels.com, Priceline, Booking.com, OpenCritic, Rocket League), use that provider's own endpoint. Do not use a sibling provider's endpoint for the same kind of data.\n- When a tool takes one value and the query names N entities (emails, domains, ids), call that tool N times, once per entity. Keep the repeated calls even when they use the same tool."
+      },
+      {
+        "op": "append",
+        "content": "\n## Parameters\n- Put each parameter in the list where the chosen tool's schema places it ('Required parameters' vs 'Optional parameters'). Use only that tool's parameter names. Copy ids, names, emails, domains, and search terms verbatim from the query.\n- Fill every required parameter from the query text. Include an optional parameter only when the query states or implies a value for it. Map constraints directly: 'first page' -> page '1'; '10 per page' -> pageSize '10'; 'limit to 25' -> limit '25'; 'contains Majora' -> name 'Majora'; 'in English' -> a language/locale parameter in the format the description shows (e.g. 'en-us'). Do not add defaults, offsets, or placeholder values the query never mentions.\n- For a tool whose parameters are all optional, use an empty `required parameters` list. Leave `optional parameters` empty too when the query gives nothing for it."
+      },
+      {
+        "op": "append",
+        "content": "\n## Output format\n- `tool name` is copied exactly from the tool's `### ` heading in the form `Provider: API`, with original spacing and capitalization. Do not shorten or paraphrase it.\n- Every call object has exactly the keys `tool name`, `required parameters`, and `optional parameters`. Use `[]` for an empty list, and never omit a key.\n- Each parameter is `{\"name\": \"x\", \"value\": \"y\"}` with the value as a quoted string, including numbers (\"6733503\", \"25\").\n- Give ONE flat, bracket-balanced JSON list inside `<answer>...</answer>`."
+      }
+    ]
+  },
+  "source_type": "success"
+}

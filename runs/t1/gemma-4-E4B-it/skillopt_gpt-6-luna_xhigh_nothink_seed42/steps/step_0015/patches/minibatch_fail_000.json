@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_update_scope_misuse",
+      "count": 6,
+      "description": "Agents repeated cached searches, processed unchanged domains, or skipped filtering a cached result when the user added criteria."
+    },
+    {
+      "failure_type": "missing_required_information",
+      "count": 2,
+      "description": "Agents invented hotel stay dates or searched without required check-in and checkout dates instead of asking for them."
+    },
+    {
+      "failure_type": "unsupported_constraint_inference",
+      "count": 2,
+      "description": "Agents inferred unprovided preferences, such as party size or a restaurant rating, from context."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache workflow already explicitly covers most repeated-search and unchanged-domain failures, so I avoid duplicating it. These edits clarify two remaining operational gaps: travel dates cannot be transferred between flight and hotel requests, and new filters must be applied before using results in an active proximity operation.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs.",
+        "content": "\n- Do not transfer dates between domains: a flight departure date, even for the same trip and destination, does not establish a hotel's check-in date, checkout date, or stay length. Treat hotel dates as missing unless the conversation ties them to the hotel stay; derive checkout only from an explicitly stated stay length."
+      },
+      {
+        "op": "replace",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For an active explicit proximity request, if the user adds filterable criteria for one of the domains, retrieve and filter that domain's compatible cached results first, then pass the filtered result to `search_nearest` so the nearest results satisfy the new criteria. Use the relevant compatible results, and set `groupBy` to the domain the user wants prioritized."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,48 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_or_extra_calls",
+      "count": 4,
+      "description": "Dropped a clause or platform (Shazam call, the ASOS half of 'both ASOS and Wayfair') or added an unrequested extra tool (disposable-email check when only existence, MX and deliverability were asked)."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 2,
+      "description": "Picked unrelated or wrong-horizon tools (Sports API, airport config, 48-hour forecast, empty-argument NWS gridpoint) instead of the daily-forecast tool. Reused one Indonesia school endpoint for two ID levels instead of matching the parameter name (kabupaten vs propinsi)."
+    },
+    {
+      "failure_type": "format_error",
+      "count": 2,
+      "description": "Optional parameters emitted as a dict instead of a list of {name,value} objects. Final JSON list missing its closing ']', so nothing parsed."
+    },
+    {
+      "failure_type": "parameter_placement_and_values",
+      "count": 3,
+      "description": "Wrong required/optional placement (artist_id, q). Unrequested or empty optionals (star '', locale, page). Wrong value forms (en_US vs en-US; 'most recent' not mapped to DATE_DESCENDING)."
+    }
+  ],
+  "patch": {
+    "reasoning": "The previous step added long, partly speculative rules and the score dropped, so this patch is four short, independent rules aimed at the failures in this batch. They cover parse-breaking format errors (dict parameters, unclosed list, empty values), clause and platform coverage with a guard against extra tools, tool choice by horizon, scope and parameter name, and parameter placement and value mapping. Each rule is generic and not tied to specific task values.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Rule 1: Answer format (a malformed answer scores zero)\n- The answer is ONE JSON list inside `<answer>...</answer>`. Before finishing, check that the brackets balance and that the text ends with `}]` right before `</answer>`.\n- Every call has exactly the keys `tool name`, `required parameters`, `optional parameters`. Always write both parameter keys, using `[]` when there are none.\n- Both parameter keys hold LISTS of objects `{\"name\": \"x\", \"value\": \"y\"}`. Never use a dict such as `{\"country\": \"IN\"}` and never use bare names.\n- Copy `tool name` exactly as the heading `Provider: API`. Write all values as strings.\n- Never emit a parameter with an empty value (`\"\"`). Omit empty optionals. If a tool's required value cannot be taken from the query (it needs an id, grid or office code produced by another call), do not call that tool."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 2: Coverage without extras\n- Before answering, split the query into atomic requests: each sentence, each First/Then/Also/Finally clause, and each named platform. 'Both ASOS and Wayfair' means two calls, one on each platform using that platform's endpoint of the right kind (e.g. its auto-complete). Check that every item has a call. The first and last clauses are the ones most often dropped (a named Shazam/Spotify/Genius step, for example).\n- Do the reverse check too. Call only tools for aspects the query names. 'Use multiple verification tools to check existence, MX records and deliverability' means one tool per named aspect (verify, validate/deliverable, MX records). It does not license extra disposable-domain, format-only or temp-mail tools.\n- If the query lists N values for a one-value tool, make N calls. If it names different entities that need different endpoints, give each its own call."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 3: Tool selection\n- Pick the tool whose name and description mirror the query's verb, object, scope and time horizon. For example, 'daily forecast for the next few weeks' means the multi-week daily forecast tool, not a 48-hour, hourly or astronomy one. 'Cities nearby' means a cities-around-a-point tool. 'Active alerts' means the active-alerts tool.\n- Ignore tools from unrelated domains that only share a keyword (sports events, airport configuration, temp-mail generators for validation, send-mail tools).\n- When sibling tools differ only by an ID level, match the ID level in the query to the tool's PARAMETER NAME, not the title. Province corresponds to `propinsi`, district/city to `kabupaten`, and sub-district to `kecamatan`. Do not send two different levels to the same tool. Do not call the same tool twice when a sibling takes the second parameter.\n- If the query names a provider or tool, use that provider's endpoint."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 4: Parameter placement and values\n- Place each parameter exactly where the tool lists it. Under 'Required parameters' it goes in `required parameters`. Under 'Optional parameters' it goes in `optional parameters`, even when it is the main input of the query (an artist_id, a search `q`). If the tool says 'Required parameters: none', `required parameters` is `[]`.\n- Map every constraint the query states, and nothing else. Examples: 'most recent' reviews -> sort_order DATE_DESCENDING. 'most helpful' -> HELPFUL. 'first page' -> page 1. '15 videos' -> per_page 15. 'US English' -> lang `en-US` (hyphen form, unless the tool lists other codes, which you copy exactly). 'US customers' -> country US.\n- Do not add optionals the query never implies (a page number when no page is mentioned, locale or currency defaults, a blank `star`).\n- Copy ids, SKUs, search terms and numbers verbatim from the query."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

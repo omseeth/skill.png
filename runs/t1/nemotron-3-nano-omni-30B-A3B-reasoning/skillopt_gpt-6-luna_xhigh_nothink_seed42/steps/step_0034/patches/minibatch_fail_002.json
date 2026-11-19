@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_plan_or_result_persistence",
+      "count": 5,
+      "description": "Ready domain actions or required cache-result saves were omitted."
+    },
+    {
+      "failure_type": "cache_refinement_or_scope_error",
+      "count": 3,
+      "description": "Agents re-searched instead of refining cached results, or processed unchanged domains and unrequested proximity."
+    },
+    {
+      "failure_type": "hotel_party_count_omission",
+      "count": 2,
+      "description": "Explicit solo or group traveler counts were omitted from hotel searches."
+    },
+    {
+      "failure_type": "flight_leg_or_missing_endpoint_error",
+      "count": 2,
+      "description": "Round-trip legs were combined, or a missing flight origin was guessed rather than requested."
+    },
+    {
+      "failure_type": "unsupported_import_or_python_side_filter",
+      "count": 2,
+      "description": "Agents imported runtime helpers or manipulated results in Python instead of using the provided tools."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already requires saving tool results, using runtime tools without imports, and keeping work scoped, so those rules need no duplication. These edits make two recurring gaps explicit: passing stated traveler counts to hotel calls and using domain filter tools rather than Python-side filtering. A short flight rule reinforces separate directional legs and prevents guessing a missing endpoint.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+        "content": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. For hotel calls, include every explicitly stated traveler count as `num_people` when supported (for example, `solo` means `num_people=1`). Do not infer counts from broad descriptions such as “family,” or infer `num_rooms` from a traveler count; include room count only when explicitly stated. A traveler count is not a flight-search parameter unless the schema provides one."
+      },
+      {
+        "op": "replace",
+        "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+        "content": "- When refining a cached result, use the domain’s filter tool on a compatible cached result; do not implement filtering by iterating over or editing result objects in Python. Do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Represent flight legs separately",
+        "content": "- For round trips, never encode outbound and return legs as two dates in one call: make a separate directional search for each leg. Do not assume the origin is the stated destination; if a required endpoint is missing, seek it rather than guessing."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

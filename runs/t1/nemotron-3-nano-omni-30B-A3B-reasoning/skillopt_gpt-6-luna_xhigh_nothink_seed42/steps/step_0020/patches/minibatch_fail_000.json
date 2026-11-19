@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "runtime_import_misuse",
+      "count": 3,
+      "description": "Agents imported tool or cache modules instead of using the runtime-provided bindings."
+    },
+    {
+      "failure_type": "incremental_cache_and_scope_errors",
+      "count": 6,
+      "description": "Plans missed pending work, failed to refine compatible cached results, or repeated work already covered by cache."
+    },
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 4,
+      "description": "Search or refinement results were not consistently assigned and saved to cache."
+    },
+    {
+      "failure_type": "invalid_time_encoding",
+      "count": 2,
+      "description": "Flight time values were converted to an unsupported clock format, causing tool validation failures."
+    },
+    {
+      "failure_type": "unsupported_inference",
+      "count": 1,
+      "description": "The plan inferred party size, room count, and amenities from a broad family-with-kids description."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures conflict with guidance already present on cache use, result persistence, missing mandatory inputs, and avoiding unsupported inferences, so those rules should not be duplicated. The skill does not specify how to preserve accepted clock syntax when the runtime rejects the tool examples' time format; a focused clarification addresses the validation failures.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "\n- For flight `departure_time` and `arrival_time`, use a clock format accepted by the runtime and preserve the user's AM/PM meaning; do not convert a value such as `12:22 PM` to `12:22:00` unless that format is supported. Represent an exact time with two identical endpoints. For a named time window, use its appropriate endpoints—for example, “afternoon” as `[\"12:00 PM\", \"5:00 PM\"]` where that convention is supported."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

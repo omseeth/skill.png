@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_turn_delta_mismanagement",
+      "count": 6,
+      "description": "Agents repeated unaffected searches, restarted covered flight legs instead of filtering them, or regenerated cached results that already satisfied the request."
+    },
+    {
+      "failure_type": "named_place_and_proximity_scope_resolution",
+      "count": 2,
+      "description": "Agents confused a suggested neighborhood or named anchor entity with another scope, producing the wrong filter or omitting the requested nearest-results operation."
+    },
+    {
+      "failure_type": "supported_field_semantic_mapping",
+      "count": 2,
+      "description": "Hotel preferences were mapped to the wrong amenity fields, such as free parking to free Wi-Fi or a fitness center to fitness classes."
+    },
+    {
+      "failure_type": "alternative_date_and_itinerary_modeling",
+      "count": 1,
+      "description": "The agent selected only one alternative hotel check-in date and represented the return date on the outbound flight instead of as a separate leg."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits make turn-by-turn cache decisions mutually exclusive and explicit, clarify how to interpret named areas versus point entities, provide mappings for recurring hotel amenity confusions, and preserve all user-provided date alternatives while keeping return legs separate.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+        "content": "- At each turn, resolve the reply against the preceding question and full conversation, inspect cache summaries, and act only on scopes changed by the latest turn plus pending requests that are now complete. For each scope choose one action: (a) if a compatible cached result already satisfies the unchanged request, make no tool call and do not save it again; (b) if only filterable constraints changed, retrieve the exact compatible cache key, apply the matching `filter_*` tool, and save the filtered result (separately for each affected leg); (c) if the requested scope, date, or leg is not covered by a compatible cache, make and save a base search with all active supported criteria. Do not rerun unrelated cached domains or legs. An affirmative alone is not a proximity request unless proximity was offered or requested."
+      },
+      {
+        "op": "insert_after",
+        "target": "- When the user asks about a place, category, or entity the assistant just suggested (for example, “What's there?”), treat it as a request to inspect that scope: retrieve a compatible cached result and filter it to that scope, or search if no compatible result can cover it. An assistant's proximity suggestion alone does not authorize `search_nearest`; use it only when the user explicitly requests or accepts proximity.",
+        "content": "\nResolve a named place by its role, not just its text: a geographic area or neighborhood is a `neighborhood` constraint on the relevant result; a named hotel or attraction entity uses `hotel_name` or `attraction_name`. If the user asks for something near a named point entity, do not treat the entity as a neighborhood. Ensure a compatible anchor result includes that entity (search the named entity if needed), obtain the requested counterpart results, and use `search_nearest` with `groupBy` set to the domain the user wants prioritized."
+      },
+      {
+        "op": "insert_after",
+        "target": "For attractions, put the requested category in `type` with its exact value (for example, if the requested type is `Scenic`, pass `type=[\"Scenic\"]`).",
+        "content": "\nFor hotel amenities, map “free parking” to `has_free_parking=True` (not `free_wifi_included`), “free Wi-Fi” to `free_wifi_included=True`, and a gym or fitness center to `gym_present=True`; use `has_fitness_class=True` only when fitness classes are requested."
+      },
+      {
+        "op": "insert_after",
+        "target": "For hotels, when the check-in date and an explicit stay length in nights are known but checkout is not, use `adjust_date` to calculate checkout.",
+        "content": " When the user gives alternative outbound dates, include all of them in the outbound `departure_date`; search any supplied return date separately on the reverse route, not as `arrival_date` on the outbound call. For a hotel stay with alternative check-in dates and one explicit shared checkout date, include all check-in alternatives in `checkin_date` and the shared date in `checkout_date` rather than choosing one."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

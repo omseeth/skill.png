@@ -1,0 +1,31 @@
+{
+  "batch_size": 4,
+  "success_patterns": [
+    "Every clause of a narrative or multi-sentence query got exactly one call, and the closing reflective sentence ('This sequence suggests...') correctly got no call.",
+    "When one tool is used for N entities (4 emails, 2 emails, 2 domains), N separate objects were emitted. Each repeated the shared qualifiers (username='info', smtp='true', timeout='10').",
+    "Stated qualifiers were mapped to schema optionals, including a negated one ('without requiring exact title matches' -> exact='0', 'first 20' -> page='1', pageSize='20', '5 trivia questions' -> limit='5'). Named providers were respected (Alpha Email Verification, Blaze Verify, fast Email verifier).",
+    "The tool name was copied from the heading that actually exists in the current tool list. Here `Dice Roll Simulator: Custom dice rolls` was the only custom-dice heading, and dice/sides/rolls went in optionals.",
+    "The one recurring score loss in otherwise correct answers was an invented optional (Medium limit='10' for 'latest articles'), because the query gave no number."
+  ],
+  "patch": {
+    "reasoning": "All four passes had clean structure and full coverage. Their remaining gaps and strengths are not yet stated crisply in the skill: (a) don't invent a count for 'latest/recent' (the only optional mismatch in trajectory 1), (b) negated flag qualifiers map to the flag's off value, (c) shared qualifiers are repeated on every per-entity call, (d) a closing summary sentence is not a call, and (e) the strategic section's 'Custom dice rolls is NOT the name' hint can mislead when the list only contains that heading, so the live tool list must win over remembered names. These are short rules with concrete examples and do not weaken existing rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+        "content": "- 'Latest' or 'recent' without a number is not a count. Omit limit/page/pageSize and do not guess a schema default. BAD `Medium: /stories/{topic}` topic=`business` plus limit=`10`. GOOD topic only. A stated number always goes in (`5 trivia questions` -> limit `5`).\n- A flag qualifier stated in the negative maps to the flag's off value: 'without requiring exact title matches' -> `exact`=`0`; 'exact matches only' -> `exact`=`1`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "- When one tool is called once per entity, repeat every shared qualifier in EACH call. 'Blaze Verify with SMTP checking and a 10-second timeout on two emails' -> two objects, each with smtp=`true`, timeout=`10`. 'SMTP check for two domains with username info' -> two objects, each with username=`info` and its own domain.\n- A closing summary or reflection sentence ('This sequence suggests the user was exploring...') names no action and gets no call. Only sentences that request, search, fetch, roll, create or check get calls."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "- The tool list in front of you is the source of truth. Name hints elsewhere in this skill (e.g. `Custom dice` vs `Custom dice rolls`) are examples only. Copy the heading that actually exists. If only `Dice Roll Simulator: Custom dice rolls` is listed, '3 twenty-sided dice 5 times' -> that tool with dice=`3`, sides=`20`, rolls=`5` in optionals."
+      }
+    ]
+  },
+  "source_type": "success"
+}

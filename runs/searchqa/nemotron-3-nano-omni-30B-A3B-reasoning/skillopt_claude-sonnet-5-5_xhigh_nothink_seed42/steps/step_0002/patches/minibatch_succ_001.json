@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Several answers came from a near-verbatim copy of the clue in the context (flashcard 'CLUE, ANSWER', or 'CATEGORY | clue | answer' as in the Rumsfeld case, even with a single short passage). The agent copied the trailing answer, which Rule 3 already covers.",
+    "The agent anchored on the clue's most specific unique detail (Khartoum, Helots, Frederick III, Jess & Leslie) and answered the entity the passages repeatedly pointed to. Descriptive qualifiers like 'largest' were ignored when the context was outdated or inconsistent (Sudan is now 'third largest').",
+    "The agent honored the qualifier in the clue when several names for the same thing were in the context: 'Greek' god gave Eros, not the Roman Cupid. 'Term for nonconductors' gave the bare noun 'insulator'.",
+    "The agent answered only the missing slot (Terabithia from 'Bridge to' this place, Germany from 'this nation's monarch'), not the full title or a restatement of the clue.",
+    "Answers were short and bare, with no articles or explanation, which matched the gold answers under exact match."
+  ],
+  "patch": {
+    "reasoning": "All 8 successes followed the existing rules, but three behaviors recur and are not explicit in the skill. The first is anchoring on the clue's unique detail while treating superlatives and descriptors as secondary, since context can be outdated. The second is honoring variant qualifiers (Greek vs Roman) and returning only the missing slot of a partial title. The third is the 'CATEGORY | clue | answer' archive format. Encoding these should help on the terse or noisy clues that still fail.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "- Anchor on the clue's most specific unique detail (a named person, capital, rare term such as 'Helots' or 'Khartoum') and choose the entity the passages repeatedly tie to it. Treat superlatives and descriptors ('largest', 'first') as secondary, because context can be outdated or inconsistent (Khartoum -> Sudan even though Sudan is now only 'third largest')."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Anchor on the clue's most specific unique detail",
+        "content": "\n- Honor qualifiers in the clue when the context offers several names for the same thing: 'Greek god of erotic love' -> 'Eros' (not Roman 'Cupid'); 'the term for nonconductors' -> 'insulator'. If the clue quotes part of a title ('Bridge to' this place), give only the missing part ('Terabithia')."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "- Archive lines can be formatted 'CATEGORY | clue text | answer' (e.g. 'I'M SORRY | This cabinet member: \"...deepest apology\" | Rumsfeld'), or as a flashcard 'CLUE TEXT, ANSWER'. Even if the whole context is one short passage, take the answer that follows the clue and ignore trailing junk such as 'right:/Wrong:' markers."
+      }
+    ]
+  },
+  "source_type": "success"
+}

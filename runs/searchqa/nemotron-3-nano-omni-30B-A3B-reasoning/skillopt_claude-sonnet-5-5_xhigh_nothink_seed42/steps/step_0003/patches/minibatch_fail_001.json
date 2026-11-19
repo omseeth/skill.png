@@ -1,0 +1,46 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Agent answered a named thing from the clue or context instead of the slot the clue asks for. 'this Persian Gulf nation' got 'King Fahd Causeway'. 'He recorded \"I Walk The Line\"' got the song title instead of Johnny Cash. 'Coupes A L'Ananas ... this tropical fruit' got the clue's own foreign word 'Ananas' instead of 'Pineapples'."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "Agent added a modifier to the bare answer: 'NFL football' instead of 'Football', and 'Rainbow Serpent' instead of the 'Rainbow' that sat right after the clue in an archive line."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "The clue said 'these' (species of these mascots) but the agent gave the singular 'bear' instead of 'Bears'."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 1,
+      "description": "The 'give only the missing part' rule led the agent to drop the quoted head noun. The clue said 'this \"bubble\"' and the agent gave 'South Sea' instead of the full name 'the South Sea Bubble'. It also used a truncated flashcard answer ('SOUTH SEA...') without completing it."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures are slot-identification and surface-form errors, not retrieval errors; the right entity was almost always in the context. The patch adds (1) an explicit slot check from the clue grammar, which also covers pronoun clues, 'this nation', and foreign words in the clue; (2) archive-layout handling in Rule 3, where the answer follows the clue run-on and truncated answers must be completed; (3) number and form rules in Rule 4 covering plural for 'these', bare head noun, and quoted-head-noun names. These rules are generic and address the repeated rule_ignored cases and the conflict with the 'missing part only' guidance.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 2: Answer the referent, not a word from the clue",
+        "content": "- SLOT CHECK (do this before writing the answer): read the grammar of the clue to decide what KIND of thing is missing, then answer with that kind.\n  - 'He / She / His / Her / Who ...' with no other noun -> a PERSON (the performer, author or leader behind the songs, works or events in the clue). A work or song title quoted in the clue is an anchor, never the answer ('He recorded \"I Walk The Line\"' -> the singer, Johnny Cash).\n  - 'this nation / country / state / city / sport / fruit / phenomenon' -> exactly that category. 'A causeway connects this Persian Gulf nation to ...' -> the nation (Bahrain), not the causeway's name, even if passages mention the causeway most often.\n  - If the answer string would be a word or phrase already written in the clue, you picked the wrong slot. If the clue contains a foreign-language word (e.g. 'Ananas', 'L'Ananas') and asks for 'this fruit / food / thing', answer with the English name for it (Pineapples), not the foreign word."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 3: Look for the clue repeated verbatim in the context",
+        "content": "- Archive/flashcard text is often run together with no separator: '<clue text> Rainbow This \"platinum-dome\" character ...' or '<CLUE IN CAPS>, SOUTH SEA...'. The answer is the short span immediately after the end of the clue, before the next clue or sentence begins. Take that span exactly ('Rainbow', not 'Rainbow Serpent' pulled from a neighbouring Wikipedia passage).\n- If the verbatim archive answer is cut off by '...' or by the snippet limit, complete it to the full standard name using other passages, and use the clue's own quoted word as a hint ('SOUTH SEA...' + clue 'this \"bubble\"' -> 'South Sea Bubble'). Do not submit the truncated fragment."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 4: Exact-match formatting of the final answer",
+        "content": "- NUMBER AND FORM CHECKS (apply last):\n  - If the clue says 'these', 'species of these', 'ones', or the slot is a type of thing that comes in groups (mascots, animals, fruits or crops used as ingredients), answer in the PLURAL: 'Bears', 'Pineapples'. Do not use the singular.\n  - Answer with the bare category word that the clue noun names. Do not attach a league, brand, language or myth-name qualifier: 'this sport' -> 'Football' (not 'NFL football'); 'this phenomenon seen in the sky' -> 'Rainbow' (not the myth's longer name 'Rainbow Serpent').\n  - EXCEPTION to 'only the missing part': when the clue puts the head noun of a proper name in quotation marks ('this \"bubble\"', 'this \"war\"'), the answer is the full standard name including that word ('South Sea Bubble'). A leading 'the' is fine if it is part of the usual name."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

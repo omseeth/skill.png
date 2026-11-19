@@ -1,0 +1,48 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "repeated_applied_constraints_in_filter",
+      "count": 2,
+      "description": "On a refinement turn the agent re-passed cuisine, rating or vegetarian flags that the CACHE summary already showed as applied. The gold passes only the new budget or neighborhood."
+    },
+    {
+      "failure_type": "multi_city_flight_legs_wrong",
+      "count": 1,
+      "description": "For 'A to B, then B to C, then back to A' the agent built two searches with mixed dates in one list and added flight_class=business inferred from 'business trip'. The gold is three one-way legs in order."
+    },
+    {
+      "failure_type": "missing_search_nearest_for_hotel_attraction",
+      "count": 1,
+      "description": "In a hotel+attraction conversation with both domains cached, the agent filtered hotels but skipped search_nearest(hotels, attractions, groupBy='hotel') and the nearest_hotels save."
+    },
+    {
+      "failure_type": "unneeded_optional_param",
+      "count": 1,
+      "description": "The agent added num_people to search_hotels although the party size was stated with the flight request, not the hotel."
+    }
+  ],
+  "patch": {
+    "reasoning": "The two restaurant failures are the same mistake. Rule 2 already says not to repeat applied filters, but the agent ignored it, so a worked example tied to the cache summary text is needed. The multi-city flight failure comes from Rule 9 not saying how dates map to legs, and it also shows a 'business trip' being misread as a flight class. The hotel-amenity failure shows a missing search_nearest step when hotels and attractions are both cached, which conflicts with Rule 13's 'load only the refined domain' wording, so the new rule states an explicit exception. The num_people edit narrows Rule 9, which over-generalised adding party size to hotel searches.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Rule 15: Filter with ONLY the new constraint (cache summary = already applied)\n- Before writing filter_*, read the CACHE summary of the key you load. Every value it shows (cuisine(s): [...], rating range: [...], budget: $N, has_vegetarian_options, neighborhood, amenities, Number of traveler(s)) is ALREADY applied. Do NOT re-pass them, even if the user said them earlier in the conversation. Re-listing applied constraints is a failure.\n- Worked examples:\n  - CACHE 'restaurants': 'cuisine(s): [German], rating range: [3.0, 5.0]' and last user turn 'We're looking to spend around 30' -> `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, budget=30)`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`. Do not add cuisine or rating.\n  - CACHE 'restaurants': 'cuisine(s): [Livonian], has_vegetarian_options' and last turn 'Yeah, Downtown Memphis would be great' -> filter_restaurants(prior_results=r, neighborhood=[\"Downtown Memphis\"]) only. Do not add cuisine or has_vegetarian_options.\n- Include an earlier-stated constraint only if the summary does NOT list it. Do not add a code comment line before the calls."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 16: Multi-city (chained) flights and no invented flight class\n- For 'A to B and then B to C ... then I head back to A' with several dates, make ONE one-way search per leg, in order, each with a single date: leg 1 A->B on the first date, leg 2 B->C on the second date, final leg C->A on the last date. Never put dates of different legs into one departure_date list. Never reuse a date for a leg the user did not assign it to. Reuse the origin and destination cities from earlier turns.\n  `first_departure_flights = search_flights(start_airport_city=\"A\", end_airport_city=\"B\", departure_date=[\"<date1>\"])` + save_to_cache(key=\"first_departure_flights\", ...)\n  `second_departure_flights = search_flights(start_airport_city=\"B\", end_airport_city=\"C\", departure_date=[\"<date2>\"])` + save_to_cache(key=\"second_departure_flights\", ...)\n  `first_return_flights = search_flights(start_airport_city=\"C\", end_airport_city=\"A\", departure_date=[\"<date3>\"])` + save_to_cache(key=\"first_return_flights\", ...)\n- 'Business trip' describes the purpose only. It is NOT flight_class=[\"business\"]. Set flight_class only when the user states a class (economy, business class, first class).\n- Do not import datetime or assign dates to helper variables. Write the date strings directly in the call."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 17: Hotels + attractions both in the conversation -> add search_nearest after refining hotels\n- This overrides the 'load only the refined domain' and 'exactly three statements' limits of Rule 13 for hotel+attraction tasks. When the CACHE has both a hotels key and an attractions key and the last turn refines the hotels (amenities, stars, budget, neighborhood), do all of the following:\n  `hotels = get_results_from_cache(key=<latest hotels key>)`\n  `attractions = get_results_from_cache(key=\"attractions\")`\n  `filtered_hotels = filter_hotels(prior_results=hotels, <only the new constraints>)`\n  `save_to_cache(key=\"filtered_hotels\", value=filtered_hotels)`\n  `nearest_hotels = search_nearest(hotels=filtered_hotels, attractions=attractions, groupBy=\"hotel\")`\n  `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`\n- Use the exact attractions key from the CACHE. If a nearest_* key already exists, chain hotels from the most refined hotels key. Do not apply this when only one of the two domains is in the conversation."
+      },
+      {
+        "op": "replace",
+        "target": "Add num_people when party size is stated.",
+        "content": "Add num_people to search_hotels only when the party size belongs to the hotel (e.g. a hotel-only or hotel+attraction request such as 'trip for 4 people', or 'hotel for 3'). When the count is attached to the flight request ('a flight ... for 2 people and also a hotel'), do NOT add num_people to the hotel search."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

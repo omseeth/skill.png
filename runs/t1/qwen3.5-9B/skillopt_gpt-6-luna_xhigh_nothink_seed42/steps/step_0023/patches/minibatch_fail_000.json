@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 7,
+      "description": "Result-producing calls were left unsaved or cache retrieval was nested directly inside a filter."
+    },
+    {
+      "failure_type": "clarification_context_omission",
+      "count": 2,
+      "description": "Hotel searches omitted relevant trip or party-size details established in the conversation or clarification context."
+    },
+    {
+      "failure_type": "accepted_offer_resolution",
+      "count": 1,
+      "description": "An affirmative reply accepting an offered attraction category was misread as a request to repeat a proximity search."
+    },
+    {
+      "failure_type": "schema_parameter_mapping",
+      "count": 1,
+      "description": "Hotel amenity filters used invented parameter names rather than the exact supported schema fields."
+    },
+    {
+      "failure_type": "round_trip_leg_mapping",
+      "count": 1,
+      "description": "A return date was sent as an outbound arrival-date constraint instead of searching a separate return leg."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly requires saving result objects, handling round trips as separate legs, and reusing established itinerary dates, so duplicating those instructions is not warranted. The edits address narrower gaps: accepting an offered attraction category, choosing exact schema field names for clearly equivalent hotel amenities, and retaining a party size stated in the assistant's lodging clarification.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- **Resolve accepted offers against cache criteria:**",
+        "content": "\nWhen the user accepts an offer to explore an attraction category or type, treat the offered category as an explicit attraction request. Search in the established destination using the exact offered `type` value unless a suitable cached result already matches; do not treat the acceptance as a request to rerun an unrelated proximity search."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Learned rules",
+        "content": "\n- **Use exact schema names for clear amenity matches:** When the user's wording clearly corresponds to a supported hotel amenity, pass the exact schema field rather than an invented shorthand—for example, laundry facilities maps to `has_laundry_service`, and room service maps to `has_room_service`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion.",
+        "content": "\nIf a lodging clarification explicitly states a party size and the user answers a separate room-count question without correcting that size, retain both values: use the established party size as `num_people` and the supplied room count as `num_rooms`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

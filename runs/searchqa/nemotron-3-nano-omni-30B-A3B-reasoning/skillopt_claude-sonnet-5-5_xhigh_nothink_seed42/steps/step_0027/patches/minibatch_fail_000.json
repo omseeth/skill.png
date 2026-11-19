@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Person slot filled with the wrong class or an echo of the clue. 'his 1983 album' got the quoted song title, 'Lemmon & this actor' got Lemmon, and 'this English circumnavigator' got a place name from the passages."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "The agent picked a famous holder of the same office (Tony Williams) who matches only the title. The person who did the stated action (Marion Barry) was missed."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 2,
+      "description": "A verbatim archive answer was altered. 'Anchorage, Alaska' was trimmed to 'Anchorage', and the archive's 'Rainbow' was replaced with the fuller 'Rainbow Serpent'."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "Acronym-letter clue (second 'S' in LSUS). The agent gave the flagship school's city (Baton Rouge) instead of expanding LSU Shreveport."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "'this type of chewing gum' got a passage adjective ('synthetic') instead of the named variety ('bubble gum')."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the failures are answers that echo the clue or are the wrong kind of entity (a song title for 'his album', Lemmon for 'Lemmon & this actor', a place for a circumnavigator), and one is a wrong office-holder. The first edit adds concrete patterns for these, since the abstract type-check in the skill keeps being ignored. The second edit stops Rule 4 trimming and the agent's own fuller names from overriding a verbatim archive answer; two failures here were exact-copy errors. The third edit covers acronym-letter clues, which have no rule at all. The fourth covers 'this type of <noun>' clues, which want a named variety rather than a descriptor adjective. Each edit is short and tied to a visible clue pattern, so it should not hurt the stable passes. No existing rule is weakened.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "- ECHO / CO-MEMBER CHECK: a quoted title in the clue (song, album, film, book) is an anchor, never the answer. '\"Shake It\" is the last song on his 1983 album' (or 'his/her debut') -> the CREATOR's name, not the title. 'Lemmon & this actor ...' or 'A and this co-star/partner/co-founder' -> the OTHER member of the pair, never the person already named. If your candidate string appears in the clue, reject it. A person slot ('this circumnavigator', 'this actor') never takes a place, ship or event name from the passages. When the clue gives an office plus a distinctive action ('2-week sabbatical as mayor'), answer the person who actually did the action, using your own knowledge, not another holder of the same office whose page matches only the title."
+      },
+      {
+        "op": "insert_after",
+        "target": "Before the answer tags, briefly quote the matched line.",
+        "content": "\n- An archived answer is final and EXACT. Rule 4 trimming and fuller names from encyclopedia passages do not apply to it. Keep a qualifier printed after a comma ('Anchorage, Alaska' stays 'Anchorage, Alaska'). A one-word archive answer stays one word ('Rainbow', not 'Rainbow Serpent'). In flat dumps with no delimiter ('...a giant snake arching its body Rainbow This ...'), the answer is the word(s) right after the clue's last words."
+      },
+      {
+        "op": "insert_after",
+        "target": "answer with the common English name (Conch).",
+        "content": "\n- Letter-of-acronym clues ('The second \"S\" in LSUS stands for this city', 'X stands for'): spell out the full name the acronym abbreviates, assign the letters in order, and answer the word that matches the letter asked. A trailing campus or branch letter (LSUS = LSU Shreveport) names a DIFFERENT place from the flagship school's city (Baton Rouge). A passage with the full name settles it. Never answer with the parent institution's home city or a rival brand."
+      },
+      {
+        "op": "insert_after",
+        "target": "Other clue details (diet, ingredient, cooking method) are just conditions on the generic dish.",
+        "content": "\n- 'Rubber is an ingredient in this type of chewing gum' / 'this kind or type of <noun>': the answer is the NAMED variety of that noun ('bubble gum'). Find the passage that pairs the clue's feature with a variety name. A material or descriptor adjective from the passages ('synthetic', 'natural') names no variety and is wrong. Keep the head noun when the bare modifier ('bubble') would not be a standard name."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

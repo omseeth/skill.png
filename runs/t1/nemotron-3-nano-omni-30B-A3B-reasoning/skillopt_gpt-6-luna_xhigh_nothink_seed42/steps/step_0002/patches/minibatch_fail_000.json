@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_coverage_and_result_lifecycle",
+      "count": 7,
+      "description": "Agents skipped requested work despite incomplete cache coverage, chose an unsuitable or nonexistent cache key, or omitted saving a new result."
+    },
+    {
+      "failure_type": "incremental_constraint_application",
+      "count": 5,
+      "description": "Agents missed a newly requested filter or search, repeated criteria already represented in cached results, or inferred an unstated preference."
+    },
+    {
+      "failure_type": "tool_argument_or_execution_misuse",
+      "count": 4,
+      "description": "Agents used an unsupported flight argument or return-date pattern, imported unavailable tools, or assumed undocumented result fields."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the main rules for separate flight legs, supported arguments, incremental filtering, and proximity searches, so repeating those instructions would not address the clearest gaps. These edits make cache-key and coverage checks more operational, clarify how to interpret affirmative replies to proximity questions, and prevent imports or unsafe inspection of tool results.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "\n- Before reusing or refining results, choose a key that actually appears in the supplied cache; never guess a conventional alias or pass a missing/`None` result to a filter. Compare the cache summary with each requested action and constraint, not just the domain: a cached result for a different attraction type or name, for example, does not cover the new request. When several valid results exist, use the most specific one that covers earlier criteria, apply only the new constraint, and save the refined result under a new key."
+      },
+      {
+        "op": "insert_after",
+        "target": "Interest in visiting an attraction alone does not imply a request for proximity or require a nearest-results call.",
+        "content": "\n- Treat an affirmative reply as accepting the scope of the assistant's immediately preceding question. In particular, a yes to a question about attractions near a hotel requests proximity; if the user names a specific attraction, category-only attraction results do not satisfy that request—search for the named attraction and group nearest results by hotel."
+      },
+      {
+        "op": "append",
+        "content": "\n## Tool execution hygiene\n- Tools are already available in the execution environment: do not import them, create helper models, or redefine tool functions. Use returned result objects directly as inputs to later tools; do not assume dictionary field names or print/iterate through result contents unless the tool schema explicitly guarantees those fields."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

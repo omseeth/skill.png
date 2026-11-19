@@ -1,0 +1,51 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "tool_invocation_violation",
+      "count": 2,
+      "description": "Agents imported the unavailable `tools` module instead of calling injected functions directly."
+    },
+    {
+      "failure_type": "cache_persistence_omission",
+      "count": 2,
+      "description": "Agents generated search results but omitted saving them to the cache."
+    },
+    {
+      "failure_type": "cache_update_failure",
+      "count": 2,
+      "description": "Agents failed to apply a newly added criterion to a compatible cached result, either skipping work or choosing the wrong search operation."
+    },
+    {
+      "failure_type": "missing_input_handling",
+      "count": 1,
+      "description": "An agent invented hotel dates instead of requesting the missing required dates."
+    },
+    {
+      "failure_type": "range_bound_interpretation",
+      "count": 1,
+      "description": "An agent treated an arrival deadline as an exact arrival time rather than an upper bound."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that incomplete inputs block only that domain, not independent searches with complete inputs, and specify how one-sided range bounds map to tool parameters. Make caching an explicit code-generation step. Import and cache-update errors are already directly addressed by the current skill, so no redundant edits are proposed for them.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available.",
+        "content": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not search or filter the incomplete domain, guess or invent values, or ask for optional preferences as if they were required. Treat requested domains independently: in the same turn, continue searches for other requested domains whose required inputs are complete, while deferring only incomplete domains until the user supplies the missing values."
+      },
+      {
+        "op": "replace",
+        "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). For a one-sided bound, preserve the bound on the correct side and use the field’s supported limit on the unbounded side: “by” or “no later than” means the supported minimum through the stated maximum, while “from” or “at least” means the stated minimum through the supported maximum. For time ranges, interpret “arrive by X” as the earliest supported time through X, not an exact arrival at X. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`)."
+      },
+      {
+        "op": "replace",
+        "target": "Save each newly generated search or transformation result under a unique cache key.",
+        "content": "For every new search, filter, sort, or nearest-result call, assign the returned object to a variable and immediately save it with `save_to_cache(key=\"<unique key>\", value=<that variable>)`; do not omit caching the initial search or any later transformation."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

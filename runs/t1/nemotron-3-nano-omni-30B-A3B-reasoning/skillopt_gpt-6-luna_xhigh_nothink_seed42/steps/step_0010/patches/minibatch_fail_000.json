@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle",
+      "count": 7,
+      "description": "Search or filter results were not consistently assigned and saved; one trajectory also tried importing tools instead of calling the provided functions directly."
+    },
+    {
+      "failure_type": "active_scope_and_followup",
+      "count": 3,
+      "description": "Agents omitted active work from earlier turns, including hotel searches, a return flight, and an activity accepted with a brief affirmative reply."
+    },
+    {
+      "failure_type": "location_granularity",
+      "count": 2,
+      "description": "A state abbreviation was passed as a city instead of using the schema's state field."
+    },
+    {
+      "failure_type": "cache_refinement",
+      "count": 2,
+      "description": "Agents resent criteria already represented in cached results or used a base that did not preserve the current request."
+    },
+    {
+      "failure_type": "unsupported_or_inferred_preferences",
+      "count": 1,
+      "description": "A flight search included unrequested class and nonstop preferences."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly requires saving tool results and avoiding redundant filter criteria, so those instructions are not duplicated. These edits clarify short affirmative replies, safely derive hotel dates from explicit itinerary details, make state and nonstop field mappings operational, and prevent tool-import failures.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "- Resolve a brief affirmative reply against the immediately preceding assistant offer or question. Treat it as accepting the offered action or preference, add that work to the active plan, and retain earlier active requests; do not treat the reply as a no-op merely because related results are cached."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Missing mandatory information",
+        "content": "When a hotel stay is clearly at the destination of an explicitly dated round trip and no separate lodging dates were given, use the outbound date as check-in and the return date as check-out. If an explicit check-in date and stay length in nights are given but checkout is missing, derive checkout with `adjust_date`. If the destination or date relationship is ambiguous, ask rather than infer."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- When only a state or region is supplied, including a postal abbreviation, use `state`, not `city`. Map an explicitly requested non-stop or no-stop flight to `num_layovers=[0]`; do not infer nonstop, economy, or another optional preference when it was not requested."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- Call the provided tool functions directly; do not import tool modules, alter module paths, or redefine tool functions or their models."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

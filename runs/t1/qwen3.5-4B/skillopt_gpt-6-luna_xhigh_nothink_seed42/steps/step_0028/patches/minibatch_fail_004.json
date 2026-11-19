@@ -1,0 +1,26 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "flight_time_format_mapping",
+      "count": 1,
+      "description": "The agent converted user-stated times to rejected 24-hour-with-seconds values instead of mapping exact and upper-bound times to the accepted time format."
+    },
+    {
+      "failure_type": "cached_result_update",
+      "count": 1,
+      "description": "The agent repeated a flight search instead of filtering the compatible cached route-and-date results with the newly supplied time constraints."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add flight-specific guidance for interpreting exact and 'by' times in the accepted format, and make the cached-filter workflow explicit for timing follow-ups.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": " For flight time fields, use `h:mm AM/PM` strings rather than converting times to 24-hour `HH:MM:SS`. Treat “at” a stated time as exact and encode it as `[time, time]`; treat “by” or “no later than” a stated time as an upper bound beginning at `12:00 AM`. If a compatible cached flight result already covers the requested route and date, retrieve it and use `filter_flights` for newly supplied time constraints, then save the filtered result under a distinct key instead of repeating `search_flights`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

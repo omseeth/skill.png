@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_follow_up_misclassification",
+      "count": 5,
+      "description": "Agents re-filtered already-satisfied criteria, reprocessed unchanged domains, or split a fully specified new search into redundant search-and-filter calls."
+    },
+    {
+      "failure_type": "hotel_scope_and_required_detail_handling",
+      "count": 2,
+      "description": "A requested hotel domain was omitted, or an explicit stay length was manually calculated while an unsupported traveler count was inferred."
+    },
+    {
+      "failure_type": "result_binding_execution_error",
+      "count": 1,
+      "description": "A search result was saved through an inferred variable name without assigning the tool result."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most prevalent failures disregard the cache summary and the latest-turn delta. Clarifying how to handle already-covered scopes, new constraints, and read-only acceptance makes tool actions more precise. A stricter result-binding invariant addresses the execution error. Existing required-argument and stay-length guidance already covers the hotel-detail failures, so it is not duplicated.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+        "content": "\n\n**Apply the cache summary as a coverage ledger:** For a filter-only update, retrieve the most-constrained compatible result and pass only newly supplied supported constraints, plus any active constraints the summary shows are not already embodied. Do not repeat an embodied filter or re-filter an unchanged scope. If the user accepts an offer to show or recommend results for a scope already covered by cache, retrieve that exact result once and stop—do not search, filter, or save it again. If no compatible result covers a newly requested scope, make one base search with all active supported criteria for that scope; do not first search broadly and then filter for criteria already known. Act only on changed domains or legs and pending requests that have become complete."
+      },
+      {
+        "op": "replace",
+        "target": "- Before finalizing tool code, verify that each `save_to_cache(value=...)` names the local variable assigned the corresponding tool result—not a guessed name derived from the domain or cache key. For example, assign `hotels = search_hotels(...)` and save with `value=hotels`.",
+        "content": "- Result binding is mandatory: assign each result-producing call to a local variable in that same statement before saving, and pass that exact variable to `save_to_cache`. A cache key is only a string, never a Python variable; never make an unassigned search call and then save an inferred variable name. For example: `restaurants = search_restaurants(...)` followed immediately by `save_to_cache(key=\"restaurants\", value=restaurants)`. If the result variable is not actually bound, correct the call before saving."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

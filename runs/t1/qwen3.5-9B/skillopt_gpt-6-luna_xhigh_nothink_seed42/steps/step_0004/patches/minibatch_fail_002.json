@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "follow-up/cache-state misuse",
+      "count": 5,
+      "description": "Agents skipped needed updates, reused prior-turn variables, reran searches instead of filtering cached results, or processed already-satisfied results."
+    },
+    {
+      "failure_type": "flight date and time interpretation",
+      "count": 2,
+      "description": "Agents confused a trip date range with a one-way search and treated an arrival deadline as an exact time or used an invalid time format."
+    },
+    {
+      "failure_type": "independent domain handling",
+      "count": 1,
+      "description": "A missing hotel stay date blocked a requested attraction search whose required inputs were available."
+    },
+    {
+      "failure_type": "location value truncation",
+      "count": 1,
+      "description": "An agent shortened a user-provided neighborhood phrase instead of preserving the complete value."
+    },
+    {
+      "failure_type": "result persistence omission",
+      "count": 3,
+      "description": "Some generated searches or filters were left unassigned or were not saved to cache."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing rules cover cache use, independent inputs, persistence, and flight formatting, but these trajectories show recurring misapplication. The edits make the follow-up decision sequence explicit, clarify date-range and deadline semantics, and reinforce preserving complete location values.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Handle follow-ups incrementally through the cache:** On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns. Use the cache summary to identify the latest suitable base for each affected result, then retrieve it with `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only newly stated or changed constraints not already reflected in the base, using the appropriate same-domain filter. A broad search summary that does not reflect a new constraint does not satisfy it. If an update applies to multiple cached results, such as outbound and return flight legs, retrieve, filter, and process each independently. Do not mix domains, repeat already-applied constraints, rerun completed work, or touch unrelated results. Search afresh only when no suitable cached base exists; do nothing only when the cached results satisfy all current constraints. Save each updated result under a relevant fresh key, following the persistence rule.",
+        "content": "- **Handle follow-ups incrementally through the cache:** Reconcile the full conversation and cache on every turn. For each requested domain, compare the current constraints with the cache summary; the existence of a result alone does not mean the new request is satisfied. If a constraint is not reflected in the latest suitable result, retrieve that result using its exact cache key, assign it to a variable, and apply the new constraint with the same-domain filter. Never rely on variables from earlier turns or rerun a search when a suitable cached base exists. Save each updated result under a fresh, descriptive key. Do not repeat completed work, copy or re-save unchanged results, or process unrelated domains. Use a no-op only when all current and pending requested constraints are already reflected in suitable cached results. If one requested domain lacks a required input, seek only that missing information while still searching and caching other explicitly requested domains whose required inputs are available."
+      },
+      {
+        "op": "replace",
+        "target": "Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value.",
+        "content": "Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood`, and airport codes to the corresponding airport-code field. Preserve the complete user-provided value for each field; do not trim locality qualifiers from a neighborhood phrase or replace the full phrase with only the neighborhood name."
+      },
+      {
+        "op": "replace",
+        "target": "- **Search round-trip flights as separate legs:** Search outbound from origin to destination using the outbound date, then return from destination to origin using the return date as that leg's `departure_date`. Cache each leg separately; do not use the return date as the outbound `arrival_date`.",
+        "content": "- **Search round-trip flights as separate legs:** When the user gives a trip date range such as “from [date] until [date]” and the context indicates round-trip travel, search outbound from origin to destination on the first date and return from destination to origin on the second date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg."
+      },
+      {
+        "op": "replace",
+        "target": "- **Format flight time ranges as required:** For `departure_time` and `arrival_time`, use the validator's accepted 12-hour format with AM/PM (for example, `12:00 PM`), not `HH:MM:SS`. Choose a supported interval for vague time periods.",
+        "content": "- **Format flight time ranges as required:** Use the validator's accepted 12-hour format with AM/PM (for example, `12:00 PM`), not `HH:MM:SS`. A request to depart “at” a specific time is an exact range `[time, time]`; an arrival deadline phrased as “by” a time is a range from `12:00 AM` through that time, not an exact-time range. Choose a supported interval for vague time periods."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

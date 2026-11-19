@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Person-slot clues ('this former CBS anchorman', 'this creator of Uncle Remus') were answered with the full real name the passages repeat. Nicknames, book titles and other anchors were not used.",
+    "Generic type-noun clues ('this gland', 'this play', 'this spotted breed', 'one of these') were answered with the standard head noun or title (pituitary gland, Henry V, Appaloosa, Phone Booth). The agent did not add sponsor or descriptor words.",
+    "For 'one of these' clues about a film's premise, the agent answered the physical object the clue points to. Here the object and the film share a name.",
+    "Word-level clues were answered with the single word itself, even though that word appears in the clue. 'The adverb in \"think fast\"' -> 'fast'. A dictionary definition of a sound -> 'plop'. A J! Archive line in the context repeated the clue and confirmed the first of these.",
+    "The gold keys carried extras such as a leading 'the', quotation marks or different capitalisation ('the Appaloosa', '\"Henry V\"', 'Pituitary gland'). Bare answers still matched, so exact match ignores articles, quotes and case."
+  ],
+  "patch": {
+    "reasoning": "Most successes were stable behaviours the skill already covers: person type-check, head-noun retention and bare short answers. Two things are not covered. First, the anchor-rejection rule ('if your candidate appears in the clue text, reject it') conflicts with word-extraction and definition clues such as 'The adverb in \"think fast\"', where the answer is a word from the clue. Without an explicit exception, the agent could later talk itself out of a correct answer like 'fast'. Second, the skill gives mixed guidance on articles and quotes, while the evidence shows matching ignores them. One line saying so frees the agent to focus on content words, and it does not weaken the Sir/head-noun rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "- EXCEPTION (overrides the 'candidate appears in the clue, reject it' check in the Strategic guidance): word-level clues ask for a word taken from or defined by the clue itself. 'The adverb in \"think fast\"' / 'the verb in ...' / 'the preposition in ...' -> pick the quoted word with that part of speech ('fast'). A clue that is a dictionary-style definition ('the sound a small object makes dropping into water') -> the single word being defined ('plop'), the one that recurs in the dictionary passages. Give the bare word, lowercase is fine."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 4: Exact-match formatting of the final answer",
+        "content": "- Matching ignores case, a leading 'the', and surrounding quotation marks (gold 'the Appaloosa' / '\"Henry V\"' accepted 'Appaloosa' / 'Henry V'). Do not agonise over these. Spend the effort on choosing the right entity and the right content words (head noun kept or dropped, 'Sir' for knights, regnal numerals)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

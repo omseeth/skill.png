@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Aggregator pages such as 'fall - Search-ID.com' and 'history - Search-ID.com' reproduce the clue verbatim in their snippet. The page title word was the answer ('Fall', 'History'). Trivia-site titles like '\"E\": In titles it preceded...' and GitHub jeopardy dumps ('ROCK \"E\" | clue | Endless') also gave the answer directly.",
+    "When the archive snippet showed the clue (and category) but truncated the answer, the agents completed it from the clue's anchor entity: Clio -> History, Goneril -> King Lear, 'Hemlock Jones' -> Sherlock Holmes, Slinky, and Oprah from the cookbook title. They answered with a short bare entity.",
+    "'In titles it preceded A's X & B's Y' clues were solved by finding the single word that fits every listed title. The archive category hint (ROCK \"E\") confirmed it ('Endless').",
+    "When the clue quotes the type noun ('this \"bubble\"'), the full proper name was kept ('South Sea Bubble'). The bare modifier would not be an acceptable answer.",
+    "The agents answered with one short bare entity and no explanation or descriptors, usually after one pass over the passages."
+  ],
+  "patch": {
+    "reasoning": "Two of the eight wins (fall, history) came from page titles that name the answer on aggregator pages carrying the clue. Rule 3 does not cover that layout. The 'preceded/followed X & Y' shared-word clue plus category-letter hint (Endless) is not covered in Rule 1. The quoted-type-noun case ('this \"bubble\"' -> South Sea Bubble) needs a short note so the delete-clue-words test does not strip the head noun. All three edits are small, narrowly worded, and avoid the broad echo-rule changes that were rejected before.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Archive lines may also be formatted 'CATEGORY | clue text | answer'. Take the answer that follows the clue, even if the whole context is one short passage.",
+        "content": "\n- Aggregator and trivia pages often put the answer in the PAGE TITLE while the snippet repeats the clue verbatim: '[TLE] fall - Search-ID.com [PAR] ...a classic of this season; It follows pit, prat & rain...' -> 'Fall'; '[TLE] history - Search-ID.com [PAR] Need help in this subject... Call up Clio' -> 'History'. When a short single-word or short-phrase page title sits on a snippet that contains the clue's distinctive words, treat that title word as the prime candidate and sanity-check it against the clue. Even when the snippet shows only the clue and category (e.g. 'A MUSE ME: ...'), take the anchor entity in the clue (Clio, Goneril) and answer the entity it points to using the other passages."
+      },
+      {
+        "op": "insert_after",
+        "target": "Answer with only that missing word. If a bare number appears in parentheses, treat it only as this hint, not as part of the question.",
+        "content": "\n- 'In titles it preceded A's \"X\" & B's \"Y\"' / 'it follows ...' / 'this word comes before ...': the answer is ONE word that completes EVERY listed title ('Endless Nights' + 'Endless Summer Nights' -> 'Endless'). Search the passages for each full title and take the word they share. Archive category hints such as 'ROCK \"E\"' give the answer's first letter or theme, so use them to confirm the candidate. Answer with just that word, not the full titles."
+      },
+      {
+        "op": "insert_after",
+        "target": "The 'do not repeat clue words' rule is for a separate modifier already stated in the clue ('hasty' + pudding).",
+        "content": "\n- Quoted type noun: when the clue puts the generic noun itself in quotation marks after 'this' ('In 1720 bad investments in this \"bubble\" burst the British economy'), the quoted word is the head of a standard proper name that the passages repeat. Answer with the full name ('South Sea Bubble'), not the bare modifier ('South Sea'). This is the same head-noun exception, not an echo error."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,51 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "missed_new_domain_request",
+      "count": 1,
+      "description": "A cached hotel result was treated as sufficient even though the latest turn introduced a named attraction to search."
+    },
+    {
+      "failure_type": "incremental_delta_or_cache_misuse",
+      "count": 3,
+      "description": "Some refinements omitted the new neighborhood constraint or repeated existing criteria and made unnecessary cache operations."
+    },
+    {
+      "failure_type": "schema_argument_semantics",
+      "count": 3,
+      "description": "A district was passed as a city, an exact range was sent as a singleton, or an amenity was mapped to the wrong field."
+    },
+    {
+      "failure_type": "result_persistence_or_cache_key",
+      "count": 4,
+      "description": "Results were not consistently saved, or a refinement reused an existing cache key instead of a new one."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify gaps around hierarchical location parsing, range-shaped arguments, ambiguous amenity mapping, and the distinction between searching a newly requested domain and computing proximity. Result persistence and delta-only refinement are already explicit in the skill, so those rules are not duplicated.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- Parse locations hierarchically when the user gives both a city and an area within it: use the parent city in `city` and pass the named district or area verbatim in `neighborhood` when supported. Do not pass the combined city-and-district phrase as the city; for example, a request for Downtown Tucson uses `city=\"Tucson\"` and `neighborhood=[\"Downtown Tucson\"]`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+        "content": "\n- For arguments whose schema describes a minimum/maximum range or requires two endpoints, provide exactly two values. Represent an exact requested value x as `[x, x]`; do not pass a singleton such as `[x]` for a range-valued field."
+      },
+      {
+        "op": "insert_after",
+        "target": "Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated.",
+        "content": " Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+        "content": "\n- A stated interest in visiting a named attraction still requires searching the attraction domain when that result is not validly cached; it only does not imply `search_nearest`. A cached hotel or restaurant result cannot satisfy this new domain request."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,46 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "format_bracket_and_missing_key",
+      "count": 1,
+      "description": "Objects with a filled optional list ended `]}],` (stray `]`), and objects with empty optionals omitted the `\"optional parameters\"` key. Nothing parsed (n_pred=0), so every call was lost."
+    },
+    {
+      "failure_type": "wrong_param_placement_or_value",
+      "count": 1,
+      "description": "Required `end` was placed in optional, the schema default `limit`=200 was added unprompted, `category` was the whole enum text `linear inverse` instead of `linear`, and `function` was `TIME_SERIES_DAILY` instead of the named endpoint `DIGITAL_CURRENCY_DAILY`."
+    },
+    {
+      "failure_type": "invented_input_wrong_tool",
+      "count": 1,
+      "description": "The query gave only lat/lon, but the agent used a city-based weather tool with a guessed city (`Miami`). It also used the alerts `/count` tool instead of `/alerts?{parameters}` with `active`, `point` and `zone_type`."
+    },
+    {
+      "failure_type": "missed_qualifiers_and_wrong_sibling",
+      "count": 1,
+      "description": "The named platform (Steam) and 'first page' were dropped, so `platform` and `page` were missing. The agent also picked the Monsters Route instead of the Zelda games list."
+    }
+  ],
+  "patch": {
+    "reasoning": "The zero-score parse failure is the most costly, and the batch shows two new shapes of it: a stray `]` after a filled optional list, and omitting the optional key when it is empty. The existing warnings do not stop either, so I replace the prose with one literal canonical three-line example that shows every list combination, plus a one-line ending rule. The other three failures are value and placement errors that the schema-copy step did not prevent: required `end` put in optional, defaults and whole enum lists pasted into values, a guessed city when only coordinates were given, and a dropped platform or page. Each gets a short rule with a before-and-after example. They are written as generic patterns (ranges, defaults, enums, coordinates, named platform or page), not task-specific paragraphs.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "**More real zero-score outputs (check before sending):**",
+        "content": "**LINE ENDINGS (copy this shape).** Every object is `{\"tool name\": \"...\", \"required parameters\": [REQ], \"optional parameters\": [OPT]}`, where REQ and OPT are each `[]` or a list of `{\"name\": \"x\", \"value\": \"y\"}`. BOTH keys are written for every object. When there are no optionals, write `\"optional parameters\": []`; never omit the key. Nothing follows `[OPT]` except `}`, then `,` (or the final newline and `]</answer>`). So every non-last line ends exactly `]},` and the last line ends `]}`. A line ending `}]}],` or `}],` has a stray `]`, so delete it. Canonical shape covering every combination (required+optional filled, required empty, optional empty):\n```\n<answer>[\n{\"tool name\": \"A: x\", \"required parameters\": [{\"name\": \"q\", \"value\": \"foo\"}], \"optional parameters\": [{\"name\": \"by\", \"value\": \"bar\"}]},\n{\"tool name\": \"B: y\", \"required parameters\": [], \"optional parameters\": [{\"name\": \"id\", \"value\": \"7\"}]},\n{\"tool name\": \"C: z\", \"required parameters\": [{\"name\": \"id\", \"value\": \"9\"}], \"optional parameters\": []}\n]</answer>\n```\n\n**More real zero-score outputs (check before sending):**"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Parameters",
+        "content": "\n\n- REQUIRED MEANS REQUIRED, DEFAULTS STAY OUT. Every name under `Required parameters:` goes in `required parameters`, including both ends of a range (`start` AND `end`, `lat` AND `lon`). BAD: `start` required but `end` moved to optional. Never fill an optional just because its description shows a default (BAD `limit`=`200` from 'Default 200'). Add it only when the query states that number.\n- ENUM AND FUNCTION VALUES. Pick the ONE option the query's words match, not the schema's whole list: 'linear perpetual market' -> `category`=`linear` (not `linear inverse`). When the query names the endpoint ('Alpha Vantage's DIGITAL_CURRENCY_DAILY endpoint'), a `function`-style param takes that endpoint name verbatim (`function`=`DIGITAL_CURRENCY_DAILY`), not a sibling like `TIME_SERIES_DAILY`.\n- NAMED PLATFORM AND PAGE ARE PARAMS. A platform, store or source named in the clause fills the matching field: 'Steam giveaways sorted by popularity' -> optional `platform`=`steam` AND `sort-by`=`popularity`. 'Just the first page with 15 results' -> BOTH `page`=`1` AND `pageSize`=`15`; the ordinal and the count are two params, so never emit only one. Do not add a `type` or other filter the clause never mentions."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n\n- COORDINATES IN, NO GUESSED NAMES. When the query gives latitude/longitude, use only tools whose inputs take coordinates (`latitude`/`longitude`, `lat`/`lon`, `point`). A tool that requires `city` is wrong, and you must never invent a city from the numbers (BAD `Cloud Cast: Get current weather` with city=`Miami`). 'Current weather at lat 26.12, lon -80.14' -> `Easy Weather: Current conditions (basic)` (`latitude`=`26.12`, `longitude`=`-80.14`). 'Any active marine weather alerts at that location' -> `National Weather Service: /alerts?{parameters}` with optional `active`=`1`, `point`=`26.12,-80.14` (lat,lon in one string) and `zone_type`=`marine`. `/alerts/active/count` has no params and only answers 'how many', so it cannot express a location or zone filter."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

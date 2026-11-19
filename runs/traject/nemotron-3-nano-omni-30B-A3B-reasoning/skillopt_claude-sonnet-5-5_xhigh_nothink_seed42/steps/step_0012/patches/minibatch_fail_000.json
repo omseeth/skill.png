@@ -1,0 +1,55 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_calls",
+      "count": 4,
+      "description": "A clause or deliverable was dropped or merged into another tool: the last-sentence chess puzzle, the separate 48-hour air-quality forecast, the second Priceline download (amenities), and per-place lookups for 'both locations'."
+    },
+    {
+      "failure_type": "wrong_tool_or_padding",
+      "count": 3,
+      "description": "Tool chosen with invented inputs (Airbnb lat/lng with guessed coordinates, airlineSearch with 'Winnipeg to London'), or padding calls with placeholder values (Drillster drill_id=1, user_id=1, DCPS name=Mercury)."
+    },
+    {
+      "failure_type": "tool_name_form",
+      "count": 2,
+      "description": "Name copied from the Provider line (`Gas Price — canada`) or shortened to a heading that does not exist (`Priceline com Provider: Search locations`)."
+    },
+    {
+      "failure_type": "structure_error",
+      "count": 3,
+      "description": "Duplicate `optional parameters` key after a filled list (Card call) and objects missing the `optional parameters` key (Numbers, GetBooksInfo, Priceline call)."
+    },
+    {
+      "failure_type": "value_form",
+      "count": 2,
+      "description": "Missed `by`=`Group Name` for the K-POP group search, and case differences on lookup values (`UK` vs `uk`, `English` vs `english`, `Bellman` vs `bellman`). Not addressed here: the case rules are inconsistent across tools and may be gold artifacts, and the Pokedex rule is already in the protected section."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four of eight failures are dropped or merged calls, so I add a numbered one-call-per-deliverable rule with the exact miss patterns (final clause, separate forecast tool, X-and-Y under one provider, per-place lookups). Three more come from choosing tools with invented inputs or padding with placeholder values, so I add an input-fit and no-placeholder rule. Two are tool-name errors, so I add literal BAD/GOOD name examples from this batch. Three are structural (duplicate or missing `optional parameters` key), so I change the form to skeleton-first filling instead of repeating the existing prose rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "- ONE CALL PER DELIVERABLE. Before the JSON, split the query on commas, 'and', 'then', 'also' and 'finally' into a numbered list. Each item is one call. Misses seen repeatedly:\n  - The last clause. 'Finally retrieve a chess puzzle with a 1500 rating' -> `Chess Puzzles: Puzzles` with optional `rating`=`1500`, `count`=`1`.\n  - A forecast requested next to current data. 'Current air pollution ... and a 48-hour air quality forecast' is two calls: `RapidWeather: Current air pollution data` AND the dedicated `Air Quality: Air Quality Forecast` with optional `hours`=`48`. If a tool's heading names the deliverable (Forecast, Amenities), it gets its own call, even when another tool's description mentions it in passing. The 'ONE tool for valid AND disposable' rule only covers two properties of the same input, not separate deliverables.\n  - 'X (limit 100) and Y (also limit 100)' under one provider is two calls, e.g. `Priceline com Provider: Download property types` and `Priceline com Provider: Download filter amenities`, each with `limit`=`100`.\n  - 'Airport data for both locations', or any 'both places' wording, with a place-name lookup tool (`Priceline com Provider: Auto complete`, `string`) is one call per place (Winnipeg, London). Do not force 'A to B' into an airline or flight-number search."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "- Choose the tool by the input the query actually gives. If the query names a place hierarchy (country, region, province, city) and a tool has matching admin fields, use it (`Airbnb listings: Count Listings by administrative divisions`: `state`=`IT`, `admin1`=`Lazio`, `admin2`, `admin3`, plus `bedrooms`, `maxGuestCapacity`). Do not pick a lat/lng tool and guess coordinates.\n- Never fill a required parameter with a made-up placeholder (`drill_id`=`1`, `user_id`=`1`, a school `name`=`Mercury`, guessed lat/lng). If the query supplies no value for a tool's required input, that tool is not wanted, so leave it out. Padding calls cost more than they gain: 'ran Python code to calculate orbital periods' is one `Safe Exam: judget0` call with the code in `code`."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Output format (errors here score zero)",
+        "content": "- NAME COPY, character by character. For every call, find its `### ` line in the tool list and paste it. The Provider line is NOT the name. BAD `Gas Price — canada`; GOOD `Gas Price: canada`. Never drop words from the endpoint. BAD `Priceline com Provider: Search locations` (no such heading); GOOD `Priceline com Provider: Search hotels locations` (siblings are `Search flights locations` and `Search cars locations`; pick by the query's noun). Scan the finished answer for ` — ` and for any name you cannot find as a `### ` line."
+      },
+      {
+        "op": "append",
+        "content": "\n## BUILD THE ANSWER IN TWO PASSES (fixes missing/duplicate keys)\n1. Pass 1: for every call on your checklist write the empty skeleton `{\"tool name\": \"<### heading>\", \"required parameters\": [], \"optional parameters\": []}`, joined by `, ` inside `[` `]`.\n2. Pass 2: put the parameter objects INSIDE the two existing brackets. Never add a third list or a second key.\n   - BAD `\"required parameters\": [], \"optional parameters\": [{\"name\": \"value\", \"value\": \"A\"}], \"optional parameters\": []}` (duplicate key).\n   - BAD `{\"tool name\": \"Numbers: Get year fact\", \"required parameters\": [{\"name\": \"year\", \"value\": \"1969\"}]}` (no `optional parameters` key).\n   - GOOD `{\"tool name\": \"Numbers: Get year fact\", \"required parameters\": [{\"name\": \"year\", \"value\": \"1969\"}], \"optional parameters\": []}`.\n3. For a named group search, fill the schema's `by` field: K-POP girl-groups for 'the girl group Twice' -> `q`=`Twice`, optional `by`=`Group Name`.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

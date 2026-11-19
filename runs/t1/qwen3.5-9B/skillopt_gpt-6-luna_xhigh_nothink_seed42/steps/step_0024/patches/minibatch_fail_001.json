@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 5,
+      "description": "Search or filter results were left unassigned or unsaved, sometimes with cache retrieval nested directly inside a filter."
+    },
+    {
+      "failure_type": "cache_followup_reconciliation",
+      "count": 4,
+      "description": "Agents missed new or pending domain updates, repeated already-satisfied work, or touched unrelated cached results."
+    },
+    {
+      "failure_type": "proximity_tool_misuse",
+      "count": 1,
+      "description": "A request to explore an assistant-suggested neighborhood was treated as a nearest/proximity search instead of a neighborhood filter."
+    },
+    {
+      "failure_type": "round_trip_leg_handling",
+      "count": 1,
+      "description": "A date range for an explicitly requested round trip was treated as outbound and arrival dates rather than separate outbound and return legs."
+    },
+    {
+      "failure_type": "amenity_schema_mapping",
+      "count": 1,
+      "description": "A hotel fitness-center request was mapped to the fitness-class field instead of the gym field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The persistence, cache-reconciliation, and round-trip failures are already explicitly covered by the skill, so repeating those rules would add little. These edits clarify two concrete schema/tool mappings that were mishandled: browsing an assistant-suggested neighborhood and distinguishing a hotel gym from fitness classes.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion.",
+        "content": "\n\nWhen the suggested referent is a neighborhood or district, treat “what’s there?” as a location-scoped browse: retrieve a suitable cached result for the relevant domain and filter that same domain with `neighborhood=[full area name]`, preserving its existing category or type criteria. Do not use `search_nearest` unless proximity is explicitly requested."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not map vague amenity wording to a narrower tool flag without clear equivalence.",
+        "content": " A hotel fitness center or gym maps to `gym_present=True`; use `has_fitness_class=True` only when the user asks for fitness classes."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

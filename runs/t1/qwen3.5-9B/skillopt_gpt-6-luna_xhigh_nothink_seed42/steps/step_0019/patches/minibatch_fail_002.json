@@ -1,0 +1,45 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_follow_up_constraint_omission",
+      "count": 3,
+      "description": "New budget, neighborhood, or airline/class criteria were not applied to the suitable cached result."
+    },
+    {
+      "failure_type": "date_and_flight_field_misuse",
+      "count": 3,
+      "description": "Agents reformatted or calculated dates, used a return date as an arrival constraint, or supplied airport identifiers in the wrong fields."
+    },
+    {
+      "failure_type": "unrequested_domain_or_inferred_hotel_details",
+      "count": 2,
+      "description": "Agents inferred hotel planning or hotel occupancy from flight-trip context without an explicit lodging party size."
+    },
+    {
+      "failure_type": "tool_call_and_cache_persistence",
+      "count": 2,
+      "description": "Result-producing calls were left bare or their results were not saved to cache."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most date handling, cache-update, and save requirements are already explicit in the skill, so they are not duplicated here. These edits correct the airport-field guidance that conflicted with the demonstrated runtime convention, clarify when flight context does not imply a hotel request or hotel party size, and make mixed clarification replies less likely to suppress a concrete new constraint.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field",
+        "content": "Map cities to `city`, states or regions to `state`, and neighborhoods to `neighborhood` while retaining the full provided name. In flight calls, pass a user-supplied airport identifier or code in the corresponding `start_airport` or `end_airport` field, alongside its known city; do not substitute the `*_code` fields for this convention."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Do not infer lodging requests or hotel occupancy from flight context:** Search for a hotel only when lodging is explicitly requested. A flight route, travel dates, or party count alone does not request lodging. Set `num_people` only from a party size explicitly stated for hotel accommodations; wording such as “solo flight” alone does not establish hotel occupancy."
+      },
+      {
+        "op": "replace",
+        "target": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion.",
+        "content": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion. A decline or no-preference answer about the field just asked about does not cancel a separate concrete constraint in the same reply; apply each explicit new constraint to every relevant cached result, processing itinerary legs independently."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_incremental_filtering",
+      "count": 5,
+      "description": "Follow-up constraints triggered fresh searches instead of retrieving compatible cached results and filtering them."
+    },
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 6,
+      "description": "Tool results were not consistently assigned and saved, or the save call referenced a function rather than its result."
+    },
+    {
+      "failure_type": "flight_time_format_validation",
+      "count": 2,
+      "description": "Flight time ranges used 24-hour strings that the tool rejected."
+    }
+  ],
+  "patch": {
+    "reasoning": "The flight-time guidance currently gives a midnight example in a format rejected by the flight tools. Correcting it addresses both validation failures. Cache reuse and result persistence are also frequent failures, but the skill already explicitly covers those workflows, so duplicating those instructions is unwarranted.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed; do not mix 12-hour suffixes with 24-hour values (for example, represent midnight as `00:00:00`, not `00:00 PM`).",
+        "content": "For flight `departure_time` and `arrival_time`, use 12-hour strings with an AM/PM suffix (for example, `[\"12:00 AM\", \"04:33 AM\"]`); convert natural-language bounds to that format. Represent midnight as `12:00 AM`, not `00:00:00`. Do not pass 24-hour `HH:MM:SS` strings to flight tools."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

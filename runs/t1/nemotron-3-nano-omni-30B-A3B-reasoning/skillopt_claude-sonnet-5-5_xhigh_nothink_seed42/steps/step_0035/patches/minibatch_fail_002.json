@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "hotel_or_restaurant_reply_with_missing_mandatory_arg",
+      "count": 3,
+      "description": "Hotel amenity reply with only 'attractions' cached (x2) and a cuisine reply with no city. The agent filtered the wrong cached domain or wrote city=\"<city>\" instead of seek_information."
+    },
+    {
+      "failure_type": "date_range_answer_not_searched",
+      "count": 1,
+      "description": "The user answered the date question with 'X to Y' for a hotel and the agent asked for dates again instead of calling search_hotels."
+    },
+    {
+      "failure_type": "round_trip_flight_plus_hotel_malformed",
+      "count": 1,
+      "description": "Passed return_date to search_flights, saved a single 'flights' key, and dropped the hotel search along with num_rooms and the kitchen amenity."
+    },
+    {
+      "failure_type": "loaded_key_not_in_cache",
+      "count": 1,
+      "description": "Loaded 'filtered_hotels' when only 'hotels' existed, which crashed. The attraction search also omitted the Social type."
+    },
+    {
+      "failure_type": "re_searched_cached_domain",
+      "count": 1,
+      "description": "Re-ran search_attractions after the user answered 'No, I haven't. What's there?' to a proposed neighborhood. It should have filtered by that neighborhood."
+    },
+    {
+      "failure_type": "wrong_filter_kwargs",
+      "count": 1,
+      "description": "Time reply mapped to one departure_time window and no arrival_time (kwarg-shape issue, noise-level)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Edits extend existing rules rather than adding new gates. The DATE GATE sentence now covers the other-domain-key trap, the 'X to Y' reply and the missing restaurant city, which accounts for four of the eight failures. The SEARCH GATE sentence gets a literal key-name check and the 'No, I haven't. What's there?' pattern. Rule 27 gets the missing amenity mappings (kitchen, beach, balcony and so on). The -2 rule gets one compact round-trip + hotel example showing three searches and no return_date.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "A budget, stars, amenity or party-size reply never supplies dates (hotel requested, no dates, reply 'around 80 per night' -> seek_information, no search_hotels).",
+        "content": "A budget, stars, amenity or party-size reply never supplies dates (hotel requested, no dates, reply 'around 80 per night' or 'we need a pool' -> seek_information, no search_hotels). This holds even when another domain's key (e.g. only 'attractions') sits in CACHE: never filter that other key to apply a hotel reply. A date range in the user's reply ('June 29, 2025 to July 11, 2025') with a hotel requested and a city known IS check-in/check-out: call search_hotels now (a 'solo trip' adds num_people=1). Same logic for restaurants: if no city was stated in any turn, a cuisine or dietary reply ('I'm craving Thai') gets `seek_information(\"We need the city for the restaurant.\")` and never city=\"<city>\" or any other placeholder."
+      },
+      {
+        "op": "replace",
+        "target": "read the CACHE dict. If a domain's key is present,",
+        "content": "read the CACHE dict and write down its exact key names: get_results_from_cache may use ONLY those names (CACHE has 'hotels' but no 'filtered_hotels' -> load 'hotels'). A 'No, I haven't. What's there?' answering the assistant's 'Have you considered <place>?' is interest in that place: filter the cached domain by it (`filter_attractions(prior_results=a, neighborhood=[\"<place>\"])`), never a new search. If a domain's key is present,"
+      },
+      {
+        "op": "replace",
+        "target": "'city view' -> has_city_view_rooms_present=True.",
+        "content": "'city view' -> has_city_view_rooms_present=True. 'kitchen' / 'in-room kitchen' -> has_inroom_kitchen=True. 'beach access' -> has_beach_access=True. 'ocean view' -> has_ocean_view_rooms_present=True. 'balcony' -> has_balcony=True. 'valet parking' -> has_valet_parking=True. 'EV charging' -> has_electric_vehicle_charging=True. 'pet friendly' -> is_pet_friendly=True. 'wheelchair accessible' -> is_wheelchair_accessible=True (no has_ prefix). 'skiing' -> has_skiing_lodging=True."
+      },
+      {
+        "op": "replace",
+        "target": "Never load another domain's key and re-save it as a stand-in for the missing search.",
+        "content": "Never load another domain's key and re-save it as a stand-in for the missing search. Example: turn 1 asked for a round-trip flight A to B plus a hotel with an amenity, and the reply is 'depart <X>, return <Y>, we need N rooms' with CACHE `{}` -> THREE assigned and saved searches in one block: `departure_flights = search_flights(start_airport_city=\"A\", end_airport_city=\"B\", departure_date=[\"<X>\"])`, `return_flights = search_flights(start_airport_city=\"B\", end_airport_city=\"A\", departure_date=[\"<Y>\"])` (never a return_date kwarg, never one 'flights' call), and `hotels = search_hotels(city=\"B\", checkin_date=[\"<X>\"], checkout_date=[\"<Y>\"], num_rooms=N, <amenity from turn 1 via the Rule 27 table>)`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

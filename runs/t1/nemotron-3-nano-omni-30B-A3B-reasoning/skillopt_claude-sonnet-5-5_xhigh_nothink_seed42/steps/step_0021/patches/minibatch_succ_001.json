@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Seek-only turns: when the CACHE is empty and a mandatory arg is missing (hotel dates, restaurant city, flight + hotel dates), the output was exactly one short seek_information naming only the missing items. Occasion words like 'anniversary', 'birthday' and 'special occasion', and style words like 'luxurious', were not treated as dates or filters.",
+    "Refinement turns: the agent loaded the most refined key of the single domain being answered and passed only the last turn's new constraint. Examples: rating=[3.0, 5.0] on filtered_restaurants, flight_class=['first'] on the one cached flight key, cuisine=['Latvian'] on restaurants. It then saved under a fresh key (the final_*/filtered_* scheme).",
+    "Vague style words ('professional', 'luxurious', 'good menu') were dropped, keeping only the parameter-bearing part (cuisine).",
+    "When the missing mandatory args arrived in the last turn (hotel dates, a round-trip date pair), the agent ran straight-line searches with only user-stated params. Flights were two separate calls saved as departure_flights/return_flights, with no num_people on flights. The hotel got num_rooms and num_people only because the user stated them.",
+    "A pending domain (restaurants) already cached was left untouched while the newly completed domain (hotels) was searched."
+  ],
+  "patch": {
+    "reasoning": "All eight trajectories passed under the existing rules (seek-only turns, minimal one-domain filters, straight-line first searches, round-trip flight splitting). No new behavior needs encoding, and adding more examples would repeat sections already covered, which the optimizer notes warn against. The only useful change is hygiene: a few cross-references point to rules that do not exist (Rules 11, 15 and 18). This leaves the skill unchanged in behavior but removes dangling references that can confuse the agent.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "## Rule 14: Straight-line first search once mandatory args become complete (supplements Rule 11)",
+        "content": "## Rule 14: Straight-line first search once mandatory args become complete"
+      },
+      {
+        "op": "replace",
+        "target": "(Rules 2, 13, 17, 18)",
+        "content": "(Rules 2, 13, 17, 23)"
+      },
+      {
+        "op": "replace",
+        "target": "(Rules 14, 15)",
+        "content": "(Rules 14, 21)"
+      }
+    ]
+  },
+  "source_type": "success"
+}

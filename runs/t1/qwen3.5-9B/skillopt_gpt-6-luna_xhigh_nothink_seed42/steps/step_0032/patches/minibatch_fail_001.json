@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_call_lifecycle",
+      "count": 6,
+      "description": "Searches were left unsaved or duplicated with an extra bare call instead of saving one exact result."
+    },
+    {
+      "failure_type": "location_field_mapping",
+      "count": 2,
+      "description": "State abbreviations were passed as city values rather than state values."
+    },
+    {
+      "failure_type": "round_trip_decomposition",
+      "count": 1,
+      "description": "A date range for a round trip was treated as one outbound search with the return date used as an arrival constraint."
+    },
+    {
+      "failure_type": "clarification_context_loss",
+      "count": 1,
+      "description": "A previously stated cuisine preference was dropped when the user later supplied the city."
+    },
+    {
+      "failure_type": "cached_result_not_filtered",
+      "count": 1,
+      "description": "A suitable cached hotel result was searched again instead of retrieved and filtered for new constraints."
+    },
+    {
+      "failure_type": "invented_hotel_dates",
+      "count": 1,
+      "description": "A hotel checkout date and stay length were inferred from unrelated trip details despite missing required information."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already specifies state mapping, round-trip legs, and cache deltas, so repeating those rules would add little. Make the frequently violated result lifecycle more operational, preserve earlier criteria across clarification turns, and clarify that a flight date alone cannot establish hotel checkout.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Write every result-producing search, filter, sort, or `search_nearest` call in two steps: assign its returned result to a variable, then save that exact, complete result object with `save_to_cache` under a fresh, descriptive key. Do not extract `.search_results`, rebuild, or merge tool output before saving. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Retrieve cached results by assigning `get_results_from_cache(...)` to a variable before passing them to another tool; do not nest the retrieval call. Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation.",
+        "content": "For each intended result-producing search, filter, sort, or `search_nearest`, make exactly one call: `result = tool(...); save_to_cache(key=\"<fresh descriptive key>\", value=result)`. Never make a bare exploratory call and repeat it to capture the output. Save the exact complete returned object, not `.search_results` or a transformed or merged reconstruction. Use distinct keys for domains, itinerary legs, and updates. Assign `get_results_from_cache(...)` to a variable before passing it on; never nest retrieval. Before output, audit that each intended operation occurs once and its result is saved."
+      },
+      {
+        "op": "replace",
+        "target": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion.",
+        "content": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. A clarification answer fills the requested slot; it does not replace earlier explicit criteria for that domain. Carry forward all still-applicable values from the conversation and combine them with the new answer in one search or filter call where supported. If the reply supplies multiple criteria, capture all of them; do not select only one."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Check required city inputs and distinguish event dates from travel dates:**",
+        "content": "A flight departure date or flight result alone does not establish a hotel stay length or checkout date. Do not infer hotel nights from a flight date or unrelated values; use explicitly supplied stay boundaries or an explicit hotel start date and stated number of nights, and seek any missing required hotel date."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

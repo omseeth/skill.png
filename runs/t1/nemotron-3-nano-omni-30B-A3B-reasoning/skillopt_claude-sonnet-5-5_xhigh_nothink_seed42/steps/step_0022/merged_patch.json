@@ -1,0 +1,75 @@
+{
+  "reasoning": "Failure-driven edits take priority, and I carried them forward with tightening. (1) Both failure 'replace' edits targeted the same 4b sentence, so I merged them into one replace. It uses the shorter target string and the per-domain-split wording, and drops the duplicated example. (2) The VALUE TRACE and PER-DOMAIN SPLIT edits shared an anchor and overlapped, so I merged them into one edit. The 'hotel + restaurant, no hotel dates' bullet inside the split was a duplicate of the 'good restaurant nearby' edit, so I kept it once as a trigger at step 0 of the Quick decision order, worded 'hotel AND restaurant requested'. This follows the meta-skill advice to place it at step 0 and trigger on the domain pair, not on example wording. (3) Conflict on 'solo': one failure edit said solo gives no num_people, while two said solo / just me gives num_people=1. I resolved it as a stated number or 'solo' / 'just me' -> 1, and 'couple', 'family' and 'group' are not numbers. I removed the duplicate statements and the duplicated neighborhood-reply example, since the LAST-MESSAGE LITERAL rule already covers it. (4) From the success group, 'load only keys that exist' duplicated the failure PRE-SEND CHECKS item 2, which already pairs the prohibition with a positive fallback (search or seek_information). The 'naming tie-break' reconciling Rule 23 with the final_* scheme was folded into PRE-SEND CHECKS item 3. Both success edits are therefore absorbed, not added as extra rules. (5) No edits touch the protected SLOW_UPDATE block. Each prohibition is paired with its positive trigger, and I did not add new task-specific sibling examples.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+      "content": "\n- VALUE TRACE (last check before output): every city, origin, date, number and name in your code must be quoted from the conversation. Values in this skill and in TOOL CONFIG examples ('125', 'May 16, 2025', '2025-08-03', 'Key West', 'Fresno', 'Midtown Atlanta', 'Downtown Memphis') are illustrations and are never copied. 'A trip to Anchorage' with no departure city has no origin: never guess one. No departure date -> no search_flights. If you cannot quote a check-in AND a check-out date (or a flight date pair that serves as them) -> no search_hotels; output only the seek_information for the dates, even when the last turn only gives rooms, party size or stars. num_people / num_rooms come only from a stated number ('2 rooms', '4 of us') or from 'solo' / 'just me' (= 1). 'Couple', 'family' and 'group' are not numbers, so pass no num_people for them. 'Near the beach', 'pool and wifi' and 'non-stop' are optional details, not dates.\n- PER-DOMAIN SPLIT (first search, none of the requested domains cached): handle each requested domain on its own. Search every domain whose mandatory args are quoted, then end with ONE seek_information naming only what is still missing (add the departure city if no origin was named). Hotel + restaurant is step 0 of the Quick decision order.\n  - flight + hotel, destination and both dates known, origin not named -> `hotels = search_hotels(city=\"<destination>\", checkin_date=[\"<outbound date>\"], checkout_date=[\"<return date>\"])` + save 'hotels', then `seek_information(\"We need the departure city for the flight.\")`. No search_flights.\n  - flight + hotel, no dates at all -> only `seek_information(\"We need the departure date for the flight, and the check-in and check-out dates for the hotel.\")`.\n  - hotel requested in an earlier turn and the dates arrive now, origin and destination known -> both flight legs AND search_hotels in the same block (check-in = outbound date, check-out = return date), carrying the neighborhood and amenities stated in any turn ('hotel in Downtown San Antonio' -> neighborhood=[\"Downtown San Antonio\"]).",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## CACHE GATE (run this before writing any code, every turn)",
+      "content": "\n- ANSWER = ACT. If the assistant's last message asked for a missing mandatory value (city, departure date, return date, hotel dates) and the user's reply supplies it, search NOW and never ask again. Hedges ('around', 'possibly', 'we're thinking of', 'as soon as possible', a typo like 'aroundMay') do not make a date missing. A city given after a city question becomes `city=\"<that city>\"` in the first search, which also carries the cuisine and other constraints from earlier turns and drops group size and occasion. A date pair with origin and destination already known ('around May 21 ... returning May 31') is a round trip: two flight searches (outbound, then the return leg with origin and destination swapped, keys per Rule 9). Do not ask for hotel dates unless a hotel was requested somewhere in the conversation.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## CACHE GATE (run this before writing any code, every turn)",
+      "content": "\n- LAST-MESSAGE LITERAL RULE (every filter_* call): split the user's LAST message into its separate values and write exactly one kwarg per value. Values from earlier turns and everything the CACHE summary lists (stars, amenities, class, kids club, rooftop bar...) are already applied, even when the last message is only a number or a place name. Check: the filter has as many kwargs as the last message has values. 'Around 30.' answering a per-night budget question -> `budget=30` only. 'Yes, Downtown San Antonio would be perfect.' answering an area question -> `neighborhood=[\"Downtown San Antonio\"]` only. A 'Yes' plus a place, number or amenity answers the assistant's LAST question, not an older one.",
+      "support_count": 7,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "1. Copy the CACHE keys of each domain the LAST user turn touches (flights / hotels / restaurants / attractions, including filtered_*, nearest_*, hotels2, final_* names).",
+      "content": "\n   - DOMAIN WORDS IN THE REPLY DECIDE THE KEY. 'Downtown X is preferred for hotel', 'a hotel near Y', or stars / amenities / rooms -> hotels. Load the most refined HOTELS key (e.g. hotels2, even if filtered_restaurants / nearest_restaurants were created later) and run `filter_hotels(prior_results=h, neighborhood=[\"Downtown X\"])`. Save it under the next unused hotels key (e.g. hotels3). Never load a restaurant key for a hotel reply. A get_results_from_cache followed by save_to_cache of the same object (no filter in between) is always wrong.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Quick decision order for every turn",
+      "content": "\n- STEP 0 TRIGGER: hotel AND restaurant both requested, restaurant city known, no hotel dates, CACHE has neither key (e.g. 'a hotel in <city> and restaurant recommendations', or 'a hotel with a good restaurant nearby that serves <cuisine>'). Output exactly: `restaurants = search_restaurants(city=\"<city>\"[, cuisine=[\"<cuisine>\"] if stated])`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then ONE `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. Never write the search without `restaurants =` and the save, and never drop the seek_information line. 'Good' and 'nearby' are not parameters (no rating, and no search_nearest until a hotels key exists).",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## HARD OUTPUT RULES (check before EVERY response)",
+      "content": "\n- PRE-SEND CHECKS (the three most-missed errors; verify each before answering):\n  1. LOCATION: a bare two-letter capital token or state name ('AZ', 'GA', 'Georgia') is a STATE. Write `search_attractions(state=\"AZ\", type=[\"Scenic\"])` with NO city kwarg. The text `city=\"AZ\"` or `city=\"GA\"` must never appear in your output.\n  2. LOAD KEYS: every `get_results_from_cache(key=...)` key must be spelled in the CACHE dict. A domain with no key in CACHE (e.g. no 'hotels') is never loaded or filtered: run its first search when every mandatory arg is quoted, otherwise name the missing items in seek_information (e.g. the check-out date when only the flight date is known). A domain that already has a key is never searched again (cached 'restaurants' + a new cuisine -> `filter_restaurants`, not a second `search_restaurants`).\n  3. SAVE KEYS: every save key must NOT already be in CACHE. If 'filtered_restaurants' or 'filtered_flights' is listed, save as 'filtered_restaurants1' / 'filtered_flights1' (then 2, 3...). filtered_<domain>N and final_<domain> are all acceptable as long as the exact name is unused. Never reuse an existing key and never save an unmodified load.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "the ONLY output is one short `seek_information(...)` naming just the missing items.",
+      "content": "that domain gets one short `seek_information(...)` naming just its own missing items, placed AFTER a search + save_to_cache for every OTHER requested domain whose mandatory args are known (hotel dates missing but a restaurant or attraction city/state known: `restaurants = search_restaurants(city=\"<city>\")` + save, then the seek_information; see PER-DOMAIN SPLIT in the HARD OUTPUT RULES). seek_information is the WHOLE output only when no other requested domain is searchable.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Rule 14: Straight-line first search once mandatory args become complete (supplements Rule 11)",
+      "content": "\n- Late date reply completing a pending hotel: the hotel was requested earlier, CACHE has no 'hotels' key, and the last turn supplies the missing check-out (or check-in) date. Run `hotels = search_hotels(city=<destination>, checkin_date=[<known flight/start date>], checkout_date=[<date just given>], <every hotel amenity, stars or neighborhood stated in ANY turn>)` then `save_to_cache(key=\"hotels\", value=hotels)`. Never load or filter a 'hotels' key that CACHE does not list, and never re-filter cached flights for it. Any other constraint in the same turn goes to its own domain's existing key: a cuisine for a cached 'restaurants' key is `filter_restaurants(prior_results=r, cuisine=[...])` saved under a new key.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Rule 27: Exact value shapes and parameter names (check every kwarg before sending)",
+      "content": "\n- Hotel location and headcount words: 'in Downtown Tucson', 'in Midtown', 'near the Strip' -> `neighborhood=[\"<user's wording>\"]`, passed in the SAME filter_hotels / search_hotels call as the stars and amenities. Never drop it because other constraints are present. 'Flexible on the location' means no neighborhood. 'Solo trip', 'just me', 'by myself' state a headcount of one -> `num_people=1` on search_hotels.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Never add default time windows, flight_class, budget, num_layovers or num_people on flights.",
+      "content": "Never add unstated defaults: time windows, flight_class, budget, num_layovers or num_people. A stated phrase maps to its parameter: 'non-stop' / 'direct' -> `num_layovers=[0]` on every flight search; a stated class goes into the search; hotel headcount words follow Rule 27.",
+      "support_count": 7,
+      "source_type": "failure"
+    }
+  ]
+}

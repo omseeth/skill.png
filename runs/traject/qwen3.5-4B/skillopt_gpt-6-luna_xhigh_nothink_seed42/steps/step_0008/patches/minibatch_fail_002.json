@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_result_coverage",
+      "count": 4,
+      "description": "Selected an endpoint that handled a related check but did not directly cover the requested result properties, or chose the wrong specialized endpoint."
+    },
+    {
+      "failure_type": "schema_and_argument_mapping",
+      "count": 5,
+      "description": "Misplaced parameters in required or optional buckets, omitted requested constraints, or mapped values to the wrong schema fields."
+    },
+    {
+      "failure_type": "call_set_scope_and_completeness",
+      "count": 6,
+      "description": "Added unrelated calls, missed an explicitly requested repeated action, or failed to cover a distinct requested outcome."
+    },
+    {
+      "failure_type": "response_serialization",
+      "count": 2,
+      "description": "Produced malformed or structurally invalid call-list output."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already gives extensive schema-mapping and final-format rules, so these edits avoid repeating them. They clarify two remaining decision points visible in the batch: distinguish separate properties in compound checks, and preserve explicit repeat actions while grounding every call in a requested action.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Treat endpoint eligibility as a gate: confirm the endpoint's own operation and schema support the requested result kind and granularity, and can represent every compatible explicit qualifier. A topical neighbor or broader operation is not sufficient. A named provider or source is a hard constraint for that outcome; do not fulfill or supplement it with another provider when a fitting named-source endpoint exists.",
+        "content": "\n- For a compound check, list its requested result properties separately before choosing an endpoint. Count a property as covered only when that endpoint's own operation explicitly returns it; accepting the same input or sharing a broad topic is not enough. Use one endpoint only when it covers all requested properties, otherwise use separate fitting endpoints for the distinct checks."
+      },
+      {
+        "op": "replace",
+        "target": "- Deduplicate the call set: make one invocation per distinct requested operation and input unless the schema supports batching or the user requests repetition. Do not add related calls as extra checks. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint.",
+        "content": "- Deduplicate incidental duplicate mentions: make one invocation per distinct requested operation and input unless the schema supports batching or the user requests repetition. Explicit repeat language such as “again,” “recheck,” or “repeat” requests another invocation even when the endpoint and arguments are identical. Associate every call with an explicit action clause; broad goals, comparisons, and neighboring topics do not authorize extra checks. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

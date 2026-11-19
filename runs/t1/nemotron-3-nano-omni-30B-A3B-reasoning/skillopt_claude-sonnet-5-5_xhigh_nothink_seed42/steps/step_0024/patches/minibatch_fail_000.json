@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "output_form_violation",
+      "count": 2,
+      "description": "First-turn search emitted as a bare `search_*(...)` with no assignment and no save_to_cache. One of the two also ended with a stray `</parameter>` tag, causing a SyntaxError."
+    },
+    {
+      "failure_type": "cache_key_routing_error",
+      "count": 3,
+      "description": "The cache dict was not read literally. A missing 'hotels' key was loaded and filtered. Flights were re-searched although a 'flights' key existed. A 'Yes' to a new attraction type was a load-and-resave of the old key instead of a fresh search."
+    },
+    {
+      "failure_type": "dropped_requested_domain",
+      "count": 1,
+      "description": "Hotel + restaurant request with a city but no hotel dates ('solo trip') produced only seek_information. The restaurant search was dropped, and 4b / Rule 6 'ONLY output' wording pushes toward this."
+    },
+    {
+      "failure_type": "filter_param_and_nearest_error",
+      "count": 2,
+      "description": "Hallucinated filter kwargs copied from skill examples (room service, shuttle) and no search_nearest for a 'hotel with restaurants nearby' request. Also an earlier amenity re-passed instead of the new neighborhood from 'Yes, near Midtown Atlanta'."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four compact edits placed at the top of the skill, where the model actually reads, each covering at least two failing trajectories. (1) A first-turn form check for the bare-call and stray-tag failures. (2) A literal KEY CHECK that forces search-vs-filter routing from the CACHE dict, covering T2, T3 and T4. (3) A fix to the 4b wording, which says seek_information is the ONLY output and contradicts the multi-domain rule. (4) A kwarg-trace and proximity rule covering T5 and T7. Edits are short and generic rather than adding more task-specific examples, since earlier large bundled edits regressed.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- FORM CHECK (also on the very first turn with CACHE `{}`): every line that calls search_*/filter_*/search_nearest starts with `name = ` and the next line is `save_to_cache(key=\"...\", value=name)`. A line that starts with `search_restaurants(`, `search_hotels(` or `filter_...(` is WRONG because the result is lost. Write `restaurants = search_restaurants(city=\"X\", cuisine=[\"French\"], has_halal_options=True)` then `save_to_cache(key=\"restaurants\", value=restaurants)`. End the response with `</CODE>` only. Never write `</parameter>` or any other stray tag. Only seek_information may stand alone."
+      },
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\nKEY CHECK (do this first, using the literal keys of the CACHE dict):\n- A key for the domain the last turn touches EXISTS -> no search_* for that domain. A flight airline/class/time/price reply ('I prefer AK and economy class') means filter_flights on every cached flight key with only the new values (airline=[\"AK\"], flight_class=[\"economy\"]). Never re-search flights and never re-add time windows the summary already shows.\n- NO key for that domain -> never write get_results_from_cache or filter_* for it (a missing key returns None and crashes). Search it now with every constraint stated in any turn. A hotel request when only flight keys are cached uses the flight destination as city and the outbound/return flight dates as check-in/check-out, with the stated neighborhood, stars and amenities. Save it as 'hotels'. Write no flight lines.\n- 'Yes' to a NEW attraction type while an 'attractions' key exists for a different type or name -> `attractions1 = search_attractions(city=<trip city>, type=[\"<type>\"])`, saved under an unused key (attractions1, attractions2...). Loading 'attractions' and saving it again unchanged is always wrong."
+      },
+      {
+        "op": "replace",
+        "target": "-> the ONLY output is one short `seek_information(...)` naming just the missing items. This holds on a first turn (CACHE `{}`).",
+        "content": "-> `seek_information(...)` naming just the missing items is the LAST line, and it is the only line only when no other requested domain is searchable. If the user also asked for restaurants or attractions and a city/state is known anywhere in the conversation (e.g. 'a hotel in Colorado Springs for a solo trip, budget 65 per night, with some restaurant recommendations in the city'), first write `restaurants = search_restaurants(city=\"Colorado Springs\")` + `save_to_cache(key=\"restaurants\", value=restaurants)` (or the attractions equivalent), then the single seek_information for the hotel dates. Hotel budget, party size and trip-purpose words ('solo trip', 'weekend') never go into the restaurant call. A seek_information-only output is WRONG in that case. A lone seek_information is correct on a first turn (CACHE `{}`) when only one domain was requested."
+      },
+      {
+        "op": "insert_after",
+        "target": "1. Copy the CACHE keys of each domain the LAST user turn touches (flights / hotels / restaurants / attractions, including filtered_*, nearest_*, hotels2, final_* names).",
+        "content": "\n   - KWARG TRACE (every filter_* call): each kwarg must come from a word in the user's LAST message. Never copy parameters from the examples in this skill (room service, shuttle, gym...). Anything the loaded summary lists ('has_meeting_rooms', budget, rooms) is already applied. 'Yes, near Midtown Atlanta' answering an area question -> `neighborhood=[\"Midtown Atlanta\"]` only. 'I have a dairy allergy' -> `has_dairy_allergy_options=True` on restaurants only, with no hotel kwargs.\n   - 'near / nearby' when both hotels and restaurants (or attractions) are in play: filter only the domain whose constraint the user just stated and save it as final_*. Then `nearest_x = search_nearest(hotels=<most refined hotels key, loaded>, restaurants=<the restaurants result>, groupBy=\"hotel\")` when the user wants a HOTEL recommended near restaurants ('a hotel with good restaurants nearby'), or groupBy=\"restaurant\" when they want a restaurant near the hotel. Save it as nearest_hotels / nearest_restaurants. Add no hotel filter the user did not state."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

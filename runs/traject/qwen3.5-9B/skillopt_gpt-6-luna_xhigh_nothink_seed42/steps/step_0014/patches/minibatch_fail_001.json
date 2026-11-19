@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_operation_mismatch",
+      "count": 6,
+      "description": "Agents chose an endpoint based on a provider or broad topic despite its specific operation not matching the requested result or scope."
+    },
+    {
+      "failure_type": "schema_binding_and_serialization",
+      "count": 5,
+      "description": "Calls misplaced required and optional fields, used incorrect field meanings or canonical values, or failed to serialize values as required."
+    },
+    {
+      "failure_type": "facet_coverage_omission",
+      "count": 5,
+      "description": "Calls omitted requested scope or output facets, including region, location-appropriate units, or a distinct forecast or retailer query."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers schema placement and request coverage, so the edits target two remaining gaps visible in the batch: mistaking a provider's general capabilities for a particular endpoint's operation, and omitting supported localization when the requested location itself supplies that context.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Break the request into distinct operations and match each to an endpoint by its documented capability and parameter schema—not merely by provider or broad topic. Use the exact full tool identifier from the available-tools list. Do not substitute a tangential endpoint or call several similar alternatives for the same requested result.",
+        "content": "\n- Judge coverage from the selected endpoint operation itself: a provider's general description or an adjacent endpoint's capabilities do not establish that this operation returns the requested facet. Match each distinct output to an operation that documents it; a broad topic match alone is insufficient."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Include an optional parameter whenever it directly encodes a requested facet, even if the user phrases it in prose or the endpoint has a default. For an unfiltered, random, or full/standard result, use a documented “all” or unfiltered selector when needed to preserve that scope. Do not add options that are neither requested nor needed to express it, or invent values. For missing required values, use only a documented default or a value unambiguously derivable from the query.",
+        "content": "\n- For a location-based result, use a supported locale or units option that corresponds to the named location when the endpoint provides one for localized output. Use the endpoint's canonical token, and keep that setting local to the call it modifies."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

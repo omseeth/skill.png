@@ -1,0 +1,53 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "malformed_answer_structure",
+      "count": 4,
+      "description": "Two calls merged into one object, or a duplicated 'optional parameters' key that silently dropped the first list (T2, T3, T6). Unquoted numeric values (T3, T6, T7). In T6 a required/optional key was also missing."
+    },
+    {
+      "failure_type": "incorrect_tool_name_format",
+      "count": 2,
+      "description": "The `tool name` was shortened to only the endpoint ('Aljazeera', 'Youm7') or only the provider ('Easy Email Validation', 'Email API') instead of the full 'Provider: API' heading (T4, T8)."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 4,
+      "description": "A sibling or look-alike tool was chosen: MailCheck Domain instead of Role Account (T5), Tomorrow.io instead of Foreca Daily, which has tempunit/windunit/periods (T2), Custom die instead of Custom dice (T3), and several validators stacked on each email instead of one fitting tool per input (T1)."
+    },
+    {
+      "failure_type": "parameter_placement_and_missing_values",
+      "count": 3,
+      "description": "A required param (DEI page) was put in optional (T7). Query constraints were not mapped to params: dice=5, type=game, per_page=3, region vs loc, lang en-US (T3, T6, T7). An empty optional value was emitted (T6)."
+    },
+    {
+      "failure_type": "incomplete_or_extra_coverage",
+      "count": 2,
+      "description": "A 'details ... including similar items' clause produced only the similar-items call (T6). The over-calling in T1 (10 calls vs 3) is the opposite problem."
+    }
+  ],
+  "patch": {
+    "reasoning": "Earlier steps were rejected because they added long, broad rule sets, and the coverage rules pushed the agent to over-call. This patch is short and targets mechanical, high-frequency errors visible in this batch. These are the exact 'Provider: API' tool name, one object per call with no duplicated keys, quoted values, schema-faithful parameter placement, and mapping stated numbers and units to parameters. It adds a small tool-selection rule on sibling tools and named providers. It also adds a balanced call-count rule that fixes both omissions ('including X' clauses) and over-calling (stacking validators), without telling the model to add more calls in general.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Output format (errors here score zero)\n- `tool name` is the tool's full `### ` heading copied exactly, in the form `Provider: API` (e.g. `Arabic news API: Aljazeera`, `Easy Email Validation: Validate Email`, `Email API: Get Fake Email Address`). Never give only the provider or only the endpoint, even when the query names the tool loosely.\n- One JSON object per call. Each of the keys `tool name`, `required parameters`, `optional parameters` appears exactly once per object. Never put two calls in one object. Never repeat a key, because a repeated key silently drops the first list. Use `[]` when a list is empty.\n- Each parameter is `{\"name\": \"x\", \"value\": \"y\"}`. Every value is a quoted string, including numbers (`\"2023\"`, `\"1\"`, `\"9098084\"`).\n- The answer is one flat, bracket-balanced list `[{...}, {...}]` inside `<answer>` tags. Do not close the list early or leave stray brackets."
+      },
+      {
+        "op": "append",
+        "content": "\n## Parameters\n- Put each parameter in the list where the chosen tool's schema puts it. Names under 'Required parameters' go in `required parameters` (even `page`-like fields). Names under 'Optional parameters' go in `optional parameters`, even when they carry the query's main input. Use only parameter names from that tool's own schema, and do not borrow a similar name from a sibling tool (e.g. use `region` if the tool has `region`, not `loc`).\n- Map every number, filter, unit and locale the query states to the matching parameter, even if it is optional: 'first 20' -> pageSize `20`; '3 scores on page 1' -> per_page `3` and page `1`; 'five 20-sided dice' -> dice `5` and sides `20`; 'draw 5 cards' -> pulls `5`; '3-day forecast' -> periods `3`; Fahrenheit and MPH -> tempunit `F` and windunit `MPH`; 'free PC game giveaways' -> platform `pc` and type `game`; 'US region, USD' -> the tool's region and currency fields; 'US English' -> `en-US`; 'sorted by date' -> the sort field.\n- Copy IDs, SKUs, names, emails, domains and search words verbatim from the query. Do not add optional parameters the query never implies, and never emit a parameter with an empty value."
+      },
+      {
+        "op": "append",
+        "content": "\n## Tool selection\n- Pick the endpoint whose name and description literally match the query's verb, object and input type, and tell siblings apart by what they do. 'Role account' -> the Role Account tool, not a disposable-domain checker. 'MX records' -> the MX tool. 'Disposable' -> a disposable checker. Several dice -> `Custom dice`, one die -> `Custom die`. A bare domain -> a domain-level tool, a full email -> an email-level tool. 'Details of a product' -> the detail tool, not search or autocomplete.\n- Prefer the tool whose parameters can express every constraint in the query (e.g. a forecast tool with day-count, temperature-unit and wind-unit params, and a location field that accepts the given ID format).\n- If the query names a tool or provider ('using Easy Email Validation', 'the Email Existence Validator tool', 'the Email API'), use that provider's endpoint whose description matches the requested action ('check if disposable' -> `Email Existence Validator: Check for Disposable emails`; 'generate a fake business email' -> `Email API: Get Fake Email Address`)."
+      },
+      {
+        "op": "append",
+        "content": "\n## Which calls to make\n- Make one call per requested action per entity. A one-value tool with N emails, domains or IDs means N calls. An action the query explicitly requests twice (e.g. 'recheck Asos categories') means two identical calls. A clause like 'details of SKU X, including similar items' means two calls (the detail tool and the similar-items tool).\n- Do not stack several different tools on the same input 'to be thorough'. For each input use the one tool that fits the question and the input type, unless the query names several distinct checks (e.g. deliverability, MX records and role account).\n- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

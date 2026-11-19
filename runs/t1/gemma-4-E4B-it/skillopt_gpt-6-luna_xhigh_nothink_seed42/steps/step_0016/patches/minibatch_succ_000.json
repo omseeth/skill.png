@@ -1,0 +1,18 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Keep tool actions within the domains the user actually requested: generic trip or vacation context and party-size statements alone do not request a hotel search.",
+    "Pass traveler counts only to tools that support party size; flight searches do not accept a passenger-count field."
+  ],
+  "patch": {
+    "reasoning": "Two trajectories show domain confusion: one asks for hotel dates when only a flight was requested, and another passes a solo traveler count to a flight tool. The skill identifies supported hotel party-size fields but does not explicitly warn against inferring an unrequested hotel domain or applying party size to flights.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+        "content": "\n- Do not infer a hotel request solely from a destination, trip or vacation wording, or party-size statement; ask for hotel dates only if a hotel search was actually requested. Pass traveler counts only to domains whose tools support party size; flight tools do not accept a passenger-count field."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,53 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_or_no_search_for_new_domain",
+      "count": 4,
+      "description": "Last turn supplied args for a domain with no cache key (hotel dates, restaurant budget or cuisine or allergy, city already known). The agent retrieved another domain, filtered hotels with cuisine, or re-filtered flights instead of searching the new domain."
+    },
+    {
+      "failure_type": "over_seeking_information",
+      "count": 3,
+      "description": "Agent called seek_information for a city the user already gave, or for the flight departure date when flights were already cached. In the multi-domain case it skipped the search for the complete domain and listed everything in one seek."
+    },
+    {
+      "failure_type": "missing_assignment_save_or_wrong_key",
+      "count": 2,
+      "description": "A bare search_attractions(...) call with no variable or save_to_cache, and a one-way flight saved under departure_flights instead of flights."
+    },
+    {
+      "failure_type": "missing_hotel_from_nights",
+      "count": 1,
+      "description": "The agent searched only the flight. 'N nights' plus a departure date should have produced a hotel search with checkout from adjust_date, plus num_rooms and num_people."
+    },
+    {
+      "failure_type": "import_statement",
+      "count": 1,
+      "description": "Wrote `from cache import ...`, which raises ModuleNotFoundError."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures come from one decision error: working out which domain the last turn is about and whether that domain has a cache key. The agent either retrieved or refiltered the wrong domain, or asked about info already given or cached. Rule 7 also contradicts the Quick decision order: Rule 7 forbids partial searches, but the gold output searches complete domains and then calls seek_information for the incomplete one. The edits add a domain-trigger rule, resolve that contradiction, and fix the remaining form errors (bare search calls, imports, one-way flight key, nights to adjust_date). They extend the existing rules and do not repeat them.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Rule 21: The last turn names the domain. Search it when its args are known, and never re-ask for what is stated or cached\n- First decide which domain the LAST user turn is about, then check whether that domain has a CACHE key.\n- No key, and its mandatory args are known from ANY turn: run `x = search_*(...)` plus `save_to_cache`. This holds even when the last turn is only a bare answer to the assistant's question. Example: the assistant asked for hotel dates, the user replies 'August 15, 2025 to August 23, 2025', and CACHE only has 'restaurants'. Then call `search_hotels(city=<city from turn 1>, num_people=<stated party size>, budget=<stated per-night budget>, checkin_date=[...], checkout_date=[...])` and save it under \"hotels\". Do NOT just load another domain's key. Retrieval-only (Rule 8) applies only to a domain that already has a key.\n- Use a city given anywhere in the conversation (even in the hotel request) for restaurants. 'A restaurant in Portland that serves Italian food and has a great view' -> `search_restaurants(city=\"Portland\", cuisine=[\"Italian\"])`. Never ask for a city the user already stated. Drop descriptors that have no parameter ('great view', 'romantic', 'business conference').\n- Dietary, allergy, cuisine and 'N range' price phrases always belong to restaurants, never to hotels or flights. 'I have a tomato allergy and prefer Persian' with no restaurant key -> `search_restaurants(city=<established city>, cuisine=[\"Persian\"], has_tomato_allergy_options=True)` and save as \"restaurants\". 'Restaurants with 105 range' -> `search_restaurants(city=<established city>, budget=105)`. If a restaurants key exists, filter_restaurants on it instead. filter_hotels has no cuisine parameter.\n- A domain that already has a CACHE key must never trigger seek_information for its mandatory args. If flights are cached with their dates, do not ask for a departure date when the user now asks about restaurants. Do not re-filter a cached domain with values its summary already shows (e.g. flight classes: [first]).\n"
+      },
+      {
+        "op": "replace",
+        "target": "If any domain is missing something, list ALL missing items across domains in ONE seek_information call. Do not run a partial search with made-up values for another domain.",
+        "content": "Search every requested domain whose mandatory args are complete (assign the result and save_to_cache; e.g. restaurants or attractions that only need a city). Never search a domain with missing or guessed args. End the block with ONE seek_information(...) naming ALL missing mandatory items of the incomplete domains. This overrides the 'output ONLY seek_information' line in Rule 6 whenever another requested domain is complete. Example: 'hotel and restaurant in Tucson', no dates -> `restaurants = search_restaurants(city=\"Tucson\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. If no requested domain is complete, output only the seek_information."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 22: Output form and first-search cache keys\n- Every search_*, filter_*, sort_results and search_nearest call is assigned to a variable and followed by save_to_cache, even for a one-line first request. Correct: `attractions = search_attractions(city=\"Tucson\", type=[\"Culinary\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. A bare `search_attractions(...)` is wrong.\n- Never write `import` or `from ... import ...` lines (e.g. `from cache import get_results_from_cache`). The tools are already defined and the import raises ModuleNotFoundError.\n- First-search keys: a single or one-way flight search is saved as \"flights\". Only a round trip uses \"departure_flights\" and \"return_flights\" (Rule 9). Other domains use \"hotels\", \"restaurants\", \"attractions\".\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 23: Flight + hotel when the date and the stay length arrive together\n- When a hotel was requested anywhere and the last turn gives the flight date plus a stay length ('It's May 22, 2025 and we need 4 rooms for 5 nights'), emit BOTH searches in the same block. Do not stop after the flight.\n- For a one-way flight the departure date is the check-in date. Get the checkout from the user's reference date and offset with `checkout_date = adjust_date(date=\"May 22, 2025\", delta_days=5)`. This is allowed under Rule 6 because the user supplied both. Then call `search_hotels(city=<destination>, checkin_date=[\"May 22, 2025\"], checkout_date=[checkout_date], num_rooms=4, num_people=5)` and save it as \"hotels\".\n- Take num_people and num_rooms from wherever they were stated ('a hotel for 5 people' in an earlier turn -> num_people=5). Copy dates exactly as the user wrote them.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

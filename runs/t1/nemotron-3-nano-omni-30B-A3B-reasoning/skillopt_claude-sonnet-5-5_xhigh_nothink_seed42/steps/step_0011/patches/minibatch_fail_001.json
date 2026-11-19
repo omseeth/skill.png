@@ -1,0 +1,47 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "refinement_errors",
+      "count": 3,
+      "description": "Filter calls loaded a stale cache key, re-passed constraints that were already applied, passed invented or extra params, or overwrote an existing cache key (T3 has_room_service=False, T6 kids_club=True, T8 stale 'restaurants' key with cuisine and halal re-passed)."
+    },
+    {
+      "failure_type": "fabricated_or_empty_mandatory_args",
+      "count": 2,
+      "description": "search_hotels was called with empty date lists or with dates copied from tool examples when the user never gave dates (T2, T5). The correct output was seek_information, plus an attraction search where its args were complete."
+    },
+    {
+      "failure_type": "output_form_violation",
+      "count": 2,
+      "description": "Bare or nested search calls with no variable assignment, a state placed in city, wrong cache keys, and hotels dropped from a multi-city trip (T1, T4)."
+    },
+    {
+      "failure_type": "misrouted_affirmative_reply",
+      "count": 1,
+      "description": "A 'Yes' to the assistant's question about Guided attractions was treated as a hotel filter instead of a new attraction search (T7)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures were not missing knowledge but existing rules being ignored in a very long skill. Four short, concrete rules are appended near the end of the document, where they are most visible. (1) A hard gate on hotel dates, plus the hotel+attraction split. (2) A refinement checklist: most refined key, a new unique save key, no re-passing of earlier-turn filters, no False or unstated amenities, exact param names. (3) Output form for search calls, and multi-city flights+hotels. (4) Routing a 'yes' to an attraction proposal to a new attraction search.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Rule 23: Hard gate before search_hotels (dates), and hotel + attraction requests\n- Before writing `search_hotels`, you must be able to point to an explicit check-in date AND check-out date in the user's messages. Answers about rooms, people, budget, city, neighborhood or amenities are NOT dates. If you cannot point to both dates, do not call search_hotels. Never pass `[]`, never define `checkin_date = [...]` variables, and never reuse example dates from TOOL CONFIG such as 2025-08-03 or 2025-08-11.\n- Example: the user said 'hotel in Memphis for 2 people' and then 'We need 2 rooms.' The ONLY output is `seek_information(\"We need to ask for the check-in and check-out dates\")`.\n- search_attractions has no mandatory args beyond a city or state, so an attraction request that names a city or state and a type is always complete. For 'hotel in San Jose for 5 people and we want Scenic attractions' with no dates, output `attractions = search_attractions(city=\"San Jose\", type=[\"Scenic\"])`, `save_to_cache(key=\"attractions\", value=attractions)`, then `seek_information(\"We need the check-in and check-out dates for the hotel\")`. Do not search hotels."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 24: Refinement checklist (read right before writing any filter_*)\n1. Key: load the MOST REFINED key of that domain from the CACHE. Prefer `filtered_restaurants` over `restaurants`, and `filtered_hotels2` over `hotels`. Never load the raw key if a filtered key exists.\n2. Save key: always a NEW key that is not already in the CACHE (e.g. `filtered_restaurants1`, `filtered_hotels3`). Never overwrite an existing key.\n3. Already applied: every earlier user turn has already been applied in the chain of filtered keys, even when the summary text is blank or does not render an amenity flag. Example: the CACHE has `filtered_hotels` (rooms, budget) and `filtered_hotels2` (summary blank, built after the kids-club turn). If the last turn is 'Downtown San Antonio would be perfect', pass `neighborhood=[\"Downtown San Antonio\"]` ONLY. Do not re-pass the kids club, budget, rooms or cuisine. Example: the CACHE `filtered_restaurants` lists cuisine [Persian] over halal restaurants and the last turn is 'Around 60 per person'. Use `filter_restaurants(prior_results=r, budget=60)` only. No cuisine and no has_halal_options.\n4. Amenities are True only when the user wants them. Never pass False for an amenity. An option merely listed in the assistant's question (e.g. 'room service or a balcony') is not a constraint unless the user picks it. 'Budget around 900 per night, and a balcony would be nice' -> `filter_hotels(prior_results=x, budget=900, has_balcony=True)` and nothing else.\n5. Param names must exactly match TOOL CONFIG. There is `has_kids_club`, not `kids_club`. All hotel extras other than the 9 listed in Rule 13 start with `has_`."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 25: Call form for searches, and multi-city flights + hotels\n- Every search call is two statements on separate lines: `x = search_*(...)` then `save_to_cache(key=\"<key>\", value=x)`. Never write a bare `search_*(...)` line. Never put a search call inside save_to_cache's value argument, which duplicates the call. Do not omit the save.\n- A US state or abbreviation goes in `state`: 'trip to GA, Touristy attractions' -> `attractions = search_attractions(state=\"GA\", type=[\"Touristy\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. Never pass 'GA' as city. Keep the user's type word as given.\n- Multi-city trip (A->B on date1, B->C on date2): one search_flights per leg, assigned to separate variables and saved as `flights` and `flights2`. If the user also asked for hotels in each city (anywhere in the conversation) and gave exactly these two leg dates, also run one `search_hotels` per city with `checkin_date=[date1]` and `checkout_date=[date2]`, saved as `hotels` and `hotels2`. Never drop a requested hotel domain because the last turn only supplied dates."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 26: A 'yes' answers only the assistant's LAST question\n- Identify what the assistant's last message proposed. If it proposed an attraction type or name (e.g. 'Are you interested in visiting any other Guided attractions?') and the user says 'Yes, that sounds great', the new constraint is an attraction search. Run `attractions1 = search_attractions(city=<established city>, type=[\"Guided\"])` and `save_to_cache(key=\"attractions1\", value=attractions1)`. Do NOT filter hotels, do NOT reload hotel keys, and do NOT put 'Yes' into a hotel neighborhood or num_people.\n- If a cache key `attractions` already exists but was built with different criteria (e.g. a specific attraction_name), do not reuse or filter it for the new type. Run a fresh search and save it under a new key (`attractions1`, `attractions2`, ...). Use only the type or name the assistant proposed, and the city already established in the conversation."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

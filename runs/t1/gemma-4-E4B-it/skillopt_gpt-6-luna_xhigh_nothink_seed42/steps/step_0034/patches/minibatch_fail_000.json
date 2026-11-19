@@ -1,0 +1,66 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_follow_up",
+      "count": 3,
+      "description": "Filter-only follow-ups triggered a fresh base search or tool calls on an unchanged cached domain."
+    },
+    {
+      "failure_type": "multi_leg_itinerary_interpretation",
+      "count": 1,
+      "description": "A multi-city itinerary omitted an intermediate dated flight leg and inferred business class from business-trip context."
+    },
+    {
+      "failure_type": "proximity_anchor_resolution",
+      "count": 1,
+      "description": "A named proximity anchor was treated as a target-domain neighborhood instead of being searched or retrieved as an anchor for nearest results."
+    },
+    {
+      "failure_type": "party_size_scope",
+      "count": 1,
+      "description": "A passenger count attached to a flight request was also applied to a hotel request without clear hotel-party intent."
+    },
+    {
+      "failure_type": "rating_threshold_interpretation",
+      "count": 1,
+      "description": "A requested 3.5-star restaurant rating was treated as an exact rating rather than a minimum."
+    },
+    {
+      "failure_type": "tool_result_binding",
+      "count": 1,
+      "description": "A search function itself, rather than its returned result, was passed to the cache save call."
+    },
+    {
+      "failure_type": "location_field_mapping",
+      "count": 1,
+      "description": "A state abbreviation was passed as a city instead of as a state."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify scope-local tool selection to address the recurring cache errors, and add rules for multi-city date sequencing, named proximity anchors, and domain-scoped party counts. The rating threshold, result assignment, and state-field rules already exist in the skill, so they are not repeated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Maintain active supported constraints for each domain across the full conversation. When making a new search, include all still-active criteria the user has already supplied, even if the latest turn only supplies a location or another missing detail. When filtering, account for active criteria not already embodied in the cached result as well as newly supplied criteria. Drop or replace a constraint only when the user withdraws or changes it.",
+        "content": "Maintain active supported constraints for each domain across the full conversation, but distinguish active constraints from changed scopes. At each turn, make tool calls only for scopes changed by the latest turn, plus compatible cached datasets needed for an explicitly requested proximity operation; do not re-filter or re-save an unchanged domain merely because its earlier constraints remain active. For a changed scope, retrieve the most constrained compatible cached result and apply newly supplied or changed filters, along with active constraints not embodied in that result. Base-search only when no compatible cached result covers the changed scope. Drop or replace a constraint only when the user withdraws or changes it."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Flight itinerary legs",
+        "content": "\nFor an explicitly ordered multi-city route chain, search every described segment separately; do not skip an intermediate leg or collapse the chain into only an outbound and return. When the user supplies dates in sequence for that chain, assign each date to the corresponding leg in the order and manner described in the conversation, including intermediate departure dates. Treat trip purpose (for example, a “business trip”) as distinct from an explicitly requested flight class."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "\nWhen the user asks to find something “near” a named place, resolve the target domain from the surrounding request and treat the named place as a proximity anchor, not as a neighborhood filter on the target domain. Retrieve or search for the anchor using its appropriate entity field when supported, retrieve or search the target-domain candidates using the established trip context, and run `search_nearest` with `groupBy` set to the requested target domain. Do not put the anchor name into a target-domain neighborhood or entity field."
+      },
+      {
+        "op": "replace",
+        "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+        "content": "- Map explicit traveler descriptors to supported party-size fields only for the domain they clearly describe: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Apply a stated count to hotel `num_people` only when it clearly describes the hotel occupants; do not propagate a passenger count attached to a flight request to a separate hotel request without clear hotel-party intent. Do not infer an exact count from vague terms such as “family.”"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,31 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "tool_selection_and_coverage",
+      "count": 3,
+      "description": "Some agents chose endpoints based on broad topic keywords rather than the requested operation, omitting direct matches or adding unrelated tools."
+    },
+    {
+      "failure_type": "parameter_mapping_and_constraint_handling",
+      "count": 5,
+      "description": "Agents missed requested filters or quantities, put parameters in the wrong required/optional fields, or supplied unsupported or invented values."
+    },
+    {
+      "failure_type": "redundant_call_planning",
+      "count": 1,
+      "description": "An agent split constraints for one searchable result across duplicate calls instead of combining them in a single supported request."
+    }
+  ],
+  "patch": {
+    "reasoning": "These rules address the recurring gaps: matching endpoints to specific requested outcomes, mapping every supported constraint to the correct schema field without fabrication, and avoiding duplicate or irrelevant calls.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Plan the calls\n- Break the query into distinct requested outcomes. Select endpoints by their described operation and supported parameters, not merely by broad topic keywords. Cover each outcome, and avoid unrelated endpoints.\n- Prefer a direct endpoint that can satisfy the request. Never invent identifiers or fill required parameters with empty placeholders. If one endpoint cannot support a requested constraint, do not pretend it can by supplying unrelated parameters.\n- Combine compatible filters for the same result in one call when the endpoint supports them. Use separate calls only for genuinely separate outcomes or values.\n\n## Map parameters carefully\n- Copy each parameter into the correct required or optional field as listed by the tool. Supply every required parameter and map all explicit query constraints to supported fields, including counts, limits, pages, locations, dates, durations, and filters.\n- Use the value format or canonical identifier specified by the tool, and respect the declared parameter type. Match a constraint to the parameter with the right meaning; do not confuse similar concepts such as daily versus hourly forecasts or different date fields.\n- Include optional parameters when they express a requested constraint. Do not add speculative values, arbitrary limits, or defaults that the user did not request.\n\n## Final check\nBefore responding, verify that every requested outcome is covered, each call is relevant, no supported constraint was omitted, and every argument is valid for its tool and in the correct field. Follow the required answer format and ordering."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

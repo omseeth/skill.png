@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Refinement turns are three straight lines: load the domain's most refined key, filter only the last turn's new constraints, save under a new key. This held for the hotel budget plus fitness center turn and the meeting rooms turn. Earlier-turn constraints already in the cache summary, such as stars, shuttle, rooms and budget, were not re-passed.",
+    "Descriptors with no matching parameter, such as 'large dining area' and 'sit together', were dropped. Only the parameter-backed constraint was passed (has_meeting_rooms=True), and the filtered results were not polluted.",
+    "First-search turns with all mandatory args known emitted a single assigned search plus save: Art attractions in St. Louis and Art/Scenic attractions in GA. A US state abbreviation went in state=.",
+    "When a flight request lacked a departure date, the output was only a short seek_information naming the missing mandatory item. Context such as party size, a family reunion, an arrival time, 'solo trip' or 'not sure about dates' never triggered a search.",
+    "In the one attraction search that passed an unneeded kwarg (city=None), the extra parameter counted as a false positive. The gold call simply omits unused kwargs."
+  ],
+  "patch": {
+    "reasoning": "All eight trajectories passed, so the skill already covers their behaviors. Two small gaps remain. First, the GA attraction search passed city=None, which was a param false positive; omitting unused kwargs is a short hygiene rule for the top of the skill. Second, the meeting-rooms hotel turn and the 'sit together' flight turn both relied on silently dropping descriptors that have no parameter. That is only stated for restaurants (Rule 21), so one short generalizing bullet is worth adding. No new examples or sections were added, in line with the guidance to avoid accretion.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Use only kwargs listed in TOOL CONFIG.",
+        "content": "Use only kwargs listed in TOOL CONFIG, and leave out every kwarg you do not need instead of passing None (write `search_attractions(type=[\"Art\", \"Scenic\"], state=\"GA\")`, never `city=None`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Never write comments, and never leave a filter_* or search_* call unassigned or unsaved.",
+        "content": "- Words in any domain that have no matching parameter ('large dining area', 'sit together', 'great view', 'romantic') are dropped silently. Pass only the parameters the user's words map to ('meeting rooms and a large dining area' -> has_meeting_rooms=True). Never invent a kwarg or substitute a near-synonym parameter for them."
+      }
+    ]
+  },
+  "source_type": "success"
+}

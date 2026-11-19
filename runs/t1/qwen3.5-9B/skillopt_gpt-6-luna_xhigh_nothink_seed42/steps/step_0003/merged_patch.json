@@ -1,0 +1,60 @@
+{
+  "reasoning": "Preserved all seven failure-driven edits at their stated support counts because they address corrective behavior. The success-driven patch substantially overlaps the failure-driven guidance on missing dates, independent domain handling, and round-trip legs, so that overlapping content is deduplicated. Its distinct clarification that hotels and restaurants require a city, and that an event date alone is not a travel date, is retained as a separate success edit.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Keep code to necessary tool calls and result assignments; save each new result to cache. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+      "content": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Assign every result-producing call—search, filter, sort, or `search_nearest`—to a variable and save that exact result with `save_to_cache` under a fresh, descriptive key. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Honor the user's request and values:** Use only domains explicitly requested; do not infer extra searches, preferences, amenities, or substitute similar categories. Preserve names, categories, criteria, and date strings unless a tool requires a format conversion. Map a specified neighborhood to the neighborhood field, not the city field. Check required inputs independently by domain: seek missing information, but proceed with other requested searches whose inputs are available. For ratings, represent “exactly x” as `[x, x]` and “at least x” as `[x, 5]`.",
+      "content": "- **Honor the user's request and values:** Use only explicitly requested domains; do not infer extra searches, preferences, amenities, or substitute similar categories. Do not map vague amenity wording to a narrower tool flag without clear equivalence. Preserve complete names, categories, criteria, and date strings unless a tool requires a format conversion. Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value. When a domain is newly requested during an ongoing trip, use the already-established destination as its location when that context clearly applies rather than asking for a city already known. Check required inputs independently by domain: seek missing information, but proceed with other requested searches whose inputs are available. For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Handle follow-ups incrementally through the cache:** Retrieve the relevant cached result with `get_results_from_cache`, apply only the new constraints using the appropriate same-domain filter, and save the updated result under a relevant key. Do not mix domains. Search afresh only when there is no suitable cached base; if cached results already satisfy the latest request, do nothing. Avoid repeating unrelated searches, filters, or other operations.",
+      "content": "- **Handle follow-ups incrementally through the cache:** On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns. Use the cache summary to identify the latest suitable base for each affected result, then retrieve it with `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only newly stated or changed constraints not already reflected in the base, using the appropriate same-domain filter. A broad search summary that does not reflect a new constraint does not satisfy it. If an update applies to multiple cached results, such as outbound and return flight legs, retrieve, filter, and process each independently. Do not mix domains, repeat already-applied constraints, rerun completed work, or touch unrelated results. Search afresh only when no suitable cached base exists; do nothing only when the cached results satisfy all current constraints. Save each updated result under a relevant fresh key, following the persistence rule.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. Do not approximate proximity by extracting a neighborhood and using it as a filter.",
+      "content": "- **Preserve and execute proximity links:** Use `search_nearest` when the user asks about nearby or nearest results, or when the active conversation clearly establishes a proximity relation the user accepts—for example, by answering a follow-up about preferences for a hotel proposed near a named attraction. Retrieve relevant results for both domains, apply new constraints to the correct domain first, then call `search_nearest` with the updated results and `groupBy` set to the requested anchor. Search for named attractions when requested; do not approximate proximity with a neighborhood filter.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Search round-trip flights as separate legs:** Search outbound from origin to destination using the outbound date, then return from destination to origin using the return date as that leg's `departure_date`. Cache each leg separately; do not use the return date as the outbound `arrival_date`.",
+      "content": "- **Search every requested flight leg separately:** Use the full conversation to identify each explicitly requested segment of a round-trip or multi-city itinerary, and make one flight search per segment with that segment's route and date in `departure_date`. For a return leg, reverse the outbound route and use the return date as its `departure_date`; never represent the return leg only with the outbound search's `arrival_date`. Keep each leg's result separate and cache it separately. Pass date strings as supplied when the tool accepts them; do not parse or reformat them unless the tool requires it.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Format flight time ranges as required:** For `departure_time` and `arrival_time`, use the validator's accepted 12-hour format with AM/PM (for example, `12:00 PM`), not `HH:MM:SS`. Choose a supported interval for vague time periods.",
+      "content": "- **Format flight time ranges and classes as required:** For `departure_time` and `arrival_time`, use the validator's 12-hour format with AM/PM (for example, `[\"01:07 PM\", \"11:59 PM\"]`), not 24-hour time or `HH:MM:SS`. Choose a supported interval for vague time periods. Pass `flight_class` using supported lowercase values, such as `[\"economy\"]`, `[\"business\"]`, or `[\"first\"]`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Distinguish required dates from optional details when seeking information:** `search_flights` requires `departure_date`; `arrival_date` is optional, even for a round trip. `search_hotels` requires both `checkin_date` and `checkout_date`, while `num_people` and `num_rooms` are optional. Phrases such as “last-minute” do not provide a date. Ask only for missing required values, not optional counts or dates.",
+      "content": "- **Distinguish required dates from optional details when seeking information:** `search_flights` requires `departure_date`; `arrival_date` is optional, even for a round trip. `search_hotels` requires both `checkin_date` and `checkout_date`, while `num_people` and `num_rooms` are optional. If the user explicitly gives a hotel check-in date and stay length in nights, derive checkout using `adjust_date` with that number of nights; ask for required dates only when they cannot be derived from explicit itinerary details. Phrases such as “last-minute” or “weekend” alone do not provide dates. Ask only for missing required values, not optional counts or dates.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "append",
+      "content": "- **Check required city inputs and distinguish event dates from travel dates:** `search_hotels` and `search_restaurants` require `city`. A date given only for an event, such as a wedding or reunion, is not a flight departure date or hotel stay date unless the user explicitly identifies it as travel timing.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ]
+}

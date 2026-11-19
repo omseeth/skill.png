@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "strength_mismatch",
+      "count": 3,
+      "description": "The agent chose an inflated option carrying an unproved extra rider (a 'single ray' clause, an a-priori estimate with data-only constant), or a restricted/hedged option ('a subset of', extra side-condition on the class) when the plain exact statement was correct (T1, T5, T7)."
+    },
+    {
+      "failure_type": "option_confusion",
+      "count": 3,
+      "description": "The agent did not test a differing clause on a degenerate or generic case: a summability weight (sum N_c vs sum c N_c), a divisibility constant (2l vs l), or an either/or algorithm output that is not exhaustive on bipartite inputs (T3, T4, T6)."
+    },
+    {
+      "failure_type": "condition_miss",
+      "count": 1,
+      "description": "In an equivalence question the agent chose a restricted-class variant of the hypothesis, which is a weaker assertion with no reverse implication (T2)."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "In a reverse-mathematics equivalence the agent picked a principle of the wrong logical strength: Sigma^1_2 induction for analytic sets, instead of the matching Sigma^1_1 level (T8)."
+    }
+  ],
+  "patch": {
+    "reasoning": "In all 8 failures the correct option was the plain, natural statement of the source theorem, and the agent picked an option with a twist (extra clause, restriction, different weight, different constant, higher complexity level). The existing skill says to be suspicious of extras but gives no concrete way to refute them, and the 'strongest' guidance may be pushing the agent toward inflated options. The edits add (1) a falsification checklist for extra or altered clauses (zero-data, scaling, generic infinite example, branch exhaustiveness), (2) rules for equivalence and bijection stems, where a restricted or hedged variant is not an exact identification, (3) parameter-translation and double-counting guidance for constants, and (4) logical-strength matching for reverse-math or complexity-flavoured stems. These are generic procedures, not theorem-specific memorization.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "7. Commit once exactly one option survives (not false, not strictly weaker than another survivor, no unjustified extra clause). Do not switch to an option that merely looks more general or elaborate unless its extra content is justified.",
+        "content": "8. FALSIFY before ranking by strength. Strength only breaks ties among options whose every clause survives a concrete test. In this question family the correct option is very often the plain, natural statement of the source theorem, and the wrong one adds or alters a rider. For each differing or extra clause run at least one test:\n   - Zero/homogeneous data: an estimate 'bounded only by the data norms' forces the solution to vanish when data = 0 (uniqueness). A genuine local regularity estimate must also contain a lower norm of the solution itself on a larger set. A bound with data only is an inflated distractor, and bare membership in the space is the faithful claim.\n   - Scaling/normalization: before accepting 'unique' vs 'unique up to scaling/ray/normalization', check whether the invariant is actually homogeneous of degree 0 in the stem's setting. Do not add a ray clause unless the invariant is scale-invariant.\n   - Generic infinite example: for summability/weight conditions (sum N_c vs sum c·N_c), ask whether the condition is satisfiable for a generic infinite-rank or infinite-family case. A total-count condition that forces finiteness is false. Prefer the weighting that matches the natural conserved or controlled quantity.\n   - Exhaustiveness of 'either A or B' outputs: run the algorithm or statement on degenerate inputs (bipartite graph, no cycle, all cycles even, empty set). If some input satisfies neither branch, the option is false. Read a plain 'finds X in time T' in the standard sense (finds one whenever one exists, otherwise reports none) and do not reject it for omitting a trivial qualifier when the competitor fails exhaustiveness.\n   If a rider survives no test you can run, drop that option even if it looks sharper."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Recognising corrupted or inflated distractors",
+        "content": "- Equivalence / bijection / 'which objects correspond' stems: the answer must be an exact identification, both directions. Reject (a) 'a subset of' or 'some' versions, which are vacuous hedges, not a characterization; (b) versions that quantify over a smaller class (an extra side-condition on the objects) or a weaker property (BFM for FFM), since the reverse implication to the original assertion is not available; (c) versions with modified combinatorial rules, such as an added or dropped exclusion condition. If counts or dimensions are consistent with the standard unmodified object (e.g. number of Verma vectors = number of standard tableaux), the unmodified object is the answer. For 'every X is P' equivalent to 'every X in a subclass is P', prefer the subclass that the whole class reduces to in a natural way and that is stated without ad hoc extra conditions.\n- Logic / reverse-mathematics / complexity-flavoured stems: match the logical strength to the complexity of the objects (analytic = Sigma^1_1 sets pair with Sigma^1_1-level principles, not one level higher). Discard options that are already provable in the base theory (e.g. Sigma^1_1-Separation over ATR_0), since they cannot be equivalent to a non-provable statement. Discard options that merely restate the assertion with an extra clause."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Near-duplicate options: constants, quantifiers, ranges, exact details",
+        "content": "- Parameter translation: when the stem defines its parameter through a factor (adds 2ℓ twists, highest weight 2m·ω, step 2k), work out how that factor enters the invariant (e.g. 2ℓ twists on a band shifts one Seifert-matrix entry by ℓ, not 2ℓ) before comparing 'divides ℓ' with 'divides 2ℓ' or 'ℓ divides' with 'divides ℓ'. Do not double-count a factor already absorbed in the stem's parametrization, and check the direction of divisibility (the fixed quantity divides the free parameter, or conversely) with a one-line example such as ℓ=1 or a=1. A near-duplicate that is merely 'safer-looking' (extra factor, weaker divisibility) is usually the corruption."
+      },
+      {
+        "op": "append",
+        "content": "\n## Final sanity pass (do this before committing)\nName the option you would pick and the runner-up. State in one sentence the single clause on which they differ. Then give an explicit derivation or concrete test for that clause (zero data, small case, scaling, degenerate input, count or dimension check). If your choice carries the extra, more specific, or more elaborate clause and you only have a plausibility argument for it, switch to the plainer option unless that option is demonstrably false or strictly implied by a fully proved alternative."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

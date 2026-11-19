@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "runaway_repetition_unparseable",
+      "count": 2,
+      "description": "The answer degenerated into hundreds of repeated calls and never closed the list or the <answer> tag, so nothing parsed (T3, T4). Both were score-zero."
+    },
+    {
+      "failure_type": "missed_calls",
+      "count": 3,
+      "description": "A call was dropped for a compound 'A and B' clause, a hedged 'also...less relevant' clause, or the final clause (T5 chess puzzle, T6 Asos countries, T8 filter amenities)."
+    },
+    {
+      "failure_type": "tool_name_format",
+      "count": 1,
+      "description": "The tool name was written as 'Provider — tagline' instead of the exact '### Provider: API' heading, even though the query quoted the exact name (T7)."
+    },
+    {
+      "failure_type": "param_placement_and_shape",
+      "count": 3,
+      "description": "Bare parameter names instead of {name,value} objects (T2), optional-schema fields put under required (T1), and a duplicated 'optional parameters' key (T1)."
+    },
+    {
+      "failure_type": "missing_or_wrong_optional_values",
+      "count": 4,
+      "description": "Implied optionals were omitted or mis-valued: sortby 0 for 'default sorting', lang en-US, page 1, Amazon domain 'com', card value 'A', dice as optional, and price range names not in the schema (T1, T2, T5, T6, T7)."
+    }
+  ],
+  "patch": {
+    "reasoning": "The top-priority failure is runaway repetition, which gives zero parse and zero score, so I added a hard length guard and a stop rule. The next most common failures are dropped calls from compound or trailing clauses, plus tool-name and parameter-shape slips. These get compact, generalizable rules. The earlier rejected step bundled many long edits and hurt the score, so each edit here is short and targets one observed failure.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not close the list early or leave stray brackets.",
+        "content": "\n- Keep the answer short: one call per distinct request in the query, typically 3-12 calls in total. Never repeat an identical call unless the query asks for that action twice. Never loop over numbers or re-list the same tool again and again. 'Run code to calculate orbital periods for Mercury, Venus, Earth and Mars' is ONE call to the code tool, with the whole program in its single `code` value. Once the last clause is covered, close with `]` and `</answer>` immediately. An answer that never closes scores zero.\n- `required parameters` and `optional parameters` contain only `{\"name\": \"x\", \"value\": \"y\"}` objects, never bare names like `[\"page_id\"]`. If the query only says 'main page' or 'default', still give the value from its wording (page_id `main`, sort `0`).\n- `tool name` is exactly the text after `### ` (e.g. `Lost Ark: get classes`). Never write the provider line or its tagline after a dash. If the query quotes a name such as 'Dice Roll Simulator: Regular dice', copy it verbatim."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "\n- Split every compound clause before choosing tools: 'A and B' or 'A, B and C' is several requests. 'Download property types (limit 100) and amenity filters (limit 100)' means two calls, the property-types tool and the filter-amenities tool, each with its limit. Sibling endpoints of one provider that the query names separately each get their own call.\n- Hedged, trailing or final clauses are real requests ('I also checked which countries Asos sells to, though this seems less relevant', 'finally retrieve a chess puzzle with a 1500 rating'). Always make the call. Re-check the last sentence of the query last, because that is where calls are most often dropped."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+        "content": "\n- If a tool's schema says `Required parameters: none`, its `required parameters` list MUST be `[]` and every query value goes in `optional parameters` (price range, region, query text, dice count, etc.). Use only the tool's own field names ('priced $200-$500' -> `startPrice`/`endPrice` if that is what the schema lists, and 'US region' -> `region`, not `loc`). Put all optionals in ONE list.\n- Implied qualifiers still map to optionals: 'default sorting' -> the sort field `0`; 'page 1' -> page `1`; 'English for the US market' -> lang `en-US` plus country `US`; 'an Ace' -> card value `A`; 'rolling 5 dice' -> dice `5`; 'US marketplace' on a domain field -> the TLD form shown in the schema (`com`), not `US`. A request for 'a puzzle with rating 1500' also gets count `1`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

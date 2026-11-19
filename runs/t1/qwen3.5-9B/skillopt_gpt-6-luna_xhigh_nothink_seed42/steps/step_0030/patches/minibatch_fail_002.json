@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_result_update_omission",
+      "count": 3,
+      "description": "New hotel-star or neighborhood constraints were not applied to suitable cached results; agents returned no plan, only retrieved results, or reran proximity search."
+    },
+    {
+      "failure_type": "tool_call_persistence_and_hygiene",
+      "count": 3,
+      "description": "Agents omitted required cache saves, duplicated result-producing calls, or used unsupported date calculations."
+    },
+    {
+      "failure_type": "attraction_location_and_referent_mapping",
+      "count": 1,
+      "description": "An attraction search omitted its required city or state and treated a suggested area as a named-attraction search."
+    },
+    {
+      "failure_type": "flight_time_schema_validation",
+      "count": 1,
+      "description": "A flight filter used an invalid time format."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed failures concern rules the skill already states explicitly, so repeating tool-persistence, time-format, or neighborhood-update guidance is unlikely to help. Two useful gaps remain: explicitly distinguish hotel star criteria from review ratings, and state the attraction location requirement while clarifying how to filter a suggested area versus search for a named attraction.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+        "content": " For hotel star criteria, use the `stars` field rather than review `rating`: “at least x stars” maps to `[x, 5]`, and an exact x-star request maps to `[x, x]`."
+      },
+      {
+        "op": "insert_after",
+        "target": "`search_hotels` and `search_restaurants` require `city`.",
+        "content": " `search_attractions` requires at least one of `city` or `state`, even though both fields are individually optional in the schema; reuse an established location or seek it if absent. For follow-ups about an assistant-suggested place, distinguish an area from a named attraction: filter cached attraction results by `neighborhood` for an area, and use `attraction_name` when the user requests the named attraction itself."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

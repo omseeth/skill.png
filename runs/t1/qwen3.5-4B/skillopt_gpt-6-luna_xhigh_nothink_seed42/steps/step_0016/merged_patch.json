@@ -1,0 +1,33 @@
+{
+  "reasoning": "Retained all three distinct failure-driven replacements as higher priority. Added the success-driven guidance on identifying requested planning domains and asking only for missing required inputs; it complements, rather than conflicts with, the failure guidance for applying clarification replies.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Never pass a preference as an unsupported extra argument or place it in an unrelated field. For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+      "content": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Preserve exact casing for user-provided entity values such as names and locations, but use the canonical spelling and casing shown in the tool schema or examples for standardized categories and options (for example, flight class `business`). Never pass a preference as an unsupported extra argument or place it in an unrelated field. For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+      "content": "- Treat requests for lodging or other recommendations with access to, close to, or near a requested attraction or restaurant category or named place as cross-domain proximity requests: ensure compatible results for both domains are available, then call `search_nearest` and save its result. Merely planning for multiple domains on the same trip is not a proximity request. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+      "content": "- Resolve every reply against the immediately preceding assistant question or proposal. Treat answers to clarification questions—including party size, dates, time bounds, and preferences—and affirmative acceptance of a proposed entity or category as active plan information, even when phrased as a statement or simply “yes.” Apply every new criterion in the reply, not just the most salient one. For each affected result, reuse the closest compatible cached result and filter it using all newly supplied criteria not already satisfied, then save the update under a unique key. If an accepted entity or category is not covered by a compatible cached result, search for it using known required inputs. Do not return “No planning needed” while any such criterion remains unmet.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Check required inputs for each requested domain against the full conversation, compatible cached results, and the tool schema.",
+      "content": " First identify which planning domains the user actually requests. A destination, occasion, party size, or general trip statement does not by itself imply searches for both flights and hotels; if the intended planning help is unclear, ask what the user wants planned rather than requesting dates for assumed domains. For a clearly requested flight with a known route, ask only for a missing departure date; passenger count is optional, not a required flight input.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ]
+}

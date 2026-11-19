@@ -1,0 +1,52 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_filter_on_refinement",
+      "count": 3,
+      "description": "The reply supplied a value (neighborhood 'Summerlin', party size 4, laundry/room-service amenities). The agent only re-saved a cached result under a new key, or used the wrong key, instead of load -> filter_* -> save on the most refined key."
+    },
+    {
+      "failure_type": "wrong_param_name_or_format",
+      "count": 3,
+      "description": "Invented kwargs (laundry_service, room_service) or wrong value shapes: stars=[4] instead of [4, 4], and rating=[3.5, 5] for a plain '3.5 rating'."
+    },
+    {
+      "failure_type": "missing_search_nearest",
+      "count": 2,
+      "description": "'Near the hotel' and a named attraction with hotels already cached needed search_nearest. The agent either skipped it or re-searched the attraction with the type added and overwrote the 'attractions' key."
+    },
+    {
+      "failure_type": "constraint_misrouted_or_overfilled",
+      "count": 2,
+      "description": "A hotel per-night budget was passed to search_restaurants. num_people was copied to search_hotels from a headcount stated with the flight request."
+    },
+    {
+      "failure_type": "malformed_code_structure",
+      "count": 2,
+      "description": "Bare search call with a nested search inside save_to_cache and no seek_information. Unneeded flight loads and comments appeared in a hotel-only turn."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures come from detailed rules that exist but sit deep in a long document and are not applied. The edits add four short, concrete rules: (1) a proximity rule for 'near the hotel' and named-attraction turns that overrides the conflicting Rule 10 bullet; (2) a cheat sheet for stars/rating formats and has_* parameter names; (3) a rule that a reply supplying a value must filter the most refined key (never copy a cache result to a new key) and must not touch other domains; (4) a constraint-ownership rule that stops hotel-only values leaking into restaurant searches and flight headcounts leaking into hotel searches.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Rule 26: Proximity requests ('near the hotel', 'near <attraction>') need search_nearest (overrides the 'do not touch the hotel cache' and 'type if stated' parts of Rule 10)\n- If a hotels key is already in CACHE and the last turn asks for restaurants or attractions 'near the hotel', do all of these in one block: load the MOST REFINED hotels key (e.g. hotels2, filtered_hotels, final_hotels), run the new domain's search with every constraint the user stated, save it, then call search_nearest and save that too.\n  Example (restaurant, hotels2 cached, 'Chinese sounds great, and a restaurant with 3.5 rating near the hotel'): `hotels2 = get_results_from_cache(key=\"hotels2\")`, `restaurants = search_restaurants(city=\"Fresno\", cuisine=[\"Chinese\"], rating=[3.5, 3.5])`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `nearest_restaurants = search_nearest(hotels=hotels2, restaurants=restaurants, groupBy=\"restaurant\")`, `save_to_cache(key=\"nearest_restaurants\", value=nearest_restaurants)`.\n- Named attraction with a hotels key cached ('Yes, we want to visit Fountains of Bellagio'): `hotels = get_results_from_cache(key=\"<latest hotels key>\")`, `attractions1 = search_attractions(city=\"<city>\", attraction_name=[\"<exact name>\"])`, `save_to_cache(key=\"attractions1\", value=attractions1)`, `nearest_hotels = search_nearest(hotels=hotels, attractions=attractions1, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`. Pass the NAME ONLY: no type, even if a type was used for the earlier attractions search. Never overwrite the existing 'attractions' key. Do not re-filter the hotels.\n- Without a hotels key, 'near the hotel' needs no search_nearest. Just run the normal first search.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 27: Exact value shapes and parameter names (check every kwarg before sending)\n- `stars` and `rating` always take TWO values. 'a 4 star hotel' -> stars=[4, 4]. 'at least 4 stars' -> stars=[4, 5]. 'a 3.5 rating' -> rating=[3.5, 3.5]. 'at least / minimum 3.5' -> rating=[3.5, 5]. Never pass a one-element list.\n- Hotel amenity wording -> parameter: 'laundry facilities' or 'laundry' -> has_laundry_service=True. 'room service' -> has_room_service=True. 'kids club' -> has_kids_club=True. 'business center' -> has_business_center=True. 'spa' -> has_spa_services=True. 'sauna' -> has_sauna=True. 'hot tub' -> has_hot_tub=True. 'free parking' -> has_free_parking=True. 'meeting rooms' -> has_meeting_rooms=True. 'rooftop bar' -> has_rooftop_bar=True. 'city view' -> has_city_view_rooms_present=True. Only gym_present, pool_present, breakfast_included, free_wifi_included, smoking_allowed, air_conditioning_present, heating_present, airport_shuttle_present and is_pet_friendly lack the has_ prefix. Names such as laundry_service, room_service, kids_club, business_center and spa_services raise a ValidationError.\n- Never write comments, and never leave a filter_* or search_* call unassigned or unsaved.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 28: A reply that supplies a value must FILTER the most refined key of that domain; never just copy the cache\n- Writing `x = get_results_from_cache(key=\"a\")` followed by `save_to_cache(key=\"b\", value=x)` is NEVER a valid answer. Whenever the last turn gives a value (neighborhood, party size, rooms, amenity, budget, rating, cuisine, class) or accepts the assistant's proposal, the block must be load -> filter_* -> save under a NEW key.\n  - 'Yeah, Summerlin would be great' (assistant asked about a restaurant neighborhood, CACHE has filtered_restaurants): `r = get_results_from_cache(key=\"filtered_restaurants\")`, `r2 = filter_restaurants(prior_results=r, neighborhood=[\"Summerlin\"])`, `save_to_cache(key=\"filtered_restaurants1\", value=r2)`.\n  - 'There are 4 of us' (hotel question, CACHE has hotels, attractions and nearest_hotels): `h = get_results_from_cache(key=\"nearest_hotels\")`, `h2 = filter_hotels(prior_results=h, num_people=4)`, `save_to_cache(key=\"filter_nearest_hotels\", value=h2)`. A nearest_* key is the most refined hotels key once it exists, so load it instead of the raw 'hotels'. Party size is num_people and room count is num_rooms, both hotel-only.\n  - 'Yes, laundry facilities and room service' (hotel amenity question): filter only the hotels key with has_laundry_service=True, has_room_service=True. Do NOT load or filter flight keys because a flight class was mentioned earlier.\n- Touch only the domain the assistant's last question was about. Output nothing for other cached domains.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 29: Constraint ownership (never leak a value into the wrong domain)\n- Hotel-only values ('budget of 65 per night', stars, rooms, num_people, amenities, hotel neighborhood) never go into search_restaurants or filter_restaurants. A restaurant budget is only a budget the user ties to dining ('restaurants around 55 per person').\n  Example: 'hotel in Colorado Springs for a solo trip, budget 65 per night, with some restaurant recommendations in the city' and no dates -> `restaurants = search_restaurants(city=\"Colorado Springs\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. Do not drop the seek_information. Do not write a bare search call and do not nest a search inside save_to_cache.\n- Headcount with flights: when flights are also requested and a headcount appears in the opening request next to the flight ('a flight from Tucson to San Jose for 2 people and I also need a hotel', 'a flight and hotel for 2 people'), it describes the flight passengers. Do NOT add num_people to search_hotels for it. Only pass num_people to hotels when the user gives a headcount for the hotel or stay later (a reply to a hotel guest or room question, '4 of us for 3 nights', '4 rooms for 4 people'), or in a hotel-only conversation. This narrows the 'add num_people when party size is stated' bullets of Rules 9 and 24.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

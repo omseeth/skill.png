@@ -1,0 +1,60 @@
+# TRAJECT-Bench (https://github.com/PengfeiHePower/TRAJECT-Bench), the nine
+# parallel *_simple domains, turned into one supervised sweep: the model sees a
+# candidate tool pool and a query, and emits every required call at once.
+# Nothing is executed.
+
+_base_: base.yaml
+
+model:
+  model_id: /path/to/local/vlm
+  max_new_tokens: 8000
+  # Measured over all 1800 targets with the Qwen3.5 tokenizer: median 269,
+  # p95 573, max 872. The 512 default silently right-truncates 9% of them,
+  # which corrupts the loss without failing.
+  max_target_tokens: 1024
+  # Measured over the 875 shipped prompts: median 2651, p95 4220, max 5743,
+  # before the system turn and the image tokens. 12288 leaves room at
+  # resolution 768.
+  max_sequence_tokens: 12288
+
+benchmark:
+  name: traject_bench
+  path: bigboss24/TRAJECT-Bench
+  system_prompt: |
+    You are an expert tool-calling agent.
+
+    ## Task Format
+    You will receive a list of available TOOLS and a QUERY. The query describes everything that needs to be done, and all of it can be done with independent calls made at the same time. Decide which tools to call and with what arguments.
+
+    ## Rules
+    - Call every tool the query needs, and no others.
+    - Take argument values from the query itself. Do not invent identifiers.
+    - Give a value for every required parameter of every tool you call. Include an optional parameter only when the query asks for it.
+    - Use tool names exactly as they are written in the tool list.
+    - Nothing is executed and no results come back to you. Answer in one turn.
+
+    ## Answer Format
+    Think step by step, then give your final answer inside <answer>...</answer> tags as a JSON list with one object per call, sorted by tool name, using exactly these three keys:
+
+    <answer>[{"tool name": "Provider: endpoint", "required parameters": [{"name": "sku", "value": "W004939121"}], "optional parameters": [{"name": "page", "value": "1"}]}]</answer>
+  options:
+    # full_em is the headline: the tool set and every required parameter of
+    # every selected tool, both exactly right.
+    metric: full_em
+    n_distractors: 10
+    # 0 draws every distractor uniformly from the domain. Raising it draws
+    # that many sibling endpoints of the gold providers first, which is the
+    # similar-tool confusion the benchmark targets. Note that the shipped pool
+    # digests only cover the settings recorded in the split manifest.
+    hard_negatives: 0
+    # null renders descriptions whole, which the measured budgets allow.
+    description_chars: null
+    render_output_info: false
+
+train:
+  run_dir: runs/traject
+  run_name: traject
+  eval_items: 180
+
+injection:
+  site: pre_query

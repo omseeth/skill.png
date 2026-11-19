@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_identity_and_disambiguation",
+      "count": 5,
+      "description": "Agents paraphrased full tool identifiers or chose a sibling endpoint that did not directly support the requested result or qualifier."
+    },
+    {
+      "failure_type": "market_code_and_localization_binding",
+      "count": 5,
+      "description": "Agents used display hostnames instead of canonical market codes or omitted applicable documented localization parameters."
+    },
+    {
+      "failure_type": "hierarchical_location_binding",
+      "count": 2,
+      "description": "Agents assigned geographic names to the wrong administrative level or omitted required parent levels."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits make tool-variant selection more operational, clarify how to bind hierarchical locations, and explain how to map an explicitly requested market to documented code and locale fields without carrying settings into unrelated calls.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Break the request into distinct operations and match each to an endpoint by its documented capability and parameter schema—not merely by provider or broad topic. Use the exact full tool identifier from the available-tools list. Do not substitute a tangential endpoint or call several similar alternatives for the same requested result.",
+        "content": "- Treat each listed `Provider: API` identifier as an opaque literal: copy it verbatim, including its endpoint suffix and punctuation; do not shorten or reconstruct it. When a provider has sibling endpoints, select the one whose documented output and parameter schema directly support the requested result and constraints, rather than choosing by provider or a broad product/detail description."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Preserve user-provided identifiers and meaningful formatting unless the schema requires a documented conversion. Follow documented formats, enums, casing, codes, and delimiters, and interpret directional constraints according to the field semantics.",
+        "content": "- For endpoints with hierarchical location fields, map each place name or code to its actual administrative level. Keep country and parent-area identifiers in their proper fields, and include any parent levels required by a child field. Do not place a city or metro-area name in a different level merely to fill a parameter."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For missing required values, use only a documented default or a value unambiguously derivable from the query.",
+        "content": "- When a request specifies a country or market, use the endpoint's canonical code form rather than a display label or full hostname when a code is expected. Bind all applicable market and locale fields exposed by that endpoint—such as site, region, country, currency, language, or store—using documented values. Apply them only to calls scoped to that market; do not invent unsupported values."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

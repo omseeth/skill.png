@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle",
+      "count": 7,
+      "description": "Tool results were often left unassigned or unsaved, or the code redefined tool models and failed at runtime."
+    },
+    {
+      "failure_type": "conversation_delta_and_cache_refinement",
+      "count": 4,
+      "description": "Follow-up constraints were omitted, applied without the required filter argument, or handled by repeating searches instead of refining the relevant cached result."
+    },
+    {
+      "failure_type": "proximity_pipeline_omission",
+      "count": 1,
+      "description": "A hotel request explicitly asking to be near a named attraction received a hotel search but no nearest-results call."
+    },
+    {
+      "failure_type": "missing_mandatory_information",
+      "count": 1,
+      "description": "The agent invented hotel dates instead of asking for missing mandatory dates, and failed to perform the independently actionable restaurant search."
+    },
+    {
+      "failure_type": "schema_location_mapping",
+      "count": 1,
+      "description": "A state abbreviation was passed as a city for an attraction search."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers saving tool results and matching schema fields, so those instructions are not duplicated. These edits clarify how to interpret answers to assistant questions, ensure refinements actually include new supported constraints, make proximity requests require the nearest step, and allow complete independent actions to proceed when another action lacks mandatory information.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "\n- When the assistant has just asked for a particular trip detail, interpret the user's answer as supplying or updating that detail for the item and domain under discussion. Treat answer-only turns as deltas, not as unrelated new searches; retain other still-active requests."
+      },
+      {
+        "op": "replace",
+        "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+        "content": "- For a newly introduced constraint on a cached item, retrieve the most refined compatible result under an actual listed key and use it as `prior_results` for the matching filter. Pass every new, schema-supported constraint as a filter argument—not just `prior_results`—while omitting criteria already represented in the cached base. Do not repeat a search or filter unaffected items. If no compatible base exists, search when mandatory inputs are complete."
+      },
+      {
+        "op": "replace",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between supported domains. Before calling it, verify that each cached result covers the specific requested target, not merely the same domain or city. For example, a generic city attraction search does not cover a separately named attraction; search for the named attraction using `attraction_name` unless the cache summary shows that exact target is already covered.",
+        "content": "- Treat explicit relational wording such as “near” or “close to” between supported domains as a proximity request. Fulfill it with `search_nearest`: obtain compatible results for both exact targets from cache or search for any missing target when its mandatory inputs are available. A regular hotel, restaurant, or attraction search alone does not fulfill the proximity request. Verify that each result covers the requested target, not merely the same domain or city."
+      },
+      {
+        "op": "replace",
+        "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+        "content": "Check mandatory inputs separately for each requested action and domain against explicit values in the full conversation; related context does not automatically satisfy a required field. Do not invent missing values or use defaults. If any action lacks mandatory information, do not search that incomplete action; make one `seek_information` call asking only for its missing mandatory inputs across the requested domains. Still perform and cache other independently requested actions whose mandatory inputs are complete. Optional preferences are not mandatory inputs."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

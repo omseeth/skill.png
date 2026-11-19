@@ -1,0 +1,18 @@
+{
+  "batch_size": 1,
+  "success_patterns": [
+    "The clue put the head noun of a two-word term in quotes after 'this' (this \"point\"). The agent filled in the missing modifier and kept the quoted word, answering the full compound 'dew point'.",
+    "The agent found the phrase 'cooling air to its dew point' repeated across many independent passages, mirroring the clue's wording, and took the compound from there. This is the already-covered Rule 3 slot-fill behaviour."
+  ],
+  "patch": {
+    "reasoning": "The existing rules say to strike clue words from the candidate (DELETE-CLUE-WORDS TEST, 'hasty' -> pudding). Applied literally to this \"point\", that would yield 'dew' and fail an exact match. The agent got it right by keeping the quoted head word. The two cases differ in visible form: a quoted modifier means the answer is the other word, while 'this \"<head>\"' means the answer is the full compound. Encoding that distinction in Rule 4 guards this behaviour against the delete-clue-words rule without adding a broad form rule.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 4: Exact-match formatting of the final answer",
+        "content": "\n- Quoted HEAD word after 'this' (a '\"point\"', 'this \"line\"', 'this \"effect\"'): the quoted word is the head of a standard two-word term and the answer is the FULL compound, quoted word included ('air cools to this \"point\"' -> 'dew point'). This is the opposite of a quoted MODIFIER ('A \"hasty\" dessert' -> 'pudding'), where you give only the other word. Test: does the bare modifier ('dew') fail to name the thing? Then keep the quoted head. Confirm by finding '<X> point' repeated in the passages."
+      }
+    ]
+  },
+  "source_type": "success"
+}

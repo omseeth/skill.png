@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "contextual_request_and_constraint_coverage",
+      "count": 3,
+      "description": "Agents omitted a recommendation domain prompted by the assistant, treated a newly supplied neighborhood as already covered, or failed to apply a new preference to compatible cached results."
+    },
+    {
+      "failure_type": "cache_selection_and_result_lifecycle",
+      "count": 6,
+      "description": "Agents re-searched or re-filtered unnecessarily, used the wrong cache state, omitted requested work, or failed to save tool results."
+    },
+    {
+      "failure_type": "tool_execution_contract",
+      "count": 2,
+      "description": "Agents imported tools that were already available in the execution environment, causing runtime failures."
+    },
+    {
+      "failure_type": "itinerary_and_domain_completeness",
+      "count": 2,
+      "description": "Agents missed a requested return leg or hotel search while handling other trip-planning actions."
+    },
+    {
+      "failure_type": "schema_value_encoding",
+      "count": 1,
+      "description": "An at-least restaurant rating was encoded with only one endpoint instead of the required minimum and maximum."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add only targeted clarifications for the observed gaps: make assistant-prompted recommendation domains actionable, distinguish neighborhood filtering from proximity searches, follow the pre-bound tool execution contract, and encode minimum ratings with both endpoints. Existing cache lifecycle and itinerary rules already address the other misses, so they are not duplicated.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Additional reply and execution checks\n- If the assistant asks whether the user wants recommendations in another domain and the user replies with relevant preferences (such as cuisine or allergies), treat that domain as a pending request. Carry forward the established trip destination; use a compatible listed cache result only if it covers the request, otherwise search when mandatory inputs are available.\n- When the user supplies a named area in response to a hotel-area question, treat it as a new `neighborhood` criterion, not a `search_nearest` request. Do not assume a city-level or otherwise unspecified cached result already covers that area: refine the latest compatible hotel result with the schema-supported neighborhood field and save the refinement under a new key.\n- For a rating field with a documented 0-to-5 lower/upper range, encode “at least r” as `[r, 5]`; for example, a restaurant rating of at least 3.0 uses `rating=[3.0, 5]`.\n- Tools are already defined in the execution environment. Call them directly; do not import them, load them from a module, or redefine them."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

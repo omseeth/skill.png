@@ -1,0 +1,25 @@
+{
+  "batch_size": 6,
+  "success_patterns": [
+    "The agent searched the passages for the clue's distinctive words, then took the answer from the passage whose TITLE or headword was followed by a snippet echoing the clue's definition or details. Examples: 'Man-hours - definition...' for 'work one person can do in 60 minutes', 'The Stand (miniseries)', and 'Anastasia (1956 film)'. It then gave the bare, normalized form: singular, parenthetical disambiguator dropped, hyphen kept ('Man-hour').",
+    "For 'In 1956 <Actor> played this possible Romanov', the agent answered with the CHARACTER named in the passages (Anastasia), not the actor named in the clue and not the film. It read the named actor as an anchor and the 'this <role>' phrase as the slot.",
+    "Archive or social-media pages (TriviaBistro, Facebook 'Q:' posts) repeated the clue with no visible answer. The agent still answered with the bare generic entity ('rubber', not 'synthetic rubber'; 'The Stand', keeping the title's article) using topical passages plus its own knowledge.",
+    "For a clue with '___' ('House Committee on ___ & Infrastructure') or a 'category:clue' colon format, the agent returned only the filler word that the passages repeat around the blank ('Transportation'), not the whole phrase."
+  ],
+  "patch": {
+    "reasoning": "Most of this batch is already covered by existing rules (date+place, blanked-slot sentences, delete-clue-words, truncated archive hits). Two gaps remain. First, definition-style clues are answered by the headword or title of the passage whose snippet restates the clue, and the skill never says to read the [TLE] field this way or how to normalize it (drop '(1956 film)', make plurals singular). Second, 'Actor played this <role>' conflicts with the existing 'She played X -> the actress' example, so the agent needs a rule that the named person is the anchor and the character is the slot. Both edits are short, add no task-specific answers, and do not touch the Rule 3 verbatim-archive precedence.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "- Passage TITLES are answer candidates. When a passage's [TLE] is a headword or work title and its [PAR] snippet restates the clue's definition or details (a dictionary entry whose definition matches the clue, a film or miniseries page matching the plot), the title is the answer. Normalize it: drop disambiguators like '(miniseries)' or '(1956 film)', use the singular of a plural headword ('Man-hours' -> 'Man-hour'), and keep the hyphen and any leading 'The' that belong to the standard name."
+      },
+      {
+        "op": "insert_after",
+        "target": "- 'One of these <role/title>' ('the 14th one of these spiritual leaders') asks for the title or category noun itself (Dalai Lama), not the individual named in the clue.",
+        "content": "- '<Named actor> played this <role/description>' ('In 1956 Ingrid Bergman played this possible Romanov') asks for the CHARACTER played. The named actor and the year are anchors. Answer with the role's name as the passages give it, even when it is also the film's title. Only a clue whose subject is the pronoun ('She played Tina Turner...') asks for the actor."
+      }
+    ]
+  },
+  "source_type": "success"
+}

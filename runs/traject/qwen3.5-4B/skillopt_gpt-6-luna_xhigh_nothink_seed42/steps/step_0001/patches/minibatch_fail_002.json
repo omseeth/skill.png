@@ -1,0 +1,35 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_selection_and_coverage",
+      "count": 8,
+      "description": "Agents omitted requested operations, chose semantically weaker endpoints, or gave up when a named endpoint was unavailable."
+    },
+    {
+      "failure_type": "overcalling",
+      "count": 5,
+      "description": "Agents added unrelated or duplicate calls beyond the requested operations."
+    },
+    {
+      "failure_type": "argument_mapping",
+      "count": 6,
+      "description": "Agents omitted, misassigned, or inferred parameters instead of faithfully mapping the request to the tool schema."
+    },
+    {
+      "failure_type": "output_schema",
+      "count": 3,
+      "description": "Responses included malformed tags or objects that did not follow the required call schema."
+    }
+  ],
+  "patch": {
+    "reasoning": "A brief planning and validation workflow targets the recurring omissions, weak tool matching, unnecessary calls, parameter errors, and schema violations without encoding task-specific choices.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Multi-call planning and validation\n- Break the query into a checklist of distinct requested results, including each subject, action, and explicit constraint. Match each item to an available endpoint by its actual purpose and schema, not by a shared keyword alone.\n- If the query names an unavailable endpoint, do not abandon the whole task: use a listed endpoint only when it genuinely fulfills a requested result. Never invent tool names or substitute unrelated tools. Check that every requested item is covered and every proposed call serves one of those items; avoid duplicate alternatives and unrequested extra calls. Make separate calls for distinct values unless the schema explicitly supports batching them.\n- Map explicit constraints to the corresponding parameters, preserving provided values and identifiers. Do not infer extra filters, search terms, or optional settings from context; include optional parameters only when the request calls for them.\n- Before responding, verify that the answer is valid JSON inside the required tags, contains one correctly shaped object per call with exactly the required keys, and includes no explanatory text outside the format."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

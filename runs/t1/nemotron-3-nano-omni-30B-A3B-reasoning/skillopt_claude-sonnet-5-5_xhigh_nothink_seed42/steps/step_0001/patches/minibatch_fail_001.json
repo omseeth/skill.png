@@ -1,0 +1,52 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_no_planning_shortcut",
+      "count": 3,
+      "description": "Agent output print(\"No planning needed\") even though the last user turn added new constraints (neighborhood, attraction, airline, amenities, departure time). Cached results existed, but they still needed filtering or new searches."
+    },
+    {
+      "failure_type": "cache_misuse",
+      "count": 3,
+      "description": "Agent re-ran a fresh search instead of filtering cached results, referenced an undefined variable (hotel_results) instead of calling get_results_from_cache, or re-applied filters from earlier turns instead of the new ones."
+    },
+    {
+      "failure_type": "missing_save_to_cache",
+      "count": 3,
+      "description": "Tool calls were left bare, with no variable assignment and no save_to_cache. The gold code stores every result."
+    },
+    {
+      "failure_type": "wrong_parameter_mapping",
+      "count": 2,
+      "description": "A state abbreviation was put in city instead of state. A named attraction was not passed via attraction_name, and the nearest-hotel step was omitted."
+    },
+    {
+      "failure_type": "incomplete_multi_domain_handling",
+      "count": 3,
+      "description": "The last turn applied to several domains or legs (flights and hotels, departure and return flights, hotels and attractions), but the agent handled only one or none of them."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures are procedural rather than tool-knowledge errors. The agent shortcuts to 'No planning needed' when the last turn actually adds constraints. It also mishandles the cache by re-searching, using undefined variables, or repeating old filters, and it forgets to assign and save results. The edits give a decision procedure for when to plan, a cache follow-up recipe, a mandatory assign-and-save pattern, and parameter and multi-domain mapping rules.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Rule 1: When \"No planning needed\" is allowed\n- Use print(\"No planning needed\") ONLY if the last user message adds no new constraint, entity or request. Examples: a thank-you, a confirmation, or a repeat of something already reflected in the CACHE summaries.\n- Having cached results is NOT a reason to skip planning. If the last user message gives ANY new preference or detail, generate code. This includes airline, time of day, budget, amenities, neighborhood, number of people, attraction names or types, and a new domain.\n- Vague answers such as \"preferably in the afternoon\" or \"a gym and pool would be great\" are still constraints. Convert them into filter parameters (e.g. departure_time=[\"12:00 PM\", \"5:00 PM\"] for afternoon).\n- Compare the conversation against the CACHE summaries. If a mentioned constraint is not shown in the \"Additionally filtering for ...\" text or in the search description, it still has to be applied."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 2: Follow-up turns with cached results\n- Retrieve earlier results with `x = get_results_from_cache(key=\"<key from the CACHE dict>\")`. Never use a bare variable such as hotel_results or flights that was not defined in the same code block.\n- Apply the new constraint with filter_flights / filter_hotels / filter_restaurants / filter_attractions on the cached result. Do NOT re-run search_* when a cached search for the same trip already exists.\n- Chain on the most refined cached key. If `filtered_hotels` exists, filter it rather than `hotels`. Use only the NEW constraints from the last user turn. Do not repeat filters already listed in the cache summary, but do add constraints from the conversation that the summary does not show.\n- Handle every domain and leg affected by the last turn. If both flights and a hotel were discussed and the user answers with airline plus hotel amenities, filter both. For a round trip with separate departure and return caches, apply a shared preference (e.g. time of day) to both.\n- If the last turn is about a new domain (e.g. the user now names an attraction) and nothing was searched for it, run the search for that domain only. Do not redo the previous domain's filter, which is already cached.\n- Save each new result under a new unique key (e.g. filtered_flights2, final_hotels). Do not overwrite an existing key."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 3: Always assign and save every result\n- Never leave a search/filter/sort/search_nearest call bare. Use this pattern for every call:\n  `result = tool(...)` followed by `save_to_cache(key=\"<key>\", value=result)`\n- Use default key names for first-time searches: \"flights\", \"hotels\", \"restaurants\", \"attractions\". Use \"filtered_<domain>\" for filtered results. Use \"nearest_<domain>\" for search_nearest results.\n- Example for a first turn that has all mandatory hotel info:\n  `hotels = search_hotels(city=..., checkin_date=[...], checkout_date=[...], ...)`\n  `save_to_cache(key=\"hotels\", value=hotels)`\n- Pass search results into later tools via variables (e.g. `filtered_hotels`, `attractions`), never as undefined names."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 4: Parameter mapping hints\n- A US state name or abbreviation (e.g. \"NV\", \"Texas\") goes in `state=`, not `city=`. Use `city=` only for actual cities. Keep the user's exact string.\n- A specific named attraction goes in `attraction_name=[...]`. Category words (Social, Sporting, Art, Historical, ...) go in `type=[...]`. If the user gives both, include both in one search_attractions call.\n- When the user names a neighborhood for a hotel (e.g. \"Downtown Raleigh\"), add `neighborhood=[\"Downtown Raleigh\"]` to the hotel filter. Include `num_people` / `num_rooms` / `budget` in a filter when the conversation gives them but the cached summary does not yet show them.\n- If the user wants hotels with access to or near attractions, run search_attractions, then `search_nearest(hotels=<filtered hotels>, attractions=<attractions>, groupBy=\"hotel\")`, and save the result. Use groupBy=\"attraction\" only when the user wants the nearest hotels or restaurants listed per attraction.\n- A budget stated as \"around X for the flight and Y per night for the hotel\" means filter_flights(budget=X) on cached flights and filter_hotels(budget=Y) on cached hotels. Each is saved separately."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

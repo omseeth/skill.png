@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missed_independent_domain_search",
+      "count": 3,
+      "description": "A restaurant search was skipped or replaced by a bare/assigned seek_information, even though the city was known. The city came from the flight destination, the hotel city, or the last turn ('I'm in Raleigh'). Earlier cuisine and allergy constraints were also dropped."
+    },
+    {
+      "failure_type": "cache_key_naming_and_repeated_filters",
+      "count": 2,
+      "description": "A new filter key used an invented suffix ('filtered_flights2', 'filtered_restaurants60') instead of the first unused 'filtered_<domain>1'. One refinement also re-passed a cuisine that the loaded key's summary already listed."
+    },
+    {
+      "failure_type": "retrieval_ignored_on_no_preference",
+      "count": 1,
+      "description": "The reply 'Not really, I'm flexible' with 'attractions' already cached triggered a fresh search (state abbreviation in city) instead of a pure cache read."
+    },
+    {
+      "failure_type": "fabricated_mandatory_param_and_messy_code",
+      "count": 1,
+      "description": "The checkout date was guessed after a hotel was added to flights. The code used if/None/locals() branches instead of a single seek_information for the checkout date."
+    },
+    {
+      "failure_type": "invalid_kwarg_name",
+      "count": 1,
+      "description": "`room_service=True` was passed to filter_hotels (it should be has_room_service), which raised a ValidationError."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures are existing rules being skipped, so the edits add short, example-driven rules placed next to the rules the agent already consults. (1) A literal save-key algorithm plus a no-repeat-cuisine rule fixes the key naming and re-filtering errors. (2) A restaurant-needs-only-a-city rule covers three failures where the restaurant search was skipped or the city was missed. (3) An explicit precedence note makes a 'flexible/no preference' reply a pure cache read. (4) A hotel-after-flights guard and a hotel kwarg mapping prevent the guessed checkout date and the invalid kwarg.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 23: Load the most refined CACHE key; never overwrite a key",
+        "content": "- SAVE-KEY ALGORITHM (follow literally): the candidates are `filtered_<domain>`, then `filtered_<domain>1`, `filtered_<domain>2`, ... Pick the FIRST candidate that is not already a key in CACHE. CACHE has `filtered_flights` -> save `filtered_flights1` (not `filtered_flights2`). CACHE has `filtered_restaurants` -> save `filtered_restaurants1` (never `filtered_restaurants60`; no budget, date or other invented numbers as suffixes). CACHE has only the raw key ('hotels') -> save `filtered_hotels`. Apply the same algorithm per flight leg.\n- A key whose CACHE summary already shows 'Additionally filtering for cuisine(s): [French]' (or lists the cuisine in the search description) already has that cuisine. The new filter carries only the last turn's new value: 'We're looking to spend around 60 per person' -> `filter_restaurants(prior_results=r, budget=60)`, never `cuisine=[\"French\"]` again.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 7: Writing seek_information, including multi-domain requests",
+        "content": "- A restaurant search needs ONLY a city. If a restaurant (or 'some restaurants') is requested anywhere and a city is known from ANY turn, run the search even when flight or hotel dates are missing. The city can be the hotel city, the flight destination ('flight from San Jose to Colorado Springs, hotel Downtown Colorado Springs, restaurants' -> city=\"Colorado Springs\"), or phrased in the LAST turn ('I'm in Raleigh right now'). Output order: `restaurants = search_restaurants(...)`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then ONE final seek_information for the missing flight/hotel items. A seek_information alone is wrong in this case, and `x = seek_information(...)` is wrong (never assign it).\n  - 'family-friendly hotel in Tucson for 2, budget 120 per night, with some restaurants' (no dates) -> `restaurants = search_restaurants(city=\"Tucson\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need to ask for the check-in and check-out dates\")`. Hotel details (budget, party size, family-friendly) never go into the restaurant call.\n  - Flight + hotel + restaurants, no dates yet, last turn 'yeah but I dont eat dairy and prefer Thai' -> `search_restaurants(city=\"<destination city>\", has_dairy_allergy_options=True, cuisine=[\"Thai\"])` + save, then one seek_information naming the flight departure date and the hotel check-in and check-out dates.\n- Never ask for a city that appears anywhere in the conversation. Read the LAST user turn first: 'I'm in Raleigh right now, and I'd love something in Downtown Raleigh' -> city=\"Raleigh\", neighborhood=[\"Downtown Raleigh\"]. The city-seek rule applies only when no turn names a city.\n- The first restaurant search carries EVERY restaurant constraint from all turns: cuisine, allergy flags ('nightshade allergy' -> has_tomato_allergy_options=True; dairy -> has_dairy_allergy_options=True; nut -> has_nut_allergy_options=True), rating, budget. Example: 'nightshade allergy', 'I love Indian', then 'I'm in Raleigh, Downtown Raleigh' -> `restaurants = search_restaurants(city=\"Raleigh\", neighborhood=[\"Downtown Raleigh\"], cuisine=[\"Indian\"], has_tomato_allergy_options=True)` then `save_to_cache(key=\"restaurants\", value=restaurants)`.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 25: A reply to the assistant's question or proposal is a new constraint, so filter every affected key",
+        "content": "- PRECEDENCE: a refusal or 'no preference' reply ('Not really, I'm flexible. Give me anything', 'No preference', 'Anything works') answers the assistant's question but adds NO constraint. If CACHE already has a key for that domain, output only `x = get_results_from_cache(key=\"<that key>\")` (Rule 8): no search, no filter, no save. Example: CACHE {'attractions': 'Attraction search results in TN. attraction type(s): [Art]...'} and last turn 'Not really, I'm flexible' -> `attractions = get_results_from_cache(key=\"attractions\")` only. Never re-run search_attractions with the old criteria.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 24: Dates, stay length and domain completeness (supplements Rules 6, 7, 9, 14)",
+        "content": "- Hotel added after flights: CACHE holds only flight keys and only the flight date is known, and the user now describes a hotel ('Yes, near Downtown San Jose with a 1 star rating') with no check-out date. The ONLY output is `seek_information(\"We need to ask for the checkout date\")`. Do not call search_hotels (never guess checkout as flight date + 1). Do not `get_results_from_cache(key=\"hotels\")` when CACHE has no hotels key. Never write if/else, `is None` or `locals()` logic, and no explanatory comment lines.\n- Hotel kwarg names: 'room service' -> `has_room_service=True` (there is NO `room_service`), 'laundry' -> `has_laundry_service`, 'business center' -> `has_business_center`, 'meeting rooms' -> `has_meeting_rooms`, 'spa' -> `has_spa_services`, 'kids club' -> `has_kids_club`, 'balcony' -> `has_balcony`. Only gym_present, pool_present, breakfast_included, free_wifi_included, smoking_allowed, air_conditioning_present, heating_present, airport_shuttle_present and is_pet_friendly have no `has_` prefix. Example: 'budget around 1050 per night, and room service would be nice' -> `filter_hotels(prior_results=x, budget=1050, has_room_service=True)`.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

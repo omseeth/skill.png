@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_scope_and_context_resolution",
+      "count": 5,
+      "description": "Plans missed a newly requested domain or criterion, or failed to apply the latest update to compatible cached results."
+    },
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 2,
+      "description": "Search results were not bound to variables and saved to cache."
+    },
+    {
+      "failure_type": "runtime_tool_import",
+      "count": 1,
+      "description": "The agent imported tools from an unavailable module instead of calling the runtime bindings directly."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers cache-aware refinement and saving tool results, so those requirements are not repeated. These edits clarify that accepted offers can add work across multiple itinerary stops, require nearest-results calls to use inputs that include all new criteria, and prevent failures from importing prebound runtime tools.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "\n- An affirmative reply to an assistant's concrete offer to add a domain or activity makes that work actionable; it is not merely confirmation of existing results. Carry the proposed criteria to every relevant destination or stop in the pending itinerary, making separate searches where required. A cached result for another domain does not cover the added request."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Proximity between travel domains",
+        "content": "\n- Before calling `search_nearest`, bring each input domain's results up to date with all newly requested criteria: refine a compatible cached result or search when no suitable base exists. Pass the resulting objects, not stale cached results that omit a new constraint."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Runtime tool bindings\n- Tool functions and cache helpers are provided by the runtime. Call them directly; do not import them from a module or package, or redefine or wrap them."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

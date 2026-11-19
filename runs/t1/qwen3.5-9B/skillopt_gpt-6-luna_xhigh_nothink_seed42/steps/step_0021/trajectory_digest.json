@@ -1,0 +1,56 @@
+{
+  "step": 21,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 23,
+  "failure_patterns": [
+    {
+      "pattern": "tool_result_persistence: Result-producing calls were left bare or their returned objects were not saved to cache.",
+      "count": 23,
+      "task_ids": [
+        "flighthotelrestaurant:train:8:34:3",
+        "hotel:train:6:3:2",
+        "restaurant:train:23:15:1",
+        "hotelrestaurant:train:6:41:0",
+        "attraction:train:18:42:0",
+        "hotel:train:14:49:1",
+        "attraction:train:7:57:0",
+        "hotelattraction:train:19:30:5",
+        "hotelrestaurant:train:15:1:1",
+        "hotel:train:16:25:4",
+        "attraction:train:1:8:0",
+        "flight:train:11:4:1",
+        "flighthotel:train:22:15:2",
+        "restaurant:train:1:47:3",
+        "attraction:train:6:29:0",
+        "hotel:train:17:36:2",
+        "flighthotelattraction:train:24:32:2",
+        "hotelrestaurant:train:3:10:0",
+        "hotel:train:7:15:2",
+        "flighthotelrestaurant:train:4:13:5",
+        "flight:train:6:50:1",
+        "flighthotelattraction:train:3:40:1",
+        "flighthotel:train:15:13:3"
+      ]
+    }
+  ],
+  "score_before": 0.49,
+  "score_after": 0.28,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "- **Tool-call audit (before output):** Use runtime tools and schemas only; do not import libraries, redefine schemas, or add helper code. Use supported arguments and required types, with keyword arguments except for `seek_information`. For every result-producing search, filter, sort, or `search_nearest` call, assign the exact complete returned object to a variable and save that unchanged object under a fresh, descriptive key. Never leave a call bare or extract, rebuild, or merge its result before saving. Retrieve cached results by exact key and assign them to a variable before use; never nest retrievals or rely on variables from earlier turns. Use distinct keys for separate domains, legs, and updates. Before output, check that every intended result is assigned and saved, and that there are no duplicate or unrelated calls, unsupported arguments, or invented optional criteria. Do not ask for group size as a flight prerequisite.",
+      "target": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Write every result-producing search, filter, sort, or `search_nearest` call in two steps: assign its returned result to a variable, then save that exact, complete result object with `save_to_cache` under a fresh, descriptive key. Do not extract `.search_results`, rebuild, or merge tool output before saving. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Retrieve cached results by assigning `get_results_from_cache(...)` to a variable before passing them to another tool; do not nest the retrieval call. Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria."
+    },
+    {
+      "op": "replace",
+      "content": "- **Handle follow-ups incrementally through the cache:** At each turn, make a per-domain checklist from the full conversation and cache, not just the latest reply. Treat short answers in context as explicit values and affirmative replies accepting an offer as requests to complete it. A negative or narrowing reply applies only to the question and domain it answers; it does not cancel other requested or pending work unless the user clearly withdraws it. For each deliverable, compare the latest suitable cached result with all current criteria; a result for a different location, category, or filter, or one missing a new constraint, does not satisfy the request. If a suitable cached base needs a new constraint, retrieve it by its exact key and assign it to a variable, apply only the new same-domain filter, and save the update under a fresh relevant key. If no suitable base exists and required inputs are available, search and save. If an input is missing, ask only for it while completing other ready domains. Process multiple results, such as itinerary legs, independently; do not redo completed work, reapply reflected constraints, or touch unrelated results. Return no-planning only when every requested or pending deliverable reflects all current constraints and the latest turn adds no request, accepted offer, or new constraint.",
+      "target": "- **Handle follow-ups incrementally through the cache:** Treat a short answer to an assistant's clarification question as an explicit user-provided value or preference; an affirmative answer accepting an offered domain or option is a request to proceed. On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns, then decide separately for every requested or clearly pending domain. If a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only the new same-domain filter and save the update under a fresh relevant key. If no suitable base exists and required inputs are available, search and save. If required inputs are missing, ask for them while still completing other requested domains whose required inputs are available. A result summary satisfies a request only when it reflects all current constraints. For updates affecting multiple results, such as outbound and return legs, retrieve, filter, and process each independently. Do not repeat completed work, reapply constraints, or touch unrelated results. Never return no-planning merely because a cache entry exists. Compare the cache summary with the current conversation and follow the cache-update, search, or missing-input rules above for any unmet request or pending deliverable. Return no-planning only when every requested or pending deliverable reflects all current constraints and the latest turn adds no request, accepted offer, or new constraint."
+    },
+    {
+      "op": "replace",
+      "content": "For a review `rating`, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`. For a hotel's explicitly requested star count, use the `stars` field with an exact range such as `[4, 4]` for a four-star hotel.",
+      "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`."
+    }
+  ]
+}

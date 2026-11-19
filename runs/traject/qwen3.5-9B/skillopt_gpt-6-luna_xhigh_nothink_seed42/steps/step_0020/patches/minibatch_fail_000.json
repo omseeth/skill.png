@@ -1,0 +1,31 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_scope_control",
+      "count": 3,
+      "description": "Some calls used a less suitable endpoint or expanded a search across providers beyond the requested item scopes."
+    },
+    {
+      "failure_type": "parameter_binding_and_filter_coverage",
+      "count": 3,
+      "description": "Calls omitted or incompletely represented requested facets, including regional settings and multiple requested categories."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers schema-grounded endpoint selection, canonical values, and requested optional fields, so repeating those rules would add little. These edits clarify two narrower gaps: a requested market can require several coordinated parameters, and a supported multi-category filter should preserve every requested category.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Include an optional parameter whenever it directly encodes a requested facet, even if the user phrases it in prose or the endpoint has a default. For an unfiltered, random, or full/standard result, use a documented “all” or unfiltered selector when needed to preserve that scope. Do not add options that are neither requested nor needed to express it, or invent values. For missing required values, use only a documented default or a value unambiguously derivable from the query.",
+        "content": "\n- Treat a requested market or locale as a bundle when the schema represents it through multiple supported fields (such as country, store, currency, language, or size schema). Use documented lookup data or mappings to populate the fields needed to express that market; do not set only one field when the documented settings provide the rest, and do not invent unmapped values."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Preserve user-provided identifiers and meaningful free text unless the schema requires a documented conversion. For categorical filters, codes, and selectors, map the request to the documented parameter meaning—not a similarly named field—and use the endpoint's canonical accepted token and casing from its enums or examples. Do not pass a descriptive word as a category value when it changes the field's meaning; preserve original wording when no conversion is documented. Interpret directional constraints according to field semantics.",
+        "content": "\n- When a request names multiple categories and the schema supports a multi-value categorical filter, include every requested category using its documented delimiter and canonical casing. Do not silently reduce the request to one category; use separate calls only when the filter does not support the requested combination."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

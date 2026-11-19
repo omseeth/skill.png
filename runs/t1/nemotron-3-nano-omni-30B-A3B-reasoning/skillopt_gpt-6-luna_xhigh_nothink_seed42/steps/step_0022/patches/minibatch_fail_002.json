@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle",
+      "count": 7,
+      "description": "Search or refinement calls were emitted without assigning and saving their exact result objects."
+    },
+    {
+      "failure_type": "incremental_cache_use",
+      "count": 2,
+      "description": "A cached refinement was bypassed or earlier criteria were resent instead of applying only the new constraint."
+    },
+    {
+      "failure_type": "pending_action_and_required_input_coverage",
+      "count": 2,
+      "description": "Ready domains or an explicitly stated return leg were omitted, and a missing flight origin was guessed rather than requested."
+    },
+    {
+      "failure_type": "unsupported_inference",
+      "count": 2,
+      "description": "Calls included preferences not stated by the user or inferred a flight origin from the destination."
+    },
+    {
+      "failure_type": "schema_encoding",
+      "count": 1,
+      "description": "A flight filter used time values rejected by the tool schema."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most repeated failure is treating a tool call as complete without preserving its result, so make that requirement an explicit prohibition on bare calls. Tighten the cache-refinement rule to distinguish a new constraint from a fresh search. Add the missing high-confidence nonstop mapping and clarify that a lodging destination cannot supply a flight origin. Other unsupported preferences and schema issues are already addressed by existing guidance.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- Never leave a results-producing tool call as a bare expression. For each search, filter, sort, or nearest-results call, assign the exact returned object to a local variable and save that variable under a unique descriptive key; each refinement gets a new key. Keep the returned object intact—do not replace it with a hand-built dictionary or redefined model."
+      },
+      {
+        "op": "replace",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "- When a listed result already covers a domain's earlier criteria and the latest turn adds only a new constraint, retrieve the latest compatible cache key in this execution and refine that object with only the new constraint. Do not launch a fresh search or resend old criteria. Search only if no compatible listed result covers the requested target and mandatory inputs are ready; never reuse variables from earlier executions."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "\n- Encode an explicit nonstop or no-layover requirement as `num_layovers=[0]` on each applicable flight search or filter; do not omit it or use the default layover range."
+      },
+      {
+        "op": "insert_after",
+        "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field.",
+        "content": " For flights, a destination or hotel city does not establish the departure city or airport: if the origin is absent, do not guess it or set it equal to the destination; seek the missing origin. Continue any independent requested searches whose mandatory inputs are available."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

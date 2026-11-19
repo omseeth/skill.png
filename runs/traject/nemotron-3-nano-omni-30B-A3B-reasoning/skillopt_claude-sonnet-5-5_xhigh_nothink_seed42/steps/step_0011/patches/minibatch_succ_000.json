@@ -1,0 +1,37 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every clause got exactly one call from the matching endpoint, including the final 'Finally...' clause. Calls with no required params still carried all three keys.",
+    "Each stated qualifier (first page, 10 per page, 'limited to 100', 20-sided, 5 dice, 'seasonal', 'sorted by value') was mapped to the schema's own parameter. Required-ENUM slots like Rocket League `type` were filled from the query wording.",
+    "Long or odd tool headings were copied verbatim and scored full tool match. Examples: `Weee grocery API (sayweee.com) - browsing/searching/details: product details (zipcode, product_id)` and `Priceline com Provider: Download states`.",
+    "Narrative 'The user first... then... finally...' queries were turned into one call per action sentence. The trailing speculative sentence ('likely for travel planning', 'possibly for analysis') produced no calls.",
+    "Near-misses came from adjective filters in the query, such as 'active federal politicians', which map to two optional params (`active`, `level_of_government`). The agent kept only `active` in two separate tasks.",
+    "A closing 'show me more similar items to the original' repeated an earlier request. It needed a second identical call, and the agent emitted only one."
+  ],
+  "patch": {
+    "reasoning": "The batch is almost entirely passing. The remaining lost score comes from (a) adjective or category qualifiers in the query ('federal', 'toys and games') that map to optional filter or enum params and were dropped, (b) a closing 'more X' clause that repeats an earlier call, and (c) narrative queries where the concluding commentary could trigger extra calls. The patterns that already work (verbatim long headings, one call per action sentence) are worth reinforcing in short form. All edits fall outside the protected block.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).",
+        "content": "- A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).\n  - Adjectives that name a filter are qualifiers too. 'active federal politicians' -> `active`=`true` AND `level_of_government`=`federal` (two optionals, not just `active`). Check each adjective against the optional list, including boolean and ENUM fields.\n  - A natural-language category becomes the schema's own token. 'toys and games' -> category `toysgames` when the schema lists `toysgames`. 'seasonal challenges' -> required ENUM `type`=`seasonal`."
+      },
+      {
+        "op": "replace",
+        "target": "An action the query explicitly requests twice (e.g. 'recheck Asos categories') means two identical calls.",
+        "content": "An action the query explicitly requests twice (e.g. 'recheck Asos categories') means two identical calls. This includes a closing clause such as 'Finally, show me more similar items to the original product' after the list already asked for similar items: emit that similar-items call a second time."
+      },
+      {
+        "op": "replace",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.\n- In narrative queries ('The user first... then... finally...'), each action sentence is one call. A trailing interpretive sentence ('this suggests...', 'likely for travel planning', 'possibly for analysis') names no action, so it gets no call. A numeric limit in an action sentence ('limited to 100 results') is still an optional param (`limit`=`100`)."
+      },
+      {
+        "op": "replace",
+        "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+        "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely. Copy long or odd headings exactly, including parentheses, hyphens and provider typos (e.g. `Weee grocery API (sayweee.com) - browsing/searching/details: product details (zipcode, product_id)`, `Priceline com Provider: Download states`). Do not shorten or 'fix' them."
+      }
+    ]
+  },
+  "source_type": "success"
+}

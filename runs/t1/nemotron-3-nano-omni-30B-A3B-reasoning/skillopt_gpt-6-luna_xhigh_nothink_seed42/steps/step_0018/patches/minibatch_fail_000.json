@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_cache_and_conversation_scope",
+      "count": 5,
+      "description": "Plans searched again, used unlisted cache keys, repeated completed work, or missed a newly requested domain instead of applying the latest turn to compatible cached results."
+    },
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 4,
+      "description": "Search or refinement results were not consistently assigned to variables and saved to cache."
+    },
+    {
+      "failure_type": "flight_time_constraint_handling",
+      "count": 2,
+      "description": "Flight time constraints were omitted or re-sent in a format the tool rejected, rather than correctly representing a deadline or reusing a cached time constraint."
+    },
+    {
+      "failure_type": "runtime_tool_import",
+      "count": 1,
+      "description": "The agent imported a cache module instead of calling the runtime-provided tools directly."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers incremental cache use, conversation-wide planning, and saving result objects, so repeating those rules is unlikely to help. Add only the missing flight-time deadline guidance and a direct-runtime-tools rule to prevent the observed time-window and import failures.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "\n- For flight time constraints, map “arrive by T” or “no later than T” to an `arrival_time` range ending at T, using the earliest valid time-of-day endpoint and the time format accepted by the tool. Apply departure-time constraints to `departure_time`, not `arrival_time`. If a compatible cached result already covers a time constraint, do not resend it or search again merely to reapply it; refine only for newly introduced criteria."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Runtime tool usage\n- Travel tools and cache helpers are provided as runtime bindings. Call them directly; do not import, wrap, or redefine them. In particular, use the provided `get_results_from_cache` and `save_to_cache` functions rather than importing a cache module."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

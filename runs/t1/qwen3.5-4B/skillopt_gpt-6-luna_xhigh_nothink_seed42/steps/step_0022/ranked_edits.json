@@ -1,0 +1,34 @@
+{
+  "reasoning": "Preserved the failure-driven runtime, stateful cache, per-domain readiness, and schema-use corrections as the higher-priority edits. Retained the success-driven hotel-city inference because it addresses a separate ambiguity not covered by the failure edits. No edits target content inside the protected section. [optimizer-ranked: selected 3/9 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- **Runtime contract:** Tool functions are injected directly into the execution namespace; there is no `tools` module. Generated code must contain no `import` statements. Call provided tools directly by name without importing, redefining, or wrapping them; before returning code, scan for and remove any imports. Use keyword arguments except for `seek_information`, and return code in the required format.",
+      "content": "- **Hard runtime constraint:** Tool functions are injected as bare names; there is no `tools` module or namespace. Never emit an `import` or `from` statement, use `tools.<name>`, or alias, redefine, wrap, or dynamically resolve a tool. Call each function directly by its injected name. Before returning, inspect the complete code and remove any import statements. Use keyword arguments except for `seek_information`, and return code in the required format.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+      "content": "- **Search, update, and cache sequence:** On each turn, use the full conversation and cache summaries to identify the requested actions, and reuse only results matching the requested domain and subject. For a new base search, assign its result and save it under the established domain key. For a later-turn update, retrieve the most refined compatible result with `get_results_from_cache(key=\"...\")`—never rely on prior-turn variables—then apply only new criteria and save the transformed result under the established distinct filtered-result key pattern. If a new criterion applies to multiple compatible results, including multiple itinerary legs, retrieve and update each affected result. Assign every search, filter, sort, or nearest-result output to a variable and save it before returning; a bare result-producing call is incomplete. Do not repeat completed searches or applied filters, filter unrelated results, or add unrequested domains, sorts, or nearest-result calls. Use “No planning needed” only when every current request is already satisfied and no update or action remains.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "When hotel lodging is requested for a clearly stated trip interval, use its start and end as check-in and checkout unless the user provides distinct lodging dates.",
+      "content": " When a hotel is requested as part of an itinerary with one clearly established destination city and no separate lodging location is stated, use that destination city as the hotel city. Do not make this inference when the itinerary has multiple plausible destinations.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "The runtime constraint is explicitly prioritized by the optimizer guidance. The cache/workflow edit adds actionable safeguards for later-turn retrieval, transformations, and saving results. The hotel-city inference fills a distinct itinerary gap and has the strongest support among the remaining edits; the others mostly restate existing guidance.",
+    "selected_indices": [
+      0,
+      3,
+      8
+    ]
+  }
+}

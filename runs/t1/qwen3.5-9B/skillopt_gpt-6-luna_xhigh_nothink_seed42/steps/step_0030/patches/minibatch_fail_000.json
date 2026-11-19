@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_cache_discipline",
+      "count": 4,
+      "description": "Some trajectories omitted cache retrieval or left a result-producing search or proximity call unsaved."
+    },
+    {
+      "failure_type": "criteria_or_schema_mapping",
+      "count": 4,
+      "description": "Agents inferred unsupported hotel amenities or stays, mis-mapped a state to a city, or missed explicit hotel occupancy and room-count criteria."
+    },
+    {
+      "failure_type": "pending_deliverable_or_anchor_omission",
+      "count": 2,
+      "description": "Agents omitted a ready restaurant search or used a generic cached attraction result instead of searching for the named proximity anchor."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers tool persistence, independent ready domains, date grounding, and state-versus-city mapping, so repeating those rules is unlikely to help. These edits clarify three remaining schema decisions exposed in the batch: a proximity anchor must match the named place, explicit hotel room and occupancy counts both apply, and family-friendly wording alone does not establish a kids-club amenity.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results.",
+        "content": "For proximity centered on a named attraction or landmark, a cached attraction result is suitable only if it represents that named anchor; a broader category or type result is not a substitute. If the named place is absent, search for it by its complete name in the established location, assign and save that result, then use it with the requested domain results in `search_nearest`."
+      },
+      {
+        "op": "replace",
+        "target": "For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed.",
+        "content": "For a hotel search, map an explicitly stated hotel occupancy or party size to `num_people` and an explicitly stated room count to `num_rooms`; on a follow-up, apply every newly supplied count together in one same-domain filter on the latest suitable cached hotel result."
+      },
+      {
+        "op": "replace",
+        "target": "Do not map vague amenity wording to a narrower tool flag without clear equivalence.",
+        "content": "Do not map vague suitability or amenity wording to a narrower tool flag without clear equivalence: “kid-friendly” or “family-friendly” alone does not mean `has_kids_club=True`; set that flag only when a kids' club is explicitly requested or clearly specified."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

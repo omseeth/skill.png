@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "bare_search_no_assignment_or_save",
+      "count": 3,
+      "description": "First-turn attraction searches were emitted as bare search_attractions(...) with no variable and no save_to_cache. One of them also put the state abbreviation 'AZ' in city instead of state."
+    },
+    {
+      "failure_type": "accepted_proposal_not_searched",
+      "count": 1,
+      "description": "The user said 'Yes' to a new attraction type (Guided). The agent re-saved the old cached attractions instead of running a new search_attractions under a new key."
+    },
+    {
+      "failure_type": "cache_key_collision",
+      "count": 1,
+      "description": "A flight refinement was saved under 'filtered_flights', which already existed in the CACHE. The gold code saved under 'filtered_flights1'."
+    },
+    {
+      "failure_type": "fabricated_dates_and_wrong_filter_param",
+      "count": 1,
+      "description": "A hotel budget answer arrived with no dates. The agent invented dates, probed the cache with 'if hotels is None', and passed cuisine to filter_hotels. The correct output was seek_information."
+    },
+    {
+      "failure_type": "over_seeking_hedged_date",
+      "count": 1,
+      "description": "The user said 'As soon as possible, ideally May 19, 2025' and the agent asked for the departure date again instead of searching."
+    },
+    {
+      "failure_type": "dropped_earlier_optional_constraint",
+      "count": 1,
+      "description": "The hotel search omitted has_ocean_view_rooms_present, stated in an earlier turn, once the dates arrived. It also used helper variables instead of inline values."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three trajectories failed on the same basic output-form rule: assign the result and save it. That rule sits near the bottom of a long skill and is being ignored, so it now goes at the very top, together with a rule that save keys must never collide with existing CACHE keys. The remaining edits cover a missed 'yes' to a new attraction type, hedged dates, a hotel follow-up with no dates, and optional constraints from earlier turns being lost.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Output essentials (apply to every turn, read first)\n- Every search_*, filter_*, sort_results and search_nearest call is assigned to a variable and followed by save_to_cache, even on the very first turn: `attractions = search_attractions(city=\"Fresno\", type=[\"Scenic\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. A bare `search_attractions(...)` is always wrong.\n- A US state name or abbreviation ('AZ', 'Georgia') goes in `state=\"AZ\"`, never in city: `attractions = search_attractions(state=\"AZ\", type=[\"Scenic\"])`. A city name goes in city.\n- Save under a key that is NOT already in the CACHE summary. If 'filtered_flights' already exists, save as 'filtered_flights1' (then 'filtered_flights2'). The same applies to hotels, restaurants and attractions ('attractions1'). Never overwrite an existing key. This overrides the example key names like 'filtered_<domain>' used in the rules below.\n- Write literal values inline (city=\"Tucson\"). No helper variables, no if/else, no `is None` checks, and no comments."
+      },
+      {
+        "op": "insert_after",
+        "target": "Only a refusal or 'no preference' ('Not really', 'Anything is fine') with an existing cache entry means pure retrieval.",
+        "content": "\n  - Accepted attraction TYPE when the CACHE already has an 'attractions' key for something else (e.g. a single named attraction): this is still a new search, because the cached entry does not match the type. Assistant: 'Are you interested in any other Guided attractions?' + user 'Yes, that sounds great' -> `attractions1 = search_attractions(city=\"Fresno\", type=[\"Guided\"])` then `save_to_cache(key=\"attractions1\", value=attractions1)`. Never just retrieve or re-save the old attractions entry, and do not touch hotels on that turn."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not search, and do not ask about class, airline, time, return date, or passenger count.",
+        "content": "\n- A hedged date is still a stated date. 'As soon as possible, ideally May 19, 2025' or 'around June 3, 2025' gives departure_date=[\"May 19, 2025\"] / [\"June 3, 2025\"]. When origin, destination and such a date are known, search (`flights = search_flights(start_airport_city=\"Atlanta\", end_airport_city=\"Portland\", departure_date=[\"May 19, 2025\"])` + save under \"flights\"). Do not seek_information again.\n- Hotel answer with no dates: if the last turn only answers a hotel question (budget 'around 80 per night', stars, amenities, party size), the conversation contains no check-in/check-out dates, and the CACHE has no hotels key, output ONLY `seek_information(\"We need to ask for the check-in and check-out dates\")`. Do nothing for domains that are already cached (e.g. attractions). Never invent dates, never probe get_results_from_cache(key=\"hotels\"), never pass attraction or cuisine values to a hotel tool, and never use if/else."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Include optional details the user explicitly stated (num_rooms, num_people, budget, amenities, cuisine, ...) as keyword args in the search call, and nothing the user did not say.",
+        "content": "\n- Gather optional constraints from ALL earlier turns, not just the last one, when the first search becomes possible. Example: turn 1 'a hotel in Tucson with a view of the ocean', last turn gives dates -> `hotels = search_hotels(city=\"Tucson\", checkin_date=[\"October 22, 2025\"], checkout_date=[\"October 28, 2025\"], has_ocean_view_rooms_present=True)` then `save_to_cache(key=\"hotels\", value=hotels)`. Map each amenity phrase to its single param: 'ocean view' -> has_ocean_view_rooms_present, 'city view' -> has_city_view_rooms_present, 'kids club' -> has_kids_club, 'pool' -> pool_present, 'N people' -> num_people=N. A dates-only answer must not drop earlier amenities, budget, stars or party size."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

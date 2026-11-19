@@ -1,0 +1,23 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Include an explicitly requested enum filter when the user supplies a value that directly and unambiguously matches the field, even if the tool listing omits the allowed-value list.",
+    "Avoid passing a one-result limit when the endpoint documentation already guarantees one result by default; set it when needed to satisfy the request."
+  ],
+  "patch": {
+    "reasoning": "The batch shows an omitted federal-government enum filter despite a direct match to the request, while a seasonal enum filter was supplied successfully. It also shows a redundant limit of 1 on an endpoint whose documented default is already 1, unlike a single-result request where the endpoint needs an explicit count.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Map a requested count to the documented count field or `per_page`/`limit`; when the user asks for one result and the endpoint has a count field, set it to 1. If no count is requested, use the smallest conventional value needed.",
+        "content": "Map an explicit requested count to the documented count field or `per_page`/`limit`. When the user requests one result and the endpoint has a count field, set it to 1 unless the documentation already guarantees one result by default, in which case omit the redundant count. If no count is requested or implied, use the smallest conventional value needed."
+      },
+      {
+        "op": "insert_after",
+        "target": "Never invent enum tokens, identifiers, credentials, or empty placeholders.",
+        "content": "For an enum filter, if the request directly and unambiguously supplies a value matching the field's meaning but the tool listing omits the allowed choices, include that value using a known canonical spelling; otherwise preserve the directly supplied label rather than guessing synonyms or codes. Do not omit a clear requested constraint solely because the choices are not listed."
+      }
+    ]
+  },
+  "source_type": "success"
+}

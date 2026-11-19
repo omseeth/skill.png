@@ -1,0 +1,31 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "market_parameter_completion",
+      "count": 1,
+      "description": "The agent supplied the requested country and currency but omitted other unambiguous ASOS market settings, including store, size schema, and locale."
+    },
+    {
+      "failure_type": "schema_parameter_grouping",
+      "count": 1,
+      "description": "The agent placed an optional postal-code parameter in the required-parameters array."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that standard, unambiguous market mappings can populate related selectors even without a reference lookup endpoint, and add a final schema-membership check so requested optional parameters remain in the optional group.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Include related regional settings only when the request and documented mapping support them; do not invent opaque identifiers or guess unavailable mappings.",
+        "content": "Include related regional settings when the endpoint exposes a corresponding selector and an explicit market has a standard, unambiguous mapping to it: reuse the canonical market code for market/store/size-schema selectors when the API convention uses that code, and use the standard market locale for a language selector (for example, US -> en-US). This can be done without a separate reference lookup endpoint; do not invent opaque identifiers or guess nonstandard mappings."
+      },
+      {
+        "op": "replace",
+        "target": "- **Validate the final response.** Follow the required response format exactly, including tool names, call-object keys, and any requested call ordering. Return one list object per call, with that call's required and optional parameter arrays nested inside the object—not at the list level or shared across calls. Serialize each parameter as `{ \"name\": ..., \"value\": ... }`, and include empty arrays when a group has no parameters. Check that every requested operation is covered, no unrelated call was added, and the JSON parses. When the format requires only JSON, return no surrounding commentary.",
+        "content": "- **Validate the final response.** Follow the required response format exactly, including tool names, call-object keys, and any requested call ordering. Return one list object per call, with that call's required and optional parameter arrays nested inside the object—not at the list level or shared across calls. Serialize each parameter as `{ \"name\": ..., \"value\": ... }`, and include empty arrays when a group has no parameters. Cross-check every parameter against the tool schema: place required parameters only in the required array and optional parameters only in the optional array, even when the user explicitly requests an optional field. Check that every requested operation is covered, no unrelated call was added, and the JSON parses. When the format requires only JSON, return no surrounding commentary."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

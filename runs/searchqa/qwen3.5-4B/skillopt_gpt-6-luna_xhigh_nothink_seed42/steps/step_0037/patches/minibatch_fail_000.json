@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 4,
+      "description": "The answer used an associated or overly specific entity instead of the requested type, scope, or time period despite existing slot and category guidance."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A leading ellipsis was treated as part of the clue rather than a signal to recover the omitted beginning of a phrase."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "The correct place was identified, but a jurisdictional qualifier present in the directly paired answer was omitted."
+    },
+    {
+      "failure_type": "other",
+      "count": 2,
+      "description": "One bare-list prompt was underdetermined from its wording, and one factual claim was answered without reliable supporting evidence."
+    }
+  ],
+  "patch": {
+    "reasoning": "Existing guidance already covers answer type, relation, and scope, so repeating a general slot-check rule would not address the ignored distinctions. Add narrow rules for recovering a missing prefix, choosing an explicitly identified original-language title, and preserving qualifiers when a source directly pairs the clue with a full answer. The ambiguous list and unsupported historical claim do not support a safe general rule.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "For proper names and titles, use the conventional form that identifies the requested entity. Do not substitute a nickname or later brand name for the historically relevant label, omit words from a work's title when the work is requested, or add optional middle names. Conversely, when the clue requests a generic class, do not embellish it with a narrower associated name.",
+        "content": "\nWhen a work appears under both an original-language title and a translated or market title, prefer the title explicitly identified as the original when the question asks for the work without specifying a release-language title. Use the translation when the clue specifically asks for the English title or release title."
+      },
+      {
+        "op": "replace",
+        "target": "In noisy or search-style context, a passage may repeat the clue without supplying its answer. Treat that echo as a locator for relevant material, not as evidence for the missing answer; use substantive passages to identify the target and verify distinctive clue details. If the passage explicitly pairs the clue with an answer, it can serve as direct evidence.",
+        "content": "In noisy or search-style context, a passage may repeat the clue without supplying its answer. Treat that echo as a locator for relevant material, not as evidence for the missing answer; use substantive passages to identify the target and verify distinctive clue details. If the passage explicitly pairs the clue with an answer, it can serve as direct evidence; preserve the complete answer label and its supplied qualifiers rather than shortening it just because the referent is clear.\n\nWhen a quoted fragment begins with an ellipsis, consider whether it signals omitted preceding words. If context identifies the phrase, return the missing prefix—not the visible tail or a work associated with that tail."
+      },
+      {
+        "op": "insert_after",
+        "target": "When a work appears under both an original-language title and a translated or market title, prefer the title explicitly identified as the original when the question asks for the work without specifying a release-language title. Use the translation when the clue specifically asks for the English title or release title.",
+        "content": "\nFor ellipsis fragments, apply the completion rule only when the ellipsis marks missing text; do not treat a trailing or purely stylistic ellipsis as a blank."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

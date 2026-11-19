@@ -1,0 +1,34 @@
+{
+  "reasoning": "Retained all three distinct failure-driven replacements as higher priority. Added the success-driven guidance on identifying requested planning domains and asking only for missing required inputs; it complements, rather than conflicts with, the failure guidance for applying clarification replies. [optimizer-ranked: selected 3/4 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "Check required inputs for each requested domain against the full conversation, compatible cached results, and the tool schema.",
+      "content": " First identify which planning domains the user actually requests. A destination, occasion, party size, or general trip statement does not by itself imply searches for both flights and hotels; if the intended planning help is unclear, ask what the user wants planned rather than requesting dates for assumed domains. For a clearly requested flight with a known route, ask only for a missing departure date; passenger count is optional, not a required flight input.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+      "content": "- Resolve every reply against the immediately preceding assistant question or proposal. Treat answers to clarification questions—including party size, dates, time bounds, and preferences—and affirmative acceptance of a proposed entity or category as active plan information, even when phrased as a statement or simply “yes.” Apply every new criterion in the reply, not just the most salient one. For each affected result, reuse the closest compatible cached result and filter it using all newly supplied criteria not already satisfied, then save the update under a unique key. If an accepted entity or category is not covered by a compatible cached result, search for it using known required inputs. Do not return “No planning needed” while any such criterion remains unmet.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+      "content": "- Treat requests for lodging or other recommendations with access to, close to, or near a requested attraction or restaurant category or named place as cross-domain proximity requests: ensure compatible results for both domains are available, then call `search_nearest` and save its result. Merely planning for multiple domains on the same trip is not a proximity request. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+      "support_count": 1,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 3 prevents assumed searches and unnecessary required-input questions across planning requests. Edit 2 closes broad multi-turn gaps by carrying forward all clarification answers and applying new criteria to cached results or searches. Edit 1 clarifies when proximity language requires cross-domain searches while avoiding false triggers from merely planning multiple domains. Edit 0 addresses a narrower casing issue.",
+    "selected_indices": [
+      3,
+      2,
+      1
+    ]
+  }
+}

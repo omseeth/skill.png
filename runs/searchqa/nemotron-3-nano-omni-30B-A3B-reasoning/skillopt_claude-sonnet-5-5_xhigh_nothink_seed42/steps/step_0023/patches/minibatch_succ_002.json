@@ -1,0 +1,25 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every success first mapped the clue to its slot type (film title, person, city, mountain range, term). The agent then answered with the entity that recurs across many passages next to the clue's distinctive details. It did not answer with the anchor (Temple Square, Savannah, Steel Magnolias).",
+    "Where a passage reproduced the clue verbatim (J! Archive, StudyStack, a history list), the answer was the entity attached to it, even when the archived text was cut off ('...DAVID...' -> David Rabe). The agent also treated a bare 'CLUE' echoed in video or quiz page titles as carrying no answer, and answered from a descriptive passage plus own knowledge (lonely wood carver -> Geppetto).",
+    "When passages used several names for one entity (Casimir/Kazimierz Pulaski, Il Postino/The Postman, Charley/Charlie horse), the winning answer was the form repeated most across passages, usually the one in the clue-matching sentence. It kept the head noun where a bare word would not name the thing (Charley horse).",
+    "Answers were short and bare, with no descriptors, and one reasoning line came before the answer tags."
+  ],
+  "patch": {
+    "reasoning": "The skill already covers type-checking, verbatim archive copying and short bare answers, and those drove these passes. Two small, uncovered behaviours recur. First, pages that merely echo the clue (video titles, quiz spam, solver pages) give no answer, so the agent should fall back to the passage that paraphrases the clue's facts or to its own knowledge. Second, when passages disagree on spelling or title (native vs. Anglicized name, original vs. translated film title), the agent should pick the most-repeated form. Both are short additions to existing rules and add no new top-level sections.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "- A page that only REPEATS the clue (video or quiz-spam titles, 'Amazing Videos Tube', crossword-solver listings, forum questions) shows no answer and is not a verbatim hit. Skip it. Take the answer from a passage that paraphrases the clue's facts ('Geppetto is a poor, lonely wood carver' for the lonely old woodcarver clue), or from your own knowledge if the passages are only noise."
+      },
+      {
+        "op": "insert_after",
+        "target": "Never cut a part that identifies the person: keep the regnal numeral of a king or of a play's title character ('Richard III', not 'Richard'; 'Henry V').",
+        "content": "\n- VARIANT NAMES: when passages give several forms of the same entity (native vs. Anglicized spelling such as Kazimierz/Casimir; original vs. translated film title such as 'Il Postino' / 'The Postman'; Charley/Charlie), answer with the one repeated most across passages and used in the sentence that matches the clue. Do not mix forms, and do not invent a 'more correct' spelling."
+      }
+    ]
+  },
+  "source_type": "success"
+}

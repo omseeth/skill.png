@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "re_searched_cached_domain",
+      "count": 2,
+      "description": "A domain already had a CACHE key, but the agent re-ran search_* with the new constraint instead of load, filter, save (Finnish cuisine on cached restaurants; afternoon departure time on both cached flight legs)."
+    },
+    {
+      "failure_type": "dropped_requested_domain_or_wrong_block",
+      "count": 2,
+      "description": "The hotel was not searched even though its dates were known. In one case the agent loaded the attractions key and re-saved it unchanged. In the other it searched flights, then filtered them, and omitted the hotel and the stated class on the searches."
+    },
+    {
+      "failure_type": "format_or_param_mapping_error",
+      "count": 2,
+      "description": "Times were written as '00:00:00' (ValidationError) and flight_class was re-passed. A hotel reply 'Downtown Portland and a 3 star hotel' dropped neighborhood=['Downtown Portland']."
+    },
+    {
+      "failure_type": "hallucinated_value_wrong_domain",
+      "count": 1,
+      "description": "A 'German food' request with no city was sent to search_attractions with city='Dallas' (copied from the tool examples) instead of seek_information for the city."
+    },
+    {
+      "failure_type": "missing_search_nearest",
+      "count": 1,
+      "description": "The assistant offered a hotel near a cached attraction, but the agent only filtered hotels and did not call search_nearest with the cached attractions."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures come from a few rules the agent ignores because they sit deep in a very long skill. I promote them to short, checkable positions and pair each prohibition with its positive trigger. (1) A KEY-PRESENT CHECK at the very top fixes the two re-search failures. (2) Time-format and place-name mapping rules sit beside the value-shape rules and fix the '00:00:00' crash, the re-passed class and the dropped neighborhood. (3) A no-key rule covers the hotel dates arriving later, the flight+hotel opener with class and dates (stated class inside the search, no filter in a search block), and the restaurant request with no city (seek_information, never a tool-example city). (4) A narrow search_nearest exception covers 'hotel near the cached attraction', gated on the assistant's last message so it does not leak into ordinary hotel refinements.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- KEY-PRESENT CHECK (do this first): read the CACHE dict. For every domain the last turn touches, if its key is present the ONLY allowed code is `x = get_results_from_cache(key=<most refined key>)`, `y = filter_<domain>(prior_results=x, <new constraint>)`, `save_to_cache(key=<new key>, value=y)`. A search_* call for a domain that already has a key is always wrong, even when the reply adds a cuisine, time, budget or amenity. Examples: 'restaurants' cached + 'Yes, I'm looking for Finnish.' -> `filter_restaurants(prior_results=r, cuisine=[\"Finnish\"])`. Both flight legs cached + 'I'm flexible, but preferably in the afternoon.' -> load BOTH legs, `filter_flights(prior_results=x, departure_time=[\"12:00 PM\", \"5:00 PM\"])` on each, save each under a new key. A search_* call is allowed only for a domain with NO key."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 27: Exact value shapes and parameter names (check every kwarg before sending)",
+        "content": "\n- Time strings in departure_time / arrival_time ALWAYS use 12-hour 'HH:MM AM/PM'. Never use '00:00:00' (raises 'Unrecognized time format'). 'anytime before 04:39 AM' -> `departure_time=[\"12:00 AM\", \"04:39 AM\"]`; 'after 6 PM' -> `[\"06:00 PM\", \"11:59 PM\"]`; 'preferably in the afternoon' -> `[\"12:00 PM\", \"5:00 PM\"]`. A time reply carries ONLY the time kwarg: a class that the CACHE summary already lists ('flight classes: [business]') is not re-passed.\n- A place name in a hotel or restaurant reply ('Downtown Portland', 'Midtown Atlanta') is `neighborhood=[\"<as stated>\"]`. Every value in the last message gets its own kwarg. 'Downtown Portland and a 3 star hotel' -> `filter_hotels(prior_results=h, neighborhood=[\"Downtown Portland\"], stars=[3, 3])`. Dropping the place name is wrong."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 14: Straight-line first search once mandatory args become complete (supplements Rule 11)",
+        "content": "\n- NO-KEY DOMAINS ARE SEARCHED, NEVER 'RETRIEVED'. If a requested domain (e.g. a hotel asked for in turn 1) has no key and the last turn supplies its missing args (check-in/check-out dates), the block is `hotels = search_hotels(city=<city from any turn>, checkin_date=[...], checkout_date=[...], <every hotel constraint stated in any turn: num_people only if a number was stated, budget, stars, neighborhood, amenities>)` + `save_to_cache(key=\"hotels\", value=hotels)`. Loading another domain's key (e.g. 'attractions') and saving it unchanged is always wrong.\n- Flight + hotel opener with CACHE `{}` and a reply giving both dates and a class ('May 22, 2025 and May 25, 2025 for the return, we prefer business'): write ONE block with no filter calls. Outbound search_flights with flight_class=[\"business\"] saved as \"flights\"; return search_flights with flight_class=[\"business\"] saved as \"return_flights\"; then `search_hotels(city=<destination>, checkin_date=[<outbound date>], checkout_date=[<return date>])` saved as \"hotels\". A stated class goes INSIDE the search call (this overrides 'add no other params' in Rule 9). A block that searches a domain never also filters that domain.\n- Restaurant request with no city anywhere in the conversation and CACHE `{}` ('I'm looking for a German food', then 'around 70'): the whole output is `seek_information(\"We need the city for the restaurant.\")`. Food, cuisine, dietary and per-person budget words mean restaurants, never attractions. Never borrow a city from TOOL CONFIG examples (Dallas, Boston, ...)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 26: Proximity requests ('near the hotel', 'near <attraction>') need search_nearest (overrides the 'do not touch the hotel cache' and 'type if stated' parts of Rule 10)",
+        "content": "\n- Hotel reply when an ATTRACTIONS key is already cached AND the assistant's last message offered a hotel near that attraction ('I can help you find a hotel near <attraction>. What amenities?'): filter the hotels with the user's amenities, then search_nearest on the filtered result. Write `hotels = get_results_from_cache(key=\"hotels\")`, `filtered_hotels = filter_hotels(prior_results=hotels, gym_present=True, free_wifi_included=True)`, `save_to_cache(key=\"filtered_hotels\", value=filtered_hotels)`, `attractions = get_results_from_cache(key=\"attractions\")`, `nearest_hotels = search_nearest(hotels=filtered_hotels, attractions=attractions, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`. Use the amenity kwargs that match the user's words. This is the one exception to 'a hotel reply touches only hotels'. It applies only when the assistant's last message tied the hotel to the cached attraction."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

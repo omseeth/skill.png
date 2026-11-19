@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_mismanagement",
+      "count": 3,
+      "description": "Repeated base flight or restaurant searches instead of retrieving compatible cached results and applying newly added filters."
+    },
+    {
+      "failure_type": "tool_argument_semantics",
+      "count": 2,
+      "description": "Confused hotel stars with guest ratings, altered a neighborhood name, or treated a named attraction as a category."
+    },
+    {
+      "failure_type": "conversational_scope_resolution",
+      "count": 1,
+      "description": "Treated acceptance of an offered new attraction category as a proximity request using already-cached results."
+    },
+    {
+      "failure_type": "required_argument_validation",
+      "count": 1,
+      "description": "Called a hotel search without mandatory check-in and check-out dates instead of requesting the missing details."
+    },
+    {
+      "failure_type": "unnecessary_tool_calls",
+      "count": 1,
+      "description": "Repeated searches for cached flight legs after a traveler-count update, although flight tools do not support passenger count."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent failure is restarting a search when a compatible cached candidate set can be filtered. A clearer boundary for common refinement cases addresses those repeats. The field-mapping clarification resolves the observed ambiguity around hotel star classifications and named attractions. The other failures are already directly covered by the required-argument, offer-resolution, and no-op rules, so duplicating those rules is unwarranted.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Cache-aware tool workflow",
+        "content": "\n**Filter covered results rather than restarting:** If a cached result's domain, location or route, dates, and candidate scope cover the request, a newly added supported filter is still a filter-only update. For example, add a neighborhood filter to a compatible city-wide restaurant result, or airline/class filters to a compatible flight-leg result: retrieve the exact cache key, call the matching `filter_*` tool with the new constraints, and save its result. Repeat a base search only when the requested candidate scope is not covered by the cache."
+      },
+      {
+        "op": "replace",
+        "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+        "content": "Disambiguate the field before setting rating bounds. A hotel described by its N-star classification—including “a 1-star rating” when guest-review context is absent—uses `stars`, not `rating`; an exact N-star classification uses `[N, N]`, while “at least N stars” uses `[N, 5]`. Use `rating` for hotel guest/review scores and restaurant ratings; treat “N or higher” as `[N, 5]` unless an exact score is explicitly requested, in which case use `[N, N]`. For attractions, pass a named place in `attraction_name` exactly as given; use `type` only for an explicitly requested category, and do not infer a category from words in a proper name. Preserve the complete user-provided neighborhood phrase in `neighborhood`, including any city qualifier, and pass the surrounding city separately in `city`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

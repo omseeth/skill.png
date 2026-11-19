@@ -1,0 +1,60 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "structure_error",
+      "count": 2,
+      "description": "Unparseable or lossy JSON. One answer had a stray `]` after the first object, so nothing parsed. In the same answer four objects had no `optional parameters` key. Another answer wrote `optional parameters` twice, so the empty list erased language and country."
+    },
+    {
+      "failure_type": "param_name_or_placement",
+      "count": 2,
+      "description": "Param names were borrowed from sibling tools (Wayfair `q` instead of `query`; AliExpress DataHub `minPrice`/`maxPrice`/`loc` instead of `startPrice`/`endPrice`/`region`). Optional params were placed in `required` (`starid`, price range). Stated qualifiers were skipped (category=sports) and Amazon domain was `US` instead of `com`."
+    },
+    {
+      "failure_type": "wrong_tool_or_sibling",
+      "count": 2,
+      "description": "'Republican figures' went to GetFutureEventsByTopic instead of GetPeopleByTopic. 'BBC' was filled with Aljazeera's endpoint instead of the generic by-source tool (`BizToc: News / Source`, `source_id`=`bbc`)."
+    },
+    {
+      "failure_type": "extra_call",
+      "count": 1,
+      "description": "'Blog posts and news' for one game produced two calls, though the Blog endpoint's own description already covers both nouns."
+    },
+    {
+      "failure_type": "value_case",
+      "count": 2,
+      "description": "Country/region codes were uppercase (`UK`, `US`) where the expected values were lowercase (`uk`, `us`) for Spotify _v2 New releases and AI News - Global Get News."
+    },
+    {
+      "failure_type": "gold_artifact_noise",
+      "count": 2,
+      "description": "Gold expected empty-valued optionals (`callback`, `all`) and extra unrelated news tools for an IPL query. These were not chased."
+    }
+  ],
+  "patch": {
+    "reasoning": "Structure errors cost the most (a zero-score parse failure plus a duplicated key), and the existing rules were skipped, so edit 1 adds a literal per-line template at the top with the exact new bad strings. Param name and placement errors recur, and the existing rule is a restatement the agent ignores, so edit 2 adds a procedural step: copy the tool's own Required/Optional name lists into the checklist before writing JSON. It uses the sibling-name mix-ups seen here as examples. Edit 3 covers the tool-selection misses: a noun picks the People endpoint, no swapping in a different outlet's endpoint, and one call when one endpoint's description already covers both nouns. Edit 4 adds a narrow lowercase-code rule for the two tools that failed on it, without touching the protected section or the uppercase defaults.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Output format (errors here score zero)",
+        "content": "\n- LINE TEMPLATE (fill the slots, never improvise). Every call is exactly one line: `{\"tool name\": \"NAME\", \"required parameters\": [R], \"optional parameters\": [O]},` where R and O are comma-joined `{\"name\": \"x\", \"value\": \"y\"}` items, or nothing. All three keys appear on EVERY line, even for a no-param call (`\"required parameters\": [], \"optional parameters\": []`). Decide the full optional list first, then type `\"optional parameters\"` once. A line ends `]},` (the last line ends `]}`, then `]</answer>` on its own line). Always write the closing `</answer>`. Recent bad lines: `..., \"optional parameters\": [{\"name\": \"by\", \"value\": \"Stage Name\"}]}],` (stray `]` after the first object, so NO calls parsed); `{\"tool name\": \"Halsey ...\", \"required parameters\": [{\"name\": \"artist\", \"value\": \"Halsey\"}]},` (no `\"optional parameters\"` key); `..., \"optional parameters\": [{\"name\": \"language\", \"value\": \"en\"}, {\"name\": \"country\", \"value\": \"IN\"}], \"optional parameters\": []},` (the second key erased language and country). Rewrite any such line from the template."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Parameters",
+        "content": "\n- SCHEMA COPY STEP (per call, before writing JSON). In your checklist, copy the chosen tool's `Required parameters:` and `Optional parameters:` name lists verbatim from ITS OWN block, e.g. `Wayfair: auto-complete: Required [query]; Optional []`. Assign query values only to names on those two lists, each in the list where it appears. Sibling tools share ideas but not names. Wayfair auto-complete takes `query` (`q` is Asos's). `Aliexpress DataHub: Aliexpress - Item Search` has only optional `q`, `startPrice`, `endPrice`, `region`, `page` (`minPrice`/`maxPrice` belong to `Ali Express Data Service: Search Items`, and `loc` is not `region`). So '$200-$500 in the US region' -> optional startPrice=`200`, endPrice=`500`, region=`US`, with nothing in required. 'Required parameters: none' (e.g. `Stars API: Planet list`, `starid`=`4`) means every value goes in optional. Then tick each adjective of the clause against the Optional names: 'English sports news from India' on `News API_v2: Top Headlines` -> language=`en` AND category=`sports` AND the country. An Amazon 'US marketplace' is domain=`com`, never `US`."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n- NOUN PICKS THE ENDPOINT; NO LOOK-ALIKE SUBSTITUTES. 'Republican figures' / 'people' / 'influencers' with a topic and page -> `Election2020 Smartable: GetPeopleByTopic` (`page`=`1`, `topic`=`republican-voice`), not `GetFutureEventsByTopic`. 'Events' -> an Events endpoint, 'FAQs' -> a FAQs endpoint. A named outlet with no per-outlet endpoint in the list (BBC, when only Aljazeera, CNN Arabic and France24 Arabic exist) -> the generic by-source tool with the outlet slug (`BizToc: News / Source`, `source_id`=`bbc`). Never swap in a different outlet's endpoint. 'Blog posts and news' about one game is ONE call when a single endpoint's Description already names both nouns (`Rocket League: Blog` says 'blog posts and news content'), so do not add `Rocket League: News`. Read the first candidate's Description before adding a call for the second noun."
+      },
+      {
+        "op": "append",
+        "content": "\n## Value-form addenda (recent misses)\n- Region/country codes taken from the query's place name are lowercase slugs for these tools: `Spotify _v2: New releases` 'UK' -> country=`uk`; `AI News - Global: Get News` 'US region, version v1' -> region=`us`, version=`v1`. Locale defaults (Asos `US`/`en-US`) and Epic Games codes keep the case given in Section E.\n- Do not add an empty-valued optional (`callback`, `all`) just because the schema lists it; omit it.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

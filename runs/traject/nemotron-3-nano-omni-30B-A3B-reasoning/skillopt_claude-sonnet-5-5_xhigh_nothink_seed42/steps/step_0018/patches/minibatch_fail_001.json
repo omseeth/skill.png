@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "malformed_answer_json",
+      "count": 3,
+      "description": "Unparseable or key-corrupted objects: a half-written trailing key `], \"},` (education:66), required-only objects missing the `optional parameters` key plus an unclosed code-value object (education:76), and a duplicate empty `optional parameters` key that erased `cnt` (weather:199)."
+    },
+    {
+      "failure_type": "wrong_tool_or_padding",
+      "count": 3,
+      "description": "weather:199 added a narrow wind-speed tool and a summary forecast instead of the `daily` tool. travel:88 used `airlineSearch` with a duplicated `country` key instead of one place-lookup call per city. email:158 dropped the 'basic validation' call."
+    },
+    {
+      "failure_type": "dropped_clause",
+      "count": 2,
+      "description": "ecommerce:35 dropped 'country availability' (`Asos: countries/list`). email:158 dropped one facet of a 'both X and Y' clause on one address."
+    },
+    {
+      "failure_type": "invented_or_missing_values",
+      "count": 2,
+      "description": "weather:184 guessed coordinates instead of passing the place name to `q`, and missed `active`=`1` for 'active alerts'. Missing Asos autocomplete defaults in ecommerce:35."
+    },
+    {
+      "failure_type": "gold_artifact_optionals",
+      "count": 1,
+      "description": "gaming:182 mismatch on `Content-Type` and singular criteria wording; not generalizable, so not addressed."
+    }
+  ],
+  "patch": {
+    "reasoning": "Two earlier attempts to rewrite the layout and bracket rules (steps 16 and 17) were rejected, so this patch leaves that region alone and avoids adding more bad-string examples. Two targeted format fixes address failures seen here: code-valued params (the judget0 call broke the JSON in education:76) and required-only objects that lost their `optional parameters` key. The remaining edits cover content failures that recur in this task family. One stops guessed coordinates and says a name goes in the name-accepting field. One narrows the 'current + forecast' rule so it does not pad with narrow single-metric tools. One states the boundary for 'both X and Y' on one input, covers 'categories and country availability', and covers airport data for named places. Each rule has one example and an explicit boundary, so it should not conflict with the older 'valid AND disposable -> one tool' rule.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Each parameter is `{\"name\": \"x\", \"value\": \"y\"}`. Every value is a quoted string, including numbers (`\"2023\"`, `\"1\"`, `\"9098084\"`).",
+        "content": "\n- LONG VALUES (code or other multi-line text): keep the whole value on ONE line inside the quotes, write each line break as `\\n`, use single quotes inside the code (no raw double quotes, no raw newlines), keep it short, and close the value with `\"}` before the list's `]`. GOOD: `{\"tool name\": \"Safe Exam: judget0\", \"required parameters\": [], \"optional parameters\": [{\"name\": \"code\", \"value\": \"import math\\nfor r in [0.39, 0.72]:\\n    print(2 * math.pi * r)\"}]},`. A call with only required values still ends with its optional key: `{\"tool name\": \"Numbers: Get year fact\", \"required parameters\": [{\"name\": \"year\", \"value\": \"1969\"}], \"optional parameters\": []},`."
+      },
+      {
+        "op": "insert_after",
+        "target": "'Ran Python code to calculate orbital periods' is one `Safe Exam: judget0` call with the code in `code`.",
+        "content": "\n- PLACE NAME, NOT GUESSED COORDINATES. When the query gives only a place name (no numbers), pass the name to the field that accepts names (`WeatherAPI.com: Astronomy API` `q`=`Breckenridge`; a `city`, `resort` or `location` field) and leave `lat`/`lon`/`point` out. Use coordinates only when the query states them, copied exactly as written. 'Active weather alerts' on `National Weather Service: /alerts?{parameters}` -> optional `active`=`1`."
+      },
+      {
+        "op": "replace",
+        "target": "Do not drop either, and do not add a third weather tool.",
+        "content": "Do not drop either, and do not add a third weather tool. Boundary: this applies only when the query names two different deliverables. One 'weather forecast' request plus 'daily forecast for the next few weeks' is ONE forecast call (the `daily` tool). Never add a narrow single-metric tool (`Cloud Cast: Get wind speed`, humidity, astronomy) or a summary/hourly sibling that no clause names. Each named extra (nearby cities, active alerts) is its own call."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "\n- 'BOTH X AND Y' ON ONE INPUT = TWO CALLS when X and Y are different facets. 'A basic validation and its MX records' for info@acme-corp.com -> `Email Address Validator: Validate Email Address` + `Email Existence Validator: Get the MX Records`. Only two properties that ONE tool's description covers together ('valid AND disposable') collapse into one call.\n- Two nouns joined by 'and' for one provider are two calls: 'Asos categories and country availability' -> `Asos: categories/list` + `Asos: countries/list`.\n- 'Airport data for <place A> and <place B>' with a place-lookup tool -> one `Priceline com Provider: Auto complete` call per place (`string`=`Winnipeg`, optional `get_airports`=`true`, `get_cities`=`true`, `get_airports_in_cities`=`true`), not `Flightera Flight Data: airlineSearch`. Never list the same param name twice in one call."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

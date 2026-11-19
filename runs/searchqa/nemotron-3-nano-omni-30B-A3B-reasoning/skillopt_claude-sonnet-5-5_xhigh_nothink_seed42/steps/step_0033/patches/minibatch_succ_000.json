@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every trajectory gave a bare 1-3 word answer of the exact type the clue's 'this <noun>' asked for (vanilla, Sahara, Watts, pudding, Disneyland, History, Max Factor, phyllo). None added descriptors such as 'Watts riots' or 'vanilla ice cream'.",
+    "Four of eight contexts held a verbatim or near-verbatim archive hit for the clue (TriviaBistro, J! Archive, Search-ID, Infoplease). The agents matched on the clue's distinctive words and took the adjacent entity. This is already covered by Rule 3.",
+    "Where there was no archive hit, the agents picked the entity that recurred across many independent passages together with the clue's distinctive details (Watts + 1965 + Karenga, Max Factor + first make-up, Sahara + 30% sand).",
+    "The agents dropped the word the clue already supplied ('hasty' + pudding -> 'pudding'). They also treated clue decoration ('Dear Gary...wish you were here', 'Need help in this subject...') as filler and answered from the factual core.",
+    "For the foreign-word gloss clue ('Greek for \"leaf\"'), the agent chose the spelling used by the passage that glosses the term and by the majority of passages ('phyllo'), not the first Wikipedia variant ('Filo')."
+  ],
+  "patch": {
+    "reasoning": "Most success behaviors (verbatim archive copying, bare type-correct answers, dropping clue words, ignoring decoration) are already encoded and should not be touched. Rejected earlier attempts to add a mandatory template at the top regressed scores, so none is proposed. One gap remains: when passages give several spellings or variants of the answer (phyllo/filo/fillo) or the clue glosses a foreign term, the skill gives no tie-breaker. The edits below add a short variant tie-breaker to Rule 4 and extend the existing gloss bullet in Rule 1. Both key on visible clue features and carry little risk to stable passes.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- For titles, give the standard title without quotation marks and keep internal punctuation as written in the context ('M*A*S*H', not 'MASH film').",
+        "content": "- SPELLING VARIANTS: when the passages spell the answer several ways ('phyllo' / 'filo' / 'fillo'), use the variant that appears in the passage sentence matching the clue's wording and is most frequent across passages, not simply the first hit. Give it as a bare word, with no extra descriptor."
+      },
+      {
+        "op": "replace",
+        "target": "look for the passage that glosses it ('locally referred to as lambi') and answer with the common English name (Conch).",
+        "content": "look for the passage that glosses it ('locally referred to as lambi') and answer with the common English name (Conch). The reverse also holds: when the clue gives a translation or etymology ('whose name is Greek for \"leaf\"') and asks for the term, find the passages that pair that quoted gloss with a term ('phyllo ... Greek for \"leaf\"') and answer with that term. Other anchors in the clue (baklava) appear in every passage and do not identify the answer."
+      }
+    ]
+  },
+  "source_type": "success"
+}

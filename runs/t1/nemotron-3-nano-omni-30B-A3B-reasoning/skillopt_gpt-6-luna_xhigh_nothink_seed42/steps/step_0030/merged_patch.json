@@ -1,0 +1,53 @@
+{
+  "reasoning": "Merged the cache-selection and refinement guidance from all three patches into one replacement, including exact listed keys, compatible results, explicit application of new criteria, and avoiding redundant filters. Combined the independent-readiness and hotel-date hard-gate guidance. Kept the distinct flight audit, contextual proximity target, and schema-validated amenity mappings. Omitted edits already covered by the existing skill and made no changes to the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+      "content": "- Treat the latest user turn as an update to the trip plan and check cache coverage separately for each affected domain and target. Choose the most-refined compatible listed result whose coverage includes the same target and all still-valid earlier criteria. A nearest result is usable for further filtering only if it still contains candidates for the same focal domain and target. Retrieve the selected result using its exact listed key—not its human-readable summary—into a local variable, and pass it as `prior_results` when required; never filter with a missing or incompatible result. A refinement call must explicitly include each newly introduced constraint in its schema-supported argument. If no compatible listed result exists, search when mandatory inputs are available, including all stated criteria in the initial search rather than filtering it to repeat them. Do not transfer criteria across domains or units, redo unaffected domains, or rely on variables from earlier executions.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "content": "- Execute each planned search, filter, sort, or nearest-results call once: bind its exact return value to a variable, then save that variable with `save_to_cache` under a unique, descriptive key. Never inline or repeat a tool call inside `save_to_cache`, and never omit saving. Save refinements under new keys. Use returned tool objects rather than hand-built dictionaries or redefined models.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Missing mandatory information",
+      "content": "\n- Handle mixed-domain readiness independently: perform and save every requested action whose mandatory inputs are available, then make one `seek_information` call for missing inputs across blocked domains. Missing explicit hotel check-in or check-out dates are a hard gate unless a compatible cached result already covers the stay; do not search or filter those hotels, borrow flight dates, or perform proximity work that depends on unavailable hotel candidates. Missing hotel dates do not block independent ready actions.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Represent flight legs separately",
+      "content": "\n- Before emitting flight calls, audit every stated leg against a compatible directional cache result or its own planned search. Verify each leg’s route direction and exact departure date. Include `departure_time` or `arrival_time` only when the user provides an actual time window; never invent time bounds.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+      "content": "\n- If the immediately preceding assistant asks whether a hotel should be near an attraction or asks which attraction, a direct answer naming an attraction supplies a proximity target. Treat it as a proximity request: ensure the exact attraction is covered, searching by `attraction_name` if needed, then use the attraction and hotel results with `groupBy=\"hotel\"`. A generic attraction-category result does not cover a named attraction.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`.",
+      "content": "- Disambiguate hotel amenity fields using the tool schema and documented phrase-to-field semantics rather than casual synonym matching. When supported by the selected schema, map “fitness center” to `has_fitness_class`, a literal “gym” to `gym_present`, “room service” to `has_room_service`, “sauna” to `has_sauna`, and “hot tub” to `has_hot_tub`; use `has_spa_services` only for a request for spa services. Validate each mapping against the schema.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

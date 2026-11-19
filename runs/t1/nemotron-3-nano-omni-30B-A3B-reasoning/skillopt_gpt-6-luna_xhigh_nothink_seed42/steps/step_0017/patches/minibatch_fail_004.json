@@ -1,0 +1,41 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_request_coverage",
+      "count": 1,
+      "description": "The plan handled only the first flight leg of a multi-city trip and omitted the other requested work."
+    },
+    {
+      "failure_type": "cache_refinement_failure",
+      "count": 1,
+      "description": "A compatible cached flight result was discarded instead of refined with the newly stated preferences."
+    },
+    {
+      "failure_type": "contextual_parameter_mapping",
+      "count": 1,
+      "description": "An airline code in response to an airline/class question was misread as a time-of-day preference."
+    },
+    {
+      "failure_type": "result_persistence_failure",
+      "count": 1,
+      "description": "A search result was neither bound to a variable nor saved to cache."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache and persistence rules already cover the lifecycle mistakes, so repeating them would not patch a skill gap. The edits clarify independent readiness for multi-domain itineraries without inferring missing hotel details, and resolve the specific contextual ambiguity between airline codes and time-of-day abbreviations.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Missing mandatory information",
+        "content": "\n- Check mandatory-input readiness independently for each requested domain. Missing required hotel dates should trigger a request for those dates, but should not block searches for flight legs whose required route and departure date are explicit. For lodging requested in multiple cities, track each city separately; do not borrow hotel dates from flight dates or infer a neighborhood."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "\n- Resolve abbreviated preferences using the immediately preceding question's context. When asked for preferred airlines or class of service, map an airline code such as “AM” to `airline` and a cabin label such as “economy” to `flight_class`; interpret AM/PM as a time preference only when the user is answering a question about departure or arrival time."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

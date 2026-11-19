@@ -1,0 +1,26 @@
+{
+  "reasoning": "All 14 failure-driven edits are kept. Each targets text that exists in the current skill and none touches the protected SLOW_UPDATE block. They cover key ownership by domain, searching hotels when dates arrive, first-search checklists, the cached-attractions flow, per-leg flight counts, a no-city gate, num_people and num_rooms counts, and removing the stale example date from Rule 24. Only light cleanup was made. The two edits inserted after the CACHE GATE header both used '-3', so the second is renumbered '-4'. The lone success edit (an arrival-only reply is not a departure date) covers a pattern no failure edit addresses, so it is kept. It does not conflict with the failure edits, because the reply-with-dates and DATE ANSWER rules apply only when a real date is given. Its task-specific date example is replaced with placeholders, because the DATE GATE forbids reusing dates that appear only in the skill's examples. [optimizer-ranked: selected 2/15 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "It is the whole output unless another requested domain is searchable (see 4b).",
+      "content": "It is the whole output ONLY when no other requested domain is searchable. If the user also wants restaurants or attractions ('need a hotel and restaurant recommendation') and a city or state appears anywhere, the output is `restaurants = search_restaurants(city=\"<city>\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then ONE closing `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. A seek_information line alone is wrong in that case. Put in the restaurant search only restaurant constraints the user stated (cuisine, rating, dietary flag, per-person budget), never hotel budget or party size.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## CACHE GATE (run this before writing any code, every turn)",
+      "content": "\n-3. HOTEL REQUESTED IN ANY TURN + NO 'hotels' KEY + A START DATE KNOWN = search_hotels NOW. The start date is the flight date the user wrote (this turn or earlier, even if a flight key is cached). A stay length ('2 nights', 'stay there 3 nights', 'don't need a return flight') or a return date gives the checkout: `checkout_date = adjust_date(date=\"<start date as written>\", delta_days=N)`, then `hotels = search_hotels(city=\"<destination>\", checkin_date=[\"<start date>\"], checkout_date=[checkout_date], <neighborhood / stars / amenities / num_people stated in any turn>)` + `save_to_cache(key=\"hotels\", value=hotels)`. 'Weekend getaway' beside '3 nights' is still 3 nights. If no flight key exists yet, the flight search (with any class the user stated) is written first in the same block. A reply about nights, dates or a hotel neighborhood is never a flight filter, because an earlier class is already applied.\n   - Rooms and people on a cached hotels key: 'N rooms' -> num_rooms=N and 'N people' / 'N of us' -> num_people=N, together in ONE filter_hotels on the latest hotels key ('2 rooms for 3 people.' -> `num_rooms=2, num_people=3` and nothing else). Amenities named earlier (pool, kids club) are already applied. Never invent a kwarg for a word with no parameter (playground).\n",
+      "support_count": 8,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 2 targets the multi-domain first-turn failure (hotel + restaurant, city known, no dates) that the meta-skill flags as existing-but-ignored. It replaces the misleading top-level wording with a positive trigger instead of adding an example, and it resolves the Rule 7 conflict. Edit 3 gives a positive, general trigger for searching a previously requested hotel once a start date is known, and states that nights/dates/neighborhood replies never re-filter flights, which covers both the dropped-hotel and cross-domain leakage failures. Other edits (0, 7, 6, 8) are long accretive additions with overlap or example-specific content, and edit 11 is a smaller fix.",
+    "selected_indices": [
+      2,
+      3
+    ]
+  }
+}

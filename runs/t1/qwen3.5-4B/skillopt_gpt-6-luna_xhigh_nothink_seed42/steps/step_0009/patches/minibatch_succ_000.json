@@ -1,0 +1,23 @@
+{
+  "batch_size": 7,
+  "success_patterns": [
+    "When a follow-up adds no new criterion and a matching result is already cached, retrieve and surface that result rather than re-searching, re-filtering, or returning “No planning needed.”",
+    "Request missing information only for travel services the user actually requested; a generic trip or group-booking context does not imply a hotel search."
+  ],
+  "patch": {
+    "reasoning": "Several cache-backed follow-ups needed a cache read without a new transformation, and flight-only requests repeatedly triggered unnecessary hotel questions. Making these steps explicit should prevent redundant calls and requests for unrelated or optional information.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls.",
+        "content": "\n- Check required inputs only for explicitly requested travel services. A general trip or group-booking context does not by itself request hotels, restaurants, or attractions; do not ask for their dates or other details unless that service is requested."
+      },
+      {
+        "op": "insert_after",
+        "target": "- On each turn, consider the full conversation and cached result summaries.",
+        "content": "\n- If a follow-up merely answers a prior question or accepts an offered recommendation, and a compatible cached result already satisfies the request, retrieve it with `get_results_from_cache(key=\"...\")` and return it as-is. Do not re-search or re-filter unless the reply adds a criterion, and do not substitute “No planning needed” for retrieving a result that should be surfaced."
+      }
+    ]
+  },
+  "source_type": "success"
+}

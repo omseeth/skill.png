@@ -1,0 +1,46 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_update_mismanagement",
+      "count": 3,
+      "description": "A narrow cached result was used for a newly requested scope, or a compatible filterable follow-up triggered fresh base searches instead of retrieving and filtering cached results."
+    },
+    {
+      "failure_type": "same_domain_request_decomposition",
+      "count": 2,
+      "description": "Multiple requested attraction criteria were split across separate searches or a search and filter instead of being combined in one base search."
+    },
+    {
+      "failure_type": "proximity_result_orchestration",
+      "count": 1,
+      "description": "The nearest-results call used the wrong prioritized domain and transformed filtered results instead of passing the result objects directly."
+    },
+    {
+      "failure_type": "tool_value_format_error",
+      "count": 1,
+      "description": "A flight time bound was emitted in an invalid 12-hour format (for example, “00:00 PM”)."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the general cache and tool-format rules, but the trajectories show those rules need clearer operational contrasts and call patterns. Add examples distinguishing filter-only updates from genuinely new or broader scopes, clarify that supported criteria for one new domain search should be combined, and show direct nearest-result usage with the requested priority.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.",
+        "content": "\n\n**Concrete cache choices:** A later budget, amenity, airline, class, cuisine, or rating preference on an already covered scope is a retrieve-filter-save update; for flights, do this separately for every affected cached leg. Conversely, a cache restricted to one named attraction cannot stand in for a newly requested broader attraction category: make a new base search for that category with all active supported criteria. Do not use a narrower cached scope to answer a broader or different request.\n```python\nprior_hotels = get_results_from_cache(key=\"<exact compatible hotel key from summary>\")\nfiltered_hotels = filter_hotels(prior_results=prior_hotels, budget=<budget>, has_balcony=True)\nsave_to_cache(key=\"<new descriptive key>\", value=filtered_hotels)\n\noutbound = get_results_from_cache(key=\"<exact outbound key from summary>\")\nfiltered_outbound = filter_flights(prior_results=outbound, airline=[\"<airline>\"], flight_class=[\"<class>\"])\nsave_to_cache(key=\"<new outbound key>\", value=filtered_outbound)\n# Repeat the retrieve-filter-save sequence for the return leg when it is affected.\n```"
+      },
+      {
+        "op": "insert_after",
+        "target": "Maintain active supported constraints for each domain across the full conversation. When making a new search, include all still-active criteria the user has already supplied, even if the latest turn only supplies a location or another missing detail. When filtering, account for active criteria not already embodied in the cached result as well as newly supplied criteria. Drop or replace a constraint only when the user withdraws or changes it.",
+        "content": "\nWhen a new base search is needed and the user supplies multiple supported criteria for the same domain and scope, include them together in that one search call (for example, an attraction `type` and `attraction_name`). Do not issue separate base searches for each criterion or search broadly and then filter one of those criteria when no compatible prior result exists."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "\nPass the complete result objects returned by the relevant search or filter calls directly to `search_nearest`; do not extract their `search_results` lists or reconstruct wrapper objects. Set `groupBy` to the domain the user wants located relative to the other domain: for example, “a restaurant near the hotel” prioritizes `restaurant`, while “a hotel near the attractions” prioritizes `hotel`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

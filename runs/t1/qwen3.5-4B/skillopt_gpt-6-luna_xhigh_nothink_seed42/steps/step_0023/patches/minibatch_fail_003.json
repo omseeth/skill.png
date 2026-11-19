@@ -1,0 +1,51 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_cache_workflow",
+      "count": 4,
+      "description": "Several trajectories omitted saving generated results, including flight, restaurant, and filtered hotel outputs."
+    },
+    {
+      "failure_type": "request_orchestration",
+      "count": 3,
+      "description": "Agents misrepresented a return leg or proceeded to nearest-result recommendations without applying newly requested filters."
+    },
+    {
+      "failure_type": "missing_required_information",
+      "count": 1,
+      "description": "The agent treated cached results for one domain as completion despite missing required hotel dates for another requested domain."
+    },
+    {
+      "failure_type": "runtime_tool_namespace_violation",
+      "count": 1,
+      "description": "The agent imported tools from a nonexistent module, preventing execution."
+    },
+    {
+      "failure_type": "argument_mapping_or_omission",
+      "count": 2,
+      "description": "The agent misplaced a named attraction and omitted explicitly stated hotel party-size or budget criteria."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already explicitly covers cache saving, missing-input requests, round trips, filtered inputs for nearest searches, and direct tool calls, so repeating those rules would not patch a documentation gap. These edits clarify mappings that are less explicit: separating attraction categories from named places, translating approximate budgets, and carrying an explicit solo-party size into hotel searches.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name.",
+        "content": " Put attraction categories only in `type` and named attraction entities only in `attraction_name`; when both are requested, populate both fields separately rather than treating a proper name as a category."
+      },
+      {
+        "op": "insert_after",
+        "target": "Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": " Treat an approximate budget such as “around” or “about” a stated amount as actionable: pass that numeric amount to the applicable budget field rather than omitting it or asking for clarification."
+      },
+      {
+        "op": "insert_after",
+        "target": "When hotel lodging is requested for a clearly stated trip interval, use its start and end as check-in and checkout unless the user provides distinct lodging dates.",
+        "content": " When the user explicitly describes the hotel trip as solo, pass `num_people=1`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

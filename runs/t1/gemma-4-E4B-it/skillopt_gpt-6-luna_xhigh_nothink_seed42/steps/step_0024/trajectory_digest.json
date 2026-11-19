@@ -1,0 +1,59 @@
+{
+  "step": 24,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 26,
+  "failure_patterns": [
+    {
+      "pattern": "cache_scope_mismanagement: Repeated base flight or restaurant searches instead of retrieving compatible cached results and applying newly added filters.",
+      "count": 26,
+      "task_ids": [
+        "hotelattraction:train:10:21:5",
+        "flighthotelrestaurant:train:25:1:3",
+        "flighthotelattraction:train:4:36:2",
+        "hotel:train:15:3:1",
+        "attraction:train:17:27:2",
+        "flighthotel:train:17:29:1",
+        "restaurant:train:2:3:3",
+        "hotel:train:3:17:1",
+        "restaurant:train:10:42:2",
+        "flight:train:15:47:2",
+        "flighthotelrestaurant:train:7:23:5",
+        "hotel:train:8:33:2",
+        "flighthotelrestaurant:train:9:19:4",
+        "flight:train:7:56:3",
+        "attraction:train:5:15:2",
+        "hotelattraction:train:8:42:3",
+        "hotelrestaurant:train:25:12:3",
+        "hotelrestaurant:train:12:12:4",
+        "hotelattraction:train:5:8:4",
+        "flighthotelrestaurant:train:15:42:2",
+        "flighthotelrestaurant:train:6:58:2",
+        "flighthotelattraction:train:11:27:2",
+        "attraction:train:11:29:0",
+        "hotelrestaurant:train:13:51:0",
+        "hotelattraction:train:3:52:2",
+        "flight:train:20:12:3"
+      ]
+    }
+  ],
+  "score_before": 0.505,
+  "score_after": 0.455,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "- At each turn, resolve the latest reply against the preceding question and full conversation, inspect cache summaries, and act only on scopes changed by that turn plus pending requests that are now complete. For each changed scope: (a) if a compatible cached result already satisfies the unchanged request, make no tool call and do not save it again; (b) if only filterable constraints changed, retrieve the exact compatible cache key, apply the matching `filter_*` tool, and save the filtered result; or (c) if the requested scope, date, or leg is not covered by a compatible cache, make and save a base search with all active supported criteria. Repeat filtering or searching separately for each affected leg, and do not rerun unrelated cached domains or legs. An affirmative alone is not a proximity request unless proximity was offered or requested.",
+      "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested."
+    },
+    {
+      "op": "replace",
+      "content": "For hotels, interpret an N-star description as the hotel classification (`stars`) when guest-review context is absent; use `[N, 5]` for “at least N stars” and `[N, N]` for an explicitly exact classification. Use `rating` for hotel guest/review scores and restaurant ratings; interpret “N or higher” as `[N, 5]` unless an exact score is explicitly requested, in which case use `[N, N]`.",
+      "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating."
+    },
+    {
+      "op": "insert_after",
+      "content": "\nResolve named places by their role: map a geographic area or neighborhood to `neighborhood` (preserving the full neighborhood phrase) and provide the surrounding city separately; map a named hotel or attraction entity to `hotel_name` or `attraction_name`, preserving the user's entity text. Do not treat a point entity as a neighborhood or infer an attraction `type` from a proper name. If the user explicitly requests proximity to a named point entity, ensure the anchor result includes that entity (search for it if no compatible result covers it), obtain the requested counterpart results, and call `search_nearest` with `groupBy` set to the domain the user wants prioritized.",
+      "target": "- When the user asks about a place, category, or entity the assistant just suggested (for example, “What's there?”), treat it as a request to inspect that scope: retrieve a compatible cached result and filter it to that scope, or search if no compatible result can cover it. An assistant's proximity suggestion alone does not authorize `search_nearest`; use it only when the user explicitly requests or accepts proximity."
+    }
+  ]
+}

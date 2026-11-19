@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Slot-type error on owner/artifact clues. The agent named the artifact (a museum, a poem title, a stamp series) instead of the owner or author person, or the category noun that 'these' stands for ('Susan B. Anthony Museum & House', 'I am Going to the Lordy', 'All Aboard! stamps')."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Extra words kept on the final answer: 'funeral pyre' (clue says funeral), 'Amazon River' (type word), 'transit of Venus' (clue already says Venus). The DELETE-CLUE-WORDS rule exists, even with the pyre example, but the agent emitted a bare answer with no reasoning line and skipped it."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "Grammatical form: the clue defined 'following a winding course' and the agent gave the headword 'meander' instead of 'Meandering'. The rule is buried in the strategic-guidance section."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "Person-name form: 'Patty Hearst' vs the key 'Patricia Hearst'. A passage line carrying the clue's exact date printed the formal name."
+    }
+  ],
+  "patch": {
+    "reasoning": "Seven of eight failures are rule_ignored. The needed rules (strike clue words, answer the person, match inflection) already exist but are buried, and the agent outputs a bare <answer> with no reasoning. Earlier long 'Step 0' prepends were rejected, so the top edit is a short three-field reasoning line that forces the type, strip and form checks. The type rule gets a new angle for owner/artifact clues ('her home is now a museum', 'he wrote an explanation', 'a series on these'): answer the owner/author or the category noun, never the artifact. A strip rule is placed at the very start of Rule 4. It lists the type words that kept leaking in (River, Museum & House, stamps) and carves out the existing head-noun exception and Rule 3 precedence, to avoid new conflicts.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Question Answering Skill",
+        "content": "\n## Reasoning line (required before the answer tags)\nWrite ONE line first: `ASKS = <person / category noun / thing / place / word>; BARE = <final answer>; FORM = <inflection>`.\n- ASKS: pick the type from the clue's pronoun or noun (see Rule 2, owner/artifact clues). BARE: strike every word the clue already states and every attached type word (see start of Rule 4). FORM: if the clue defines a word ('term for FOLLOWING a winding course'), answer in the inflection the definition uses (-ing -> 'Meandering'), not the base headword.\n- A verbatim archive answer (Rule 3) is copied as printed and skips the BARE strike.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "- 'One of these <role/title>' ('the 14th one of these spiritual leaders') asks for the title or category noun itself (Dalai Lama), not the individual named in the clue.",
+        "content": "- OWNER vs ARTIFACT: when the clue describes something a person owns, made or wrote ('Her home in X is now a museum', 'he wrote an explanation of why he would...', 'her debut', 'his final defeat'), the answer is the PERSON (owner/author), as a bare name. Never answer with the museum, house, poem, letter, title or event that the passages are full of. Those are anchors. When the clue is 'a series/collection/exhibit on these <things of an era>', the answer is the plain category noun that 'these' stands for, in the plural ('these' -> trains), not the name of the series, stamp issue or exhibit."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 4: Exact-match formatting of the final answer",
+        "content": "- STRIKE BEFORE ANSWERING (the most common cause of lost exact matches): remove from the candidate (a) any word the clue already states ('this funeral structure' -> 'Pyre', not 'funeral pyre'; a clue about Venus passing the sun -> 'a transit', not 'transit of Venus') and (b) any type or descriptor word the passages attach: River, Island, Museum, House, Party, Company, stamps, series ('Amazon', not 'Amazon River'; 'Susan B. Anthony', not '...Museum & House'). Keep a head noun only under the head-noun exception below, when the clue gives just a generic type noun and the bare word would not name the entity. Never keep a wrong-type extra just because the passages print the long form."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

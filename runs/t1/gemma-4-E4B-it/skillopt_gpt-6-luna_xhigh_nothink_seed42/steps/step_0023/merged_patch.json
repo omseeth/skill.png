@@ -1,0 +1,53 @@
+{
+  "reasoning": "Consolidated the repeated cache guidance into one per-scope decision rule that distinguishes new searches, filter-only updates, and reuse of already-covered results. Added operational examples for hotel filter updates and separately filtered flight legs, plus the unique guidance to combine criteria in a new base search and pass complete result objects to proximity searches. For party size, preserved user-confirmed context while rejecting counts introduced only by the assistant. Omitted attraction and state mappings because the current skill already states them explicitly. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+      "content": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Classify each changed domain or leg: if the user accepts an offer or requests a new domain, category, entity, or expanded scope, make a base search only when no compatible cached result covers that scope, carrying forward all active supported criteria; if it is already covered, retrieve the exact compatible result and filter only if the user adds a filterable constraint. For a filterable preference on an already covered scope, retrieve the exact compatible key, apply the matching `filter_*` tool, and save the filtered result—never repeat the base search. If the user asks for already-covered results or declines to narrow an already-covered scope, retrieve the compatible result once if needed; do not search, filter, or save it again. Do not search, retrieve, or save unaffected domains or legs. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.",
+      "content": "\n\n**Example—filter-only hotel update:** A new budget or amenity on an already covered hotel scope must not trigger another `search_hotels` call:\n```python\nprior_hotels = get_results_from_cache(key=\"<exact compatible hotel key from summary>\")\nfiltered_hotels = filter_hotels(prior_results=prior_hotels, budget=<requested budget>, has_balcony=True)\nsave_to_cache(key=\"<new descriptive filtered-hotel key>\", value=filtered_hotels)\n```",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Maintain active supported constraints for each domain across the full conversation. When making a new search, include all still-active criteria the user has already supplied, even if the latest turn only supplies a location or another missing detail. When filtering, account for active criteria not already embodied in the cached result as well as newly supplied criteria. Drop or replace a constraint only when the user withdraws or changes it.",
+      "content": "\nWhen no compatible result covers a genuinely new scope, put all supported criteria supplied for that same scope in the same base-search call—for example, a requested attraction `type` and `attraction_name`. Do not split them into separate base searches or search broadly and apply one as a filter when there is no compatible prior result.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "content": "\nPass the complete result objects returned by the relevant search or filter calls directly to `search_nearest`; do not extract their `search_results` lists or reconstruct wrapper objects. Set `groupBy` to the domain the user wants located relative to the other: for example, “a restaurant near the hotel” prioritizes `restaurant`, while “a hotel near the attractions” prioritizes `hotel`.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "If the outbound leg is already compatibly cached, search only the newly requested return leg.",
+      "content": "\n\nFor a filterable follow-up such as a flight-class change on an already cached round trip, retrieve and filter each affected leg separately; do not call `search_flights` again or overwrite the base cache entries. The return leg uses the reverse route and its date as `departure_date`, never as `arrival_date` on the outbound leg:\n```python\noutbound_prior = get_results_from_cache(key=\"<exact outbound cache key>\")\nfiltered_outbound = filter_flights(prior_results=outbound_prior, flight_class=[\"<requested class>\"])\nsave_to_cache(key=\"<new filtered outbound key>\", value=filtered_outbound)\nreturn_prior = get_results_from_cache(key=\"<exact return cache key>\")\nfiltered_return = filter_flights(prior_results=return_prior, flight_class=[\"<requested class>\"])\nsave_to_cache(key=\"<new filtered return key>\", value=filtered_return)\n```",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+      "content": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Treat a party size as established only if the user directly stated or confirmed it, and carry that user-confirmed size forward unless changed. A number appearing only in assistant text is not confirmation and must not be passed as `num_people`. Do not infer an exact count from vague terms such as “family” or “family with kids,” or from the mere presence of children.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_multi_leg_filter",
+      "count": 2,
+      "description": "A flight class reply with outbound and return flights cached filtered only the departure leg. The agent counted keys rather than legs, and one case had raw and filtered keys for each leg."
+    },
+    {
+      "failure_type": "re_search_despite_cache",
+      "count": 2,
+      "description": "The attractions key was already cached, but the agent re-ran search_attractions. One reply was a no-preference answer ('Not really, I'm flexible'), where the gold answer is a pure cache read. The other was 'What's there?' after the assistant named a place, where the gold answer is a neighborhood filter."
+    },
+    {
+      "failure_type": "state_code_in_city_param",
+      "count": 1,
+      "description": "'Art attractions in CO' was written as city=\"CO\" instead of state=\"CO\"."
+    },
+    {
+      "failure_type": "incomplete_compound_turn",
+      "count": 2,
+      "description": "The agent dropped required calls. In one case it skipped the amenity and cuisine filters and went straight to search_nearest. In the other, a date-range reply produced only the outbound flight, with no return leg and no hotel."
+    },
+    {
+      "failure_type": "hallucinated_mandatory_param",
+      "count": 1,
+      "description": "The agent turned the cuisine word 'Latvian' into city=\"Latvia\" instead of asking for the restaurant city."
+    }
+  ],
+  "patch": {
+    "reasoning": "The failures are routing misses that already have rules, but those rules are scattered and partly contradictory, so the agent skips them. I make three changes. First, the flight rule's 'count keys' wording is replaced with 'count legs'. That wording was confusing when raw and filtered keys coexist, and it let both flight failures stop at the departure leg. Second, I fix the SEARCH GATE conflict in place. It currently forbids a pure cache read even for a refusal reply, which contradicts Rule 8. The same edit also states that a place name the assistant proposed becomes a neighborhood filter on attractions. Third, I add one short block at the very top for the remaining misses: state= vs city=, a cuisine word is not a city, a full date-range answer with outbound, return and hotel, and the compound 'near the hotel' turn. These are rows keyed to words in the conversation, not new gates. Their examples use placeholders to avoid kwarg leakage.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "2 keys -> 2 blocks, 3 keys -> 3 blocks; stopping after the first key is wrong.",
+        "content": "Count LEGS, not keys: outbound + return = exactly 2 blocks (the raw key and its filtered_* variants are ONE leg, so load only that leg's most refined key); a multi-city trip = one block per leg. Filtering only the outbound/departure leg is wrong: for 'I prefer <class>.' or 'Yes, we prefer <class>.' with an outbound key and a return key in CACHE, the code must contain two filter_flights calls and two save_to_cache calls with the same flight_class value."
+      },
+      {
+        "op": "replace",
+        "target": "or interest in the assistant's proposal such as 'Sure', 'Yes', 'What's there?'). Write exactly",
+        "content": "or interest in the assistant's proposal such as 'Sure', 'Yes', 'What's there?'). A place name the assistant just proposed ('Have you considered <place>?') answered by 'What's there?', 'No, I haven't' or 'Yes' is a filter_attractions(prior_results=a, neighborhood=[\"<place as named>\"]) on the cached attractions key. EXCEPTION: a refusal or no-preference reply ('Not really', 'I'm flexible', 'Give me anything', 'No preference') adds no constraint, so write only `x = get_results_from_cache(key=\"<most refined key of that domain>\")` with no search, no filter and no save. Otherwise write exactly"
+      },
+      {
+        "op": "insert_after",
+        "target": "# Travel Planning Skill",
+        "content": "\n## MISSED-ROUTE CHECKS (each fires on words in the conversation; read before the gates below)\n- STATE vs CITY: a two-letter capital code or state name ('in CO', 'in TN', 'Georgia') is `state=\"CO\"`. Use `city=` only for a named city. This holds for every first search_attractions call.\n- RESTAURANT CITY: a cuisine or nationality word ('Latvian', 'Thai') is not a city, and a budget reply does not supply one. If no city appears in any turn and the CACHE has no 'restaurants' key, the whole output is `seek_information(\"We need the city for the restaurant.\")`, with no search_restaurants.\n- DATE-RANGE ANSWER ('X to Y') with flights and a hotel requested in any turn: one block with the outbound flight search, the return flight search (cities swapped), AND `search_hotels(city=<destination>, checkin_date=[\"X\"], checkout_date=[\"Y\"], <each amenity the user named, mapped via Rule 27, e.g. EV charging -> has_electric_vehicle_charging=True>)`, each followed by its save_to_cache. Stopping after the outbound flight is wrong.\n- COMPOUND 'near the hotel' TURN (the reply accepts an amenity the assistant offered, adds a restaurant constraint, and says near the hotel): filter the hotels key with the accepted amenity, filter the restaurants key with the new restaurant constraint, save each, then `search_nearest(hotels=<filtered hotels>, restaurants=<filtered restaurants>, groupBy=\"restaurant\")` and save it. Calling search_nearest on the unfiltered keys is wrong.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

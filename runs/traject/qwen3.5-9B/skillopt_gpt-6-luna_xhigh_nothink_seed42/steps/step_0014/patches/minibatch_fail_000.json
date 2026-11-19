@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "parameter_serialization_and_schema_binding",
+      "count": 6,
+      "description": "Several trajectories used native numbers instead of JSON-string values, and one placed schema-optional filters in the required list."
+    },
+    {
+      "failure_type": "endpoint_operation_selection",
+      "count": 5,
+      "description": "Agents chose a sibling endpoint, mismatched an operation to an endpoint, or omitted a call despite an available endpoint accepting the supplied input."
+    },
+    {
+      "failure_type": "requested_scope_or_facet_coverage",
+      "count": 4,
+      "description": "Calls missed or misbound requested scope details such as locale, geographic hierarchy, hotel filters, forecast duration, or units."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers schema placement, string serialization, endpoint matching, and facet coverage, so repeating those rules would not address a demonstrated gap. One trajectory rejected a supplied numeric location identifier even though an available endpoint accepts a generic string location. A narrow clarification can prevent that unsupported inference without weakening documented format constraints.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Preserve user-provided identifiers and meaningful free text unless the schema requires a documented conversion. For categorical filters, codes, and selectors, map the request to the documented parameter meaning—not a similarly named field—and use the endpoint's canonical accepted token and casing from its enums or examples. Do not pass a descriptive word as a category value when it changes the field's meaning; preserve original wording when no conversion is documented. Interpret directional constraints according to field semantics.",
+        "content": "\n- If an endpoint accepts a generic string location or identifier and its documentation does not restrict the format, pass the supplied value verbatim even if it looks unfamiliar or is not a place name. Do not reject it based on an assumed format or substitute another value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

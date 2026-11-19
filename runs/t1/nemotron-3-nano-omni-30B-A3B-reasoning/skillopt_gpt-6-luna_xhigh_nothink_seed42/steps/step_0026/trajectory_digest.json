@@ -1,0 +1,62 @@
+{
+  "step": 26,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 29,
+  "failure_patterns": [
+    {
+      "pattern": "result_lifecycle_and_incremental_execution: Searches or refinements were left unsaved, or the agent reprocessed unrelated work instead of applying only the latest change.",
+      "count": 29,
+      "task_ids": [
+        "flighthotel:train:8:39:3",
+        "hotelattraction:train:1:6:3",
+        "flighthotel:train:8:13:1",
+        "attraction:train:16:10:0",
+        "flighthotelrestaurant:train:24:43:1",
+        "restaurant:train:4:17:2",
+        "hotelattraction:train:4:42:2",
+        "hotelrestaurant:train:16:3:0",
+        "flighthotelattraction:train:4:32:4",
+        "hotel:train:15:36:2",
+        "restaurant:train:5:28:2",
+        "flighthotel:train:14:2:4",
+        "hotelattraction:train:5:30:2",
+        "flighthotelrestaurant:train:21:27:1",
+        "flighthotel:train:10:9:2",
+        "flighthotelattraction:train:12:16:4",
+        "flight:train:23:12:2",
+        "hotel:train:16:36:2",
+        "hotelattraction:train:21:43:2",
+        "restaurant:train:5:60:2",
+        "flighthotelattraction:train:7:34:1",
+        "attraction:train:23:10:0",
+        "hotel:train:14:35:2",
+        "flighthotel:train:16:1:1",
+        "hotelrestaurant:train:18:45:3",
+        "flighthotelattraction:train:3:19:2",
+        "hotel:train:9:25:3",
+        "hotelattraction:train:5:52:1",
+        "restaurant:train:13:21:3"
+      ]
+    }
+  ],
+  "score_before": 0.26,
+  "score_after": 0.23,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "- Before emitting code, make a short call plan by diffing the latest user turn against the full conversation and listed cache entries. List each still-pending action separately by domain and location, and each explicitly stated flight leg, including a reversed return leg. For each, identify only the newly introduced constraints, the compatible listed cache result (if any), and whether mandatory inputs are available; choose direct cache reuse, refinement from that result, a new search, or a request for missing inputs. Include every ready action even if another is blocked, skip unchanged domains, and verify that every planned action has its required call or valid cache disposition. Use `print(\"No planning needed\")` only when no requested action or constraint remains unsatisfied by valid cached results.",
+      "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results."
+    },
+    {
+      "op": "replace",
+      "content": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Omit optional fields the user did not state rather than setting them to `False`. Keep each constraint attached to its stated domain; for example, a flight budget is not a hotel budget. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. Map an explicitly stated number of hotel travelers to `num_people` when the schema supports it; if added in a later turn, refine the latest compatible hotel result using only this new constraint. A traveler count is not a flight-search parameter unless the schema provides one.",
+      "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- For an explicit request for hotels or restaurants near a named attraction, treat “near” as a cross-domain relation: do not pass the attraction name as a hotel or restaurant `neighborhood`. Ensure the exact attraction result is available, then call `search_nearest` with the relevant results and the requested focal domain.",
+      "target": "- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain), not the reference domain: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`."
+    }
+  ]
+}

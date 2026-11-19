@@ -1,0 +1,58 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 4,
+      "description": "A generic or near-duplicate sibling was chosen over the endpoint whose name or description mirrors the query. Examples: 'Custom die' instead of 'Custom dice' for '4 dice with 10 sides', the generic coordinates weather tool instead of 'Current conditions (basic)', one email validator reused for different clauses, and 'List of Deals' where 'List of Games' was gold."
+    },
+    {
+      "failure_type": "tool_name_format_error",
+      "count": 2,
+      "description": "Tool names were not copied exactly from the heading. The 'Provider — API' form was used instead of 'Provider: API', and the provider prefix was dropped ('BestBuy ProductData')."
+    },
+    {
+      "failure_type": "value_type_or_structure_error",
+      "count": 4,
+      "description": "Numbers were emitted unquoted (1, 10, 2023). Bare parameter names were used (['criteria']). The optional-parameters key was omitted. Parameters were duplicated across required and optional lists."
+    },
+    {
+      "failure_type": "incomplete_coverage_or_truncation",
+      "count": 2,
+      "description": "The answer stopped after 3 of 7 clauses with no closing </answer> tag. Another answer covered only the obvious clauses of a multi-part query."
+    },
+    {
+      "failure_type": "invented_or_misplaced_parameters",
+      "count": 3,
+      "description": "Parameters were added that the query never implied (units=imperial, sort_order on a pricing tool). A required keyword was duplicated into optional. 'amazon.de' was used where the short code 'de' was expected."
+    },
+    {
+      "failure_type": "over_calling",
+      "count": 1,
+      "description": "Both Blog and News were called for 'blog posts and news' although the Blog endpoint already covers both."
+    }
+  ],
+  "patch": {
+    "reasoning": "Two earlier long, heavily prescriptive rule sets were rejected and lowered the score, so these edits are short and cover only recurring mechanical failures in this batch. Those failures are: tool-name format, unquoted or bare values, dropped or truncated clauses, redundant calls, invented optional parameters, and picking a generic tool over a more literal sibling. I avoided rules that could suppress needed calls, such as skipping a tool when a value is missing. I also avoided task-specific values.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Rule 1: Answer format (a malformed answer scores zero)\n- `tool name` is copied character-for-character from the tool's `### ` heading, in the form `Provider: API` (colon + space). Never use ' — ' or '-', never drop the provider prefix, and never shorten or re-spell it. Example: `BestBuy Product Data: BestBuyProductData`, not `BestBuy ProductData`.\n- Every call has exactly three keys: `tool name`, `required parameters`, `optional parameters`. Always write all three; use `[]` when empty.\n- Both parameter lists hold objects `{\"name\": \"x\", \"value\": \"y\"}`. Never emit bare names such as `[\"criteria\"]`. Every value is a JSON string, including numbers: `\"1\"`, `\"10\"`, `\"2023\"`, `\"-118.49\"`.\n- The answer is ONE flat list inside `<answer>...</answer>`. Always finish the list and write the closing `</answer>` tag."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 2: Cover every clause, but add nothing extra\n- Before the `<answer>`, write a short numbered checklist with one line per action in the query. Count every sentence and every 'then / also / additionally / finally' clause. Count every item in a list ('pricing, reviews, similar items' = 3). Count every platform or provider named, and every narrated past-tense step. Hedges like 'possibly' do not make an action optional.\n- Each item gets its own call. If N entities (emails, SKUs, domains, pages, platforms) go to a one-value tool, make N calls. Re-read the LAST sentence of the query and make sure its calls are present before you stop. Long queries often need 7-10 calls; never stop after the first few.\n- Do not call two tools for one thing. If one endpoint's description already covers the whole phrase (e.g. an endpoint that retrieves 'blog posts and news content' for 'blog posts and news'), call it once. Add no 'helper', hedging or duplicate calls that no clause asks for.\n- The query's clauses usually map to different tools. Do not reuse the same tool for clauses that name different actions, such as disposable check, format validation, MX records, SMTP and help page. When several near-identical tools exist and the query lists separate checks, prefer a different tool for each check."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 3: Tool selection\n- Choose the endpoint whose name and description literally mirror the query's verb, object and scope, not a broader generic one. 'Current conditions' means the tool with 'Current conditions' in its name, over a generic by-coordinates tool. 'Active alerts' means the active-alerts tool. 'Stores that sell games' means the stores-info tool. A named provider or API ('using the OpenCritic API') means that provider's endpoint.\n- Distinguish sibling variants by quantity: several dice with a side count -> the plural 'Custom dice' tool that has both `dice` and `sides`; one die -> the singular tool; several cards -> 'Cards'; one card -> 'Card'.\n- Match the input type: a bare domain needs a domain tool, a full email needs an email tool, and a product or SKU ID needs a by-ID or detail tool. If a tool takes `username` and `domain` separately, split the email.\n- When the list has several same-provider endpoints for different aspects (pricing, images, reviews, similar items), call each aspect's own endpoint once."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 4: Parameters\n- Use ONLY parameter names in the chosen tool's schema. Put each one in the list where the schema puts it: 'Required parameters' -> `required parameters`; 'Optional parameters' -> `optional parameters`, even when it carries the query's main subject (id, `q`, `title`, `criteria`). Never put the same parameter in both lists, and never borrow a parameter from a sibling tool (e.g. `sort_order` is not a pricing parameter).\n- Fill a value for every required parameter. Copy IDs, SKUs, ASINs, URLs, emails, domains, names and numbers verbatim from the query.\n- Map every constraint the query states to that tool's matching parameter: 'page 1' -> page, '20 per page' -> pageSize, '10 matches' -> limit, '4 dice with 10 sides' -> dice and sides, 'most helpful' -> HELPFUL, 'relevance' -> RELEVANCE, 'US English' -> en-US. Put a search subject in the tool's query or criteria field using the query's own words.\n- Do NOT add optional parameters the query never states or implies. No unit systems, locales, currencies, sort orders, format flags or default pages that the query does not mention. Never emit an empty or placeholder value.\n- If a field wants a code with no options listed (domain, region, country marketplace), use the short code the query implies ('amazon.de' -> `de`, 'German' -> `DE`). If a field lists options, copy them exactly."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "date_handling",
+      "count": 4,
+      "description": "Python date parsing or arithmetic and inferred hotel dates led to errors or values that differed from the stated dates."
+    },
+    {
+      "failure_type": "result_assignment_and_caching",
+      "count": 3,
+      "description": "Initial attraction and restaurant searches were left unassigned and their complete results were not saved to cache."
+    },
+    {
+      "failure_type": "follow_up_tool_selection",
+      "count": 1,
+      "description": "An assistant-suggested area was treated as a proximity request instead of filtering attractions by that area."
+    },
+    {
+      "failure_type": "round_trip_and_time_bound_handling",
+      "count": 1,
+      "description": "A date range indicating a return trip was not handled as separate flight legs, and the arrival-by time bound was reversed."
+    },
+    {
+      "failure_type": "unrequested_preference_inference",
+      "count": 1,
+      "description": "A business-lunch request was given an unrequested vegetarian preference."
+    },
+    {
+      "failure_type": "entity_value_substitution",
+      "count": 1,
+      "description": "The requested attraction category “Scenic” was changed to the similar value “Scenery.”"
+    }
+  ],
+  "patch": {
+    "reasoning": "Most date, caching, round-trip, and exact-value failures already contradict explicit skill rules, so duplicating those rules is unwarranted. Clarifying how to handle assistant-suggested areas addresses the ambiguous proximity interpretation; tightening the date instruction makes the required literal-date and no-inference behavior more explicit.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Preserve user-provided date strings unless conversion is required, and use `adjust_date` rather than importing date libraries or doing date arithmetic in Python.",
+        "content": "Pass user-provided date strings unchanged to date-taking tools unless the schema explicitly requires a different format; do not parse, reformat, or calculate dates in Python or import date libraries. Use `adjust_date` only to compute checkout from an explicit trip start date and stated number of hotel nights. Never infer a one-night stay or derive check-in by subtracting from checkout; use explicitly supplied stay boundaries or a clearly established itinerary start date, and seek any genuinely missing required date."
+      },
+      {
+        "op": "replace",
+        "target": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion. Retrieve the latest suitable cached result and apply the corresponding same-domain filter when needed. Use `search_nearest` only if the user requests proximity.",
+        "content": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion. For a named area, street, or district, retrieve suitable cached results and apply the same-domain `neighborhood` filter using the full area phrase, preserving existing criteria such as attraction type; do not use `search_nearest` for an area-exploration request. For a specifically identified attraction entity, use `attraction_name`. Use `search_nearest` only when the user asks about proximity."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

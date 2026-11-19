@@ -1,0 +1,38 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "parameter_binding_and_serialization",
+      "count": 6,
+      "description": "Calls misplaced a schema-optional identifier or omitted pagination, and several values did not match the expected representation or canonical token."
+    },
+    {
+      "failure_type": "named_source_coverage_omission",
+      "count": 1,
+      "description": "A requested publisher was omitted because its available retrieval tool used a generic source-ID endpoint."
+    },
+    {
+      "failure_type": "tangential_endpoint_overselection",
+      "count": 1,
+      "description": "The agent called adjacent email checks for disposable or temporary status that were not among the requested verification results."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the general schema-placement and serialization rules, so this patch avoids repeating them. It addresses uncovered practical gaps: resolving explicitly named publishers through generic source-ID endpoints, using the initial page for ordinary paginated requests when no page is specified, and keeping multi-tool verification focused on the requested checks.",
+    "edits": [
+      {
+        "insert_after": "- For overlapping endpoints, compare the exact input type and every requested output facet, not just the broad topic. If the user explicitly names a source or issuing authority, treat it as a constraint and prefer its matching endpoint over a different provider's similar result.",
+        "content": "\n- Track each explicitly named publisher or source as a separate requested result. If the available matching operation is a generic source-filter endpoint, use its supported source-ID field; resolve the ID from an available source catalog or a clear documented mapping. Do not assume a generic feed covers a named source, and do not guess an ID when it cannot be reliably resolved."
+      },
+      {
+        "insert_after": "- For multiple requested checks, use an endpoint that covers them all only when its documented scope supports that. Otherwise, make separate calls. Batch multiple items only when the endpoint explicitly supports batching those resources with the applicable options; do not pack multiple calls into a scalar parameter.",
+        "content": "\n- Choose the smallest set of calls whose documented outputs cover the requested checks. Asking to use multiple tools does not mean calling every endpoint in the same family: exclude endpoints that test only adjacent, unrequested properties, and avoid redundant alternatives unless the user asks for independent comparisons."
+      },
+      {
+        "insert_after": "- Include an optional parameter whenever it directly encodes a requested facet, even if the user phrases it in prose or the endpoint has a default. For an unfiltered, random, or full/standard result, use a documented “all” or unfiltered selector when needed to preserve that scope. Do not add options that are neither requested nor needed to express it, or invent values. For missing required values, use only a documented default or a value unambiguously derivable from the query.",
+        "content": "\n- For a paginated list, search, or review request with no page specified, use the endpoint's documented default page; if none is documented and the initial page is unambiguous, request page 1. Do not infer an unrequested page size."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

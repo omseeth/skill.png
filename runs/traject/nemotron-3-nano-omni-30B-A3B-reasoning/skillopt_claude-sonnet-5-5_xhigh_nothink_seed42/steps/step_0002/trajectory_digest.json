@@ -1,0 +1,69 @@
+{
+  "step": 2,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 31,
+  "failure_patterns": [
+    {
+      "pattern": "parameter_placement_and_type: Parameters put in the wrong list (optional values like dice, TED filters, postalCode placed under required, and required page placed under optional). Numeric values emitted unquoted. Some parameter names or values invented (e.g. tp, search_type='travel').",
+      "count": 31,
+      "task_ids": [
+        "parallel_email_simple:8",
+        "parallel_ecommerce_simple:188",
+        "parallel_news_media_simple:101",
+        "parallel_ecommerce_simple:154",
+        "parallel_education_simple:23",
+        "parallel_ecommerce_simple:107",
+        "parallel_news_media_simple:1",
+        "parallel_weather_simple:184",
+        "parallel_ecommerce_simple:95",
+        "parallel_education_simple:195",
+        "parallel_gaming_simple:13",
+        "parallel_email_simple:125",
+        "parallel_music_simple:42",
+        "parallel_education_simple:12",
+        "parallel_ecommerce_simple:182",
+        "parallel_ecommerce_simple:10",
+        "parallel_ecommerce_simple:81",
+        "parallel_gaming_simple:6",
+        "parallel_gaming_simple:77",
+        "parallel_education_simple:76",
+        "parallel_email_simple:177",
+        "parallel_ecommerce_simple:66",
+        "parallel_education_simple:71",
+        "parallel_email_simple:38",
+        "parallel_gaming_simple:165",
+        "parallel_gaming_simple:116",
+        "parallel_weather_simple:199",
+        "parallel_gaming_simple:160",
+        "parallel_travel_simple:130",
+        "parallel_weather_simple:192",
+        "parallel_weather_simple:81"
+      ]
+    }
+  ],
+  "score_before": 0.3707865168539326,
+  "score_after": 0.33707865168539325,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "## Rule 1: Output contract (check before answering; a malformed answer scores zero)\n- The answer is ONE flat JSON list inside `<answer>...</answer>`, written compactly. Check that the brackets balance and the text ends with `}]` right before `</answer>`. Never repeat the same call in a loop; if you notice repetition, close the list and the tag.\n- `tool name` is copied exactly from the tool's `### ` heading in the form `Provider: API`, with original capitalization and spacing. Never drop the provider prefix, never append the ' — description' text, and never invent or shorten a name that is not in the list.\n- Every call has exactly three keys: `tool name`, `required parameters`, `optional parameters`. Use `[]` when a list is empty.\n- Both parameter keys hold LISTS of objects `{\"name\": \"x\", \"value\": \"y\"}`. Never use a dict such as `{\"country\": \"IN\"}` and never bare names. Write every value as a quoted string, including numbers (`\"5\"`, `\"300\"`). Put no extra keys outside the call objects.\n- Place each parameter where the tool's own schema lists it. Under 'Required parameters' it goes in `required parameters`. Under 'Optional parameters' it goes in `optional parameters`, even when it carries the query's main subject (an id, a search `q`, a country). If the schema says 'Required parameters: none', use `[]`. Use only parameter names that the chosen tool lists, and never borrow one from a sibling tool.\n- Never emit a parameter with an empty value; omit empty optionals. Never invent ids or placeholders (user_12345, YOUR_API_KEY). If a tool's required value is not in the query (it needs an id, grid or office code produced by another call), do not call that tool.",
+      "target": "(No learned rules yet. Rules will be added through the reflection process.)"
+    },
+    {
+      "op": "append",
+      "content": "\n## Rule 2: Cover every clause, add nothing else\n- Before answering, build a checklist of atomic requests: every sentence, every then/next/also/finally/and clause, every item in a list ('pricing, warranty, reviews' = 3), every past-tense narrated step ('I looked up...', 'they accessed the news feed and data sources' = 2), and every named platform or provider. Hedges such as 'possibly' do not make an action optional.\n- Each item gets its own call. Count your calls against the checklist before finalizing, and re-read the query's FIRST and LAST sentences, because dropped clauses (often the final one) are the most common failure.\n- 'X on both A and B' means one call per platform, using each platform's own endpoint of the right kind. N entities, ids, pages, markets or values for a one-value tool mean N calls. The same action repeated with different settings ('sorted by helpful', then 'by most recent') means separate calls. Keep constant parameters on each call.\n- Companion requests inside one sentence are separate calls ('snow conditions, alerts and sunrise/sunset' = three tools; 'check disposable domain and verify SMTP' = two tools).\n- Do the reverse check too. Call only tools for aspects the query names. 'Use multiple tools to check existence, MX records and deliverability' means one tool per named aspect, not extra disposable-domain, format-only or temp-mail tools. Add no hedging, duplicate or 'just in case' calls. If your call count is well above your checklist, remove the extras.\n- When the query names a tool or provider ('using the X tool', 'Blaze Verify'), call exactly that provider's endpoint.",
+      "target": ""
+    },
+    {
+      "op": "append",
+      "content": "\n## Rule 3: Tool selection\n- Pick the tool whose name and description mirror the query's verb, object, scope and time horizon. Examples: 'daily forecast for the next few weeks' means the multi-week daily forecast tool, not an hourly or 48-hour one; 'N-hour air quality forecast' means the Forecast tool, in addition to the 'current pollution' tool; 'financing options' means the financing-offers endpoint; 'similar items' means get-similar-items; 'active alerts' means the active-alerts tool.\n- Different phrases of one query usually point to different endpoints of the same provider. Call each aspect's endpoint once rather than reusing one endpoint, and do not reuse one tool for several different checks (disposable domain, role account, SMTP, MX records, format, deliverability).\n- Input type and identifiers decide the tool. A bare domain needs a domain-level tool, and a full email needs an email-level tool; if a tool takes username and domain separately, split the email. If the query gives storeId, sku, ASIN or similar ids, pick the tool whose parameter names match them, and use a 'by id' tool for a 'by id' request.\n- When sibling tools differ only by an ID level, match the level in the query to the tool's PARAMETER NAME, not its title (province -> `propinsi`, district/city -> `kabupaten`, sub-district -> `kecamatan`). Do not send two levels to the same tool.\n- If one clause asks for two things at once ('valid AND disposable', 'disposable AND suggest alternatives'), choose the tool whose description covers both.\n- When items of different types are listed (clothing, furniture, electronics), match each item to the provider that sells that type.\n- Ignore tools from unrelated domains that only share a keyword (sports events, airport configuration, send-mail or temp-mail generators). Prefer a dedicated endpoint over a generic search. When several tools could serve a clause, prefer the one whose description most literally mirrors the query wording.",
+      "target": ""
+    },
+    {
+      "op": "append",
+      "content": "\n## Rule 4: Map query phrases to parameter values\n- Fill every constraint the query states or clearly implies, using the chosen tool's own parameter names, and nothing else. Examples: 'first page' -> page `1`; 'two pages of 20' -> page 1 and page 2, each with the size 20; 'one card' / 'limited to N' / '15 videos' -> the limit/pageSize/per_page field; '48-hour forecast' -> hours `48`; 'next 3 days' -> days `3`; 'minimum 5 minutes' -> min_duration in the unit the description gives (seconds: `300`); 'from 2017 onwards' -> the from-date field `2017-01-01`; 'most recent' -> a DATE_DESCENDING-style sort; 'most helpful' -> `HELPFUL`; 'Ace' -> `A`; 'seasonal challenges' -> type `seasonal`; 'active alerts' -> active `1`; 'US customers' -> country `US`; 'US English' -> `en-US` (hyphen form, unless the tool lists other codes); 'in JSON format' -> `true`; several named items for a comma-separated field -> join them with commas.\n- A location named in the query goes into the tool's point/q/city/location/postal-code field. If a tool wants coordinates and the query gives only a place name, use a field that accepts names when one exists. If a units parameter exists and the query implies a unit system, set it using the listed codes.\n- Copy ids, SKUs, ASINs, zip codes, URLs, emails, domains, names and numbers verbatim. Keep search keywords as the query words, and keep only the core subject when the tool is already domain-specific (a movie-news tool gets 'Superman', not 'Superman movie').\n- If the schema lists valid options or formats (enum values, slugs, lowercase codes, 'YYYY-MM-DD'), follow them exactly.\n- Do not add optionals the query never implies (a page number when no page is mentioned, default sort, locale or currency defaults, format flags, toggles, callbacks).",
+      "target": ""
+    }
+  ]
+}

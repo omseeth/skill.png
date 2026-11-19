@@ -1,0 +1,26 @@
+{
+  "batch_size": 6,
+  "success_patterns": [
+    "When the context contained an archive line ('CATEGORY | clue | answer'), the agent copied the answer verbatim, even when it looked like a pun on the category (WEATHER WORDS & PHRASES | ... this type of job | high pressure), and kept titles such as 'Lord Robert Baden-Powell'.",
+    "A one-word clue naming only a place (Timonium) was answered with the larger region that every passage ties it to (Maryland), not a topic word from the search hits (fair, climbing gym, bowling).",
+    "A clue that points to a picture it cannot show ('The dipper seen here') was solved from the textual associations in the passages (honey dippers -> honey). The agent ignored the missing image and the unrelated Big Dipper and Gravity Falls hits.",
+    "A truncated archive snippet ('...THIS PLAYWRIGHT, DAVID...') plus passages repeating the same fact gave the complete answer (David Rabe), with the answer type taken from the clue's slot noun.",
+    "Passages that repeat the clue's distinctive wording and pair it with one entity ('Bridge to Terabithia') were trusted, and the answer was the missing part only."
+  ],
+  "patch": {
+    "reasoning": "Three patterns recur in the batch and are not fully covered. Single bare place-name clues are not covered, since the skill only handles place lists with language context. Clues that refer to an unseen picture ('seen here', 'shown here') are not covered. The answer in an archive line can be a pun on the category title, and the agent should accept it instead of second-guessing it. These edits are short and avoid the clue-word-echo rules that caused the earlier rejection.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "answer with the common English name (Conch).",
+        "content": "\n- A clue that is just ONE proper place name ('Timonium') asks for the larger place that contains it (US state, or country for a non-US town). Passages about shops, gyms, schools, fairs or hotels there are only search hits for the name, so never answer with a topic word from them. Pick the state or country that the passages attach to the place (Lutherville-Timonium, Maryland -> 'Maryland').\n- Picture-reference clues ('The dipper seen here', 'shown here', 'this item pictured') come from a video or image clue that you cannot see. Ignore the missing picture and answer from the textual hooks that remain: the related noun in the clue plus the passages that pair it with a single partner ('honey dipper' -> 'honey' for 'used with this sticky substance'). Do not answer with a different sense of the same word (Big Dipper, a character named Dipper)."
+      },
+      {
+        "op": "insert_after",
+        "target": "Take the answer that follows the clue, even if the whole context is one short passage.",
+        "content": "\n- The CATEGORY text in an archive line is part of the puzzle. Many answers are puns or idioms tied to it (category 'WEATHER WORDS & PHRASES', clue 'W. has this type of job' -> 'high pressure'). If the archived answer looks odd as a literal reading of the clue, still trust it and copy it exactly. Do not replace it with a more literal guess from other passages."
+      }
+    ]
+  },
+  "source_type": "success"
+}

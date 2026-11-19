@@ -1,0 +1,46 @@
+{
+  "reasoning": "Merged the two proposals addressing proximity into one replacement of that rule, combining landmark-based proximity requests with refreshing nearest results after underlying results change. Preserved the cache follow-up edit's explicit retrieval and persistence mechanics. The remaining edits address distinct gaps and do not overlap. Support counts reflect how many of the three source patches support each edit. [optimizer-ranked: selected 4/7 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. Do not approximate proximity by extracting a neighborhood and using it as a filter.",
+      "content": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results. Do not pass the attraction name as a `neighborhood` value or approximate proximity with a neighborhood filter. If a later constraint changes an underlying domain result, such as filtering the hotel set, recompute and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- **Handle follow-ups incrementally through the cache:** On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns. Use the cache summary to identify the latest suitable base for each affected result, then retrieve it with `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only newly stated or changed constraints not already reflected in the base, using the appropriate same-domain filter. A broad search summary that does not reflect a new constraint does not satisfy it. If an update applies to multiple cached results, such as outbound and return flight legs, retrieve, filter, and process each independently. Do not mix domains, repeat already-applied constraints, rerun completed work, or touch unrelated results. Search afresh only when no suitable cached base exists; do nothing only when the cached results satisfy all current constraints. Save each updated result under a relevant fresh key, following the persistence rule.",
+      "content": "- **Handle follow-ups incrementally through the cache:** Treat a short answer to an assistant's clarification question as an explicit user-provided value or preference; an affirmative answer accepting an offered domain or option is a request to proceed. On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns, then decide separately for every requested or clearly pending domain. If a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only the new same-domain filter and save the update under a fresh relevant key. If no suitable base exists and required inputs are available, search and save. If required inputs are missing, ask for them while still completing other requested domains whose required inputs are available. A result summary satisfies a request only when it reflects all current constraints. For updates affecting multiple results, such as outbound and return legs, retrieve, filter, and process each independently. Do not repeat completed work, reapply constraints, or touch unrelated results. Return no-planning only when every requested or pending deliverable is already satisfied and the latest turn introduces no new request or constraint.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "A clearly stated party size such as “solo” is an explicit count; pass `num_people=1` for a hotel search. Do not infer unspoken counts.",
+      "content": "For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Format flight time ranges as required:** For `departure_time` and `arrival_time`, use the validator's accepted 12-hour format with AM/PM (for example, `12:00 PM`), not `HH:MM:SS`. Choose a supported interval for vague time periods.",
+      "content": "\n- For a one-sided flight-time bound, complete the range to the day boundary: “before X” uses `[\"12:00 AM\", X]`, and “after X” uses `[X, \"11:59 PM\"]`, preserving the stated AM/PM value.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 2 fills a clear gap in handling requests for lodging near named landmarks and follow-up updates to proximity results. Edit 6 strengthens follow-up handling across domains, especially short clarification answers and independently actionable pending tasks. Edit 4 clarifies mapping explicit party sizes and applying changed counts to cached hotel results. Edit 1 adds actionable handling for one-sided flight-time bounds. The remaining edits are either narrow or substantially covered by existing rules.",
+    "selected_indices": [
+      2,
+      6,
+      4,
+      1
+    ]
+  }
+}

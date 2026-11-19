@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "flight_leg_undercoverage",
+      "count": 2,
+      "description": "A flight class or time reply with two cached flight legs filtered only the departure leg (T1 'first', T4 'afternoon'). The skill's 'write exactly three lines' template seems to anchor the agent on a single triple."
+    },
+    {
+      "failure_type": "round_trip_flight_malformed",
+      "count": 2,
+      "description": "A 'depart X and return Y' reply was written as one search_flights call carrying return_date (T3) or num_people (T8) instead of two swapped-direction searches."
+    },
+    {
+      "failure_type": "first_turn_missing_domain_or_fabricated_dates",
+      "count": 2,
+      "description": "With no dates given, T2 searched flights with a '<date>' placeholder and dropped the restaurant search plus the closing seek_information. T7 imported datetime and computed weekend dates for a hotel request with no dates."
+    },
+    {
+      "failure_type": "proximity_with_cached_restaurants_misrouted",
+      "count": 1,
+      "description": "T5: 'Persian sounds great ... 3.5 rating near the hotel' with restaurants and hotels2 cached. The agent passed neighborhood=['near the hotel'], dropped the cuisine and skipped search_nearest."
+    },
+    {
+      "failure_type": "unlearnable_gold",
+      "count": 1,
+      "description": "T6: the gold return leg uses the same direction as the outbound leg, so the agent's correct swapped-direction search is scored wrong."
+    }
+  ],
+  "patch": {
+    "reasoning": "Edits are small, targeted and placed in the top rules, in line with the meta-advice not to add gates. (1) The SEARCH GATE template implies a single three-line block, so it now says the triple is repeated per refined key and per flight leg. (2) The top round-trip bullet now covers the two-dates-means-two-searches pattern and the party-size-never-on-flights pattern, which T3 and T8 violated. (3) The DATE GATE gets a ban on computing dates in code and a rule for flight+hotel+restaurant turns with missing dates: search the searchable domain, then one seek_information, never a placeholder date. (4) Rule 26 gets the case where a restaurants key already exists, because its current example only covers a first search and the agent missed the filter plus search_nearest pair.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "A search_* call is allowed only for a domain with NO key.",
+        "content": "A search_* call is allowed only for a domain with NO key. That load/filter/save triple is written once PER KEY being refined: a flight class, airline, time or price reply refines EVERY flight leg in CACHE (e.g. departure_flights AND return_flights, or flights AND return_flights), so write one triple per leg with the same kwarg and stop only after the last leg."
+      },
+      {
+        "op": "replace",
+        "target": "search_flights has NO return_date: a round trip is two search_flights calls.",
+        "content": "search_flights has NO return_date and NO num_people: a message with two dates ('depart X and return Y', 'X to Y') is TWO search_flights calls, the outbound with departure_date=[X] and the return with departure_date=[Y] and origin/destination swapped, each assigned and saved. A party size ('4 people') is never a flight kwarg, and a one-call round trip is always wrong."
+      },
+      {
+        "op": "replace",
+        "target": "search_flights never takes num_people or num_layovers.",
+        "content": "search_flights never takes num_people or num_layovers. Never compute dates in code (no import, no datetime, no 'next Saturday'). When flights and/or a hotel lack dates and a restaurant or attraction city is known (e.g. a restaurant request in the last turn), run that restaurant/attraction search first, then ONE seek_information naming every missing date (flight departure date, hotel check-in and check-out). A search_flights or search_hotels call with a placeholder or guessed date is never allowed."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Without a hotels key, 'near the hotel' needs no search_nearest. Just run the normal first search.",
+        "content": "\n- If a restaurants key is ALSO already in CACHE, do not search again. Load the most refined restaurants key and the most refined hotels key. Then `filter_restaurants(prior_results=r, <only what the last message states>)` and save it. After that, `search_nearest(hotels=<hotels>, restaurants=<the filtered restaurants>, groupBy=\"restaurant\")` and save it. A '<Cuisine> sounds great' reply that accepts the assistant's offer is cuisine=[\"<Cuisine>\"]. 'a restaurant with X rating' is rating=[X, X], and 'at least X' is rating=[X, 5]. The words 'near the hotel' are never a neighborhood= value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,19 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Check required inputs before invoking a domain search; do not make incomplete flight, hotel, or restaurant searches.",
+    "Do not assume an event date is a flight departure date or hotel stay date unless the user explicitly identifies it as travel timing.",
+    "For round trips, recognize that each searched leg needs its own departure date; the return date is the return leg’s departure date."
+  ],
+  "patch": {
+    "reasoning": "The skill already covers missing flight and hotel dates in general, but the trajectories expose useful gaps: hotel city and restaurant city are also required, event dates can be mistaken for travel dates, and a round trip requires dates for both searched legs. Clarifying these while preserving independent handling of requested domains makes the existing guidance more actionable.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Distinguish required dates from optional details when seeking information:** `search_flights` requires `departure_date`; `arrival_date` is optional, even for a round trip. `search_hotels` requires both `checkin_date` and `checkout_date`, while `num_people` and `num_rooms` are optional. Phrases such as “last-minute” do not provide a date. Ask only for missing required values, not optional counts or dates.",
+        "content": "- **Validate required inputs independently for each domain before searching:** `search_flights` requires `departure_date` for each searched leg; for a round trip, the return date is the return leg’s `departure_date`, while `arrival_date` remains optional. `search_hotels` requires `city`, `checkin_date`, and `checkout_date`; `search_restaurants` requires `city`. If a domain is missing required inputs, seek only those inputs and do not invoke that domain’s incomplete search; still proceed with other requested domains whose required inputs are available. Ask only for missing required values, not optional counts or details. A date given only for an event (such as a wedding or reunion) is not a flight departure or hotel stay date unless the user explicitly identifies it as travel timing; phrases such as “last-minute” do not provide a date."
+      }
+    ]
+  },
+  "source_type": "success"
+}

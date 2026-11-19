@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_tool_execution_and_persistence",
+      "count": 4,
+      "description": "Results were not bound and saved; two plans also omitted requested domains or a round-trip leg."
+    },
+    {
+      "failure_type": "cache_refinement_or_target_selection",
+      "count": 4,
+      "description": "Agents ignored actionable updates, refined the wrong cached result, or searched again instead of filtering compatible cached results."
+    },
+    {
+      "failure_type": "hotel_stay_date_mapping",
+      "count": 2,
+      "description": "Hotel actions were omitted despite trip dates and an explicit stay duration grounding the hotel dates."
+    },
+    {
+      "failure_type": "time_bound_encoding",
+      "count": 1,
+      "description": "An arrival cutoff expressed as “by” was not encoded as a time range."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers saving tool results, cache refinements, and complete domain/leg planning, so repeating those rules would not address a new gap. These edits resolve the conflicting hotel-date instruction for dates grounded in a trip itinerary and clarify how to encode a one-sided time cutoff.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood.",
+        "content": "Hotel check-in and check-out dates must be grounded in the conversation. When a hotel is for a dated trip and no separate stay schedule is given, use the stated trip start date as check-in and the stated trip end or return date as checkout. If the user gives a stay duration in nights and a grounded start date but no checkout date, derive checkout by calling `adjust_date` with that date and the number of nights. Do not derive dates or duration from vague phrases such as “weekend getaway”; ask for missing dates when neither explicit trip dates nor an explicit duration determines the stay. Do not infer a neighborhood."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "\n- For time-of-day range arguments, encode an exact time `t` as `[t, t]`. Interpret “by t” as a range from the start of the day through `t`, encoded as `[\"12:00 AM\", t]` in the schema’s time format. Apply the bound to the appropriate departure or arrival field, including when filtering compatible cached results."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

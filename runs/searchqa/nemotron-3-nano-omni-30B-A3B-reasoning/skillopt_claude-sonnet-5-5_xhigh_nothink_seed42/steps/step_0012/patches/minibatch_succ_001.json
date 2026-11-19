@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every success was a one-step answer that fits an existing rule: the agent found the entity (or a verbatim archive line) in the passages and output the short bare form ('Crabs', 'SCTV', 'Hercules', 'South Park').",
+    "Descriptive clues about a famous scene or event ('Burt Lancaster & Deborah Kerr kiss in the pounding surf') were answered with the work's title ('From Here To Eternity'). That is the title every passage ties to the named actors and the scene, not an actor or a character.",
+    "When passages echoed the clue sentence but left the answer out (Infoplease 'the desert is only 30% sand'), the agent still got the entity ('Sahara') from the passage title or header, or from another page that quoted the full clue.",
+    "Jokes or filler in the clue ('looks nothing like Kevin Sorbo') were ignored. The agent anchored on the factual core (M13 -> Hercules).",
+    "Answers dropped words the clue already gave or that were category labels: 'SCTV' for 'comic \"network\"', 'Crabs' with no 'soft-shell', 'Earl Warren' with no title."
+  ],
+  "patch": {
+    "reasoning": "The existing rules already cover most of the observed behaviour, so I propose only two small generalizations. First, a clue that describes a famous scene, quote or event with named people should resolve to the work's title, which extends the character-list rule. Second, when the clue's sentence is repeated in passages that omit the answer, the passage titles, headers and neighbouring pages usually supply it. This batch showed both patterns. I am keeping the additions minimal because the previous broad patch was rejected.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "If the list is of real people, answer with the team, state or other entity they share.",
+        "content": "\n- The same holds for a clue that describes a famous scene, kiss, quote or event and names the actors or people in it ('Burt Lancaster & Deborah Kerr kiss in the pounding surf'). The slot is the WORK or event they are tied to ('From Here To Eternity'), not one of the named people. Take the title the passages repeat next to those names and that scene, in its standard form."
+      },
+      {
+        "op": "insert_after",
+        "target": "Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "\n- Passages often repeat the clue's sentence but drop the answer (a table row such as 'Contrary to popular belief, the desert is only 30% sand'). Then take the answer from that passage's own title, header or surrounding paragraph (the Infoplease desert table; a 'sahara - Search-ID' page), or from another passage that quotes the full clue. Scan every passage, including odd ones (newsletter PDFs, search-result pages, quiz sites), because one may contain the whole clue followed by its answer."
+      }
+    ]
+  },
+  "source_type": "success"
+}

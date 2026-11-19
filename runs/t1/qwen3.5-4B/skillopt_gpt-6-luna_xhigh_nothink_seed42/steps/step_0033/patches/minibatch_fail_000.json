@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_persistence_omission_or_invalid_payload",
+      "count": 6,
+      "description": "Searches and filters were often not saved, or were saved as a results list instead of the complete tool result."
+    },
+    {
+      "failure_type": "conversation_context_and_independent_domain_handling",
+      "count": 5,
+      "description": "Agents missed relevant earlier details, asked for optional or already-known inputs, or failed to act on a complete requested domain."
+    },
+    {
+      "failure_type": "round_trip_itinerary_interpretation",
+      "count": 2,
+      "description": "A date interval in the context of an existing flight request did not produce separate outbound and return flight searches."
+    },
+    {
+      "failure_type": "runtime_import_error",
+      "count": 1,
+      "description": "The agent imported a nonexistent tools module despite the injected-tool runtime contract."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that travel-date replies in an existing flight request can establish both flight legs, make the shared destination usable for an independent restaurant search, and specify the correct one-call/full-result cache pattern. These edits target recurring execution gaps without changing the protected section.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Still perform every independent requested search or update whose own required inputs are complete in the same turn.",
+        "content": "\n- For a restaurant request attached to a trip, use the trip's already stated destination as the restaurant city unless the user specifies a different city. When another requested domain is incomplete, continue with each independent domain whose required inputs are known; do not ask again for known values or seek optional hotel occupancy or room details."
+      },
+      {
+        "op": "replace",
+        "target": "For an explicitly requested round trip, make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg by setting `arrival_date` on the outbound search. Use an end date as the return-leg departure date only when return travel is requested or established by context; do not infer a return flight solely from a date interval.",
+        "content": "For an explicitly requested round trip, make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg by setting `arrival_date` on the outbound search. When a flight has already been requested and the user supplies a complete travel interval in response to a travel-dates question (for example, “from [start] to [end]”), treat the start and end as the outbound and return departure dates. An explicit “returning” or “getting back” date likewise establishes the return leg. Do not infer a flight request or return leg from a date interval that is not given in the context of a requested flight."
+      },
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. For every results-producing search, filter, sort, or `search_nearest` call, assign its return value to a variable once and save that same complete result object under a unique cache key. Do not save only `.search_results`, pass a list instead of the tool result, or call the search again inside `save_to_cache`. Use “No planning needed” only when cached results already satisfy every current request."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,37 @@
+{
+  "reasoning": "Kept all four distinct, non-overlapping edits: clarify when standard market mappings can populate related selectors, validate required-versus-optional parameter grouping, preserve any-versus-all semantics for multi-value filters, and limit named-retailer comparisons to the requested sources. Each edit is supported by one of the two source patches.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Include related regional settings only when the request and documented mapping support them; do not invent opaque identifiers or guess unavailable mappings.",
+      "content": "Include related regional settings when the endpoint exposes a corresponding selector and an explicit market has a standard, unambiguous mapping to it: reuse the canonical market code for market/store/size-schema selectors when the API convention uses that code, and use the standard market locale for a language selector (for example, US -> en-US). This can be done without a separate reference lookup endpoint; do not invent opaque identifiers or guess nonstandard mappings.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- **Validate the final response.** Follow the required response format exactly, including tool names, call-object keys, and any requested call ordering. Return one list object per call, with that call's required and optional parameter arrays nested inside the object—not at the list level or shared across calls. Serialize each parameter as `{ \"name\": ..., \"value\": ... }`, and include empty arrays when a group has no parameters. Check that every requested operation is covered, no unrelated call was added, and the JSON parses. When the format requires only JSON, return no surrounding commentary.",
+      "content": "- **Validate the final response.** Follow the required response format exactly, including tool names, call-object keys, and any requested call ordering. Return one list object per call, with that call's required and optional parameter arrays nested inside the object—not at the list level or shared across calls. Serialize each parameter as `{ \"name\": ..., \"value\": ... }`, and include empty arrays when a group has no parameters. Cross-check every parameter against the tool schema: place required parameters only in the required array and optional parameters only in the optional array, even when the user explicitly requests an optional field. Check that every requested operation is covered, no unrelated call was added, and the JSON parses. When the format requires only JSON, return no surrounding commentary.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Combine multiple filters or categories in one call when they concern the same operation and the endpoint supports that syntax.",
+      "content": " For multi-value filters, preserve whether the user asks for any listed value or for all of them to match. Use the endpoint's documented list encoding and, when available, its documented match-mode parameter; do not assume comma-separated values or an all-match mode without schema support.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not fan out across generic tools or marketplaces merely because the user did not specify a source.",
+      "content": " When a comparison names its retailer sources, keep comparison searches within those sources; do not add an unmentioned marketplace as an auxiliary search or suggestion source unless the user also asks for broader marketplace discovery.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

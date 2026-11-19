@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "dropped_requested_domain",
+      "count": 3,
+      "description": "A requested domain was never searched. The hotel was dropped when a date or 'N nights' arrived (T1, T2; T2 re-filtered flights by 'business' instead). The restaurant search was dropped from a hotel+restaurant opener that only emitted seek_information (T5)."
+    },
+    {
+      "failure_type": "first_search_incomplete_or_malformed",
+      "count": 2,
+      "description": "The first restaurant search omitted budget and neighborhood the user had already stated (T7). The first attraction search was a bare unsaved call with a state code in city= (T4)."
+    },
+    {
+      "failure_type": "wrong_cache_key_or_overwritten_key",
+      "count": 2,
+      "description": "A hotel neighborhood reply loaded 'hotels' instead of the newer 'nearest_hotels' (T3). A named-attraction reply ran a bare search saved over 'attractions', skipping the hotel load and search_nearest (T8). Rule 10 contradicts Rules 25/26 here."
+    },
+    {
+      "failure_type": "stale_or_invented_kwargs_missed_last_turn_values",
+      "count": 1,
+      "description": "'2 rooms for 3 people' was answered by re-passing pool_present and an invented playground_present, instead of num_rooms=2 and num_people=3 (T6)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Recurring failures are dropped domains, incomplete first searches, and contradictory guidance. Edit 1 makes the DATE GATE emit the restaurant search before the single seek_information; the old wording was ignored in T5. Edit 2 adds a hotel-search trigger for 'N nights' or a stay reply when a start date is known, which covers T1 and T2. It also maps rooms and people to num_rooms and num_people (T6). Edit 3 turns item 4 into a first-search checklist: assign and save, use state= for state codes, and carry every constraint from every earlier turn (T4, T7). Edit 4 removes the Rule 10 contradiction ('do not touch the hotel cache', save under 'attractions') and says that nearest_hotels is the newest hotels key (T3, T8).",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "It is the whole output unless another requested domain is searchable (see 4b).",
+        "content": "It is the whole output ONLY when no other requested domain is searchable. If the user also wants restaurants or attractions ('need a hotel and restaurant recommendation') and a city or state appears anywhere, the output is `restaurants = search_restaurants(city=\"<city>\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then ONE closing `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. A seek_information line alone is wrong in that case. Put in the restaurant search only restaurant constraints the user stated (cuisine, rating, dietary flag, per-person budget), never hotel budget or party size."
+      },
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\n-3. HOTEL REQUESTED IN ANY TURN + NO 'hotels' KEY + A START DATE KNOWN = search_hotels NOW. The start date is the flight date the user wrote (this turn or earlier, even if a flight key is cached). A stay length ('2 nights', 'stay there 3 nights', 'don't need a return flight') or a return date gives the checkout: `checkout_date = adjust_date(date=\"<start date as written>\", delta_days=N)`, then `hotels = search_hotels(city=\"<destination>\", checkin_date=[\"<start date>\"], checkout_date=[checkout_date], <neighborhood / stars / amenities / num_people stated in any turn>)` + `save_to_cache(key=\"hotels\", value=hotels)`. 'Weekend getaway' beside '3 nights' is still 3 nights. If no flight key exists yet, the flight search (with any class the user stated) is written first in the same block. A reply about nights, dates or a hotel neighborhood is never a flight filter, because an earlier class is already applied.\n   - Rooms and people on a cached hotels key: 'N rooms' -> num_rooms=N and 'N people' / 'N of us' -> num_people=N, together in ONE filter_hotels on the latest hotels key ('2 rooms for 3 people.' -> `num_rooms=2, num_people=3` and nothing else). Amenities named earlier (pool, kids club) are already applied. Never invent a kwarg for a word with no parameter (playground).\n"
+      },
+      {
+        "op": "replace",
+        "target": "4. Domain has NO key and all its mandatory args are known -> first search (`x = search_*(...)` then `save_to_cache`).",
+        "content": "4. Domain has NO key and all its mandatory args are known -> first search, written `x = search_*(...)` with `save_to_cache(key=..., value=x)` on the next line (a bare `search_attractions(...)` is always wrong). FIRST-SEARCH CHECKLIST: walk through EVERY user turn, including answers given before the city or dates were known, and carry each constraint the tool supports: cuisine, per-person or per-night budget ('spend around 75' -> budget=75), rating, dietary flags, neighborhood ('actually only in Downtown St. Louis' -> neighborhood=[\"Downtown St. Louis\"]), stars, amenities, explicit flight class. Example: turns 'Mexican food' / 'around 75' / 'St. Louis, only Downtown St. Louis' -> `restaurants = search_restaurants(city=\"St. Louis\", cuisine=[\"Mexican\"], budget=75, neighborhood=[\"Downtown St. Louis\"])` + save 'restaurants'. A US state name or code goes in state=, never city=: 'a trip to TN, Historical attractions' -> `attractions = search_attractions(state=\"TN\", type=[\"Historical\"])` + save 'attractions'."
+      },
+      {
+        "op": "replace",
+        "target": "Do not touch the hotel cache for that turn.",
+        "content": "EXCEPTION (overrides this bullet and the 'save it under attractions' above): when ANY hotels-domain key is in CACHE, 'Yes, we want to visit <name>' is the Rule 25/26 block: load the last-listed hotels-domain key, `attractions1 = search_attractions(city=\"<city>\", attraction_name=[\"<name>\"])` saved as 'attractions1' (never overwrite 'attractions'), then `nearest_hotels = search_nearest(hotels=<loaded hotels>, attractions=attractions1, groupBy=\"hotel\")` saved as 'nearest_hotels'. Once a nearest_hotels key exists it is the newest hotels-domain key, so later hotel replies (neighborhood, amenity) load 'nearest_hotels', not 'hotels'. With no hotels key, a bare attraction search saved under 'attractions' is correct."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

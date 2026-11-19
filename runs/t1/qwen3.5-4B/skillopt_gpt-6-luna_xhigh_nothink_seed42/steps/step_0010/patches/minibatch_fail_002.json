@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_persistence",
+      "count": 5,
+      "description": "New searches or filters were not saved to the cache."
+    },
+    {
+      "failure_type": "cache_reuse_and_filtering",
+      "count": 2,
+      "description": "New follow-up criteria were treated as already satisfied, so compatible cached results were not filtered."
+    },
+    {
+      "failure_type": "tool_schema_and_parameter_mapping",
+      "count": 3,
+      "description": "Arguments were unsupported or mapped to unrelated fields, including an invented restaurant parameter and an unrelated amenity."
+    },
+    {
+      "failure_type": "tool_invocation_contract_violation",
+      "count": 2,
+      "description": "Agents imported the unavailable tools module despite the skill already requiring direct calls."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly forbids importing tools, so that recurring violation does not warrant duplicating the instruction. The edits make cache operations more procedural and reinforce that arguments must be supported by the schema and semantically match the user's criteria.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "- Match arguments to the tool schema’s supported parameters, meaning, expected type, and cardinality. Map each criterion only to a field that genuinely represents it; never invent an argument or repurpose an unrelated field merely because its type fits. If the tool has no matching parameter, omit that criterion rather than guessing (for example, atmosphere is not a neighborhood, and do not pass party size to a restaurant tool unless its schema supports party size). For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`)."
+      },
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request, and treat a criterion as satisfied only when the summary supports it. If the user adds or accepts a criterion that is not already satisfied, retrieve the closest compatible result with `get_results_from_cache(key=\"...\")`, assign it, apply the matching filter, assign the filtered result, and save it under a unique key. Search when the cache does not cover the requested domain, subject, entity, or category. After every new search, filter, sort, or `search_nearest` call, assign its return value and immediately save it with `save_to_cache` under a unique key; retrieval alone does not apply a new criterion. Do not filter unrelated results or repeat constraints already applied. Use “No planning needed” only when compatible cached results satisfy every current request and no further operation is needed."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

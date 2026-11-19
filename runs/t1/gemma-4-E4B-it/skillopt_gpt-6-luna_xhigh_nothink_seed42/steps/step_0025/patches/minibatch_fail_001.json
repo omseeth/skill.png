@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_source_selection",
+      "count": 6,
+      "description": "Agents repeated searches or selected a less-constrained cache entry instead of filtering the compatible cached result for the latest constraint."
+    },
+    {
+      "failure_type": "proximity_offer_scope_resolution",
+      "count": 2,
+      "description": "Agents added proximity work without an accepted offer, or failed to perform the offered hotel-near-attraction task using the cached results."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache rule is already present, but failures show that agents still choose raw results over compatible filtered results and restart searches for filter-only updates. A specific precedence rule makes that choice operational. Clarifying when an answer to a detail question accepts an explicit proximity offer addresses both over-searching and missed nearest calls.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result. A cached proximity result may also be used as filter input when its candidate set remains valid.",
+        "content": "\n\n**Cache-key precedence:** If the summary contains both a base result and a filtered result for the same scope, start from the filtered result when it retains all active criteria and covers the request. Apply only the newly supplied filters; do not fall back to the base result or repeat filters already embodied in the cached result. For a filter-only update on a covered scope, do not call a base `search_*` tool. Apply this independently to each affected flight leg."
+      },
+      {
+        "op": "replace",
+        "target": "- When the user asks about a place, category, or entity the assistant just suggested (for example, “What's there?”), treat it as a request to inspect that scope: retrieve a compatible cached result and filter it to that scope, or search if no compatible result can cover it. An assistant's proximity suggestion alone does not authorize `search_nearest`; use it only when the user explicitly requests or accepts proximity.",
+        "content": "- When the user asks about a place, category, or entity the assistant just suggested (for example, “What's there?”), treat it as a request to inspect that scope: retrieve a compatible cached result and filter it to that scope, or search if no compatible result can cover it. An assistant's proximity suggestion alone does not authorize `search_nearest`; use it only when the user explicitly requests or accepts proximity. If the assistant explicitly offers to find one domain near a named result and asks for preferences needed for that combined search, treat the user's answer to that follow-up question as acceptance unless they decline; after applying the domain-specific filters, call `search_nearest` with both valid datasets."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

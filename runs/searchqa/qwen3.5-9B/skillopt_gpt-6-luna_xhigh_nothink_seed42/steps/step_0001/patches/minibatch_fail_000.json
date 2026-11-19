@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_missing",
+      "count": 5,
+      "description": "The agent missed the answer slot implied by statement-style or fragmentary clues, returning a truth value or a related entity instead of the requested person, organization, country, or attribute."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "The agent chose an answer based on a generic interpretation or prominent result rather than the clue-specific meaning and best-matching context evidence."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "The agent found the right fact but gave an expanded label where the expected answer used a shorter canonical form."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill is empty, so add general rules for extracting the requested answer slot from clue-like prompts, resolving competing interpretations using the wording and context, and returning the answer at the requested granularity.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Extract the Requested Answer\n- Parse the clue to identify the specific entity, attribute, or relation being requested before answering. Many prompts are phrased as statements or fragments rather than direct questions; treat them as implicit WH questions and return the missing value, not whether the statement is true. For example, cues such as “his,” “this newspaper’s,” or “this country’s” indicate the kind of entity sought. Give the named referent rather than a related person, description, or broad topic. Use a true/false answer only when the question explicitly asks for one.\n\n## Resolve Ambiguity from the Clue\n- When several answers seem plausible, prioritize candidates that fit the clue’s exact wording and requested relation, and are directly supported by the context. Do not choose an answer merely because it appears more often or more prominently. Consider clue-specific, idiomatic, or metaphorical meanings, and check that the candidate fits all parts of the clue rather than relying on a generic assumption.\n\n## Match the Requested Granularity\n- Give only the concise canonical value for the requested answer slot. Avoid explanations and redundant qualifiers; preserve the form or level of specificity the clue asks for, rather than expanding a short label into a longer equivalent."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

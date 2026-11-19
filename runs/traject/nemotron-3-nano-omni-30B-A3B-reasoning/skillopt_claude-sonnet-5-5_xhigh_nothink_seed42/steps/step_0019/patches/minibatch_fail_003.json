@@ -1,0 +1,31 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_param_value_case",
+      "count": 1,
+      "description": "Goverlytics `level_of_government` was written as `Federal`, but the expected value is lowercase `federal`. The skill's own example teaches the capitalised form."
+    },
+    {
+      "failure_type": "polluted_keyword_value",
+      "count": 1,
+      "description": "The India Today `tag` was written as `Apple-related`, a descriptive phrase from the query, instead of the bare entity `Apple`."
+    }
+  ],
+  "patch": {
+    "reasoning": "Tool selection, call count and format were all correct (tool_em=1.0, n_pred=n_gold). The loss came from two parameter values. The first is a wrong example in the skill itself, 'level_of_government=Federal', which the agent copied. Changing it to lowercase fixes the source of the error. The second is a short value rule: free-text tag/keyword fields take the bare entity, not the query's descriptive wording. The edits are small, so they avoid the format-layout churn that caused the rejections in earlier steps.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "'current active federal politicians' -> `Goverlytics: politicians` with `active`=`true`, `level_of_government`=`Federal`.",
+        "content": "'current active federal politicians' -> `Goverlytics: politicians` with `active`=`true`, `level_of_government`=`federal` (lowercase, as the query words it; never capitalise enum-like values), plus `limit` when a count like '10 politicians' is stated."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Parameters",
+        "content": "\n- BARE KEYWORD VALUES. A `tag`, `q`, `keyword` or `searchterm` value is the entity or topic itself, not the query's descriptive wording around it. Drop filler such as 'related', 'news', 'articles', 'latest', 'functionality'. 'Apple-related news articles using India Today's tag search' -> `India Today Unofficial: Tag Search` with `tag`=`Apple` (BAD `Apple-related`). A quoted phrase, such as 'Apple product launch economic impact', is copied verbatim into `q`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

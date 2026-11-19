@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Hotel-only openers with party size, 'last-minute' or 'special occasion' wording and no dates produce one short seek_information naming only the check-in and check-out dates, with no search_hotels call.",
+    "A round-trip date reply ('April 19, 2026 to April 27, 2026') becomes two assigned and saved flight searches. 'Kid-friendly' is not turned into an airline.",
+    "Refinement replies on a cached domain are three straight lines: load the most refined key (e.g. hotels2), filter with only the last message's constraint, save under a new key. Examples: 'Downtown Portland' gives neighborhood only, 'Finnish' gives cuisine only, 'gym and laundry' gives gym_present and has_laundry_service.",
+    "A user naming an attraction plus its type, with hotels already cached and no proximity offer from the assistant, gets exactly one search_attractions(city, attraction_name, type) saved as 'attractions'. There is no search_nearest and no hotel filter.",
+    "Restaurant requests with no city ('find a restaurant for my birthday') are scored well only when the output asks for the city. Writing search_restaurants(city=\"<city>\") with a placeholder is a latent failure."
+  ],
+  "patch": {
+    "reasoning": "Two edits, both small and de-conflicting rather than new gates. (1) Trajectory 7 passed with a single attraction search even though a hotels key was cached. Rules 25/26 and Section 1 of the strategic block say that a named attraction with hotels cached means search_nearest. The distinguishing cue is whether the assistant offered proximity or the user said near/close, and stating it removes the conflict. (2) Trajectory 2 emitted a placeholder `search_restaurants(city=\"<city>\")` and only passed by luck. The existing no-city rule is narrowly worded as 'with dietary needs', so occasion-only requests slip through. Broadening that one phrase fixes this without adding length elsewhere.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Without a hotels key, 'near the hotel' needs no search_nearest. Just run the normal first search.",
+        "content": "- Named attraction WITHOUT a proximity cue: if the assistant's last message only asked about attractions in general (it did not offer hotels near them) and the user names one, optionally with its type ('Yes, we want to visit <Name>, which is a <Type> attraction'), write only `attractions = search_attractions(city=\"<trip city>\", attraction_name=[\"<Name>\"], type=[\"<Type>\"])` then `save_to_cache(key=\"attractions\", value=attractions)`, even when a hotels key is cached. Include type only when the user stated it. No search_nearest, and no hotel load or filter. Use search_nearest only when the assistant offered hotels near the attraction or the user says near / close / walking distance."
+      },
+      {
+        "op": "replace",
+        "target": "and to a restaurant request with dietary needs but no city",
+        "content": "and to ANY restaurant request with no city (dietary needs, cuisine, or only an occasion such as 'find a restaurant for my birthday'; never write search_restaurants(city=\"<city>\") or any placeholder city)"
+      }
+    ]
+  },
+  "source_type": "success"
+}

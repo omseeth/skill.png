@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every query clause, including each item of a compound clause ('engravings, character stats, and level 1 raids' or 'a 20-sided die and a regular 6-sided die'), got its own call from the exact endpoint named or implied. Unnamed sibling endpoints (abyssal dungeons, Rocket League Ranks/News, Get All Sources) were skipped.",
+    "Time-scope and count words in the query selected the sibling endpoint whose name carries that scope ('this month's top articles' gave 'Get the month's top articles', not the year's endpoint; '100 most recent' gave 'Recent 100'). No redundant parameter was added when the name already encodes the scope.",
+    "Query wording was mapped to the schema's literal value spelling or format: 'toys and games' gave category `toysgames`, 'seasonal challenges' gave type `seasonal`, 'June 21st' gave month `6` and day `21`, and 'offset 0' and 'ID HxxIU' were copied verbatim. Main inputs of tools with no required parameters went into `optional parameters`.",
+    "Queries phrased as narrative, as a numbered list, or as First/Then/Finally were handled as checklists with one call per sentence, including the last sentence and tools such as dcj9_test that have thin descriptions."
+  ],
+  "patch": {
+    "reasoning": "The successful runs consistently split compound clauses into separate calls, picked sibling endpoints by scope words in the endpoint name, and translated query wording into the schema's literal values. The skill only partly covers these. Small additions reinforce them without adding long rule blocks, which hurt the score in earlier steps. Trajectory 4 also shows a duplicated-call risk in long numbered lists, which a one-line guard addresses.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "'generate a fake business email' -> `Email API: Get Fake Email Address`).",
+        "content": "\n- Scope words pick the sibling endpoint whose name carries that scope: 'this month's top articles' -> `Get the month's top articles` (not the year's), 'the 100 most recent' -> `Recent 100`, 'level 1 raids' -> `get raids by level`, 'blog posts' -> the Blog endpoint (not News). When the endpoint name already encodes the scope or count, do not add a redundant parameter for it. A site named in the query (Youm7, dev.to, Medium) maps to that site's endpoint, not to a sibling site's."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "\n- A list inside one clause is several requests. 'Engravings, character stats, and level 1 raids' means three calls. 'Roll both a 20-sided die and a regular 6-sided die' means two calls to two different tools (`Custom die` with sides `20`, `Regular die`). Numbered items (1) to 7)) and 'First..., Then..., Finally...' sentences get one call each, in order. Emit each call once. Before answering, scan for repeated objects, and for a tool reused with another item's parameters (e.g. Ukrainian-word filters sent to the English random-word tool), and remove them."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+        "content": "\n- Copy values from the query's wording, converted to the schema's literal spelling. Enum words are lowercase slugs ('toys and games' -> `toysgames`, 'seasonal challenges' -> `seasonal`). A date like 'June 21st' becomes month `6`, day `21`. IDs and offsets are copied verbatim ('ID HxxIU' -> id `HxxIU`, 'offset 0' -> `0`). A required enum or type parameter takes the word the query uses for it. 'Complete' or 'all' information from a tool that has an `all` flag -> `all` = `true`."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,28 @@
+{
+  "reasoning": "Merged the cache-selection and refinement guidance from all three patches into one replacement, including exact listed keys, compatible results, explicit application of new criteria, and avoiding redundant filters. Combined the independent-readiness and hotel-date hard-gate guidance. Kept the distinct flight audit, contextual proximity target, and schema-validated amenity mappings. Omitted edits already covered by the existing skill and made no changes to the protected section. [optimizer-ranked: selected 2/6 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+      "content": "- Treat the latest user turn as an update to the trip plan and check cache coverage separately for each affected domain and target. Choose the most-refined compatible listed result whose coverage includes the same target and all still-valid earlier criteria. A nearest result is usable for further filtering only if it still contains candidates for the same focal domain and target. Retrieve the selected result using its exact listed key—not its human-readable summary—into a local variable, and pass it as `prior_results` when required; never filter with a missing or incompatible result. A refinement call must explicitly include each newly introduced constraint in its schema-supported argument. If no compatible listed result exists, search when mandatory inputs are available, including all stated criteria in the initial search rather than filtering it to repeat them. Do not transfer criteria across domains or units, redo unaffected domains, or rely on variables from earlier executions.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Represent flight legs separately",
+      "content": "\n- Before emitting flight calls, audit every stated leg against a compatible directional cache result or its own planned search. Verify each leg’s route direction and exact departure date. Include `departure_time` or `arrival_time` only when the user provides an actual time window; never invent time bounds.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 0 strengthens cache compatibility checks across affected targets and prevents repeating already-applied criteria. Edit 3 adds an explicit route-and-date audit for every flight leg, addressing omissions that existing general leg guidance may not catch. Edit 2 mostly repeats missing-input rules already stated in the skill; the remaining edits are narrower or less supported.",
+    "selected_indices": [
+      0,
+      3
+    ]
+  }
+}

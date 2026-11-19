@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "invented_or_inferred_params",
+      "count": 3,
+      "description": "Optional kwargs not stated by the user were added: has_room_service=False (mentioned only by the assistant), num_people=2 inferred from 'need 2 rooms', and budget=1000 / has_vegetarian_options=True on a restaurant search that only had a city."
+    },
+    {
+      "failure_type": "output_form_and_state_param",
+      "count": 1,
+      "description": "First search written as a bare call with no variable and no save_to_cache, and the state 'OR' passed as city (the traj-8 restaurant call also lacked the assignment and save)."
+    },
+    {
+      "failure_type": "cache_misuse_or_repassed_constraints",
+      "count": 3,
+      "description": "Probed the cache for a key that does not exist with an `if hotels is None` branch and filtered with neighborhood='nearby'; re-passed cuisine and dietary flags already listed in the CACHE summary; wrote an import and filtered only one flight leg."
+    },
+    {
+      "failure_type": "wrong_search_vs_filter_for_new_attraction_type",
+      "count": 1,
+      "description": "The user said 'Yes' to 'other Social attractions?' while the cache held only a named-attraction search. The agent filtered the cached entry instead of running a new search_attractions(city, type=[...])."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures break rules already in the skill, because those rules are buried in a long document. Two edits address this directly: a short checklist at the top replacing the empty placeholder, and a strengthened Rule 14 bullet. The checklist covers assign+save, state vs city, no imports or cache probes, literal-only kwargs, subtracting what the CACHE summary already shows, and per-leg flight filtering. Two further edits cover gaps the rules do not spell out. A named-attraction cache entry does not cover a newly accepted attraction type, so that needs a new search. And 'nearby', 'num_rooms', and amenities mentioned only by the assistant must not turn into neighborhood, num_people, or has_*=False.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Pre-output checklist (apply to every answer)\n1. Every search_*, filter_* and search_nearest call is written `x = ...` and followed by `save_to_cache(key=..., value=x)`, even on the first turn. A bare `search_restaurants(...)` or `search_attractions(...)` is always wrong. First-search keys: \"flights\", \"hotels\", \"restaurants\", \"attractions\".\n2. A US state name or abbreviation goes in `state=`, never `city=`. 'Social attractions in OR' -> `attractions = search_attractions(type=[\"Social\"], state=\"OR\")` + `save_to_cache(key=\"attractions\", value=attractions)`.\n3. No `import`, no if/else, no `is None` cache probes, no print, at most a one-line comment. Only load keys that literally appear in the CACHE. A domain with no key is searched, never loaded.\n4. Every kwarg must come from something the USER literally said. Never add budget, amenity flags, num_people, or any `False` value that nobody asked for. Things only the assistant mentioned (e.g. 'room service?') are not user constraints.\n5. On a refinement, first list what the loaded key's CACHE summary already shows (cuisine, dietary flags, neighborhood, amenities, budget, rating, dates, travelers). Pass only the new constraint from the last turn.\n6. A flight class/time/airline/budget preference is applied to EVERY flight leg key: load the most refined key of each leg, filter it, and save it under a new key."
+      },
+      {
+        "op": "replace",
+        "target": "If a matching cache entry exists, filter it instead.",
+        "content": "Filter instead ONLY if the cached attractions summary already lists that type (or covers the whole city/state with no type restriction). A cache entry created by a named-attraction search (summary shows 'attraction name(s): [...]') does NOT cover a newly accepted type. When the assistant asked 'any OTHER Social attractions?' and the user says yes, run a new `attractions_2 = search_attractions(city=<established city>, type=[\"Social\"])` + `save_to_cache(key=\"attractions_2\", value=attractions_2)`. Do not filter the cached named entry and do not overwrite the existing key."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Include optional details the user explicitly stated (num_rooms, num_people, budget, amenities, cuisine, ...) as keyword args in the search call, and nothing the user did not say.",
+        "content": "- Never infer values. 'We need 2 rooms' -> `num_rooms=2` only; num_people is passed only when the user states a headcount ('2 of us', 'for 4 people'). A purpose ('family vacation', 'birthday party', 'group of 20') adds no kwarg. A restaurant search with only a city and cuisine is exactly `search_restaurants(city=..., cuisine=[...])`, with no default budget or dietary flags. An amenity the assistant merely asked about ('room service or a balcony?') is only passed when the user accepts it, and then as True ('a balcony would be nice' -> has_balcony=True, never has_room_service=False)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Search only the domain whose mandatory args just became complete. Leave other domains' existing cache entries untouched (e.g. restaurants already cached, now the hotel dates arrive: call search_hotels only).",
+        "content": "- A key for another domain does not mean this domain has one. Example: CACHE holds only 'restaurants', the user wanted 'a hotel in Portland with a good Icelandic restaurant nearby', and the last turn gives '2 rooms for 2 people, checking in May 31, 2025 and out June 10, 2025'. Output only `hotels = search_hotels(city=\"Portland\", checkin_date=[\"May 31, 2025\"], checkout_date=[\"June 10, 2025\"], num_rooms=2, num_people=2)` + `save_to_cache(key=\"hotels\", value=hotels)`. Do not call get_results_from_cache(key=\"hotels\"), do not branch on None, do not call filter_hotels, and never pass 'nearby' or 'close to' as a neighborhood. Proximity words are not parameters."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

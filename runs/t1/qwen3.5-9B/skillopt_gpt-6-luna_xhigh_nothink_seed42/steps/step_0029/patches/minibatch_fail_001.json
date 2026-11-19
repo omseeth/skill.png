@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 3,
+      "description": "A filter or search call was left unsaved, including initial searches that should have been cached."
+    },
+    {
+      "failure_type": "scope_and_proximity",
+      "count": 2,
+      "description": "Agents added unrequested operations or used proximity search for an area-exploration request."
+    },
+    {
+      "failure_type": "schema_value_mapping",
+      "count": 2,
+      "description": "A flight class was passed with incorrect capitalization or a user-provided attraction category was changed."
+    },
+    {
+      "failure_type": "follow_up_completion",
+      "count": 2,
+      "description": "Grounded criteria or still-pending work were dropped while handling the latest clarification."
+    },
+    {
+      "failure_type": "cache_base_selection",
+      "count": 1,
+      "description": "A follow-up used an earlier variable instead of retrieving the latest suitable cached result."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most repeated actionable issue is missed result persistence, so make the existing tool protocol shorter and more prominent rather than adding another long reminder. The proximity rule does not state the tool's exact-two-domain input requirement or explicitly map an assistant-suggested area to a neighborhood filter. The flight-class casing error also exposes a schema mapping not currently documented. Other observed issues, including pending-work reconciliation, grounded hotel inputs, and latest-cache selection, are already covered by the skill and do not need duplicated rules.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Write every result-producing search, filter, sort, or `search_nearest` call in two steps: assign its returned result to a variable, then save that exact, complete result object with `save_to_cache` under a fresh, descriptive key. Do not extract `.search_results`, rebuild, or merge tool output before saving. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Retrieve cached results by assigning `get_results_from_cache(...)` to a variable before passing them to another tool; do not nest the retrieval call. Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+        "content": "- **Tool-call audit (before output):** Use runtime tools and schemas only; do not import libraries, redefine schemas, or add helper code. Use supported arguments and required types, with keyword arguments except for `seek_information`. For every result-producing search, filter, sort, or `search_nearest` call, write `result = tool(...)` and then immediately save that exact, complete result with `save_to_cache` under a fresh descriptive key. This applies to initial searches and every independent update or itinerary leg; never leave a result-producing call bare or rebuild its output. Retrieve cache entries by exact key into a variable before using them; never nest retrieval calls or rely on variables from earlier turns. Before emitting code, audit that every intended operation is assigned and saved, and exclude duplicate or unrelated calls, unsupported parameters, and invented optional criteria."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Use proximity tools only for proximity requests:**",
+        "content": "\n\n`search_nearest` requires exactly two of its domain result inputs (`hotels`, `restaurants`, and `attractions`); never call it with only one result set. When the user takes up an assistant-suggested neighborhood or area by asking what is there, explore it with a same-domain filter using `neighborhood=[the full area phrase]`; this is not a proximity request."
+      },
+      {
+        "op": "insert_after",
+        "target": "If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+        "content": " For `search_flights` and `filter_flights`, use the supported lowercase `flight_class` labels `business`, `economy`, or `first` (for example, business class maps to `[\"business\"]`); do not title-case them."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,37 @@
+{
+  "reasoning": "Added the distinct clarifications on geographic and locale normalization, collection-valued parameter encoding, schema-versus-format serialization, and canonical tool identifiers. Clarified that explicit repeat language overrides incidental deduplication. Omitted the compound-check edit because the skill already requires an endpoint to explicitly cover all requested properties; call ordering and other validation guidance are also already covered. [optimizer-ranked: selected 3/5 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- In formats that represent parameters as name/value entries, serialize each schema parameter as its own `{ \"name\": \"<exact field>\", \"value\": <concrete value> }` entry. Do not pack multiple parameters into a single object keyed by parameter names.",
+      "content": "\n- For collection-valued parameters, follow the endpoint's documented serialization convention (for example, a bracketed list versus a comma-separated string) even when the declared primitive type is `STRING`; do not infer the collection encoding from the primitive type or split it into repeated parameter entries unless the schema specifies that form.",
+      "support_count": 8,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Ground arguments in the request and schema",
+      "content": "\n- Normalize geographic and locale arguments at the endpoint's documented granularity: use the canonical country code when the schema expects a code, map a city or region to the correct administrative level, and include parent divisions when the endpoint requires a hierarchy. Use the documented locale appropriate to each specified market when available. Do not place the same location at multiple administrative levels or guess unsupported codes or locales; use a lookup only when a documented dependency requires it, not as an extra requested outcome.",
+      "support_count": 8,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Deduplicate the call set: make one invocation per distinct requested operation and input unless the schema supports batching or the user requests repetition. Do not add related calls as extra checks. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint.",
+      "content": "- Deduplicate incidental duplicate mentions: make one invocation per distinct requested operation and input unless the schema supports batching. Explicit repeat language such as “again,” “recheck,” or “repeat” requests another invocation even when the endpoint and arguments are identical. Do not add related calls as extra checks. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint.",
+      "support_count": 8,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 1 addresses a meaningful schema-serialization gap for collection parameters. Edit 0 adds actionable geographic hierarchy guidance beyond the existing location and locale rules. Edit 2 clarifies when duplicate calls are intentional, though the current skill already covers requested repetition. Edit 4 largely restates existing schema and serialization checks; edit 3 is narrowly applicable.",
+    "selected_indices": [
+      1,
+      0,
+      2
+    ]
+  }
+}

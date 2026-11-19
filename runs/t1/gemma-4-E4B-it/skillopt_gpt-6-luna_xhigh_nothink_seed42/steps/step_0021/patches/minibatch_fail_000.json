@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "itinerary-leg modeling",
+      "count": 2,
+      "description": "Return dates were used as arrival dates on the outbound search instead of as departure dates on separate reverse-route searches."
+    },
+    {
+      "failure_type": "cache-update handling",
+      "count": 2,
+      "description": "Follow-up cuisine or neighborhood constraints caused fresh searches instead of retrieving and filtering compatible cached results."
+    },
+    {
+      "failure_type": "tool-result persistence",
+      "count": 2,
+      "description": "New searches were called without assigning and saving their returned results."
+    },
+    {
+      "failure_type": "schema/value normalization",
+      "count": 1,
+      "description": "An attraction category supplied by the user was changed to a near-synonym before the tool call."
+    },
+    {
+      "failure_type": "unnecessary scope regeneration",
+      "count": 1,
+      "description": "A cached, unchanged flight scope was searched again while handling a hotel request."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the intended workflow, but repeated execution failures suggest that concise call patterns and explicit decision boundaries may make it easier to apply. The edits reinforce separate reverse-route return searches, cache filtering for constraint updates, saving each actual tool result, and preserving literal category values.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Flight itinerary legs",
+        "content": "\n\n**Call pattern:** When both legs are needed, search outbound from origin to destination on the outbound date, then search return from destination to origin on the return date; assign and save each result separately. Do not encode the return date as `arrival_date` on the outbound search. If the outbound leg is already compatibly cached, search only the newly requested return leg."
+      },
+      {
+        "op": "insert_after",
+        "target": "Maintain active supported constraints for each domain across the full conversation.",
+        "content": " If the domain, location, and dates remain compatible with a cached result and the user adds a supported criterion—such as cuisine, amenity, rating, or neighborhood—treat it as a filter update, not a new base search: retrieve the exact cache key, call the matching `filter_*` tool with the new criterion and any active criteria not already embodied in the result, then save the filtered result."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool results and constraints",
+        "content": "\n\nA tool call written by itself is incomplete even when it is the final action. Use an assignment followed immediately by saving that exact variable, for example: `result = search_<domain>(...)` then `save_to_cache(key=\"<descriptive key>\", value=result)`. Apply the same pattern to filter, sort, and nearest calls."
+      },
+      {
+        "op": "insert_after",
+        "target": "Preserve the user's entity text and supported category or filter values exactly; do not normalize or substitute a near synonym, including for an attraction `type`.",
+        "content": " For example, pass an attraction type phrased as “Touristy” literally; do not substitute the seemingly canonical “Tourist.”"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

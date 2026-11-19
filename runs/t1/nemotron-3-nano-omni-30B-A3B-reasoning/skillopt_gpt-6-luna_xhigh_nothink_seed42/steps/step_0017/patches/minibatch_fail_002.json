@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_request_or_cache_refinement",
+      "count": 6,
+      "description": "Plans missed pending domains, newly supplied constraints, or the exact requested target despite relevant conversation context and cached results."
+    },
+    {
+      "failure_type": "contextual_reply_misresolution",
+      "count": 4,
+      "description": "Short replies to assistant questions or suggestions were treated as no-ops instead of actionable criteria or relations."
+    },
+    {
+      "failure_type": "invalid_tool_arguments",
+      "count": 2,
+      "description": "Calls used an unsupported flight parameter or an invalid singleton rating range."
+    },
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 2,
+      "description": "Search results were not bound to variables and saved to cache."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly requires schema validation, valid range encoding, and saving every result, so those failures do not warrant duplicating existing rules. The main uncovered ambiguities are how to interpret a reply in the context of the assistant's specific proposal or question, how a new itinerary-wide flight constraint applies to separate cached legs, and when a flight itinerary supplies dates and location for a requested hotel.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. A direct answer can introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.",
+        "content": "\n- Interpret replies in the context of the assistant's concrete question or suggestion, not only their literal wording. A reply to a question about a specific amenity or preference supplies that criterion; asking what is available after a specific area is suggested makes that area an actionable search target. If the assistant asks about hotels near an attraction and the user names or accepts an attraction, treat it as the reference target for that proximity request: search for the exact attraction if cache does not cover it and rank hotels with `groupBy=\"hotel\"`. Mere interest in visiting a place without that proximity context does not imply a nearest-results request."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "\n- When a new itinerary-wide flight constraint is added after results exist for a round trip or other multi-leg itinerary, apply it independently to every affected directional leg using that leg's compatible cached result, then save each refined leg under a distinct key. Existing base results do not satisfy the new constraint."
+      },
+      {
+        "op": "insert_after",
+        "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+        "content": "\n- If a hotel is requested as part of a clearly stated simple out-and-back flight itinerary, and no separate hotel city or stay dates are given, use the flight destination as the hotel city, the outbound departure date as check-in, and the return-leg departure date as checkout. Explicit hotel-specific location or dates take precedence; do not apply this assumption when the hotel is not clearly tied to that itinerary."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

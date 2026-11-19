@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "independent_domain_prerequisite_handling",
+      "count": 2,
+      "description": "Asked again for known cities and blocked available restaurant searches while hotel dates were missing."
+    },
+    {
+      "failure_type": "follow_up_delta_execution",
+      "count": 3,
+      "description": "Follow-ups omitted new criteria, reused prior-turn variables, or skipped required filtering and saving."
+    },
+    {
+      "failure_type": "wrong_domain_or_unsupported_parameter",
+      "count": 1,
+      "description": "Sent a hotel-only amenity to a restaurant filter and omitted another explicit hotel constraint."
+    },
+    {
+      "failure_type": "runtime_code_generation_violation",
+      "count": 1,
+      "description": "Generated imports and replacement tool/model definitions instead of using the runtime tools."
+    },
+    {
+      "failure_type": "trip_scope_and_round_trip_handling",
+      "count": 1,
+      "description": "Inferred lodging and party size, misused the return date as an outbound arrival date, and omitted the return leg."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers broad cache, schema, and date rules, but the trajectories show failures to operationalize them at call time. These concise decision reminders emphasize independent progress by domain, applying only the current delta, routing criteria to supported domain fields, and orienting proximity to the named anchor. Existing runtime-only and round-trip rules are not duplicated.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- **Handle follow-ups incrementally through the cache:**",
+        "content": "\n**Delta execution check:** Compare the latest turn with the latest suitable cache summary, separately for each domain. If a new same-domain constraint is missing, retrieve the exact cache key into a fresh current-turn variable, apply all and only the new criteria in one matching filter call, and save its returned object under a fresh key. Leave domains whose summaries already satisfy their constraints untouched; never use variables from earlier turns."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Check required city inputs and distinguish event dates from travel dates:**",
+        "content": "\nFor mixed-domain requests, proceed independently: search any requested domain whose own required inputs are available, then seek only the missing required inputs for other domains. For example, a known city and cuisine are enough to search restaurants even if hotel dates are missing. Do not re-ask for a city already given or seek optional room or occupancy counts. “Family vacation” alone neither requests a hotel nor specifies traveler count."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Learned rules",
+        "content": "\n**Route criteria through the domain schema:** Before each call, check that every criterion is supported by that domain’s tool. Do not pass a hotel-only amenity to a restaurant filter or use an unsupported field. Apply all explicit new criteria for the same domain together—for example, hotel budget and amenity in one hotel filter—and do not compensate by filtering an unrelated domain."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Use proximity tools only for proximity requests:**",
+        "content": "\nFor a request phrased as “X near Y,” use results for both requested domains and set `groupBy` to Y’s domain, the named anchor (for example, restaurants near a hotel means `groupBy=\"hotel\"`). Ensure each input reflects any new filters before calling `search_nearest`, then assign and save the exact nearest result."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

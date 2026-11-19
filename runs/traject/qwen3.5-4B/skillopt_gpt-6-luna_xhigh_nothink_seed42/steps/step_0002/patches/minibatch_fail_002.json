@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_coverage",
+      "count": 6,
+      "description": "Calls were omitted, substituted with a topical but incorrect endpoint, or added for unrelated and redundant operations."
+    },
+    {
+      "failure_type": "constraint_and_schema_mapping",
+      "count": 7,
+      "description": "Requested filters, quantities, thresholds, or API-native values were dropped or mapped to the wrong parameter."
+    },
+    {
+      "failure_type": "schema_or_serialization",
+      "count": 4,
+      "description": "Some calls used incorrect parameter buckets or tool labels, and one response was not parseable in the required format."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already addresses endpoint selection, coverage, and avoiding redundant calls, so those rules do not need repeating. The clearest remaining gap is operationalizing complete constraint translation—especially thresholds, units, exact quantities, and pagination—and explicitly checking that the final structured response is valid and schema-conformant.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Ground arguments in the request and schema",
+        "content": "- Translate the complete set of constraints for each outcome, not only its main subject: carry every compatible filter into the call. Preserve comparison direction and units (for example, “at least” maps to a minimum and “at most” to a maximum, converted to the schema’s units), and select the date field corresponding to the event named in the request. For exact quantities or lengths, use an exact-value field or matching lower and upper bounds if the schema supports them. For paginated requests, map both the requested page and result count/page size when available. Use the schema’s canonical enum, code, or slug; do not substitute a semantically different field when the requested distinction is unavailable."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Check that every requested outcome is covered, each call uses the exact listed tool name, and each call object follows the active answer format exactly. Use the required keys, parameter buckets, types, and wrappers; include empty arrays when required. Do not merge calls, duplicate keys, or add explanatory text outside the required format.",
+        "content": "- Before submitting, parse-check the final payload in its required wrapper: use the exact listed `Provider: API endpoint` tool label, ensure parameter names and JSON value types match the schema, and verify that every object and bracket is valid and balanced."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

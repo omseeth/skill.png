@@ -1,0 +1,51 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "conversation_state_reconciliation",
+      "count": 2,
+      "description": "Asked for flight or hotel dates already supplied in the conversation, leaving complete requested searches undone."
+    },
+    {
+      "failure_type": "independent_domain_blocking",
+      "count": 1,
+      "description": "Requested missing hotel dates but skipped an independent restaurant search with complete inputs."
+    },
+    {
+      "failure_type": "result_persistence",
+      "count": 2,
+      "description": "Generated a search without assigning and saving its result to cache."
+    },
+    {
+      "failure_type": "schema_argument_misuse",
+      "count": 1,
+      "description": "Passed an invalid None value and unrelated allergy flags instead of the supported accommodation criterion."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the required-input audit and mixed-domain execution order explicit before clarification, reinforce assignment and caching of every result, and clarify omission of unset or unrelated arguments plus allergy-option mapping.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Check required inputs for each requested domain against the full conversation, compatible cached results, and the tool schema. Flight searches require a known route and departure date; hotel searches require a city, check-in date, and checkout date; restaurant searches require a city. Count a date only when its stated meaning matches the required field: an event date, such as a reunion or celebration, is not automatically a flight departure date or hotel check-in or checkout date. Never fill missing travel dates from examples, defaults, or assumptions. If required values are missing, make exactly one `seek_information(...)` call listing only all missing required values across the requested domains. Do not search or filter an incomplete domain, guess values, or ask for optional preferences as if they were required. Still perform every independent requested search or update whose own required inputs are complete in the same turn.",
+        "content": "- **Required-input audit before clarification:** First extract explicit requests and fill a checklist for each requested domain using all user turns, compatible cached results, and the tool schema; re-read the user's latest answer to any earlier assistant question before declaring a value missing. Flights require a route and departure date for each requested leg; hotels require a city and check-in and checkout dates; restaurants require a city. Count a date only when its stated meaning matches the required field (an event date does not by itself fill a travel date). Use explicitly supplied dates for requested flight legs and, when a requested hotel belongs to the same clearly stated trip interval, use that interval's start and end as check-in and checkout. Never invent values. Execute every requested domain whose required inputs are complete in the same code block; a missing field in one domain must not block independent searches or updates in another. Only after this audit, if values remain missing, make exactly one `seek_information(...)` call listing only those genuinely missing required values. Do not search or filter an incomplete domain or ask for optional preferences as mandatory."
+      },
+      {
+        "op": "replace",
+        "target": "Save each newly generated search or transformation result under a unique cache key.",
+        "content": "For every search, filter, sort, or nearest-result call, assign its return value to a variable and save that exact result with `save_to_cache` before returning; do not leave a result-producing call bare."
+      },
+      {
+        "op": "replace",
+        "target": "Never pass a preference as an unsupported extra argument or place it in an unrelated field.",
+        "content": "Pass only fields declared by the schema and values explicitly requested or clearly mapped from the request; omit unstated optional fields rather than passing `None`, and do not send `False` for unrelated preferences or allergy fields."
+      },
+      {
+        "op": "replace",
+        "target": "Map ordinary-language descriptions to a supported schema criterion when the meaning is unambiguous (for example, map “laundry facilities” to `has_laundry_service` when that field is in the tool schema); if no field represents a preference, omit it rather than adding an unsupported argument.",
+        "content": "Map ordinary-language descriptions to a supported criterion when the meaning is unambiguous (for example, “laundry facilities” to `has_laundry_service`). For allergies, set only the corresponding supported allergy-options field to `True` and omit unrelated allergy fields rather than sending `False`. If no exact allergy field exists, use a clearly corresponding supported option only when the relationship is unambiguous (for example, a nightshade restriction may map to an available tomato-allergy option); otherwise omit it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

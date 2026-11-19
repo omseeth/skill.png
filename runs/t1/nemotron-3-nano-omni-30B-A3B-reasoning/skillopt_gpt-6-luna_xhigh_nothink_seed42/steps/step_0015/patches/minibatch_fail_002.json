@@ -1,0 +1,55 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_coverage_and_domain_misalignment",
+      "count": 4,
+      "description": "Agents missed new constraints or applied them to the wrong domain, repeated unchanged work, or inferred an unrelated filter."
+    },
+    {
+      "failure_type": "unnecessary_or_unsafe_code",
+      "count": 3,
+      "description": "Agents added unrequested calls or output processing, including an unsupported tool import and result-field access that crashed."
+    },
+    {
+      "failure_type": "proximity_target_resolution",
+      "count": 1,
+      "description": "A request to find options near a named target was treated as already satisfied despite no cached result for that target."
+    },
+    {
+      "failure_type": "missing_mandatory_information",
+      "count": 1,
+      "description": "The agent invented hotel dates instead of asking for a missing mandatory date."
+    },
+    {
+      "failure_type": "time_range_semantics_and_encoding",
+      "count": 1,
+      "description": "The agent encoded time bounds in an invalid format and misunderstood a deadline as a point time."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already gives general cache, coverage, and persistence rules, so these edits add focused safeguards for gaps exposed in the batch: keep generated code limited to planned actions, resolve named proximity targets across domains, request missing hotel dates, and encode flight time windows according to their meaning and accepted format.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Keep generated code within the requested plan\n- Call tools already exposed in the runtime directly; never import, redefine, or wrap them. Execute only calls needed for outstanding actions, and ensure each new constraint is handled in its intended domain. Do not add filters for unchanged domains, sort or inspect returned records, access assumed result fields, or print summaries unless the user asks for that processing. Use `print(\"No planning needed\")` only when no action remains, never after performing tool calls.\n- Do not approximate an unsupported qualitative preference with an unrelated supported parameter (for example, formality does not imply vegetarian options). Omit only the unsupported preference and still apply other supported criteria from the same request."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+        "content": "\n- For an explicit request to find options near a named place, identify the target domain and the domain whose candidates should be ranked separately. A generic result for the same city or domain does not cover the named target. If the target is not covered by a compatible cached result, search for it using the appropriate supported name field (such as `hotel_name`, `restaurant_name`, or `attraction_name`) before calling `search_nearest`; also search for candidate results if those are unavailable. Use the context to determine the target's domain rather than assuming every named place is an attraction."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "\n- For time-range fields, use a clock format accepted by the tool; do not assume seconds-formatted values are valid. Interpret phrases such as “as early as possible … by T” as a window from the earliest time of day through T, not as the single instant T or a window extending past T. Preserve explicit earliest and latest bounds."
+      },
+      {
+        "op": "insert_after",
+        "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+        "content": "\n- For hotel searches, verify check-in and check-out dates independently. A flight date does not by itself establish a hotel date unless the conversation explicitly ties it to the hotel stay; never invent a stay duration or checkout date. Ask only for whichever required hotel date is missing."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "independent_domain_execution",
+      "count": 4,
+      "description": "The agent let missing information in one domain block ready searches in another, or requested values for an unrequested domain."
+    },
+    {
+      "failure_type": "stateful_cache_update",
+      "count": 4,
+      "description": "The agent failed to apply a new follow-up criterion to the most relevant cached results, save the update, or act on a new request."
+    },
+    {
+      "failure_type": "runtime_tool_namespace_violation",
+      "count": 1,
+      "description": "The agent imported tools from a nonexistent module instead of calling injected functions directly."
+    },
+    {
+      "failure_type": "qualitative_preference_handling",
+      "count": 1,
+      "description": "The agent missed sorting results by rating in response to a request for a good restaurant."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the key rules, but the trajectories show failures to apply them as a consistent workflow. Add a per-domain readiness check and make cached follow-ups explicitly delta-based, choosing the most refined compatible result and saving every transformation. Clarify how to act on qualitative requests for quality using schema-supported sorting. The existing injected-namespace prohibition already addresses the import failure, so no duplicate edit is needed.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Still perform every independent requested search or update whose own required inputs are complete in the same turn.",
+        "content": " Before writing code, explicitly classify each requested domain as ready or missing: execute and save every ready domain, then make one information request for only the missing required values in the remaining requested domains. Optional preferences must not block a ready search."
+      },
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied in a search. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- On each turn, consider the full conversation and cached result summaries. Treat a new user turn as a delta: for a new criterion, retrieve the most refined compatible cached result that already reflects prior criteria, apply only the new criterion, and save the result under a distinct key. Do not restart from an older base result when a more refined compatible result exists, repeat filters already applied, or say “No planning needed” when the user adds a criterion or requests an uncompleted action. Search when the cache does not cover the requested entity or category. Assign each new search, filter, sort, or nearest-result output to a variable and save it under a unique key before returning."
+      },
+      {
+        "op": "insert_after",
+        "target": "Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": " When the user asks for “good,” “best,” or highly rated options without a numeric rating threshold, use the available rating sort in descending order rather than asking for an optional rating; use the exact sort-column name supported by the tool schema."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

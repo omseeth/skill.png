@@ -1,0 +1,36 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "tool_result_not_persisted",
+      "count": 2,
+      "description": "Both trajectories called the correct search tool but omitted assigning and saving its result to cache."
+    },
+    {
+      "failure_type": "constraint_scope_and_category_mapping",
+      "count": 1,
+      "description": "One trajectory carried a previously requested attraction into a broader category search and substituted a near-synonym for the requested category."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the required result-saving sequence explicit in generated code, including for the final tool call, to address the failure shared by both trajectories. Clarify that cache relevance depends on query scope, not just domain and location, and reinforce faithful mapping of category wording to prevent stale entity constraints and synonym substitutions.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- At each turn, inspect cache summaries before searching. If a relevant result exists for the same domain, city, dates, and itinerary leg, retrieve it with its exact key using `get_results_from_cache`, then apply the matching `filter_*` tool with that result as `prior_results` and the newly supplied constraints. If no suitable cached result exists, run a new search. Apply new preferences to all relevant cached results or itinerary legs, but do not repeat valid searches or regenerate unaffected domains.",
+        "content": "- At each turn, inspect cache summaries before searching. A cached result is suitable only if its original query scope can cover the current request as well as matching the domain, city, dates, and itinerary leg. For example, a result limited to a named item is not a suitable base for a new broad category search; do not carry earlier entity constraints into a distinct request unless the user reaffirms them. Retrieve a suitable result with its exact key using `get_results_from_cache`, then apply the matching `filter_*` tool with that result as `prior_results` and the newly supplied constraints. If no suitable cached result exists, run a new search. Apply new preferences to all relevant cached results or itinerary legs, but do not repeat valid searches or regenerate unaffected domains."
+      },
+      {
+        "op": "replace",
+        "target": "- Assign every search, filter, sort, and nearest-results output to a variable, then immediately save it with `save_to_cache` under a unique, descriptive key before using it in later calls. Pass the assigned prior result to filters, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally.",
+        "content": "- In generated Python, never leave a `search_*`, `filter_*`, `sort_results`, or `search_nearest` call as a bare expression or only print its return. For every such call, including the final one, assign the output to a distinct variable and immediately save it with `save_to_cache(key=\"<unique descriptive key>\", value=<that variable>)` before using it or finishing. Pass the assigned prior result to filters, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally."
+      },
+      {
+        "op": "replace",
+        "target": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+        "content": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For open-text category fields, use the user's category wording rather than silently substituting a near-synonym. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

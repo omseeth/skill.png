@@ -1,0 +1,53 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_scope",
+      "count": 3,
+      "description": "Re-searched or re-filtered domains already in CACHE (flights re-searched, flights/hotels re-filtered) instead of acting on the domain the last turn changed (new restaurant search, hotel dates only, one-way or return-only flight)."
+    },
+    {
+      "failure_type": "refinement_violation",
+      "count": 2,
+      "description": "Cached flight legs were re-searched with search_flights instead of load, filter, save. Another case re-passed a budget the CACHE summary already listed and overwrote the existing key 'filtered_flights'."
+    },
+    {
+      "failure_type": "hotel_param_errors",
+      "count": 4,
+      "description": "Invented num_people (family/solo context), dropped or shortened neighborhood ('Midtown' vs 'Midtown Atlanta', missing 'Downtown St. Louis'), missed has_beach_access for 'near the beach'."
+    },
+    {
+      "failure_type": "wrongly_sought_information",
+      "count": 1,
+      "description": "Called seek_information for a departure date although the last turn gave 'May 21, 2025' and origin and destination were known."
+    },
+    {
+      "failure_type": "extra_flight_leg",
+      "count": 1,
+      "description": "User wanted only the return flight, but both an outbound and a return search were generated, with a non-standard cache key."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures come from violating existing rules rather than from missing rules: re-searching cached domains, re-passing applied filters, overwriting cache keys, ignoring that dietary or cuisine answers start the restaurant domain, and fabricating or truncating hotel params. A short, salient scope gate at the top of the skill, a worked-example refinement rule, a hotel parameter mapping rule (neighborhood wording, beach, num_people), and a flight date and one-way/return-only rule address each recurring pattern. The examples are generalised and avoid task-specific values wherever the rule can stand without them.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Turn-scope gate (check BEFORE writing code; most common errors in multi-domain chats)\n- First list the CACHE keys per domain. A domain that already has a key (flights, departure_flights, return_flights, hotels, restaurants, attractions, or any filtered_* variant) is NEVER searched again unless the user changed its route, city or dates. It is touched only if the LAST turn adds a constraint for that domain (then load -> filter -> save).\n- The last turn decides the domain. Dietary needs, allergies, cuisine, or restaurant rating or budget (usually the answer to the assistant's dining question) mean the restaurant domain, even if the user never wrote 'restaurant'. If CACHE has no 'restaurants' key, output ONLY `restaurants = search_restaurants(city=<trip destination city from earlier turns>, ...)` plus `save_to_cache(key=\"restaurants\", value=restaurants)`. Example: CACHE has 'flights' and 'hotels' (Memphis to St. Louis) and the last turn is 'I have a nut allergy and prefer Latvian' -> `search_restaurants(city=\"St. Louis\", has_nut_allergy_options=True, cuisine=[\"Latvian\"])`. Do NOT re-filter flights or hotels with constraints from earlier turns (class, neighborhood) that the CACHE summaries already show.\n- If the last turn gives only the stay length or hotel dates and 'flights' is already cached, run only `adjust_date` (if nights were given) and `search_hotels`. Do not re-run search_flights."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 26: Refinement worked examples (frequently broken)\n- Never call search_flights / search_hotels / search_restaurants when the CACHE already has a key for that domain and the last turn is a class, airline, time, amenity or budget answer. Example: CACHE has 'departure_flights' and 'return_flights', user says 'We'd like business class' -> `d = get_results_from_cache(key=\"departure_flights\")`, `d2 = filter_flights(prior_results=d, flight_class=[\"business\"])`, `save_to_cache(key=\"filtered_departure_flights\", value=d2)`, then the same three lines for 'return_flights' saved as 'filtered_return_flights'. Zero search_flights calls.\n- Read the 'Additionally filtering for ...' line of every key you load. Example: CACHE 'filtered_flights' says 'Additionally filtering for budget: $775', 'filtered_hotels' says 'Additionally filtering for budget: $65', and the user replies 'Yes, AA and a hotel with a gym and pool' -> `filter_flights(prior_results=f, airline=[\"AA\"])` only (do NOT pass budget again) and `filter_hotels(prior_results=h, gym_present=True, pool_present=True)` loaded from 'filtered_hotels'. Save each under a key that is NOT in CACHE (filtered_flights1, filtered_hotels1). Never save under the key you loaded."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 27: Hotel parameter mapping (search_hotels and filter_hotels)\n- Neighborhood: an area named in ANY turn goes in `neighborhood=[...]` in the user's wording INCLUDING the city ('Downtown St. Louis', 'Midtown Atlanta'). Never shorten it to 'Midtown' and never drop it, even when it arrives in the same turn as the dates. Example: earlier turn 'hotel in St. Louis, meeting room, business facilities, rating at least 4.5', last turn 'arriving December 12, 2025, leaving December 14, 2025, in Downtown St. Louis' -> `search_hotels(city=\"St. Louis\", checkin_date=[\"December 12, 2025\"], checkout_date=[\"December 14, 2025\"], neighborhood=[\"Downtown St. Louis\"], rating=[4.5, 5], has_meeting_rooms=True, has_business_center=True)`.\n- 'near the beach' / 'beach access' -> `has_beach_access=True`; 'city view' -> `has_city_view_rooms_present=True`. Carry every amenity stated in earlier turns into the first search_hotels call.\n- num_people only comes from an explicit headcount ('5 people', 'there are 4 of us'). 'family vacation', 'kid-friendly', 'anniversary', 'weekend getaway' or 'solo' never produce num_people, and never use num_people=1 as a default. 'Kid-friendly' alone yields no parameter. num_rooms only when a room count is stated."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 28: Flight date replies, one-way and return-only requests (supplements Rules 6, 9, 24)\n- A concrete date in the last turn ('We're thinking of May 21, 2025', 'leave on May 20, 2025') IS the departure date, even when phrased tentatively or when an occasion such as an anniversary was mentioned. If origin and destination appear in earlier turns, output `flights = search_flights(start_airport_city=<origin>, end_airport_city=<destination>, departure_date=[\"May 21, 2025\"])` plus `save_to_cache(key=\"flights\", value=flights)`. Never call seek_information for a date that is in the last turn.\n- One-way ('don't need a return flight'): a single outbound search saved as \"flights\". Add the hotel search only if a hotel was requested (nights -> adjust_date).\n- 'Just the return flight' with 'From May 16, 2025 to May 28, 2025' (outbound Anchorage -> Portland): make ONE search_flights call for the return leg only, from the destination city back to the origin on the LATER date (`start_airport_city=\"Portland\", end_airport_city=\"Anchorage\", departure_date=[\"May 28, 2025\"]`), saved as \"flights\". No outbound search and no 'outbound_flights' key. The two dates are still the hotel check-in (May 16) and check-out (May 28). If a hotel was requested and there is no 'hotels' key, run search_hotels in the same block with all earlier hotel preferences (beach access, pool, wifi). Leave cached 'restaurants' untouched."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

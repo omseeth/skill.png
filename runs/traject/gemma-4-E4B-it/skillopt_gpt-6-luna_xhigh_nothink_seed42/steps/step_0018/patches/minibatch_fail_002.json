@@ -1,0 +1,34 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "required_optional_group_misclassification",
+      "count": 3,
+      "description": "Optional fields were placed in required arrays across weather and e-commerce calls, including on endpoints with no required arguments."
+    },
+    {
+      "failure_type": "unrequested_or_adjacent_calls",
+      "count": 1,
+      "description": "The e-commerce trajectory added unrelated retailer and product-search calls beyond the specifically enumerated operations."
+    },
+    {
+      "failure_type": "schema_value_or_scope_mismatch",
+      "count": 3,
+      "description": "Calls also diverged on endpoint-native value forms or scope, including serialization, locale or enum values, query wording, and pagination or defaults."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most repeated actionable error was treating requested optional fields as required. A schema-first field ledger makes the required/optional distinction explicit before formatting, especially for endpoints with no required fields. A separate scope clarification addresses the unrequested marketplace and search calls; existing guidance already covers the observed value-normalization and pagination issues, so those rules are not duplicated.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n### Schema-first field grouping\nBefore formatting each call, classify every argument directly from that endpoint's Required and Optional parameter lists. The user's need for a value does not make an optional field required, and a field's value type does not determine its group. In particular, when an endpoint lists no required parameters, keep any supplied search, location, or filter fields in the optional array. Serialize values only after assigning their groups, then check each field against the schema."
+      },
+      {
+        "op": "append",
+        "content": "\n\n### Treat enumerated actions and sources as the call boundary\nWhen a request names specific platforms and assigns actions to them, treat that list as exhaustive unless the user explicitly asks for additional sources. Broad framing such as “comprehensive,” “market analysis,” or “additional options” does not authorize calls to other marketplaces. Likewise, a request for details about a named product does not also request a search for that product category; tie each call to an explicitly requested result."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

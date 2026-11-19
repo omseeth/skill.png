@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle",
+      "count": 7,
+      "description": "Executed search or refinement calls were not assigned and saved to cache, despite the explicit lifecycle requirement."
+    },
+    {
+      "failure_type": "conversation_delta_and_domain_scope",
+      "count": 4,
+      "description": "Agents skipped an update or worked on the wrong domain instead of applying the latest request to relevant cached results."
+    },
+    {
+      "failure_type": "flight_leg_handling",
+      "count": 1,
+      "description": "A round trip was sent as one call using unsupported return_date rather than separate outbound and reversed return searches."
+    },
+    {
+      "failure_type": "unsupported_inference_or_missing_mandatory_inputs",
+      "count": 2,
+      "description": "Agents inferred an unstated amenity or invented hotel dates and room count instead of respecting schema and mandatory-input limits."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent failure was omission of result assignment and cache saving. The skill already states this requirement, so the edit makes it an explicit per-call completion check without repeating or expanding rules for conversation scope, flight legs, or mandatory inputs that are already covered.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- Treat every search, filter, sort, and nearest-results call as incomplete until its exact returned object is assigned to a local variable and saved with `save_to_cache` under a unique, descriptive key. Do this separately for every call, including each flight leg and each refinement; never leave a bare tool call or omit saving because the result is also used later in the same code. Before finishing, check that every such call has a corresponding save. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,31 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "unsupported_parameter_inference",
+      "count": 1,
+      "description": "The agent invented a two-person hotel party size despite no traveler count being stated."
+    },
+    {
+      "failure_type": "missed_required_tool_call",
+      "count": 1,
+      "description": "The agent calculated hotel checkout directly instead of using adjust_date for the explicit stay length."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that hotel party size must not be assumed and make the required date-adjustment workflow concrete, addressing both observed errors without adding task-specific values.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "For hotels, when the check-in date and an explicit stay length in nights are known but checkout is not, use `adjust_date` to calculate checkout. Do not infer a stay length; ask when a required date cannot be obtained or derived from explicit information.",
+        "content": "For hotels, when the check-in date and an explicit stay length in nights are known but checkout is not, call `adjust_date(date=checkin_date, delta_days=stay_length_nights)` and use its returned value as `checkout_date=[checkout]` in the hotel search; do not calculate checkout manually. Do not infer a stay length; ask when a required date cannot be obtained or derived from explicit information."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+        "content": "\n- Never assume a default hotel party size, including two people, from a hotel request, stay duration, or general trip context. Set `num_people` only when an explicit count or unambiguous traveler descriptor establishes it; otherwise omit the field."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

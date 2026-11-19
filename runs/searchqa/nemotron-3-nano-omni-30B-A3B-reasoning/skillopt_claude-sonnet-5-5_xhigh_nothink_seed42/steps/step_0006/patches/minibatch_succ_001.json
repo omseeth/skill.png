@@ -1,0 +1,32 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Part-of-phrase or grammar clues ('The adverb in \"think fast\"') were answered correctly with a word taken from the quoted phrase itself. This is a legitimate exception to 'don't copy a clue word'.",
+    "A crossword-style 'X or Y' clue with two different definitions ('mouth of the Mississippi or a Helen Reddy \"Dawn\"') was answered with the single word that fits both halves (Delta).",
+    "A bare famous quotation with no 'this ...' pointer was answered with its author (Joyce Kilmer), not the poem title ('Trees').",
+    "A naming clue ('what our maids call the unpasteurized milk') was answered with the full standard term ('raw milk') even though the clue noun 'milk' is part of it.",
+    "Noisy or off-topic context for a descriptive clue about a well-known item (the Chipotle 'giant flour tortilla') was handled by answering from general knowledge (burrito) instead of refusing.",
+    "'These birds' / 'this north African group' slots were answered with the specific member the passages repeat next to the clue's anchors (Falcon, Moors), without extra descriptors."
+  ],
+  "patch": {
+    "reasoning": "These successes show several patterns the skill does not state. A bare quotation should map to its creator. A two-definition 'X or Y' clue needs one word that satisfies both halves. Grammar or part-of-phrase clues need a word from the quote, which looks like it conflicts with Rule 2. Naming clues need the full standard term even when it contains the clue's noun, which looks like it conflicts with Rule 4's 'missing part only'. The skill also lacks a fallback to general knowledge when passages are noisy. Encoding these patterns, with the boundary conditions that keep them from contradicting the existing rules, protects behavior that already works.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- A bare quotation, line of verse or lyric with no 'this ...' pointer (e.g. '\"I think that I shall never see a poem lovely as a tree\"') asks for its CREATOR or speaker (Joyce Kilmer), not the title of the work. Passages that repeat the line next to a name give the answer. Answer with the title only if the clue says 'this poem / this song / this phrase'."
+      },
+      {
+        "op": "insert_after",
+        "target": "Other named entities in the clue are anchors, never the answer.",
+        "content": "\n- Exception for part-of-phrase and grammar clues ('The adverb in \"think fast\"', 'the verb in ...', 'the first word of ...'): the answer IS a word from the quoted phrase ('fast'). Pick the word that has the stated role.\n- Two-definition clues joined by 'or' ('The mouth of the Mississippi or a Helen Reddy \"Dawn\"') work like crosswords: the answer is ONE word that satisfies both halves ('Delta'). Check each half against the passages and do not answer with just one half's entity."
+      },
+      {
+        "op": "insert_after",
+        "target": "Brief reasoning belongs before the tags.",
+        "content": "\n- Naming clues ('It's what they call the unpasteurized milk', 'known as ...') want the full standard term, even when it contains the clue's noun ('raw milk'). The 'give only the missing part' rule applies when the clue shares a quoted hint word with the answer ('hasty' -> 'pudding'), not when the whole term is what is being named.\n- When the passages are noisy or off-topic but the descriptors point to a famous, unambiguous item ('giant flour tortilla wrapped around meat, beans & cheese' at Chipotle -> 'burrito'), answer from general knowledge and never refuse. Where passages agree, take the specific member they repeat for 'these birds / this group' slots (Falcon, Moors)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

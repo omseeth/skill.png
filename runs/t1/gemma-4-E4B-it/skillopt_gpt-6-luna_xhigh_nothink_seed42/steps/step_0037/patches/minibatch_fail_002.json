@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_filtering",
+      "count": 5,
+      "description": "Follow-ups ignored compatible cached results, repeated covered searches, or failed to update every affected domain independently."
+    },
+    {
+      "failure_type": "required_arguments_and_result_binding",
+      "count": 2,
+      "description": "Hotel searches ran without required stay dates, and search results were saved using variables that had not been assigned."
+    },
+    {
+      "failure_type": "proximity_scope_and_prioritization",
+      "count": 2,
+      "description": "Nearest-results work was added without a proximity request or prioritized the hotel instead of the requested nearby restaurants."
+    },
+    {
+      "failure_type": "schema_and_entity_mapping",
+      "count": 1,
+      "description": "A state abbreviation was passed as a city and the requested attraction type was normalized."
+    }
+  ],
+  "patch": {
+    "reasoning": "Cache reuse is the most frequent failure. A compact multi-scope example makes clear that each changed domain needs its own retrieve-filter-save sequence, while unchanged scopes remain untouched. A concrete groupBy example resolves the ambiguity between the requested recommendation domain and its proximity anchor. The existing skill already explicitly covers required-argument checks and exact field/value mapping, so those rules are not duplicated.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Cache-aware tool workflow",
+        "content": "**When one turn changes multiple covered scopes, handle each independently:** retrieve the most constrained compatible cached result for every affected domain or leg, apply its new filterable constraint, and save the result. Do not stop after updating one domain or regenerate unchanged scopes; retrieve unchanged compatible results only when needed as inputs to an explicitly requested proximity operation."
+      },
+      {
+        "op": "insert_after",
+        "target": "Set `groupBy` to the domain the user wants prioritized.",
+        "content": "For example, when recommending restaurants near a hotel, prioritize restaurants with `groupBy=\"restaurant\"`; when recommending hotels near attractions, use `groupBy=\"hotel\"`. The anchor domain is not necessarily the domain to prioritize."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

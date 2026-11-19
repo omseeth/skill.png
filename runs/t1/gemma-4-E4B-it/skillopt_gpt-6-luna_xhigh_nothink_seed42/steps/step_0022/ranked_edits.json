@@ -1,0 +1,37 @@
+{
+  "reasoning": "Combined the three proposals on cache follow-ups into one explicit decision boundary and retrieve-filter-save pattern. Added focused clarifications for trip-window hotel dates, rating thresholds, exact attraction type mapping, and saving the assigned result. The existing skill already gives detailed required-argument gates and separate reverse-route searches, so those proposals would be redundant. [optimizer-ranked: selected 3/5 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "## Cache-aware tool workflow",
+      "content": "\n\n**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Tool results and constraints",
+      "content": "\n\n- Before finalizing tool code, verify that each `save_to_cache(value=...)` names the local variable assigned the corresponding tool result—not a guessed name derived from the domain or cache key. For example, assign `hotels = search_hotels(...)` and save with `value=hotels`.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "For example, put a state abbreviation in `state`, not `city`.",
+      "content": " For attractions, put the requested category in `type` with its exact value (for example, if the requested type is `Scenic`, pass `type=[\"Scenic\"]`).",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 0 reinforces the high-impact boundary between new searches and filtering compatible cached results. Edit 1 targets the recurring undefined-variable/save mismatch with an explicit assignment check. Edit 2 adds a concrete attraction-category field mapping, complementing the existing guidance to preserve category values exactly. The remaining edits are narrower or largely restate existing rules.",
+    "selected_indices": [
+      0,
+      1,
+      2
+    ]
+  }
+}

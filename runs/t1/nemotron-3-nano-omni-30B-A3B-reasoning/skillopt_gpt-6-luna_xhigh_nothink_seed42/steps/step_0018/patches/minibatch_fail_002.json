@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_cache_and_scope_errors",
+      "count": 5,
+      "description": "Calls ignored the latest request, used the wrong cached result, or unnecessarily repeated work in an unchanged domain."
+    },
+    {
+      "failure_type": "incomplete_result_persistence_or_invalid_runtime_calls",
+      "count": 5,
+      "description": "Result-producing calls were not consistently bound and saved, or tool definitions shadowed the runtime functions."
+    },
+    {
+      "failure_type": "missing_mandatory_information_inference",
+      "count": 1,
+      "description": "Hotel searches used invented stay dates and preferences instead of requesting mandatory missing dates."
+    },
+    {
+      "failure_type": "schema_location_mismatch",
+      "count": 1,
+      "description": "A state abbreviation was passed as a city rather than in the supported state field."
+    },
+    {
+      "failure_type": "flight_leg_modeling_error",
+      "count": 1,
+      "description": "A round trip was treated as one flight search, with the return date passed as an arrival date instead of a separate leg departure."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures involving dates, flight legs, schema fields, and result persistence are already explicitly covered by the skill, so repeating those instructions is unlikely to help. These edits clarify two remaining execution gaps: avoid redundant cache operations for unchanged domains, and protect the runtime tools from being shadowed by imports or redefinitions.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "\n- Keep cache operations scoped to the actions due on the latest turn. When a turn changes one domain, leave unrelated domains with valid cached results untouched unless they are needed as input to a requested cross-domain operation or the user is currently expecting those results. Retrieving an unchanged result does not create a new result: do not save a duplicate under another key merely to repeat it. Every planned tool call should serve an outstanding request or constraint."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- Call the tools already exposed in the runtime directly. Do not import tool libraries, redefine or wrap tool functions, or replace their models or signatures; shadowing a tool can turn a valid result-producing call into a no-op or `None` result."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

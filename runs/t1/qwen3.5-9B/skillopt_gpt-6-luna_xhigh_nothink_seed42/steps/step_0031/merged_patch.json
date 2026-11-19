@@ -1,0 +1,40 @@
+{
+  "reasoning": "Kept the failure-driven runtime, cache-delta, and proximity guidance as priorities. Folded the overlapping success guidance about avoiding extra presentation work into the runtime edit. Preserved the distinct success insights about party size not affecting flights and flight origin requirements. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Write every result-producing search, filter, sort, or `search_nearest` call in two steps: assign its returned result to a variable, then save that exact, complete result object with `save_to_cache` under a fresh, descriptive key. Do not extract `.search_results`, rebuild, or merge tool output before saving. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Retrieve cached results by assigning `get_results_from_cache(...)` to a variable before passing them to another tool; do not nest the retrieval call. Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+      "content": "- **Runtime tool-call protocol:** Use only runtime-provided tools, cache functions, and schemas; do not import or redefine them or add helper code. Use supported keyword arguments and types (except for `seek_information`); never invent criteria or pass unsupported arguments. For every intended result-producing search, filter, sort, or `search_nearest` call, use `result = tool(...)` followed by `save_to_cache(key=\"<fresh descriptive key>\", value=result)`, preserving the complete returned object unchanged. Use distinct keys for separate domains, itinerary legs, and updates. For cached inputs, first assign `base = get_results_from_cache(key=\"<exact key>\")`, then pass `base` to the next tool; never nest retrieval or leave a result-producing call bare or unsaved. Make each needed operation once: avoid duplicate or unrelated calls, re-saving unchanged results, and extra result-printing, summaries, subscripting, or presentation/post-processing. Before submitting, audit that each intended operation is assigned and saved exactly once.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Handle follow-ups incrementally through the cache:**",
+      "content": "\n\n**Cached-delta call:** For each short reply, accepted offer, or new constraint, compare the latest suitable same-domain cache result with the requested deliverable. If a constraint is missing, choose a base for the same domain, location, and itinerary leg that already reflects prior constraints; retrieve it with `base = get_results_from_cache(key=\"<exact key>\")`, filter using only the new constraint(s), then assign the filtered result and save that exact object under a fresh key. Never treat cache presence or unchanged re-saving as completion, replay earlier constraints, or copy display-normalized values into tool arguments; use the schema-accepted format. If there is no suitable base, search once when required inputs are complete, or seek the missing required inputs.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Use proximity tools only for proximity requests:**",
+      "content": "\n\nTreat a named downtown, neighborhood, or district—even when phrased as “near Downtown”—as a location constraint, using the full area phrase in `neighborhood`; do not use it alone as an anchor for `search_nearest`. Use `search_nearest` only for an explicit proximity relationship to a distinct anchor, with the latest suitable results for exactly two distinct relevant supported domains, each passed once, and `groupBy` set to the requested target.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "content": "Do not infer unspoken counts or pass traveler counts to flight tools. Party size is not a flight criterion: do not re-search or filter flight results for it. If party size is the only new information for an otherwise complete flight request, leave the flight results unchanged and do not perform a flight operation; if a required flight input such as `departure_date` is missing, seek that input.",
+      "support_count": 5,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "`search_flights` requires `departure_date`; `arrival_date` is optional, even for a round trip.",
+      "content": "`search_flights` requires `departure_date` and a starting location via one of its supported origin fields (`start_airport_city`, `start_airport`, or `start_airport_code`); `arrival_date` is optional, even for a round trip.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ]
+}

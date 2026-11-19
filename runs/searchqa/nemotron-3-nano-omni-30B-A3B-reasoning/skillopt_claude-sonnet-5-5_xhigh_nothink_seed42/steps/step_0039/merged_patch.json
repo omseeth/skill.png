@@ -1,0 +1,89 @@
+{
+  "reasoning": "Failure-driven edits are kept: PERSON SLOT, REALM slots, ABBREVIATION expansion, the real-people-list replacement, the verbatim-copy tightening for Rule 3, and ANCHOR-STRIP. I neutralized task-specific gold answers in their examples ('Transit of Venus', 'Roman Empire' only as the existing example), per the optimizer memory. Group 1 appended a FINAL GATE at the end of the file and Group 2 added a top-of-skill answer template. They overlap on the substitution test and the 'first name / list member is never the answer' rule. The optimizer memory says the fix is a short, mandatory, visible procedure at the TOP of the editable part, because a rule at the bottom of a long list is never applied. I merged the two into one top template. It keeps the failure gate's unique items (exact archive copy, never a first name or a list member). It also adds the 'verify one distinctive clue detail' step, a shared mechanism the memory ranks as fixable. It is told to replace the protected block's check line, so the agent writes one line instead of two. The separate bottom FINAL GATE is dropped as a duplicate that adds length. Success edits kept because they cover patterns no failure edit addresses: the 'seen here' no-image fallback, actor/scene/premise film clues, quoted lines or lyrics asking for the title, numeric/fraction matching, passage headings as evidence, and the deletion of a near-duplicate Rule 4 bullet so net length shrinks. I dropped the aside-corroboration replacement and the relative-of-this-person bullet. The first would stack another exception onto an old bullet, and the second duplicates the existing POSSESSIVE / OWNER bullet. I removed gold-answer examples (Cyprus, From Here To Eternity, Phone Booth, Losing My Religion) from the kept success edits. Rule 3's verbatim-override behavior is preserved, and nothing touches the protected block.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "# Question Answering Skill",
+      "content": "\n## Answer procedure (mandatory; this is the check line, write it once before every answer)\n`Type: <noun the clue asks for> | Evidence: <quoted passage line or own fact> | Check: <candidate fits the clue's blank, is not a clue word, and matches one distinctive clue detail (team, number, size, year)>`\n- Substitution test: put the candidate into the clue's 'this X' slot. If it becomes a different kind of thing (an event instead of a city, a base instead of an acid) or repeats a noun the clue already states, reject it and pick again.\n- Title + name ('President X') asks for what the person leads. A quote asks for the speaker, usually by famous surname. Match the singular or plural of the clue's noun.\n- Archive hit 'clue | X. right:' -> answer exactly X, nothing added. A first name alone, or one member of a list of names, is never the answer.\n",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+      "content": "- PERSON SLOT: 'this man / this author / he / she / this <occupation>' plus a deed, discovery, lawsuit or work asks for the PERSON who did it, as 'First Last'. Passages are often full of the effect, theory, case or place named after that person ('X radiation', 'X v. Board'). Those are the wrong type. Name the plaintiff, discoverer or author the passages tie to the clue's action.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Rule 2: Answer the referent, not a word from the clue",
+      "content": "\n- REALM slots: an EMPIRE / KINGDOM / DYNASTY slot ('incorporated into this empire') wants the realm itself in the form the passages use, never its capital or one city of it.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- 'N-word' hints ('this 3-word phrase') work like a letter count: the answer must have exactly N words.",
+      "content": "- ABBREVIATION / 'STANDS FOR' clues ('X stands for these ...', 'the initials ... mean'): the answer is the spelled-out EXPANSION, words that begin with the abbreviation's letters, taken from a passage that glosses it. The clue's own descriptive words ('creatures', 'these') are never the answer. Copy the expansion in Title Case as the passage gives it.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- 'N-word' hints ('this 3-word phrase') work like a letter count: the answer must have exactly N words.",
+      "content": "- ACTOR / SCENE / PREMISE clues about a movie (two named actors in a famous scene, or an actor 'trapped in one of these'): find the film title that the passage headings repeat next to the named actors or scene. If the clue asks for 'this film', answer the title as written in the passages. If it says 'one of these' / 'this <object>', answer the object itself, often the key noun of that title. Never answer with an actor or the director.\n- QUOTED LINES / LYRICS ('hit containing the lines \"...\"', 'poem that begins \"...\"'): the answer is the TITLE of the work, not a line, the artist or the album. The quoted words usually do not contain the title. Find passages repeating the same lines and take the title from their heading. Check the year or other clue detail, and drop 'by <artist>' and site words.",
+      "support_count": 2,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Rule 1: Questions are Jeopardy-style clues; always answer with the missing entity",
+      "content": "\n- 'Seen here' / 'shown here' / 'heard here' clues (a flag, map, structure, painting) refer to an image you cannot see. Do not stall or answer with a description. Build the answer from the clue's remaining words, combining them with passages that repeat those words and your own knowledge, and answer with the entity type the clue names.",
+      "support_count": 2,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "If the list is of real people, answer with the team, state or other entity they share.",
+      "content": "If the list is of real people (even just two bare names with no other words), answer with the ONE thing they share: the state, country, team, party, office or group they belong to (two senators -> the state they represent). NEVER answer with one of the listed people or a first-name variant of one. Look for the place, team or office that recurs next to both names across the passages.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Do not lengthen it with descriptors ('Madge', not 'Madge the Manicurist').",
+      "content": "Copy ONLY the text between '|' and '. right:'/'wrong:'. If that text is one word, your answer is one word. Never lengthen it with descriptors, the clue's role noun, or a fuller name taken from other passages ('Madge', not 'Madge the Manicurist'), even when other passages use the longer form.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "The 'do not repeat clue words' rule is for a separate modifier already stated in the clue ('hasty' + pudding).",
+      "content": "- ANCHOR-STRIP: if your candidate contains a name the clue already states, cut that name. A 'term for' clue that names the actor or object of an event wants the generic term, not the full event name ('Eclipse', not 'Solar Eclipse', when the clue already says 'solar'). A 'this mint / airport / port / university' clue plus a city, mint mark or campus hint wants the bare place name or parent institution, with the clue's city or campus removed from it.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Rule 3: Look for the clue repeated verbatim in the context",
+      "content": "\n- NUMERIC / FRACTION clues ('about 1/5 the population', 'nearly half'): convert the clue's quantity to the figure the passages use (1/5 = about 20%) and pick the candidate whose stated share fits. Reject candidates whose figures are clearly different.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- If the context offers several candidates (a different player in the same article, a film and its song), pick the one that satisfies ALL distinctive details: exact numbers, team, years, place. Do not choose one that fits only some.",
+      "content": "- PASSAGE HEADINGS AS EVIDENCE: with no archive answer line, note which [TLE] headings and first sentences restate several of the clue's distinctive details (network, actor, columnist, story and author). The entity those pages share is the answer; commit to it rather than swapping in a related film, event or relative also named there. For a title answer, copy the title only: strip site suffixes ('- Wikipedia', 'Songfacts'), bylines and subtitles, and keep its own hyphens and capitalization.",
+      "support_count": 2,
+      "source_type": "success"
+    },
+    {
+      "op": "delete",
+      "target": "- Use the shortest standard form that names the entity, as a trivia answer key would. If the clue says 'this vitamin', answer with just the letter. If the clue names a group or band, give the group's name only. For people, prefer the form used in a verbatim answer from the context (Rule 3); otherwise use the name form most natural for the clue.",
+      "content": "",
+      "support_count": 1,
+      "source_type": "success"
+    }
+  ]
+}

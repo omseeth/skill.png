@@ -1,0 +1,42 @@
+{
+  "reasoning": "Preserved all six failure-driven edits as the higher-priority corrective guidance. Added the success-driven date and optional-argument specifics because they complement, rather than conflict with, the general required-input checks. [optimizer-ranked: selected 4/7 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- At each turn, inspect cache summaries before searching. If a relevant result exists for the same domain, city, dates, and itinerary leg, retrieve it with its exact key using `get_results_from_cache`, then apply the matching `filter_*` tool with that result as `prior_results` and the newly supplied constraints. If no suitable cached result exists, run a new search. Apply new preferences to all relevant cached results or itinerary legs, but do not repeat valid searches or regenerate unaffected domains.",
+      "content": "- At each turn, inspect cache summaries and identify which domains or itinerary legs the latest turn changes. For each changed request, retrieve by exact key the most refined cached result that matches the domain, location, dates or leg, and constraints, then apply the matching `filter_*` tool with only the newly supplied constraints. A cached result is suitable only when its original query scope can cover the current request: do not use a narrow named-item result for a newly broad category request, or a broad-category result when the user now requests a specific item; do not carry earlier entity constraints into a distinct request unless reaffirmed. If no suitable result exists, make a focused search for the missing request. Apply trip-wide preferences to every relevant cached result or itinerary leg, and leave unaffected domains alone rather than repeating valid searches.",
+      "support_count": 5,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Required-argument checks",
+      "content": "- For hotel searches, require actual check-in and checkout dates; for flights, require an actual departure date for each leg, including the return leg of a round trip. Treat vague timing such as “last-minute” as missing date information, not as a date value.\n- Omit unspecified optional arguments rather than passing `None` placeholders.",
+      "support_count": 6,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- Before calling a travel tool, check its required parameters against the full conversation and available context. If any required details are missing, use `seek_information` to ask only for those details; do not invent values, pass `None`, or run a partial search. For requests spanning multiple domains, bundle missing required details for all requested domains into the same information request. Do not ask for optional preferences.",
+      "content": "- Check mandatory inputs separately for every requested domain and itinerary leg against the full conversation and available context. If details are missing, do not call that domain's search or invent values or pass `None`; make one `seek_information` request listing only the missing mandatory details across affected domains and legs. Still run and cache other requested searches whose required inputs are complete; missing information for one domain or leg does not block a fully specified search in another. Do not ask for optional preferences.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "## Flight itinerary legs\nTreat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to both legs, and do not combine distinct legs by repeating keyword arguments in one call.",
+      "content": "## Flight itinerary legs\nTreat each explicitly described flight leg as its own directional search with its own origin, destination, and `departure_date`. For a round trip or stated outbound/return date range, make a separate outbound search from origin to destination on the first date and a return search from destination to origin using the return date as that call's `departure_date`. Never encode the return as `arrival_date` on the outbound call or assume an origin or destination that the user has not stated. Apply an explicitly requested flight class to both legs, and do not combine distinct legs by repeating keyword arguments in one call. On follow-up turns, filter each cached leg affected by a trip-wide preference, including the return leg unless the user makes the preference leg-specific. For flight-time constraints, use a format accepted by the tool (for example, `12:00 PM`, not an unvalidated `HH:MM:SS` string); translate broad preferences such as “afternoon” into a bounded interval using the accepted format.",
+      "support_count": 4,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Prioritized cache-scope correctness and concrete required-date checks, which address recurring errors across requests. The multi-domain edit fills a clear gap by allowing fully specified searches to proceed when another domain is missing information. The flight edit adds useful leg-specific and time-format safeguards, though it is narrower than the others. The remaining edits mostly restate existing guidance or address more limited cases.",
+    "selected_indices": [
+      0,
+      6,
+      5,
+      4
+    ]
+  }
+}

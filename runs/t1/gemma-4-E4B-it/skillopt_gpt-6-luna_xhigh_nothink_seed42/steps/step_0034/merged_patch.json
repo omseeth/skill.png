@@ -1,0 +1,54 @@
+{
+  "reasoning": "Preserved all six failure-driven edits, prioritizing cache-scope handling, accepted proximity offers, flight-leg validation, amenity mapping, and domain-specific party-size interpretation. Retained the success-driven required-input clarification and its bounded cross-domain context rule because it does not directly conflict with the failure patches. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Maintain active supported constraints for each domain across the full conversation. When making a new search, include all still-active criteria the user has already supplied, even if the latest turn only supplies a location or another missing detail. When filtering, account for active criteria not already embodied in the cached result as well as newly supplied criteria. Drop or replace a constraint only when the user withdraws or changes it.",
+      "content": "Maintain active supported constraints for each domain across the full conversation. At each turn, resolve the latest reply using the full conversation, preceding assistant question or offer, and cache summaries; identify only scopes changed by that turn. Do not regenerate, refilter, or resave unchanged domains or legs, except to retrieve compatible datasets needed for an explicit proximity operation. For a genuinely new or uncovered scope, include all still-active supported criteria, even when the latest turn supplies only a missing detail. Drop or replace a constraint only when the user withdraws or changes it.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Identify only the domains or itinerary legs changed by the latest user turn. For each changed request, if a compatible cached result exists, retrieve it with `get_results_from_cache(key=\"<literal cache key shown in the summary>\")` and assign the returned object to a local variable; cache keys and summaries are not Python result variables. Choose the most constrained cached result that still covers the request: its domain, location, dates or leg, and original scope must be compatible, and it must not be narrower than the requested scope. Prefer a result that already embodies the greatest number of still-active criteria, and retrieve it by its exact cache key. A result restricted to a different category or entity does not establish that a newly requested specific entity is included; search if the cached scope cannot cover it. Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result. A cached proximity result may also be used as filter input when its candidate set remains valid. Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no cached result can cover the changed scope.",
+      "content": "- For each changed scope, inspect the cache summaries and retrieve the most constrained compatible result by its exact key using `get_results_from_cache(...)`; assign the returned object to a local variable, since a cache key or summary is not a Python result variable. The result must cover the requested domain, location, dates or leg, and entity, and must contain candidates for the request. A broader candidate set may cover a narrower request only when it remains valid and a supported filter can narrow it; a result restricted to a different category or entity does not establish that the requested entity is included. Treat constraints shown in the cache summary as already applied. Use the matching `filter_*` tool only when a new or changed supported filter remains, passing that constraint and any still-active constraints not embodied in the selected result, but not repeating constraints already embodied there. Save and use the filtered result downstream, including for `search_nearest`; a cached proximity result may be filter input when its candidate set remains valid. Do not base-search merely to add a filterable preference. Search only when no compatible cached result can cover the changed scope.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "content": "- Call `search_nearest` only when the user explicitly requests proximity or accepts an assistant's offer to find proximity; merely mentioning a hotel and attractions or restaurants for the same trip or city does not imply proximity. For an accepted offer, retrieve the compatible cached hotel and target-domain datasets and run `search_nearest`; do not substitute a new category when the offered scope is already cached. If an anchor or target scope is genuinely missing, obtain only the missing relevant dataset using the established trip context. When the user asks for something near a named place, resolve the target domain from context and treat the named place as a proximity anchor, not as a neighborhood or entity filter on the target domain. Use the supported entity field for the anchor and the established trip context for target-domain candidates. Set `groupBy` to the domain the user wants recommendations for: “restaurants near the hotel” means `groupBy=\"restaurant\"`, while “a hotel with restaurants nearby” means `groupBy=\"hotel\"`. Preserve an earlier explicit proximity request unless withdrawn, and refresh the nearest results when a changed input requires it.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Flight itinerary legs",
+      "content": "**Direction and segment check:** Validate each leg's origin and destination independently. A known destination does not establish the origin; if the origin is missing, seek that mandatory detail rather than swapping in the destination or passing `None`. For an explicitly ordered multi-city route chain, search every described segment, including intermediate legs, rather than collapsing the chain to only outbound and return. Map dates to segment departures according to the associations and order established by the conversation.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not add unrelated preferences.",
+      "content": "For hotel amenities, map a request for a gym or fitness center to `gym_present=True`. Use `has_fitness_class=True` only when the user requests exercise or fitness classes.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+      "content": "- Map explicit traveler descriptors to supported party-size fields only for the domain they clearly describe. For hotel searches, “solo” or “traveling alone” means `num_people=1`. Apply a stated count to hotel `num_people` only when it clearly describes the hotel occupants; do not transfer a passenger count from a flight request to a separate hotel request without clear hotel-party intent. Use stated party sizes for their described domain, but do not infer an exact count from vague terms such as “family.”",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs.",
+      "content": "- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). For a new flight search, an arrival date or time does not substitute for the required departure date; treat a missing departure date as a missing mandatory input and seek it along with any other missing mandatory details. Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs.\n\n- For explicitly linked flight-and-hotel requests on the same single-destination trip, reuse unambiguous context across domains: use the flight destination as the hotel city, or the requested hotel city as the flight destination when it is clearly the trip's endpoint. If flights are clearly for an already dated hotel stay, use its check-in and check-out dates as the outbound and return flight dates unless the conversation indicates different flight timing. Do not infer a flight origin from the hotel location. Do not apply this rule to ambiguous or multi-city itineraries, or create a domain the user did not request; seek any remaining mandatory details.",
+      "support_count": 2,
+      "source_type": "success"
+    }
+  ]
+}

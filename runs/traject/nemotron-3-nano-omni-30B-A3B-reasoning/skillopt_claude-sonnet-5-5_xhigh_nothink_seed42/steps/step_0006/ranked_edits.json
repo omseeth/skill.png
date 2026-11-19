@@ -1,0 +1,42 @@
+{
+  "reasoning": "All 9 failure-driven edits are kept as written: tool-name format, single-bracket and JSON-shape rules, Required-none and count rules, value normalisation, search vs auto-complete, object-noun matching, sibling wording, checklist completeness, and don't-stop-early. From the success group I kept only what the failure group does not cover. Kept: (a) the Steam giveaway platform-filter example, (b) the sibling-endpoint rule based on time or ownership wording (upcoming, played, trending), (c) the filter-word to optional-parameter mapping (active/federal, exact flag, limit, smtp/timeout, wordLength vs min/max, Content-Type, hyphenated locale, no invented page/limit), and (d) the long-list and narrative-query checklist rules. Dropped as duplicates of failure edits: the 'several values -> one comma-separated entry' bullet and the 'one clause = one call with all qualifiers' bullet. The success replacement of the 'Do not invent parameters' bullet keeps that original line as its final line, and the success edit on the 'helper calls' bullet is now an insert_after, so neither conflicts with the failure insert_afters on the same anchors. I resolved the success group's internal case inconsistency (`federal` vs `Federal`, `en-us` vs `en-US`) by telling the model to follow the case style the schema shows. The protected section is untouched. [optimizer-ranked: selected 4/13 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+      "content": "- Filter words also map to optionals. Check status, level, scope and flag words in each clause against the schema and include the match; scan clause by clause, word by word:\n  - 'active federal politicians' -> active `true` AND level_of_government `federal` (use both when both words appear; follow the case style the schema shows). 'US sources' -> `country` = `us`/`US` per the schema's style.\n  - 'one card from page 1' -> page `1` AND pageSize/limit `1`; 'first 10' -> limit `10`.\n  - 'without requiring exact title matches' -> exact `0`; 'exact match' -> exact `1`. Follow the schema's own flag convention (`0`/`1` when the description says `Default 0`, otherwise `true`/`false`).\n  - 'limited to 150 characters' -> limit `150`; 'including STEREO_A and STEREO_B data' -> enable `STEREO_A,STEREO_B`; 'from CNN' -> newspaperId `CNN`; 'specifically in English' -> the language field, in the format and case the description shows (e.g. `en-us` or `en-US`).\n  - 'SMTP checking with a 10-second timeout' -> smtp `true`, timeout `10`. 'N dice with S sides, R times' -> dice `N`, sides `S`, rolls `R`.\n- Exact vs bounded values: '7-letter word' or 'exactly 16 strokes' -> the exact-value parameter (`wordLength`=`7`), not `minLength`/`maxLength`. Use min/max parameters only for 'at least' / 'at most'.\n- If the schema lists a header-style optional `Content-Type`, include it with value `application/json`.\n- Locale/language codes use the hyphen form (`en-US`), not `en_US`.\n- Include `page`/`limit` only when the query mentions a page or a count. 'Most recent reviews' -> just the sort field (e.g. `sort_order`=`DATE_DESCENDING`), with no invented `page`.\n- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+      "support_count": 3,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not close the list early or leave stray brackets.",
+      "content": "\n- Exactly one `[` opens and one `]` closes the whole answer. Never wrap each call in its own brackets or separate calls with `], [` (wrong: `[{A}], [{B}]`; right: `[{A}, {B}]`). Never write `}],` or `}]}` between calls. The answer ends with `}]` immediately followed by `</answer>`, with no extra `}` or `]`.\n- Write every call in exactly this shape, comma-separated, with the single closing `]` only after the last object: `[{\"tool name\": \"A: b\", \"required parameters\": [{\"name\": \"x\", \"value\": \"1\"}], \"optional parameters\": []}, {\"tool name\": \"C: d\", \"required parameters\": [], \"optional parameters\": [{\"name\": \"q\", \"value\": \"v\"}]}]`. Never list bare parameter names (`[\"category\", \"country\"]`); every entry is a `{\"name\", \"value\"}` object with a real value from the query. Never omit `required parameters` or `optional parameters`, even when empty. After writing, re-read the list and check brackets, braces and commas.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+      "content": "\n- For a long comma-separated query, map each item to exactly one call. Split 'X and Y' into two calls when they need different endpoints (e.g. 'islands and stats'). Items that need no input ('store information', 'character listings', 'a random card draw') still get a call with `[]` parameter lists, because the clause names them. Skip sibling endpoints of the same provider that no item names (e.g. engravings when only raids, islands and stats are asked for).\n- Narrative or third-person queries ('The user searched X, then accessed Y, finally checked Z...') are checklists. Make one call per described action, using the quoted terms and numbers as values. Ignore closing commentary about the user's purpose ('possibly for analysis of...'), which asks for no call.",
+      "support_count": 3,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not borrow a similar name from a sibling tool (use `region` if the tool has `region`, not `loc`).",
+      "content": "\n- Re-read the tool's schema before writing each call. If it shows `Required parameters: none`, its `required parameters` list MUST be `[]`. Every value the query supplies, even its main input such as `artist_id`, `lat`/`lon` or `starid`, goes in `optional parameters`. Never promote an optional-schema parameter to required. Put all filters in ONE `optional parameters` list; a second `optional parameters` key wipes the first (e.g. speaker/topic/min_duration/date filters).\n- Count phrases ('15 videos', 'first 15 posts', '3 scores', 'limit to 25', '10 cards per page') always map to the tool's count field (`per_page`, `limit`, `pageSize`, `count`), even when a page number is also given ('first 15 posts' -> per_page `15` and page `1`). Several values for one parameter (e.g. science and technology, or 'Yohkoh, STEREO_A, STEREO_B' -> `enable`) go in one parameter, comma-separated with no spaces: `science,technology`.",
+      "support_count": 2,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "I ranked by support count, breadth of the failure pattern, and fit with the existing skill. [11] has the highest support (3) and teaches a general scan of each clause for filter, status, count and exact-value words that map to optional parameters. That is a widespread miss, and the edit keeps the original 'do not invent' rule. [1] targets bracket and list-structure errors, which the skill says score zero. It adds concrete right and wrong examples that the current one-line rule lacks. [12] (support 3) covers long comma-separated and narrative queries, so every clause gets a call, including no-input ones, while commentary and unnamed siblings are skipped. This fixes both missing and extra calls. [2] fixes required-versus-optional placement when the schema says 'Required parameters: none', maps count phrases to the count field, and merges multi-value parameters into one comma-separated value. Together these address frequent parameter-level errors. [0] (tool-name heading format) is also important, but it covers a narrower failure than [2]. [3], [8] and [5] are useful but narrower or have only one supporter. [4], [6], [7], [9] and [10] are tied to specific scenarios.",
+    "selected_indices": [
+      11,
+      1,
+      12,
+      2
+    ]
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "strength_mismatch",
+      "count": 5,
+      "description": "The agent picked a weaker truncated conclusion (bare claim, 'cannot remain bounded', 'ergodic', 'residually free', local basis) when a stronger, fully proved option was listed (T1, T3, T4, T6, T8)."
+    },
+    {
+      "failure_type": "strength_mismatch",
+      "count": 2,
+      "description": "The agent picked an option with unverified extra specifics: a fabricated larger numeric bound, or an unproved asymptotic coefficient (T2, T5)."
+    },
+    {
+      "failure_type": "condition_miss",
+      "count": 1,
+      "description": "The agent chose an option with a spurious hedge ('smoothness up to t=0 does not follow') even though the stated compatibility hypothesis gives it (T7)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Every failure is a mistake about how strong the claim should be. Five times the agent defaulted to a safe, weaker, or hedged conclusion where the full theorem was listed. Two times it picked an option carrying extra specifics (large constants or coefficients) it had not verified. The skill is empty, so these edits add a procedure for ranking options by implication strength, a check on every extra clause, a rule against defaulting to weak options, and a rule for options that hedge or add caveats.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Protocol for 'strongest statement / strongest conclusion' questions\n1. Options are usually variants of one theorem: the true statement, truncated versions (a conclusion dropped), inflated versions (an unproved 'moreover' clause, a sharper constant, or a weaker hypothesis), and altered versions (wrong hypothesis, quantifier, or direction).\n2. Before choosing, rank the options by implication (which option implies which). Split each option into atomic clauses and mark each clause as proved, derivable from the stated hypotheses, or unverifiable/false.\n3. Choose the strongest option in which EVERY clause is justified. Discard options with a false or unjustified clause, and also discard options that are strictly implied by another fully justified option.\n4. Do not default to the bare or minimal option because it feels safe. If a stronger option adds a natural consequence that you can derive from the given hypotheses, that option is the answer."
+      },
+      {
+        "op": "append",
+        "content": "## Common weak-vs-strong pairs (the stronger one is often the proved result when the hypotheses are special)\n- Finite-time blow-up is stronger than 'unbounded / not globally bounded'. Global unbounded existence is a different claim.\n- Weak mixing is stronger than ergodicity. Strong mixing is stronger still, but is often not what is proved.\n- 'Fully residually free' is stronger than 'residually free' or 'limit group'.\n- A global statement (a basis or object defined on the whole space) is stronger than a local or small-open-subset statement.\n- An extra consequence that follows from a hypothesis stated in the problem (injectivity, separation of points, finiteness) should be used, not left out.\nFor each such pair, check whether the problem's hypotheses are strong enough to reach the upper member. If they are, pick it."
+      },
+      {
+        "op": "append",
+        "content": "## Overreach check (inflated options)\n- An option that adds specific numerics (explicit asymptotic coefficients, exact constants, extra sign or monotonicity claims, a 'moreover' clause about large-time behaviour) is the typical distractor. Keep it only if you can derive the extra detail. If you cannot, prefer the clean statement that is certainly proved.\n- For numerical bound questions (kissing numbers, packing densities, and similar), 'strongest that holds' means the best bound actually established in the literature. Larger numbers are often fabricated over-claims. Anchor on the best bound you can recall or verify, and do not pick the largest number just because it is larger. Be sceptical of any lower bound that exceeds the known record."
+      },
+      {
+        "op": "append",
+        "content": "## Hedged or negative-caveat options\n- Options of the form 'the most one can conclude is...', 'need not hold', 'does not follow', 'only locally / only for short time', or 'hypothesis X is not needed' are usually false when the problem states precise, standard hypotheses. Read every stated hypothesis (compatibility conditions, smoothness of data, dimension restrictions, positivity) as intended to be used. Under such hypotheses the full classical conclusion normally holds: uniqueness and global existence, with regularity up to t=0.\n- Conversely, reject options that claim a stated hypothesis is unnecessary, or that replace a hypothesis with a different one (for example n≡2 mod 4 instead of n divisible by 4).\n- Compare near-identical options word by word, especially quantifiers ('every', 'almost every', 'there exists'), uniqueness, and the domain of the conclusion."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

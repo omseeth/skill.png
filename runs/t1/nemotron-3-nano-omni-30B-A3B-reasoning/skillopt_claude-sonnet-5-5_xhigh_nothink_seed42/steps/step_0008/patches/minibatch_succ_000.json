@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Restaurant follow-up (neighborhood or rating) with a cached 'restaurants' key: load the key, call filter_restaurants with ONLY the new constraint, and save as filtered_restaurants. Cuisine, vegetarian and city already shown in the CACHE summary were not repeated. 'at least 3.0' became rating=[3.0, 5]. Three of the eight trajectories did this.",
+    "Flight request with origin and destination but no date, and only extra context (a layover city, a 'specific arrival airport'): output only seek_information for the departure date, with no search call. Two trajectories did this.",
+    "A reply that gives only party size ('There are 5 of us') on a flights-only conversation with cached flight keys: no new constraint, no re-search, no filter. The agent only read the cached keys back.",
+    "Earlier 'no' / 'no limit' answers (budget, dietary needs) were correctly turned into NO parameters, never budget=0 or a dietary flag."
+  ],
+  "patch": {
+    "reasoning": "The restaurant-refinement and missing-date patterns are already covered by Rules 6 and 17. Three small gaps remain. (1) A party-size reply on a domain whose tools have no such parameter should be treated as a no-new-constraint turn, not filtered or re-searched. (2) 'no' / 'no limit' answers to an assistant question must not become parameters. (3) Layover and airport preferences are context, not dates, so the missing departure date must still be asked for. These are concise additions to existing rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Hotel amenity wording: 'fitness center' or 'fitness classes' -> `has_fitness_class=True`; 'gym' -> `gym_present=True`.",
+        "content": "\n- A reply that gives only a party size ('There are 5 of us', 'it's for 4 people') on flights, restaurants or attractions adds no parameter. Treat it as a no-new-constraint turn. Do not re-search, do not call filter_* with invented args, and do not pass num_people. If the CACHE already holds the domain, only read it back with `x = get_results_from_cache(key=\"<exact key>\")` (one load per cached flight key). Never print results."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Include optional details the user explicitly stated (num_rooms, num_people, budget, amenities, cuisine, ...) as keyword args in the search call, and nothing the user did not say.",
+        "content": "\n- Answers such as 'no', 'no limit', 'none', 'no restrictions' or 'anything' to an assistant question (budget, dietary needs, rating) mean NO constraint. Leave that parameter out. Never pass budget=0, a huge budget, or a False dietary flag for them."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not search, and do not ask about class, airline, time, return date, or passenger count.",
+        "content": " A layover city ('with a layover in St. Louis'), a 'specific arrival airport', a multi-city route or a preferred class are also only context. Without an explicit departure date, still output only the departure-date seek_information."
+      }
+    ]
+  },
+  "source_type": "success"
+}

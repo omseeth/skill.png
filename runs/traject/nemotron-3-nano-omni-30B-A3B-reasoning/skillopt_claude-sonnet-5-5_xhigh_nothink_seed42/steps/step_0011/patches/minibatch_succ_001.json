@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "In news, education and e-commerce queries, the agent picked the sibling endpoint whose name carries the query's distinguishing word: month's top vs all-time top vs latest (dev.to), Recent 50, Youm7 vs France24 (a named source), /today vs /search/{term}, math fact vs trivia fact, practice question vs drill details, number of schools vs list of schools, get-images vs get-financing-offers.",
+    "Every enumerated clause got exactly one call, and zero-parameter tools were written with `required parameters: []` and `optional parameters: []` rather than padded with invented optionals. IDs and codes were copied verbatim as strings (026000, 117110, drill IDs, SKUs, ASINs).",
+    "A weather query asking for 'current' and 'forecast for the next 3 days' became two calls: a realtime tool, then a forecast-capable tool with num_of_days=3. The location was copied verbatim from the query.",
+    "Stated qualifiers were mapped to schema optionals: pageSize=15, language=en, limit=150 for 'limited to 150 characters', enable=STEREO_A,STEREO_B. Partial misses were all value-form: 'since Oct 2023' became `to` instead of `from`, and a '7-letter word' became minLength+maxLength instead of wordLength."
+  ],
+  "patch": {
+    "reasoning": "The tool-selection and structure rules held in all 8 trajectories. The remaining score loss was in optional-value form (date bound direction, word-length parameter) and in sibling-endpoint choice, which succeeded only because the agent matched qualifier words to endpoint names. Encoding that matching rule, the date-direction and word-length rules, and the current-plus-forecast split keeps these patterns stable without adding length elsewhere.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "- Siblings under one provider differ by a qualifier word in their name. Copy that word from the query and take only that sibling: 'this month's top' -> `Get the month's top articles` (not all-time or latest); 'today's' -> `/today`; 'insights about X' -> `/search/{searchterm}`; 'mathematical facts' -> `Get math fact`; 'trivia' -> `Get trivia fact`; 'number of schools' -> the Number-of tool; 'list schools' -> the List tool; 'practice question' -> `Retrieve practice question`; a named site (Youm7, France24) -> that site's endpoint. Do not add the other siblings."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Parameters",
+        "content": "- Value forms that recur. 'since / after / from <date>' -> the lower-bound field (`from`); 'before / until' -> `to`. Never put a 'since' date into `to`. 'N-letter word' -> the single `wordLength`=`N`, not minLength+maxLength. 'limited to N characters' -> the tool's limit-type field. Copy IDs and codes from the query exactly as strings, keeping leading zeros (`026000`). Copy a place as written (`Whistler, British Columbia`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Which calls to make",
+        "content": "- A query asking for two different time scopes of the same place ('current weather AND forecast for the next 3 days') is two calls: the realtime/current tool, then a forecast tool carrying the day-count optional (`num_of_days`=`3`). Do not drop either, and do not add a third weather tool."
+      }
+    ]
+  },
+  "source_type": "success"
+}

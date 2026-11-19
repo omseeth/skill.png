@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool and cache lifecycle",
+      "count": 4,
+      "description": "Some trajectories imported or redefined runtime components, omitted required cache saves, or made redundant uncached calls despite existing skill rules."
+    },
+    {
+      "failure_type": "preference interpretation and field mapping",
+      "count": 4,
+      "description": "Agents misread a rating threshold, an airline code, a flight-class enum value, or the single allergy option relevant to the request."
+    },
+    {
+      "failure_type": "follow-up context and proximity routing",
+      "count": 2,
+      "description": "Agents failed to use the assistant's immediate context to identify the requested domain or mishandled proximity targets and required flight origins."
+    },
+    {
+      "failure_type": "location field mapping",
+      "count": 1,
+      "description": "A state abbreviation was passed as a city instead of using the state field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The runtime and cache lifecycle failures are already explicitly covered, so repeating those rules would not patch a skill gap. These edits address uncovered interpretation issues: star-rating phrasing, airline-code and class encoding, contextual proximity searches, missing flight origins, and mapping a specific allergy without adding unrelated dietary constraints.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+        "content": "For numeric `rating` requests, a bare single value is exact `[x, x]` unless the user says “at least” or otherwise clearly requests a threshold, which is `[x, 5]`. Phrases such as “an x-star rating” or “rated x stars” without “exactly” mean a minimum `[x, 5]`; “exactly x” means `[x, x]`. Preserve explicit ranges."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Format flight time ranges as required:** For `departure_time` and `arrival_time`, use the validator's accepted 12-hour format with AM/PM (for example, `12:00 PM`), not `HH:MM:SS`. Choose a supported interval for vague time periods.",
+        "content": "\n- **Disambiguate flight preferences and require an origin:** In reply to a question about airline or class, treat a short uppercase code-like token as an airline (for example, `airline=[\"AM\"]`), not as a morning time preference; interpret AM as a time only when context clearly refers to time of day. Use the tool's lowercase flight-class values (`economy`, `business`, `first`). A flight search requires both a departure date and an origin in a supported origin field. A known hotel city or destination does not establish the origin; ask for any missing required origin rather than inventing a route."
+      },
+      {
+        "op": "replace",
+        "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. Do not approximate proximity by extracting a neighborhood and using it as a filter.",
+        "content": "- **Use proximity tools only for proximity requests:** Resolve the nearby-item domain from the latest user turn and immediate assistant context (for example, accepting a dining suggestion means restaurants), and reuse an established destination when it clearly applies. Identify the target from the full conversation and cache; use only results that actually represent that target. If a named target has no suitable cached result, search its domain by its complete name using available required inputs, then search for items in the requested nearby domain. Call `search_nearest` with those results and set `groupBy` to the domain of the options the user wants (for example, restaurants near a hotel means `groupBy=\"restaurant\"`), not the target's domain. If the target domain is unclear, clarify rather than substitute an unrelated domain or treat the target as a neighborhood."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Map allergy requests narrowly:** Set only the supported allergy-options field that matches the user's stated allergen; do not enable unrelated allergy or dietary flags. If the exact allergen has no field, use another allergen field only when it clearly covers the request (for example, nightshade allergy may map to tomato allergy options); otherwise, do not invent a proxy."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

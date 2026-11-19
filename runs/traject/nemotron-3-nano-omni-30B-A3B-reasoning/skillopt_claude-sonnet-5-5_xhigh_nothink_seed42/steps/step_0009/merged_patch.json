@@ -1,0 +1,110 @@
+{
+  "reasoning": "Failure-driven edits were kept in full and take priority. Both groups had edits on the same anchor text, so I merged them into single edits to avoid ordering ambiguity and duplicated text: (a) the 'Never give only the provider...' replace, combining the failure rules (full heading incl. tails, no tagline, provider must match the heading) with the success rules (verbatim non-Latin or odd-punctuation headings); (b) the 'Each parameter is...' insert, combining the failure rules (no bare strings, one list per key) with the success rule (a single optional is still an object); (c) the 'Do not invent parameters...' insert, combining the failure rules (required `page`, qualifier mapping, status and range words) with the success rule (code conversion and keyword trimming); (d) the 'If the query names a tool or provider...' insert, combining the failure rules (outlet source endpoint, domain-level disposable) with the success rule (single vs batch endpoints, regular die). The success edit's empty-value rule duplicated the failure version, so I kept the failure one. Success-only edits covering patterns the failures do not address (search subject in text-filter optionals and page plus size, since/before date bounds, scope and time words picking siblings, narrative checklist with recap sentences getting no call, one call per named outlet) were kept as separate edits. For merged edits, support_count is the sum of the two sources. No edits touch the protected SLOW_UPDATE section.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "# Tool Calling Skill",
+      "content": "\n\n## Procedure (do this before the answer)\n1. Split the query into its clauses/sentences and number them. A long narrative ('The user first..., then..., next..., finally...') usually has 6-12 of them.\n2. For each number write one short line `n. <request> -> <exact ### heading>` (two lines if the clause asks for two things). Include the first and the last sentence; they are the ones most often dropped.\n3. Emit the answer with exactly one object per line of that list, then end with `}]</answer>`. Never stop after only the first few lines of the list, and keep the reasoning short so the list gets finished.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Do not close the list early or leave stray brackets.",
+      "content": "Do not close the list early or leave stray brackets. Calls are separated only by `}, {`. Never write `}], {`, `], [` or `]}` between calls: the first `]` ends the answer and every later call is lost. The only `]` comes after the last object, immediately followed by `</answer>`. Nothing but `</answer>` may follow the final `}]`: no extra keys (e.g. `\"final answer\"`, `\"answer\"`), no repeated copy of the list, no stray quotes, braces or trailing text. An unparseable answer scores zero even when its first calls are right. Cover every clause before closing the list; for long queries keep each call compact.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+      "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely. The name is only the `### ` heading line (e.g. `Lost Ark: get stats`, `Epic Games Store - Free Games: Free Games`). Copy the complete heading character for character, including non-Latin script, hyphens, spaces, extra colons and any tail such as `?{parameters}`, `(basic)`, `/v1/weather` or `{type}` (e.g. `Arabic news API: Youm7 - اليوم السابع`, `Kubric: The Comprehensive Movie News API: Basic Search`, `dev-to-api: Get the month's top articles`; the heading is `National Weather Service: /alerts?{parameters}`, not `.../alerts`). Never copy the `Provider:` description line or any ` — tagline` text, and never put ` — ` in a tool name. The provider must be the one printed in that same heading: do not attach an endpoint to a sibling provider with a similar name (`Current conditions (detailed)` belongs to `Easy Weather`, not `RapidWeather`). Before answering, find each name verbatim as a `### ` heading in the tool list.",
+      "support_count": 5,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Each parameter is `{\"name\": \"x\", \"value\": \"y\"}`. Every value is a quoted string, including numbers (`\"2023\"`, `\"1\"`, `\"9098084\"`).",
+      "content": "\n- Both lists contain ONLY `{\"name\": ..., \"value\": ...}` objects. Never write bare strings or repeat a name (wrong: `\"required parameters\": [\"region\"]`, `\"required parameters\": [\"grade\", \"grade\"]`; right: `[{\"name\": \"grade\", \"value\": \"2\"}]`). Even a single optional is an object inside the list: `\"optional parameters\": [{\"name\": \"sort-by\", \"value\": \"popularity\"}]`, never `[\"sort-by\", \"popularity\"]`. Build each call as: tool name, then ONE `required parameters` list, then ONE `optional parameters` list holding every optional value. Wrong: `\"optional parameters\": [{\"name\": \"composer\", \"value\": \"Bellman\"}], \"optional parameters\": []`, because the second key erases the first.",
+      "support_count": 11,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not borrow a similar name from a sibling tool (use `region` if the tool has `region`, not `loc`).",
+      "content": "\n- If the chosen tool's schema says `Required parameters: none`, then `required parameters` MUST be `[]`. Every value the query supplies, even the main input (`point`, `lat`, `composer`), goes in `optional parameters`. Never promote an optional parameter to required.\n- Copy values verbatim from the query. Keep minus signs and decimals (longitude `-116.8649` stays `-116.8649`; a single coordinate field takes `33.3563,-116.8649`). Keep ID strings exactly. Selector-type values (source, publisher, type, composer) are lowercase tokens (`cnn`, `english`, `bellman`), while free-text search terms keep the query's casing.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).",
+      "content": "\n  - The subject of a search clause goes in the tool's text-filter optional (`title`, `name`, `q`, `keyword`) even when that field is optional: 'Batman games' -> title `batman`; 'Zelda games with Majora in the title' -> name `Majora`. 'First 20 results' or 'first page with 15 results' on a paged tool -> page `1` AND the size field (`pageSize` `20`). A platform word ('Steam giveaways') -> platform `steam`.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "'recorded after January 2017' -> from_record_date `2017-01-01`. Use the date field that matches the verb (recorded vs published).",
+      "content": "\n  - 'published since October 2023' -> `from` `2023-10-01` (not `to`); 'before/until' -> `to`. Give only the bound the query states, and do not add a country, region or end date it never names. Publisher or source lists are comma-separated with no spaces, in the form the schema or domain suggests (`cnn.com,bbc.com,theverge.com`).",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+      "content": "\n- Copy every name listed under the schema's 'Required parameters' into `required parameters`, including `page` (e.g. a keyword + page tool has both as required). Drop any optional whose value would be `\"\"`. Merge all optional values into ONE `optional parameters` list; never write a second `\"optional parameters\": []` after a filled one.\n- Map each qualifier to the field that expresses it. 'most helpful' -> the sort field (`sort_order`=`HELPFUL`), not a star filter. 'in Massachusetts' on a hotel or listing tool -> its state/region field (`state_code`=`MA`) when it has one. A search `term`/`q`/`keyword` is the named entity (person, title, product) from the query, not its genre or descriptor.\n- Status and range words are qualifiers too: 'active alerts' -> active `1`; 'between January 1-31, 2024' -> dtFrom `2024-01-01`, dtTo `2024-01-31`; 'on January 15, 2024' -> date `2024-01-15`; 'a list of 500 cities' -> limit `500`; 'page 1' -> page `1`. When a clause says 'there' or 'in that area', reuse the place named earlier as the value (q = `Breckenridge`).\n- Write each value in the format the schema describes. Convert names to codes when the description gives a code scheme ('Egypt' -> `EG`, 'United States' -> `US` for an ISO 3166 location; 'English-language' -> `en`; an enum such as 'ar: arabic ... en: english' -> the code, not the word). Keep a search keyword to the topic phrase only, dropping framing words ('English-language news articles about Middle East politics' -> keyword `Middle East politics`, language `en`). Copy quoted phrases verbatim ('political documentary election') and counts exactly ('up to 15 results' -> limit `15`).",
+      "support_count": 5,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Never pick a tool just because a parameter value fits (e.g. a country code). Prefer the tool whose parameters can express every constraint in the query (e.g. a forecast tool with day-count, temperature-unit and wind-unit params, and a location field that accepts the given ID format).",
+      "content": "\n- Let the query's scope and time words choose among sibling endpoints: 'list of categories' -> the categories tool, not the sources list; 'most recent / latest' -> the latest-items tool; 'this month' -> the month's-top tool; 'past events' -> the past-events tool; 'for a specific country' -> the tool that takes a location.",
+      "support_count": 3,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- If the query names a tool or provider ('using Easy Email Validation', 'the Email Existence Validator tool', 'the Email API'), use that provider's endpoint whose description matches the requested action ('check if disposable' -> `Email Existence Validator: Check for Disposable emails`; 'generate a fake business email' -> `Email API: Get Fake Email Address`).",
+      "content": "\n- 'News/articles from <named outlet>' -> the endpoint that takes a source or publisher (e.g. `Moka News: By Source (New)` with source `cnn`), not a keyword search such as `Newscatcher` and not another outlet's own endpoint.\n- 'Is domain X disposable' -> a domain-level disposable checker (e.g. `MailCheck: Domain` with the domain). It is its own call, so do not skip it or answer it with an email-level tool. 'Email valid AND disposable' -> ONE call to a tool covering both (e.g. `Alpha Email Verification: Email Checker`). Do not add `Email Existence Validator: Check for Disposable emails` on top of it.\n- When a named provider has single and batch endpoints, pick by input count: one email 'using Blaze Verify' -> `Blaze Verify: Verify an email`, not the batch endpoint. 'Roll a six-sided die' -> `Regular die`, not a custom-dice endpoint.",
+      "support_count": 9,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Radio stations in a country -> the radio-stations tool, not a Spotify tool.",
+      "content": "\n- Match the verb AND the entity level literally, then check that the schema's required inputs fit the value given. Province -> a `propinsi_id` endpoint, district/city (kabupaten) -> a `kabupaten_id` endpoint, sub-district (kecamatan) -> a `kecamatan_id` endpoint; check every ID against its parameter name and never reuse one endpoint for IDs of a different level. 'List of schools in a Sub-District (Kecamatan)' -> the Sub-District list tool, not 'Number of schools in a city'. 'Download location data' -> the `Download locations` tool, not an admin-divisions lookup. 'Current weather conditions' at coordinates -> the `Current conditions` tool, and 'air pollution' -> the pollution tool. 'Albums/artist data for given IDs' -> the `Get albums` / `Get artists` by-ids tool, not Search or an 'artist's albums by URL' tool. 'Role accounts of gmail.com' -> `Role Account` (FreeDomain only for 'available for registration'). 'Basic validation' -> a plain validate tool. 'Information about faith' (or any topic) on a Bible/topic API -> that API's topic endpoint, not an unrelated search tool such as a music-track search. If two clauses with different verbs landed on the same tool, one is mis-mapped, so re-pick.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Make a short checklist of the query's requests. Each request gets one call from the single tool that best matches it, and every call must trace to a clause.",
+      "content": "\n- Count every item the query lists. In 'retrieving statistics, character classes, and the engraving system' or a run of 'first..., then..., finally...' clauses, each item is its own call to its own endpoint (e.g. Lost Ark `get stats`, `get classes`, `get engravings`). A 9-item query needs about 9 calls, and stopping after the first few is the commonest error. One tool needing two different values ('US and Germany', 'pages 1 and 2') means two separate calls, one per value; never repeat a parameter name within one list.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Exception: the query names several distinct checks (e.g. deliverability, MX records and role account), which get one call each.",
+      "content": "Exception: the query names several distinct checks (e.g. deliverability, MX records and role account), which get one call each. Likewise, when the query asks for 'comprehensive' or all checks on BOTH an email and its domain, call every email-level validity/disposable tool with the email and every domain-level tool (disposable-domain, role-account, domain checker) with the domain, one call each. Keep the separately requested 'generate a fake email' call.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+      "content": "\n- A generic 'verify / analyze / validate these N emails' means exactly N calls (one validator per address); do not run each address through several validators. Add extra calls only for checks the query names separately (MX records, disposable, role account, domain availability), each on the input it names.\n- Each distinct data noun or named platform in a clause is its own call, even when the endpoints are siblings of one provider. 'Country data' and 'route information' from the same Flight Data API = the countries tool AND the routes tool. 'Current snow conditions', 'active weather alerts' and 'sunrise and sunset times' = three tools (snow, alerts, astronomy), all using the same place. 'Auto-complete on both Asos and Wayfair' = one call per named platform, each to that platform's own auto-complete tool, even when the SKU belongs to only one of them. A closing 'looking up flight X between two dates, then details of flight Y on a date' = the flight-search tool (date range) AND the flight-info tool (single date). Narrative queries often end with clauses that are easy to drop (e.g. 'warranty information for X and product details for Y'); each needs its own call.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+      "content": "\n- Narrative or first-person queries ('I retrieved X. Then I accessed Y. Finally I searched Z...') are checklists with one call per described action, in order. A closing recap or purpose sentence ('This combined approach gave me a broad overview...', 'possibly for analysis') names no new action and gets no call. Endpoints that need no input still get a call with `[]` for both lists.\n- When the query lists several named outlets, platforms or places, give each its own call. Use each outlet's own endpoint (Aljazeera, CNN Arabic and Youm7 are three tools), not one generic search or headlines tool. Use one call per place for a one-value tool (a city-search or auto-suggest tool called once per city).",
+      "support_count": 3,
+      "source_type": "success"
+    }
+  ]
+}

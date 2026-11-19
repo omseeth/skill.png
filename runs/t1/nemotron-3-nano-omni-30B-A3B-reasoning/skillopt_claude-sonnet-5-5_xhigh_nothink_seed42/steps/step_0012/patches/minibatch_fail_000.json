@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "malformed_code_structure",
+      "count": 4,
+      "description": "First searches emitted as bare calls with no assignment/save, as a nested search inside save_to_cache, as a duplicated search, with an invented kwarg (query_summary), or with import/if-None blocks (trajectories 1, 4, 6, 7, 8)."
+    },
+    {
+      "failure_type": "wrong_param_routing",
+      "count": 2,
+      "description": "A US state abbreviation (OR, GA) was put in city= instead of state=."
+    },
+    {
+      "failure_type": "re_search_instead_of_filter",
+      "count": 3,
+      "description": "Cache already had the domain (flights/return_flights, restaurants, attractions), yet the model re-ran a search instead of load -> filter -> save (class answer, formal/Italian answer, named-place question)."
+    },
+    {
+      "failure_type": "incomplete_round_trip",
+      "count": 2,
+      "description": "Round-trip flight dates produced one search or one one-leg search instead of two separate outbound/return searches, and the airport-code habit (SJC) was not mapped to start_airport/end_airport."
+    },
+    {
+      "failure_type": "invented_optional_param",
+      "count": 1,
+      "description": "'solo trip' was turned into num_people=1, which the user never stated as a number."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already has rules for most of these cases, but they are scattered across a very long document and the model keeps ignoring them. The edits add short, example-driven rules placed where the failures happen. First, a compact set of copy-exactly templates at the top fixes the structural errors (bare calls, nested calls, imports, if/else, invented kwargs, state in city, num_people from 'solo'). Second, a round-trip example covers two-leg flight searches plus airport-code mapping. Third, worked examples for 'cache exists, so filter' cover a flight-class answer, a style/cuisine answer, and a named-place question.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Output templates (copy these shapes exactly; most failures come from breaking them)\n- FIRST SEARCH = exactly two lines, never bare, never nested:\n  `attractions = search_attractions(state=\"OR\", type=[\"Social\"])`\n  `save_to_cache(key=\"attractions\", value=attractions)`\n  WRONG: `search_attractions(...)` with no assignment; `save_to_cache(key=\"x\", value=search_x(...))`; calling the same search twice.\n- REFINEMENT = exactly three lines: `x = get_results_from_cache(key=\"<key literally in CACHE>\")`, `y = filter_<domain>(prior_results=x, <only the new constraint>)`, `save_to_cache(key=\"filtered_<domain>\", value=y)`.\n- The code block holds ONLY tool calls. No `import` / `from ... import` (e.g. `from cache import ...` fails), no `if ... is None`, no else, no loops, no print, no explanatory comments.\n- Use only kwargs listed for that tool in TOOL CONFIG. `query_summary` is an OUTPUT field, never an input; passing it raises a ValidationError. Never pass descriptions or free text.\n- A US state name or 2-letter abbreviation ('OR', 'GA', 'Georgia') ALWAYS goes in `state=`, never `city=`. 'trip to GA, Guided and Historical attractions' -> `search_attractions(state=\"GA\", type=[\"Guided\", \"Historical\"])`.\n- Party words without a number ('solo trip', 'couple', 'family') are NOT num_people. Pass num_people / num_rooms only when the user states a number. Hotel with 'solo trip', budget 40, Nov 8-14 -> `search_hotels(city=\"Raleigh\", budget=40, checkin_date=[\"November 8, 2025\"], checkout_date=[\"November 14, 2025\"])`, nothing else."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 9: Round-trip flights (+ hotel) are separate search calls",
+        "content": "- Worked example (flights only, no hotel): 'weekend getaway to Memphis from Lexington' then 'depart May 14, 2025 and return May 16, 2025' -> TWO assigned and saved searches, never one:\n  `flights = search_flights(start_airport_city=\"Lexington\", end_airport_city=\"Memphis\", departure_date=[\"May 14, 2025\"])`\n  `save_to_cache(key=\"flights\", value=flights)`\n  `return_flights = search_flights(start_airport_city=\"Memphis\", end_airport_city=\"Lexington\", departure_date=[\"May 16, 2025\"])`\n  `save_to_cache(key=\"return_flights\", value=return_flights)`\n  A date pair in the last turn always means an outbound search and a return search with the cities swapped, even when the conversation only mentions flights or a 'getaway'.\n- Airport habit ('I normally fly from SJC') adds only `start_airport=\"SJC\"` on the outbound search and `end_airport=\"SJC\"` on the return search. The cities stay as city names. Do not add cache probes, imports or if-blocks."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 13: Refinement precision and code hygiene (supplements Rule 2)",
+        "content": "- If the CACHE holds ANY flight key ('flights', 'return_flights', 'departure_flights', filtered ones), the reply to a class/airline/time question is NEVER search_flights. Example: CACHE has 'flights' and 'return_flights'; last turn 'We prefer business class' ->\n  `f = get_results_from_cache(key=\"flights\")`\n  `ff = filter_flights(prior_results=f, flight_class=[\"business\"])`\n  `save_to_cache(key=\"filtered_flights\", value=ff)`\n  `r = get_results_from_cache(key=\"return_flights\")`\n  `rf = filter_flights(prior_results=r, flight_class=[\"business\"])`\n  `save_to_cache(key=\"filtered_return_flights\", value=rf)`\n  Both legs are filtered. Do not pass cities or dates to the filter."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 10: Route the LAST turn's constraints to the right domain; a 'yes' to a proposal is a new constraint",
+        "content": "- If a domain already has a CACHE key, an answer about its style, cuisine, rating or place is ALWAYS load -> filter -> save, never a new search. Example: CACHE 'restaurants' (Memphis) and last turn 'Something formal, with a good Italian menu' -> `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, cuisine=[\"Italian\"])`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`. 'Formal' produces no param.\n- If the assistant's last message proposed a specific named place (e.g. 'Have you considered Ashland Park?') and the user asks about it ('No, I haven't. What's there?'), treat the name as a neighborhood constraint on the cached attractions: `a = get_results_from_cache(key=\"attractions\")`, `a2 = filter_attractions(prior_results=a, neighborhood=[\"Ashland Park\"])`, `save_to_cache(key=\"neighborhood_attractions\", value=a2)`. Do not re-run search_attractions and do not repeat the city or type already shown in the CACHE summary."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

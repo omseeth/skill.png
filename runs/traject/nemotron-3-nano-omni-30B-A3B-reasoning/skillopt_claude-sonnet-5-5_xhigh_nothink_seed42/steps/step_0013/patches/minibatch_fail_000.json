@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_name_form",
+      "count": 3,
+      "description": "Name not copied whole from the `### ` heading. Examples: loose quotes `BestBuy Product Data` and `Zappos product detail by Product ID`; truncated `National Weather Service: /alerts` (real: `/alerts?{parameters}`); invented `Learn to read and write Japanese kanji: Get language by id` (real provider is thefluentme)."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 4,
+      "description": "A sibling or unrelated provider was chosen. Onyomi was used for '16 strokes'. `musicApp: track` was used for 'information about faith'. A city-name weather tool was used with an invented city for a lat/lon query. A generic disposable validator was used instead of the dedicated one."
+    },
+    {
+      "failure_type": "missing_calls",
+      "count": 2,
+      "description": "Distinct checks were merged or dropped: the email query needed disposable, deliverability and MX calls but got 2. The Bible query needed `/today` and `/topic/{topic}` but only `/today` was called."
+    },
+    {
+      "failure_type": "value_form",
+      "count": 4,
+      "description": "Composite or loosely worded inputs were not mapped to schema fields. The full email went into `username` and the domain lost its subdomain. The search term kept the filler word 'books'. 'Active marine alerts' omitted `active`=`1`. Region/location code casing differed from gold."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the eight failures were name-copy errors that score zero on tool match, even though the skill already carries a NAME CHECK. I replace self-check item 6 with a mechanical exact-match test that names the observed failure shapes: a loose quote, a truncated suffix, and a cross-provider hybrid. Four failures were wrong or merged tool choices, which I address with literal before/after facet rules and a rule that distinct email checks get distinct calls. The remaining failures are value-mapping misses: splitting an email into username/domain, dropping filler nouns from a search term, and adding the `active` flag. Those get a short parameter rule. All edits sit outside the protected block and keep the existing rules intact.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "6. Every tool name has `: ` and no ` — `, and is copied from a `### ` heading. The object count equals the number of distinct clauses, entities and markets in the query, last sentence included, with no padding calls.",
+        "content": "6. NAME EXACT-MATCH TEST. For every `tool name` in your answer, find the `### ` line in the tool list that is character-for-character identical. If you cannot find one, the name is wrong, so rewrite it from the heading. Misses seen: a loose quote from the query (`BestBuy Product Data` -> `BestBuy Product Data: BestBuyProductData`; `Zappos product detail by Product ID` -> `Zappos Realtime Data: Zappos product detail by Product ID`). A truncated suffix (`National Weather Service: /alerts` -> `National Weather Service: /alerts?{parameters}`; keep `{verse}`, `(basic)`, `?{parameters}`). A hybrid of one provider's name and another provider's endpoint (`Learn to read and write Japanese kanji: Get language by id` does not exist; search the list for the endpoint words 'language by id' and use the provider that actually has them, `thefluentme: Get language by id`). The name must contain `: ` and no ` — `. The object count equals the number of distinct clauses, entities and markets in the query, last sentence included, with no padding calls."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n- FACET AND SAME-THEME TESTS (past misses). (1) The facet word picks the endpoint. 'Kanji with exactly 16 strokes' -> `...: Kanji stroke number` (`ks`=`16`), never Onyomi, Kunyomi or Radical. If the value you would pass makes no sense for the parameter (`on`=`parent`), the tool is wrong. (2) A topic clause beside a provider's theme ('today's Bible insight AND some information about faith') -> that provider's today endpoint plus its topic/search endpoint (`Uncovered Treasure: /today` + `Uncovered Treasure: /topic/{topic}`, `topic`=`faith`). Never use an unrelated provider such as `musicApp: track`. (3) 'Current weather' at a latitude/longitude -> `Easy Weather: Current conditions (basic)` (`latitude`, `longitude`). A city-name tool with a city you guessed (`Cloud Cast`, `city`=`Miami`) is always wrong. 'Active marine weather alerts at lat,lon' -> `National Weather Service: /alerts?{parameters}` with optional `active`=`1`, `zone_type`=`marine`, `point`=`lat,lon`.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+        "content": "\n- SPLIT COMPOSITE INPUTS INTO THE SCHEMA'S FIELDS. A tool with `username` + `domain` given 'testsender@marketing.ourstartup.com' -> `username`=`testsender` (the part before @) and `domain`=`marketing.ourstartup.com` (everything after @, subdomains kept). Never put the full address in `username` or trim the domain. For a book or topic search, pass the subject phrase without the category noun the tool name already implies. 'Japanese language learning books' with `GetBooksInfo: Search` -> `s`=`Japanese language learning`; 'books about quantum physics for beginners' -> `quantum physics for beginners`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "\n- DISTINCT EMAIL CHECKS = DISTINCT CALLS. 'Is it disposable', 'verify its deliverability status' and 'retrieve the MX records' are three clauses on the same email, so make three calls: a disposable checker (`Email Existence Validator: Check for Disposable emails`), a deliverability verifier (e.g. `Blaze Verify: Verify an email`) and the MX tool (`Email Existence Validator: Get the MX Records`). Do not fold deliverability into the disposable call. When the MX tool's provider also has a disposable endpoint, use that one for the disposable clause rather than a generic 'validate domain or email' tool."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

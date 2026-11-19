@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Lyric or quotation clues ('1991 hit that contains the lines ...') were answered with the TITLE of the song, taken from the heading of the passages that repeat those lines. The title is not in the quoted lines themselves.",
+    "For title-type answers (show, song, story character), the agent copied the title from the passage headings that repeat the clue's details (Songfacts 'Losing My Religion by R.E.M.', Wikipedia 'Eight Is Enough', 'Rikki-Tikki-Tavi'). It dropped the site suffix and byline and kept the title's own hyphens and capitalization.",
+    "Clue text found verbatim in an archive or flashcard passage ('... HAND DRYER', 'WOMEN AUTHORS | ... | Colleen McCullough') was copied directly. When the archive line was truncated or lacked the answer, the agent completed it from other passages or its own knowledge and checked it against the clue's slot type.",
+    "Clue modifiers were stripped from the answer: 'synthetic type of this material' -> 'rubber', and the person/character slot was answered with a bare name ('Lenin', 'Colleen McCullough').",
+    "Every success was a single step with no hedging: the agent committed to one entity of the asked type, with no explanation or alternatives in the answer tags."
+  ],
+  "patch": {
+    "reasoning": "The existing skill already covers verbatim archive hits, slot typing and clue-word stripping, and those drove most of these successes. Two reusable behaviors are not written down. First, a clue that quotes lyric or text lines asks for the title of the work, and nothing in Rule 1 says so. Second, for title answers the [TLE] headings of the matching passages are the best source for the answer's form, and the site suffix or byline must be stripped. Both are narrow and keyed to visible clue or passage features. They add no blanket shorten/lengthen rule and no top-level template, which earlier steps showed regress stable passes.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- 'N-word' hints ('this 3-word phrase') work like a letter count: the answer must have exactly N words.",
+        "content": "- QUOTED LINES / LYRICS ('1991 hit that contains the lines \"I thought that I heard you laughing...\"', 'poem that begins \"...\"', 'novel whose opening line is ...'): the answer is the TITLE of the work, not a line, the artist or the album. The quoted words usually do NOT contain the title. Find the passages that repeat the same lines (lyrics pages, Songfacts, quote sites) and take the title in their heading or first words, e.g. 'Losing My Religion by R.E.M. Songfacts' -> 'Losing My Religion'. Check the year or other detail in the clue against it, and drop the 'by <artist>' and site words."
+      },
+      {
+        "op": "insert_after",
+        "target": "- If the context offers several candidates (a different player in the same article, a film and its song), pick the one that satisfies ALL distinctive details: exact numbers, team, years, place. Do not choose one that fits only some.",
+        "content": "- PASSAGE HEADINGS AS EVIDENCE: for a show, film, song, book or character answer, note which [TLE] headings and first sentences contain several of the clue's distinctive details (the network, the actor, the columnist, the story and its author). The answer is usually the title in those headings ('Eight Is Enough - Wikipedia', 'Rikki-Tikki-Tavi - Shmoop'). Copy the title only: strip site suffixes ('- Wikipedia', 'Songfacts', 'Amazon'), bylines and subtitles, and keep its own hyphens and capitalization ('Rikki-Tikki-Tavi', not 'Rikki'). For a 'this <animal/character> in a <author> story' clue, give the character's full name as the headings write it."
+      }
+    ]
+  },
+  "source_type": "success"
+}

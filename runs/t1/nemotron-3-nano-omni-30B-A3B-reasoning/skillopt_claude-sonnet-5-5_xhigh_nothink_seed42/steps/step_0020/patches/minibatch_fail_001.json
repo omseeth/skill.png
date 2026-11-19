@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_first_search_after_date_reply",
+      "count": 2,
+      "description": "When the dates arrived, the agent searched only one flight leg. It dropped the return leg, the hotel requested in turn 1, and earlier-stated constraints (business class, 12:22 PM departure time, EV charging). Rule 9's 'add no other params' line contradicts Rule 24."
+    },
+    {
+      "failure_type": "wrong_flight_refinement",
+      "count": 3,
+      "description": "Three flight-cache mistakes. A class reply on first_flights/second_flights re-ran search_flights. A time preference filtered only departure_flights, not return_flights. A bare 'There are 5 of us' on a flight-only trip triggered invented economy filters on every leg."
+    },
+    {
+      "failure_type": "reapplied_cached_constraint",
+      "count": 1,
+      "description": "A budget refinement re-passed cuisine=['Balkan'], which the CACHE summary already listed."
+    },
+    {
+      "failure_type": "state_passed_as_city",
+      "count": 1,
+      "description": "'attractions in AZ' was sent as city='AZ' instead of state='AZ'."
+    },
+    {
+      "failure_type": "multi_request_turn_incomplete",
+      "count": 1,
+      "description": "A turn asking for a pool and a restaurant near the hotel skipped the hotel pool filter. search_nearest ran on the stale filtered_hotels."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures come from rules that exist but are buried or contradicted. Rule 9 says 'add no other params', which conflicts with Rule 24 and leads to dropped class/time/amenities. The CACHE GATE lacks explicit cases for flight refinement (all legs, no search even when the summary has no result count), the party-size no-op on flight-only trips, and a last-message-only kwarg check. The state= rule needs the exact failing example. Rule 26 does not cover a turn that adds a hotel amenity and asks for a restaurant near the hotel. Four short, targeted edits near the top of the document and at the conflicting lines cover all of these.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- A flight class, airline or time the user literally stated in ANY turn is not a default. Put it on the first search_flights call (flight_class=[\"business\"] on EACH leg). A stated departure time such as 12:22 PM goes on the outbound leg as departure_time=[\"12:22 PM\", \"12:22 PM\"]. A date pair ('June 28, 2026 to July 4, 2026') after an origin and destination is TWO flight searches. If a hotel was requested in ANY turn, also run `search_hotels(city=<destination>, checkin_date=[<first date>], checkout_date=[<second date>])` with every hotel amenity stated earlier (EV charging -> has_electric_vehicle_charging=True), saved as 'hotels'. Never output only the outbound flight.\n- 'Social and Cultural attractions in AZ' -> `attractions = search_attractions(type=[\"Social\", \"Cultural\"], state=\"AZ\")`. A two-letter code or state name is always state=, never city=."
+      },
+      {
+        "op": "replace",
+        "target": "Take origin and destination from earlier turns. Add no other params: no airline, flight_class, budget, times or num_people.",
+        "content": "Take origin and destination from earlier turns. Add only params the user literally stated (flight_class or airline on both legs, a stated departure time on the outbound leg). Never invent an airline, budget, times or num_people."
+      },
+      {
+        "op": "insert_after",
+        "target": "4. Domain has NO key and all its mandatory args are known -> first search (`x = search_*(...)` then `save_to_cache`).",
+        "content": "5. Flight keys are refined, never re-searched. If CACHE has ANY flight key (flights, departure_flights, return_flights, first_flights, second_flights, ...), even when its summary has no 'There are N flights' line, a class, airline, time-of-day or budget reply means: load EVERY flight key, filter each with that one constraint, and save each under a new key. Example: 'economy would be great' with first_flights + second_flights -> two load/filter/save triples, never search_flights. A time preference ('preferably in the afternoon') goes on BOTH departure_flights and return_flights.\n6. A reply that gives only a party size ('There are 5 of us') while NO hotel has been requested adds no constraint, because flight tools have no party-size parameter. Output only `x = get_results_from_cache(key=\"<flight key>\")` for each flight key. Never invent a class or any other filter.\n7. Every kwarg in a filter_* call must come from the LAST user message. Older values (cuisine, city, neighborhood, rating) that the CACHE entry already lists are dropped. CACHE 'cuisine(s): [Balkan]' + 'around 115 per person' -> `filter_restaurants(prior_results=r, budget=115)` and nothing else."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Without a hotels key, 'near the hotel' needs no search_nearest. Just run the normal first search.",
+        "content": "- If the same turn also adds a hotel amenity ('Yes, a pool would be great. And a Norwegian restaurant near the hotel') and the restaurants are already cached (e.g. filtered_restaurants), do BOTH. `h = get_results_from_cache(key=\"filtered_hotels\")`, `h2 = filter_hotels(prior_results=h, pool_present=True)`, `save_to_cache(key=\"filtered_hotels1\", value=h2)`, `r = get_results_from_cache(key=\"filtered_restaurants\")`, `nearest_hotels = search_nearest(hotels=h2, restaurants=r, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`. Pass the NEW filtered hotels (h2) to search_nearest. Never skip the amenity filter, and never re-search restaurants that already have a key."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

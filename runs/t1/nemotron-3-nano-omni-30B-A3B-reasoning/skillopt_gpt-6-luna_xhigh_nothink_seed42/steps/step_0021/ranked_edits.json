@@ -1,0 +1,37 @@
+{
+  "reasoning": "Consolidated the repeated cache-planning proposals into a preflight ledger and a separate cache-execution rule. Made missing-input checks explicitly per domain, added a final route/date audit for flight legs, and clarified bind-and-save and tool-environment requirements. Preserved the concrete neighborhood and state-abbreviation insights. Did not add the proposed rating-threshold interpretation because it is not supported by the current schema guidance and could conflict with exact-range encoding. No edits target the protected section. [optimizer-ranked: selected 3/7 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+      "content": "- Before emitting code, resolve the latest turn against the immediately preceding assistant question or offer, then make a call-planning ledger by diffing it and all still-pending requests against listed cache entries. For each action or new constraint, record its domain, target, new criteria, latest compatible cache key (or none), and whether mandatory inputs are ready; list every explicitly described flight leg separately with its route and departure date. Assign each action a disposition: use a compatible cache result if it already satisfies the request, refine the latest compatible result for only the new constraints, search if no compatible result exists and required inputs are available, or seek missing mandatory information if blocked. Complete ready actions without repeating unaffected work. Before finalizing, verify every pending action has the correct disposition and planned call or result. Use `print(\"No planning needed\")` only when no requested action or constraint remains unsatisfied.",
+      "support_count": 4,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness independently for each requested domain and, where applicable, each city or leg: proceed with searches or refinements for domains whose required inputs are available even if another is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across blocked domains. Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood. Optional preferences are not mandatory inputs.",
+      "content": "Before searching, check required-input slots independently for every requested domain and, where applicable, every flight leg. Mark a mandatory tool input as supplied only when its value is explicit in the conversation; related context does not automatically satisfy it (for example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required city). A compatible cached result may satisfy an existing request only if it already covers that request. Do not infer missing values or use defaults. Search or refine ready actions even if another domain is blocked. Hotel check-in and check-out dates must be explicit and must not be borrowed from flight dates. Make one `seek_information` call asking only for missing mandatory inputs across blocked actions. Optional preferences are not mandatory inputs.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.",
+      "content": "- Enumerate every explicitly described flight leg in the full conversation and audit the plan against that list before emitting code: each leg must be covered by a compatible cached directional result or a new search, and every stated route and departure date must match. Each new search must use that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose; apply a class to both legs only when explicitly requested. Reuse a cached directional result only if it covers that leg and its criteria, and bind and save each newly searched leg result.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Prioritize the call-planning ledger because it systematically checks pending actions against the latest turn and cache; the per-domain required-input check prevents blocked requests from stopping ready ones; and the flight-leg audit catches route/date mismatches. The other edits largely duplicate existing cache, tool-result, or schema guidance, or address a narrow contextual case.",
+    "selected_indices": [
+      0,
+      3,
+      5
+    ]
+  }
+}

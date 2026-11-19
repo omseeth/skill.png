@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Agents scanned the passages for the clue's distinctive words repeated verbatim (a StudyStack flashcard, a history timeline sentence). They took the entity sitting next to that matched text, either right after it ('...LINCOLN CENTER, HENRY MOORE') or right before it ('Casimir Pulaski Polish count'), and that entity matched the answer key.",
+    "For multi-detail descriptive clues (a seal motto, a siege, a TV series with a named star), agents answered with the single entity that recurs in the passage titles and snippets alongside the clue's anchor details. They gave it as a bare name or standard title (San Francisco, Casimir Pulaski, In the Heat of the Night).",
+    "For definition or etymology clues ('sound a small object makes dropping into water', 'Greek for \"leaf\"'), agents answered with the headword that the dictionary or encyclopedia snippets define in nearly the clue's own wording (plop, phyllo). They did not answer with a word from inside the definition.",
+    "For 'type / variety of this X' clues, agents answered with the generic head noun or standard compound (Cheddar, drip irrigation). They did not answer with the regional modifiers named in the clue (Vermont, Tillamook).",
+    "Pointers to unseen media ('seen here') were ignored, and agents answered from the remaining textual descriptors."
+  ],
+  "patch": {
+    "reasoning": "Most of what worked is already encoded: verbatim scan, recurring entity, bare formatting. Two patterns are not stated explicitly. First, flashcard and list snippets can run the clue straight into the answer with no '|' separator, in either order, and the answer is the entity at the boundary. Second, definition or etymology clues map to a dictionary headword. A bundled version of the headword rule was neutral when tried earlier (0.725 to 0.725), so it is proposed here on its own and kept short.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Archive lines may also be formatted 'CATEGORY | clue text | answer'. Take the answer that follows the clue, even if the whole context is one short passage.",
+        "content": "\n- Flashcard and timeline snippets often have no '|' separator. The clue words may run straight into the answer, usually after a trailing list or ellipsis ('THIS BRITISH SCULPTOR CREATED WORKS FOR THE UNESCO BUILDING IN PARIS ... THE TATE GALLERY, UNESCO IN PARIS, AND LINCOLN CENTER, HENRY MOORE'). Or the layout may be answer-first ('Casimir Pulaski Polish count who organized an independent cavalry corps...'). In both cases take the proper name or term sitting at the boundary of the matched clue text, and confirm it against the other passages."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Jokes, asides and filler in the clue",
+        "content": "\n- Definition or etymology clues ('It's in dictionaries as the sound a small object makes dropping into water', 'paper-thin pastry whose name is Greek for \"leaf\"') ask for the HEADWORD that a dictionary or encyclopedia snippet defines in nearly the clue's wording ('Plop - definition of plop...'). Answer with that headword in the form the passages repeat ('plop', 'phyllo'). Do not answer with a word from inside the definition ('splash', 'dough'). If the passages show spelling variants, use the most common English spelling."
+      }
+    ]
+  },
+  "source_type": "success"
+}

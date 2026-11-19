@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "The agent picked the entity that dominates the passages (Corazon Aquino, Taiwan, Twinkies) instead of the one that satisfies the clue's role, verb or distinctive phrase (former first lady, admitted to the U.N., 'split in half')."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "The agent answered a listed member ('Tiger') for 'this state's ... include A, B & C' instead of the container (South Carolina)."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 2,
+      "description": "The answer was over-specified with clue words: 'Conan the Destroyer' instead of 'Conan', and 'Warren Gamaliel Harding' instead of 'Warren G. Harding' when the clue supplied the middle name."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "The answer was singular ('sail') although the clue noun was plural ('blades') and the flashcard answer read 'SAILS'."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "The gold answer (Edwards AFB) conflicts with the facts in the passages (Air Force Plant 16). No generalizable fix."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures come from two causes. First, the agent matched a topic-level entity instead of testing the candidate against each descriptor, verb and container word in the clue. Second, it formatted the answer with clue words or in the wrong number. The edits add a clue-substitution verification step, an explicit container-versus-member rule, a shared-base-name and middle-name format rule, and a number-matching rule. All are phrased generically and do not repeat the earlier rejected bundle of unrelated edits.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "\n- VERIFY before answering: substitute your candidate into the clue and check every descriptor, role, verb and date is true of it. A name that dominates the passages is often only the context figure (e.g. the sitting president), not the answer. 'Former first lady announced candidacy' -> the person who WAS a first lady and ran (Imelda Marcos), not the president whose name fills the pages. 'Admitted to the U.N. in 1971' -> the country admitted (China), not the one that lost its seat (Taiwan). Look for the sentence that lists candidates ('candidates, including former First Lady ...') or places the clue's distinctive phrase next to one entity ('Hostess Cupcakes ... split in half' -> cupcake), and prefer that entity over a more frequently mentioned one."
+      },
+      {
+        "op": "insert_after",
+        "target": "Other named entities in the clue are anchors, never the answer.",
+        "content": "\n- Container vs member: when the clue says \"this state's / this country's / this city's X includes A, B & C\" or lists parts, branches or divisions, the listed items are anchors. Answer the whole that owns them ('Divisions of this state's national forest include Long Cane, Enoree & Tiger' -> the state, 'South Carolina'), never one of the listed members."
+      },
+      {
+        "op": "insert_after",
+        "target": "do not append that role word to the answer.",
+        "content": "\n- If the clue describes the SAME person or character under different epithets, roles or film titles ('In '84 he's a destroyer, in '82 just a barbarian'), the answer is the shared base name ('Conan'), not a title or phrase that includes the clue's epithets ('Conan the Destroyer' is wrong).\n- If the clue gives a person's middle name ('His middle name was Gamaliel'), answer in the standard 'First M. Last' form with the middle name reduced to its initial ('Warren G. Harding'), not spelled out."
+      },
+      {
+        "op": "replace",
+        "target": "- Use the singular form for a generic single object ('Well', not 'wells'), but keep the plural for crops, commodities and mass categories ('Bananas') or when the clue says 'these'/'ones'.",
+        "content": "- Match the grammatical number of the clue's noun. Use the singular for a generic single object ('Well', not 'wells'). Use the plural when the clue noun is plural ('canvas-covered blades of a windmill' -> 'Sails'; 'these', 'ones', 'muscles', 'group of ...'), and for crops, commodities and mass categories ('Bananas'). If a verbatim archive/flashcard hit shows the answer in a particular number, copy that number ('SAILS' -> 'Sails')."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

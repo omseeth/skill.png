@@ -1,0 +1,96 @@
+{
+  "reasoning": "All 9 failure-driven edits are kept as written: tool-name format, single-bracket and JSON-shape rules, Required-none and count rules, value normalisation, search vs auto-complete, object-noun matching, sibling wording, checklist completeness, and don't-stop-early. From the success group I kept only what the failure group does not cover. Kept: (a) the Steam giveaway platform-filter example, (b) the sibling-endpoint rule based on time or ownership wording (upcoming, played, trending), (c) the filter-word to optional-parameter mapping (active/federal, exact flag, limit, smtp/timeout, wordLength vs min/max, Content-Type, hyphenated locale, no invented page/limit), and (d) the long-list and narrative-query checklist rules. Dropped as duplicates of failure edits: the 'several values -> one comma-separated entry' bullet and the 'one clause = one call with all qualifiers' bullet. The success replacement of the 'Do not invent parameters' bullet keeps that original line as its final line, and the success edit on the 'helper calls' bullet is now an insert_after, so neither conflicts with the failure insert_afters on the same anchors. I resolved the success group's internal case inconsistency (`federal` vs `Federal`, `en-us` vs `en-US`) by telling the model to follow the case style the schema shows. The protected section is untouched.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+      "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely. Copy ONLY the text of the `### ` heading line (e.g. `Amazon Pricing and Product Info: Main Endpoint`, `Wayfair: products/get-financing-offers`). Never build the name from the `Provider:` description line, and never include the provider tagline that follows ' — ' (wrong: `Miza — A multipurpose API that includes...`; right: `Miza: Song search`). A tool name containing ` — ` is always wrong.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not close the list early or leave stray brackets.",
+      "content": "\n- Exactly one `[` opens and one `]` closes the whole answer. Never wrap each call in its own brackets or separate calls with `], [` (wrong: `[{A}], [{B}]`; right: `[{A}, {B}]`). Never write `}],` or `}]}` between calls. The answer ends with `}]` immediately followed by `</answer>`, with no extra `}` or `]`.\n- Write every call in exactly this shape, comma-separated, with the single closing `]` only after the last object: `[{\"tool name\": \"A: b\", \"required parameters\": [{\"name\": \"x\", \"value\": \"1\"}], \"optional parameters\": []}, {\"tool name\": \"C: d\", \"required parameters\": [], \"optional parameters\": [{\"name\": \"q\", \"value\": \"v\"}]}]`. Never list bare parameter names (`[\"category\", \"country\"]`); every entry is a `{\"name\", \"value\"}` object with a real value from the query. Never omit `required parameters` or `optional parameters`, even when empty. After writing, re-read the list and check brackets, braces and commas.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not borrow a similar name from a sibling tool (use `region` if the tool has `region`, not `loc`).",
+      "content": "\n- Re-read the tool's schema before writing each call. If it shows `Required parameters: none`, its `required parameters` list MUST be `[]`. Every value the query supplies, even its main input such as `artist_id`, `lat`/`lon` or `starid`, goes in `optional parameters`. Never promote an optional-schema parameter to required. Put all filters in ONE `optional parameters` list; a second `optional parameters` key wipes the first (e.g. speaker/topic/min_duration/date filters).\n- Count phrases ('15 videos', 'first 15 posts', '3 scores', 'limit to 25', '10 cards per page') always map to the tool's count field (`per_page`, `limit`, `pageSize`, `count`), even when a page number is also given ('first 15 posts' -> per_page `15` and page `1`). Several values for one parameter (e.g. science and technology, or 'Yohkoh, STEREO_A, STEREO_B' -> `enable`) go in one parameter, comma-separated with no spaces: `science,technology`.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+      "content": "\n- Value normalisation: for a marketplace `domain` parameter (e.g. Amazon `domain`), pass the lowercase country suffix only (`de` for 'German marketplace (amazon.de)', `com`, `co.uk`, `fr`), not the host name (`amazon.de`) and not uppercase (`DE`). Country-style values from the query ('English sports news from India') map to the matching optional params (category `sports`, country `in`, language `en`). When a param description asks for a 'slug', use the lowercase underscore form (`yuval_noah_harari`). 'Talks from 2017 onwards' with no publish verb -> `from_record_date`=`2017-01-01`.\n- For a search term, keep the product or entity words and descriptive adjectives. Drop only generic words that the chosen tool already implies (a movie-news search for 'Superman movies' -> `Superman`).",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Tool selection",
+      "content": "\n- 'Search for / look for / find items' means a search endpoint (`products/search`, `Search Items`, `search product`), not auto-complete, which only suggests terms. Use auto-complete only when the query asks for suggestions or when that retailer has no search endpoint in the list. When a query has several different product types (clothing vs furniture/lamps), pick the retailer or tool that fits each category separately. Do not reuse one tool for both items when another listed tool is a better fit for the second item.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Radio stations in a country -> the radio-stations tool, not a Spotify tool.",
+      "content": "\n- Match the query's object noun to the endpoint name, not just the provider or franchise. Read every sibling endpoint of the provider before choosing. 'Games' -> the games-list endpoint, not 'Monsters'. 'Daily forecast for the next few weeks' -> the multi-week daily forecast tool, not a single-metric or current-only tool (wind speed, current weather, air pollution). 'Nearby cities' -> a cities-in-radius tool. 'Active alerts' -> the alerts tool.\n- 'Latest news from <source>' with no topic given -> that source's plain 'Get News'/latest endpoint with no required inputs. Do not use a Tag/Search endpoint and invent a tag. Use tag or search endpoints only when the query supplies the topic word.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "'generate a fake business email' -> `Email API: Get Fake Email Address`).",
+      "content": "\n- When several sibling tools could fit, pick the one whose description repeats the query's own wording. 'validate the format and authenticity' -> the tool that describes format + authenticity checks (`Easy Email Validation: Validate Email`). 'deliverable and working' -> the tool whose description says 'deliverable and working' (`Email Address Validator: Validate Email Address`). 'disposable or temporary domain' -> a domain-specific disposable checker (`MailCheck: Domain`) rather than a generic email/domain validator. Do not assign the same tool to two clauses when another tool matches the second clause's wording better.\n- Dice: 'N dice with S sides' rolled once, with no repeat count -> `Custom dice` (dice, sides). Use the `... rolls` variants only when the query asks for repeated rolls. 'Regular dice' rolled several times -> `Regular dice rolls` (dice, rolls).",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+      "content": "\n- Every clause needs a call, including soft requests. 'Find its reviews or ratings' -> a review/search tool (e.g. a game-search tool with the game name as `criteria`). When a clause concerns a named entity (game, product, artist) and the tool has a title/name/criteria/keyword field, put that entity in it ('deals for Rocket League' -> a games or deals tool with title `Rocket League`) rather than calling with no arguments. A 'which stores sell...' clause gets its own stores-list call.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+      "content": "\n- Do not stop early. Long queries ('Also...', 'finally...', comma-separated lists) need one call per clause. Write the checklist first, and the final list must have at least that many calls. A 2-call answer to a 5-clause query is wrong. Always end with the closing `]` and `</answer>`.\n- One clause = one call. Put every qualifier (title AND limit, speaker AND topic AND duration) into that single call. Never emit the same tool twice with the parameters split between the calls, unless the query gives different inputs for each.\n- If one clause names two different attributes of a topic (e.g. a kanji's English meaning AND its onyomi reading), use the specific endpoint for each attribute, one call each (e.g. `Kanji English meaning` with kem=`parent`, `Onyomi reading` with on=`シン`). Do not substitute a generic list or alphabet tool for them.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "'free PC game giveaways' -> platform `pc`, type `game`;",
+      "content": "'free PC game giveaways' -> platform `pc`, type `game`; 'free Steam game giveaways' -> platform `steam`, type `game` (a platform named in the clause is a filter value, not a reason to call that platform's chart or search tools);",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Never pick a tool just because a parameter value fits (e.g. a country code). Prefer the tool whose parameters can express every constraint in the query (e.g. a forecast tool with day-count, temperature-unit and wind-unit params, and a location field that accepts the given ID format).",
+      "content": "\n- Between sibling endpoints from one provider, let the clause's time or ownership wording decide: 'upcoming' -> the Upcoming endpoint, 'my recent history' or 'played' -> the Played endpoint, 'trending' vs 'top' vs 'record' -> the endpoint whose name says so. Ignore tools from other games or domains that merely share a keyword.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+      "content": "- Filter words also map to optionals. Check status, level, scope and flag words in each clause against the schema and include the match; scan clause by clause, word by word:\n  - 'active federal politicians' -> active `true` AND level_of_government `federal` (use both when both words appear; follow the case style the schema shows). 'US sources' -> `country` = `us`/`US` per the schema's style.\n  - 'one card from page 1' -> page `1` AND pageSize/limit `1`; 'first 10' -> limit `10`.\n  - 'without requiring exact title matches' -> exact `0`; 'exact match' -> exact `1`. Follow the schema's own flag convention (`0`/`1` when the description says `Default 0`, otherwise `true`/`false`).\n  - 'limited to 150 characters' -> limit `150`; 'including STEREO_A and STEREO_B data' -> enable `STEREO_A,STEREO_B`; 'from CNN' -> newspaperId `CNN`; 'specifically in English' -> the language field, in the format and case the description shows (e.g. `en-us` or `en-US`).\n  - 'SMTP checking with a 10-second timeout' -> smtp `true`, timeout `10`. 'N dice with S sides, R times' -> dice `N`, sides `S`, rolls `R`.\n- Exact vs bounded values: '7-letter word' or 'exactly 16 strokes' -> the exact-value parameter (`wordLength`=`7`), not `minLength`/`maxLength`. Use min/max parameters only for 'at least' / 'at most'.\n- If the schema lists a header-style optional `Content-Type`, include it with value `application/json`.\n- Locale/language codes use the hyphen form (`en-US`), not `en_US`.\n- Include `page`/`limit` only when the query mentions a page or a count. 'Most recent reviews' -> just the sort field (e.g. `sort_order`=`DATE_DESCENDING`), with no invented `page`.\n- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+      "support_count": 3,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+      "content": "\n- For a long comma-separated query, map each item to exactly one call. Split 'X and Y' into two calls when they need different endpoints (e.g. 'islands and stats'). Items that need no input ('store information', 'character listings', 'a random card draw') still get a call with `[]` parameter lists, because the clause names them. Skip sibling endpoints of the same provider that no item names (e.g. engravings when only raids, islands and stats are asked for).\n- Narrative or third-person queries ('The user searched X, then accessed Y, finally checked Z...') are checklists. Make one call per described action, using the quoted terms and numbers as values. Ignore closing commentary about the user's purpose ('possibly for analysis of...'), which asks for no call.",
+      "support_count": 3,
+      "source_type": "success"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "parameter_mapping_error",
+      "count": 3,
+      "description": "Dietary word used as a cuisine ('halal' -> cuisine=['Halal']), a state code placed in city= ('GA'), and num_people invented from 'family with kids'."
+    },
+    {
+      "failure_type": "format_violation",
+      "count": 2,
+      "description": "Bare search_* call with the search nested inside save_to_cache, and a stray </parameter> tag causing a SyntaxError."
+    },
+    {
+      "failure_type": "yes_reply_misrouted",
+      "count": 2,
+      "description": "A bare 'Yes' or 'sounds good' got load-and-save-unchanged on the wrong key. In one case the proposal was already applied; in the other it was a new attraction type that needed a search."
+    },
+    {
+      "failure_type": "key_state_confusion",
+      "count": 2,
+      "description": "Re-ran search_flights with invented keys when both flight legs were cached and the user gave a class, and filtered a hotels key that does not exist in CACHE."
+    },
+    {
+      "failure_type": "filter_over_specification",
+      "count": 1,
+      "description": "Re-passed pool_present and has_kids_club, which the CACHE summary already listed, alongside the new laundry and room-service constraints."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already holds most of these rules, but they sit deep in a very long document and the agent skips them. Past rejected steps added large blocks and lost score, so I propose three compact edits. (1) A parameter and format self-check in the HARD OUTPUT RULES at the top, covering dietary flags, state versus city, invented num_people, call and save form, and a per-kwarg trace for filters. (2) A KEY TEST in the CACHE GATE: key present means filter each flight leg and never search; key absent means never load a key, so a 'Yes' or date reply becomes a first search. This also scopes section E's 'class goes into the search' to the case where flight keys are absent. (3) An ACCEPT TEST for bare 'Yes' or 'sounds good' replies that names the proposal's domain, checks whether the summary already lists it, and separates new attraction type (search) from already applied (single retrieval line, no save).",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- PARAMETER CHECK before sending: (a) dietary words ('halal', 'kosher', 'vegan', 'vegetarian', 'gluten-free', allergies) are boolean flags such as `has_halal_options=True`, never `cuisine=[\"Halal\"]`; `cuisine=[...]` is only for a named cuisine. (b) A `city=` value that is a state name or two-letter code moves to `state=`. (c) `num_people` / `num_rooms` come only from a literal number the user said; 'family', 'kids' or 'group' never produce a number. (d) Every search/filter line starts with `name = `, its save_to_cache is the next line, and the block ends right after the last call (no closing tags). (e) In a filter_* call, each kwarg must trace to a word in the user's LAST message; a kwarg that only matches an earlier turn or the CACHE summary (stars, pool, kids club, cuisine) is deleted."
+      },
+      {
+        "op": "insert_after",
+        "target": "4. Domain has NO key and all its mandatory args are known -> first search (`x = search_*(...)` then `save_to_cache`).",
+        "content": "\n4a. KEY TEST (for each domain the last turn touches, look the key up in the CACHE dict printed at the bottom):\n   - Key present -> filter or retrieve, never search. A flight class / airline / time / price reply with flight keys present means `filter_flights` on EACH cached flight key (e.g. departure_flights and return_flights), each saved as filtered_<that key>. Never re-run search_flights and never invent key names such as first_departure_flights. Section E's 'put flight_class into the search' applies only when no flight key is in CACHE and this turn supplies the dates.\n   - Key absent -> never write get_results_from_cache or filter_* for that domain (a made-up key returns None and crashes). A 'Yes', amenity or date reply is then a first search that carries the accepted proposal as a kwarg. Example: only flight keys cached, the assistant offered free breakfast and asked for the checkout date, and the user says 'Yes, check out May 18, 2025' -> `hotels = search_hotels(city=<flight destination>, checkin_date=[<outbound flight date>], checkout_date=[\"May 18, 2025\"], breakfast_included=True, num_people=<number the user stated>)` + save 'hotels'. Use the user's dates exactly as stated. If a mandatory arg is truly missing, output only the single seek_information."
+      },
+      {
+        "op": "insert_after",
+        "target": "with no search, no filter and no print('No planning needed').",
+        "content": "\n- ACCEPT TEST for a bare 'Yes' / 'sounds good' / 'that would be nice': (1) Quote the assistant's last sentence and name what it proposed and that thing's domain ('other Guided attractions' -> attractions; 'free breakfast' -> hotels; 'Downtown X' -> hotels neighborhood). Use that domain even if another domain was filtered last turn. (2) Check that domain's CACHE summary for the proposed thing. NOT listed -> it is a new constraint. A new attraction type is a fresh `attractions1 = search_attractions(city=<trip city>, type=[\"<type>\"])` saved under the first unused key ('attractions1' when 'attractions' already exists; never overwrite an existing key). An amenity or neighborhood is a filter on that domain's most refined key. ALREADY listed (e.g. 'neighborhood(s): [Downtown Lexington]' and the user says 'Okay, that sounds good') -> the whole output is the single line `x = get_results_from_cache(key=\"<most refined key>\")`, with no save_to_cache and no new key. Loading a result and saving the same object is always wrong. (3) A hotel key being present never makes a hotel retrieval the answer to an attraction proposal."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

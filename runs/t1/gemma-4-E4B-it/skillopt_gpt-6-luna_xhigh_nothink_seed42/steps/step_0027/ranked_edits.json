@@ -1,0 +1,37 @@
+{
+  "reasoning": "Kept the existing cache decision rules rather than restating them, and added the distinct retrieval-only case for accepted offers to present existing results. Combined overlapping flight-leg, hotel-date, and time-format clarifications into single edits. Retained the hotel party-size and checkout-calculation details as unique operational fixes. Support counts reflect the number of source patches supporting each edit. [optimizer-ranked: selected 3/6 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs.",
+      "content": "\n- When a hotel is explicitly requested as part of the same itinerary and no separate lodging location or dates are given, use the itinerary destination as the hotel `city` and the trip's outbound and return dates as `checkin_date` and `checkout_date`. For a one-way trip with a stated hotel checkout, the outbound travel date may establish check-in when the hotel is explicitly tied to that destination trip. Do not apply these inferences to an unrelated hotel request or when trip dates are missing or unclear.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+      "content": "\n- If the user accepts an offer to show or recommend results from an already searched scope, treat it as a read request: retrieve the compatible cached result once, without filtering or saving an unchanged result. If the reply adds only information unsupported by that domain's tools (such as traveler count for a flight search), make no tool call for that domain. Still process independent actionable requests and seek only mandatory details missing from incomplete requests.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to every described leg. If a filterable preference is supplied after compatible per-leg flight results are cached, retrieve and filter each affected leg separately rather than repeating its base search. Do not combine distinct legs by repeating keyword arguments in one call.",
+      "content": "Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. In a multi-city sequence, search only the consecutive legs the user describes (for example, A→B, B→C, C→D); do not add reverse searches for intermediate legs unless the user explicitly requests them. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date. Use the return date only as `departure_date` on the reverse-direction leg; do not pass it as `arrival_date` on the outbound search. Use `arrival_date` only when the user independently specifies an arrival date for that same outbound leg. Apply an explicitly requested flight class to every described leg. If a filterable preference is supplied after compatible per-leg flight results are cached, retrieve and filter each affected leg separately rather than repeating its base search. Do not combine distinct legs by repeating keyword arguments in one call.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Prioritize the bounded hotel-date inference because it helps complete explicitly itinerary-linked hotel searches without guessing for unrelated requests. Next, clarify read-only follow-ups to prevent unnecessary filtering or calls for unsupported details. Then cover the distinct multi-city gap by searching only described consecutive legs. The time-format edit mostly extends existing guidance, while the remaining edits are narrow or redundant.",
+    "selected_indices": [
+      3,
+      0,
+      1
+    ]
+  }
+}

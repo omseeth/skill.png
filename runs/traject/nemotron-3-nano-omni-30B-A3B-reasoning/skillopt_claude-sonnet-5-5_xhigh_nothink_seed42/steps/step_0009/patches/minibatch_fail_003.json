@@ -1,0 +1,56 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "missing_calls",
+      "count": 4,
+      "description": "Multi-clause or narrative queries were under-enumerated. Dropped calls: the sunrise/sunset astronomy call (T1), the Asos half of 'on both Asos and Wayfair' (T3), the countries tool plus the final flightSearch and flightInfo calls (T4), and 6 of 10 calls (T5)."
+    },
+    {
+      "failure_type": "sibling_tool_confusion",
+      "count": 1,
+      "description": "'Country data' and 'route information' from the same provider were collapsed into one routes call, so the countries endpoint was never called (T4)."
+    },
+    {
+      "failure_type": "missing_optional_param",
+      "count": 2,
+      "description": "Qualifier words were not mapped to optionals: 'active alerts' -> active=1 (T1); the Wayfair review page numbers (T3) are not stated in the query and were ignored."
+    },
+    {
+      "failure_type": "malformed_answer",
+      "count": 1,
+      "description": "The answer derailed after 4 calls into stray text (`}], \"answer\">\"}]`), so nothing parsed and the score was zero (T5)."
+    },
+    {
+      "failure_type": "noisy_gold",
+      "count": 1,
+      "description": "T2 gold adds 7 arbitrary no-input news endpoints that the query never mentions. This is not learnable and was ignored."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures come from stopping early on long or multi-clause queries (T1, T3, T4, T5). The calls dropped were first-sentence, last-sentence, or 'both A and B' calls. Earlier long prose rules were ignored or hurt, so this patch puts a short numbered procedure at the very top of the skill, where the model is most likely to follow it. The next edit tells sibling endpoints apart and names the clause patterns that were dropped. A one-line qualifier edit covers 'active' -> 1, date ranges and place reuse. A small format edit covers the T5 derailment. Everything is concise and avoids the broad rewrites that lowered the score in earlier steps.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Tool Calling Skill",
+        "content": "\n\n## Procedure (do this before the answer)\n1. Split the query into its clauses/sentences and number them. A long narrative ('The user first..., then..., next..., finally...') usually has 6-12 of them.\n2. For each number write one short line `n. <request> -> <exact ### heading>` (two lines if the clause asks for two things). Include the first and the last sentence; they are the ones most often dropped.\n3. Emit the answer with exactly one object per line of that list, then end with `}]</answer>`. Never stop after only the first few lines of the list, and keep the reasoning short so the list gets finished."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "\n- Each distinct data noun or named platform in a clause is its own call, even when the endpoints are siblings of one provider. 'Country data' and 'route information' from the same Flight Data API = the countries tool AND the routes tool (never one tool standing in for both). 'Current snow conditions', 'active weather alerts' and 'sunrise and sunset times' = three tools (snow, alerts, astronomy), all using the same place. 'Auto-complete on both Asos and Wayfair' = one call per named platform, each to that platform's own auto-complete tool, even when the SKU belongs to only one of them. A closing 'looking up flight X between two dates, then details of flight Y on a date' = the flight-search tool (date range) AND the flight-info tool (single date)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+        "content": "\n- Status and range words are qualifiers too: 'active alerts' -> active `1`; 'between January 1-31, 2024' -> dtFrom `2024-01-01`, dtTo `2024-01-31`; 'on January 15, 2024' -> date `2024-01-15`; 'a list of 500 cities' -> limit `500`; 'page 1' -> page `1`. When a clause says 'there' or 'in that area', reuse the place named earlier as the value (q = `Breckenridge`)."
+      },
+      {
+        "op": "replace",
+        "target": "Do not close the list early or leave stray brackets.",
+        "content": "Do not close the list early or leave stray brackets. Nothing but `</answer>` may follow the final `}]` (no extra keys such as `\"answer\"`, no stray quotes or braces). An unparseable answer scores zero even when its first calls are right."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

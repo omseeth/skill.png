@@ -1,0 +1,33 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "All questions were Jeopardy-style clues ('this X', 'he/she', 'this \"point\"') answered against noisy web-search snippets. The agent identified the answer type from the clue and returned a single entity of that type.",
+    "The agent found the entity that recurs across many snippets and satisfies every clue constraint, instead of being pulled toward distractors (Dunlop for tires, the 1913 or 1925 date noise for Kafka, Eagle Bridge vs Hoosick Falls for Grandma Moses).",
+    "Some snippets restated the clue verbatim, as in J! Archive or Jeopardy question dumps, with the answer right after it (e.g. '... | Grandma Moses'). The agent used these as high-confidence evidence.",
+    "Final answers were short canonical forms with no explanation. They honored qualifiers in the question: 'Last name of the brothers' gave 'Michelin', and 'this \"point\"' gave 'dew point', the full term including the hinted word.",
+    "Answers were the standard canonical name or term ('Apogee', 'Disneyland', 'The New York Times', 'Max Factor'), with no hedging or alternatives."
+  ],
+  "patch": {
+    "reasoning": "The skill is empty, and every success followed the same workflow: classify what the clue asks for, locate the consistent answer in the snippets, and output a minimal canonical answer. Encoding these steps should transfer to other clue-style questions over noisy search context.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Reading Clue-Style Questions\n- Many questions are trivia clues with a blank such as \"this author\", \"this term\", \"he/she\", or a quoted word like \"point\". First decide the answer type the clue asks for (person, place, term, publication, surname). Return exactly that type.\n- Use every constraint in the clue (dates, places, roles) to pick among candidates. Do not settle on the first name in the context."
+      },
+      {
+        "op": "append",
+        "content": "## Using the Context Efficiently\n- Context is a set of noisy search snippets. Prefer the answer that recurs across multiple independent snippets and fits all parts of the clue.\n- If a snippet restates the clue almost verbatim (e.g., J! Archive or a Jeopardy question dump), the answer usually follows it directly, often after a '|'. Treat this as strong evidence.\n- Ignore distractor entities that match only part of the clue (a related inventor, a different date, a neighboring town). Minor date or detail inconsistencies between snippets do not change the answer if the main entity is consistent."
+      },
+      {
+        "op": "append",
+        "content": "## Answer Formatting Rules\n- Give only the canonical name or term, with no explanation, no restated question, and no alternatives. Use the standard form, e.g., \"The New York Times\" or \"Max Factor\".\n- Honor qualifiers in the question. \"Last name of ...\" means give only the surname (or shared family name, e.g., \"Michelin\"). \"This 'point'\" means give the full phrase including the hinted word (\"dew point\").\n- If the question asks for a single thing, give one answer. Do not list multiple candidates."
+      },
+      {
+        "op": "append",
+        "content": "## Confidence\n- When the context clearly confirms a well-known fact, answer directly and decisively. Do not over-deliberate or hedge."
+      }
+    ]
+  },
+  "source_type": "success"
+}

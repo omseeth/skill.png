@@ -1,0 +1,54 @@
+{
+  "reasoning": "Preserved the failure-driven cache, no-planning, proximity, exact wording, clarification, and nonstop edits because they address operational gaps. Kept the approximate-budget success edit because it covers a distinct, supported pattern not addressed by the failure patches. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "If a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only the new same-domain filter and save the update under a fresh relevant key.",
+      "content": "If the cache summary lists multiple keys for a pending deliverable, choose the latest, most-refined compatible result for the same domain, location, and itinerary leg that retains all earlier constraints still in force. Retrieve it this turn using its exact listed key and assign the returned result to a variable. For an ordinary delta, apply only the missing same-domain constraint(s) in one filter call, assign the exact result, and save it under a fresh key. If the user explicitly replaces or corrects a category, search afresh using the replacement and all other active criteria rather than filtering an incompatible category-specific result. A cached entry that omits an active criterion is not complete.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Return no-planning only when every requested or pending deliverable reflects all current constraints and the latest turn adds no request, accepted offer, or new constraint.",
+      "content": "Before returning no-planning, verify each requested or pending deliverable against the latest suitable cache summary by its actual criterion and value (for example, hotel stars, traveler count, or attraction name/type); matching domain or location alone is insufficient. If a criterion is absent or differs, complete the required filter or search. Return no-planning only when all deliverables demonstrably match and the latest turn adds no request, acceptance, or constraint.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain.",
+      "content": "Use `search_nearest` only for an explicit proximity relationship, not a named area preference. Obtain both relevant source results first, assigning and saving any newly searched result before use. Call it only when both inputs are ready, with exactly two non-`None` results from distinct supported domains—one per domain, never a duplicate input or placeholder—and set `groupBy` to the domain the user wants returned or recommended.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Preserve complete names, categories, criteria, and date strings unless a tool requires a format conversion. Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value.",
+      "content": "Preserve user-provided names, categories, criteria, and date strings exactly unless a tool requires a format conversion; do not normalize category wording to a similar label. Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion.",
+      "content": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion. When asked for an airline or class, map a carrier name or code to `airline` and a service-class term to `flight_class`; do not interpret a carrier code as a time-of-day preference unless the assistant asked about flight times.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+      "content": "\n\n- **Honor explicit nonstop requests:** When the user requests a non-stop or nonstop flight, pass `num_layovers=[0]` on every requested leg, including legs searched after a later clarification; do not rely on the tool's default layover range.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+      "content": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`. For a single approximate budget amount (for example, “around 500 per night”), pass the stated amount to the domain’s numeric `budget` field; do not invent a range or ask for more precision.",
+      "support_count": 7,
+      "source_type": "success"
+    }
+  ]
+}

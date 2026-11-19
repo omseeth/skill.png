@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_result_persistence",
+      "count": 5,
+      "description": "Search or filter results were not consistently assigned and saved to cache."
+    },
+    {
+      "failure_type": "runtime_namespace_violation",
+      "count": 3,
+      "description": "Agents imported tools from a nonexistent module instead of calling injected functions directly."
+    },
+    {
+      "failure_type": "conversation_state_or_itinerary_error",
+      "count": 3,
+      "description": "Agents missed itinerary details already in the conversation or repeated a completed filter."
+    },
+    {
+      "failure_type": "argument_mapping_error",
+      "count": 3,
+      "description": "Agents placed location or preference values in fields that did not match the request or schema."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers direct tool calls, persistence, conversation-wide context, and schema mapping, so duplicating those rules is unwarranted. The batch does expose an ambiguity in how a date range establishes return travel when flights have already been requested; clarifying that context addresses the itinerary omission without inferring flights from lodging dates or unrelated trip intervals.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Use an end date as the return-leg departure date only when return travel is requested or established by context; do not infer a return flight solely from a date interval.",
+        "content": "Use an end date as the return-leg departure date when return travel is requested or established by context. In a conversation that already requests flights, a reply to a question about travel dates that says the user is traveling “from [date] to [date]” establishes an outbound and return itinerary; use the first and final dates for those legs. Do not infer a return flight from a date interval given only for lodging or general trip context without an established flight request."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

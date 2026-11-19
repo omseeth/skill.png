@@ -1,0 +1,67 @@
+{
+  "reasoning": "Preserved the failure-driven edits as the priority, including their cache, flight-leg, argument-validation, proximity, missing-input, and tool-execution guidance. The two missing-information edits overlap, so I kept the failure edit’s domain-by-domain workflow and added the success edit’s specific date requirements and vague-timing clarification separately. No edits target protected content.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+      "content": "- Treat the latest user turn as a delta to the full conversation. Resolve short affirmative replies (such as “yes” or “that sounds great”) against the immediately preceding assistant question or offer before identifying requested actions and checking cache coverage; treat the reply as accepting that scope. For each requested action, domain, and constraint, use the supplied cache summary as evidence and count a criterion as covered only when it is explicitly shown. Choose a cache key that actually appears in the summary; when several valid results exist, use the most refined relevant result that covers the earlier criteria. If an action or new constraint is not covered, retrieve the relevant result with `get_results_from_cache(key=\"...\")` into a local variable and apply only the new constraint with the appropriate filter, passing it as `prior_results` when required. Save refinements under a new key. Search when a suitable base result is unavailable. Do not guess keys, pass missing or `None` results to filters, assume a result for one request covers a different request, or redo unaffected domains; retrieval alone does not complete an update.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "content": "- Assign the exact returned object from every search, filter, sort, and nearest-results call to a variable and save it with `save_to_cache` under a unique, descriptive key. Save each refinement and each distinct flight-leg result separately, using a new key for refined results. Never issue a bare tool call or replace a tool result with a hand-built dictionary or redefined model.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "## Represent flight legs separately\n- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip, search outbound and return separately, reversing the route for the return; do not use an unsupported `return_date` argument or treat the return date as another outbound date. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+      "content": "## Represent flight legs separately\n- Make a separate search for each distinct one-way flight segment, using that leg’s origin, destination, and departure date. For a round trip, search outbound and return separately, reversing the route for the return, and put each leg’s date in its `departure_date`; do not use `return_date`, put the return date in `arrival_date`, or combine outbound and return dates in one call. If dates are alternatives for the same leg, include all alternatives in that leg’s `departure_date` list in one call. Apply every flight preference stated without a directional limitation (such as class, departure-time window, airline, budget, or layover preference) to every applicable leg. If leg results are cached, retrieve and filter each leg independently for the new preference, then save each refinement separately. Apply a direction-specific preference only to the leg it names.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Validate tool arguments and preserve user intent",
+      "content": "- Send an optional parameter only when the user explicitly supplied that preference; do not treat a tool’s default as a user request. If a qualitative preference has no supported matching field, do not approximate it with an unrelated field or value; use only criteria the schema supports. For range-valued fields, provide both bounds: “at least” or “minimum X” means `[X, scale maximum]`, while an exact rating of X means `[X, X]` (for example, on a 1–5 scale, a minimum of 4.5 is `[4.5, 5]`).",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+      "content": "\n- For hotel searches, when the user names a neighborhood or district within a city, pass the parent city in `city` and the stated area verbatim in `neighborhood`. Encode an exact star count as a two-bound range, such as `[n, n]`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "## Hotel proximity to attractions\n- If the user explicitly requests hotel access or proximity to an attraction, check whether relevant attraction results are available; search for any missing results, then call `search_nearest` with both the hotel and attraction result objects, grouped by the requested primary domain.\n- Interest in visiting an attraction alone does not imply a request for proximity or require a nearest-results call.",
+      "content": "## Hotel proximity to attractions\n- If the user explicitly requests hotel access or proximity to an attraction, check whether relevant attraction results are available; search for any missing results, then call `search_nearest` with both the hotel and attraction result objects, grouped by the requested primary domain.\n- Treat an affirmative reply as accepting the scope of the immediately preceding assistant question. In particular, a “yes” to a question about finding attractions near a hotel requests proximity. If the user names a specific attraction, category-only attraction results do not satisfy that request: search for the named attraction and group nearest results by hotel.\n- Interest in visiting an attraction alone does not imply a request for proximity or require a nearest-results call.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Before searching, check the full conversation for all mandatory inputs required by each requested tool. If any are missing, do not invent values, use defaults, or run a partial search. Make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+      "content": "Before searching, check the full conversation and relevant cache for mandatory inputs separately for each requested domain. If a domain lacks a mandatory input, do not call that domain’s tool, invent a value, or use a default; make one `seek_information` call asking only for missing mandatory information across the incomplete domains. Continue requested actions in other domains when their mandatory inputs are available and their results are not already validly cached. Optional preferences are not mandatory inputs.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Missing mandatory information",
+      "content": "\nA flight search requires a departure date for each requested leg; a hotel search requires both check-in and check-out dates. Vague timing such as “last-minute” does not supply a date, and examples or assumed current dates are not valid substitutes.",
+      "support_count": 6,
+      "source_type": "success"
+    },
+    {
+      "op": "append",
+      "content": "\n\n## Tool execution hygiene\n- Tools are already available as callable names in the execution environment. Call them directly; do not import tool modules, modify `sys.path`, redefine tools or input models, or create substitute helper models.\n- Pass returned tool objects directly to later tools. Do not assume result field names or print or iterate through result contents unless the tool schema explicitly guarantees those fields. Do not add unrequested searches or sorts, call filters without new criteria, or print `No planning needed` after making tool calls.",
+      "support_count": 3,
+      "source_type": "failure"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "reasoning": "Combined the two traveler-count proposals into one replacement. Preserved the distinct guidance for accepted offers across itinerary stops, updating multiple flight legs, refreshing inputs before proximity searches, limiting presentation-only work, avoiding cross-domain filters, and using runtime-provided tools. Support counts reflect how many of the five source patches support each edit; no edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+      "content": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” For hotel searches and filters, pass an explicitly stated traveler count—including “solo” as one traveler—in `num_people` when that field is supported; preserve it in later hotel refinements unless superseded. Do not map traveler count to `num_rooms` or infer a room count. A traveler count is not a flight-search parameter unless the schema provides one.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. Interpret replies in the context of the assistant's concrete question or suggestion, not only their literal wording: a direct answer can supply the asked-for amenity or preference, and asking what is available after an area is suggested makes that area an actionable search target. A direct answer can also introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the reply says a criterion applies to “both,” apply it independently to every still-pending domain referenced in context (for example, hotels and restaurants), using each domain’s appropriate filter and latest compatible cached result; do not apply it only to the last-mentioned domain. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.",
+      "content": "- An affirmative reply to the assistant’s concrete offer to add a domain or activity makes that work actionable, rather than merely confirming existing results. Apply the proposed criteria to every relevant destination or stop in the pending itinerary, making separate searches where required. A cached result from a different domain does not cover the added request.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+      "content": "- When a new itinerary-wide flight criterion (such as a budget cap, cabin class, or time window) applies to multiple legs, update each affected leg independently: retrieve its latest compatible cached result by its exact listed key and use it for refinement, passing it as `prior_results` when required. Save each refined result under a new key. Do not count one leg’s refinement or merely having cached legs as satisfying another leg; reuse unaffected legs directly.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Call `search_nearest` only when the user explicitly requests proximity between supported domains. Before calling it, verify that each cached result covers the specific requested target, not merely the same domain or city. For example, a generic city attraction search does not cover a separately named attraction; search for the named attraction using `attraction_name` unless the cache summary shows that exact target is already covered.",
+      "content": "- Before calling `search_nearest`, ensure each input domain’s results reflect all newly requested criteria: refine a compatible cached result or search when no suitable base exists. Pass the updated result objects, not stale cached results that omit a new constraint.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "content": "- Do not add presentation-only work to a plan: call `sort_results` only when the user explicitly requests ordering or ranking, and do not print manually composed summaries or make claims beyond tool outputs. Keep calls limited to requested actions, necessary refinements, and cache operations.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.",
+      "content": "- Never pass one domain’s result as `prior_results` to another domain’s filter. Filter only with a compatible result for the same domain and relevant target; if no such base exists, search rather than filtering an unrelated result.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "append",
+      "content": "\n\n## Runtime tool bindings\n- Tool functions and cache helpers are provided by the runtime. Call them directly; do not import them from a module or package, or redefine or wrap them.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

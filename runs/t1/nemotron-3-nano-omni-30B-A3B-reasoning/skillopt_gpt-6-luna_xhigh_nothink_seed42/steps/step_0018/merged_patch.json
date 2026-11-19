@@ -1,0 +1,68 @@
+{
+  "reasoning": "Consolidated overlapping cache and runtime guidance while keeping each edit anchored to a distinct text region. Preserved the unique additions on pending requests, hotel counts and beach access, range encoding, and flight-time constraints. Support counts reflect how many of the four supplied patches proposed each edit; the protected section is untouched.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+      "content": "\n- If the cache listing contains multiple results for an affected domain, choose the most-refined compatible result whose summary covers all still-valid earlier criteria; among equally refined compatible results, prefer the latest. Do not default to a generic base result. Apply only the latest unmet constraint. If no compatible result covers the needed prior criteria, use an appropriate compatible base or search as required.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- If the latest turn adds no criterion and a compatible listed cache result already covers the outstanding request—including when the user says they are flexible or accepts an offer to provide recommendations—retrieve that result with its exact listed key into a local variable and use it directly. Do not search or filter again, and do not use `print(\"No planning needed\")` in place of retrieving a result the user is expecting.",
+      "content": "\n- Keep cache operations scoped to actions due on the latest turn. Leave unrelated domains with valid cached results untouched unless they are needed for a requested cross-domain operation or the user is currently expecting those results. Retrieving an unchanged result does not create a new result: do not save a duplicate merely to repeat it. Every planned tool call should serve an outstanding request or constraint.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. Interpret replies in the context of the assistant's concrete question or suggestion, not only their literal wording: a direct answer can supply the asked-for amenity or preference, and asking what is available after an area is suggested makes that area an actionable search target. A direct answer can also introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the reply says a criterion applies to “both,” apply it independently to every still-pending domain referenced in context (for example, hotels and restaurants), using each domain’s appropriate filter and latest compatible cached result; do not apply it only to the last-mentioned domain. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.",
+      "content": "\n- Preserve pending requests across updates: answering a question about one domain, or narrowing it (for example, requesting only a return flight), does not cancel other explicitly requested domains. Remove an earlier request only when the user explicitly retracts it. Keep each criterion scoped to the item and domain it was given for; for example, a rating supplied in response to a dining question applies to restaurants, not hotels. Continue all other still-pending actions.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+      "content": "- Validate value encoding and cardinality as well as argument names. When the schema defines a range as a two-endpoint list, pass exactly `[lower, upper]`; use `[x, x]` for an exact value. For a one-sided threshold, use the stated bound and only an opposite endpoint documented by the schema. Never pass a scalar or singleton list, reinterpret an exact value as a minimum, widen an exact value, or invent endpoints. If the supported bounds are unclear, consult the schema before calling.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+      "content": "\n- When exact hotel room and guest counts are explicitly stated, map them independently to `num_rooms` and `num_people`; do not infer one from the other. If supplied after a compatible hotel result exists, apply the newly stated count or counts in a hotel refinement.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`.",
+      "content": "\n- For a hotel requested near a beach, use `has_beach_access=True` when that field is supported; do not encode “beach” as a neighborhood unless the user names an actual neighborhood.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.",
+      "content": "\n- For flight time constraints, map “arrive by T” or “no later than T” to an `arrival_time` range ending at T, using the earliest valid time-of-day endpoint and the format accepted by the tool. Apply departure-time constraints to `departure_time`, not `arrival_time`; consult the schema for valid bounds and formatting.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "append",
+      "content": "\n\n## Runtime tool usage and code output\n- Travel tools and cache helpers are provided as runtime bindings. Call them directly; do not import, wrap, redefine, or shadow them, or replace their models or signatures. Use the provided `get_results_from_cache` and `save_to_cache` functions rather than importing a cache module.\n- Before output, check that the code is valid Python and contains only executable tool code—no XML or other markup tags, and no explanatory prose.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

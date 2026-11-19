@@ -1,0 +1,24 @@
+{
+  "batch_size": 1,
+  "success_patterns": [
+    "The agent found a verbatim archive hit ('Category: HODGEPODGE Question: ... Answer: Hundred...') whose answer was cut off by an ellipsis. It completed the answer to the full standard name, using the other passages (Wikipedia, HISTORY.com, Encyclopedia.com), which all use 'Hundred Years' War'.",
+    "The clue gave only a generic type noun ('this 1337-1453 conflict'). The agent kept the head noun 'War' because the bare modifier 'Hundred Years' does not name the entity. It also did not copy any clue words such as 'Guienne' or 'England'.",
+    "The agent anchored on distinctive clue details (the date range 1337-1453, the Fief of Guienne) that several passages repeated. It did not answer with one of the clue's anchors (Guienne, Aquitaine, England)."
+  ],
+  "patch": {
+    "reasoning": "The skill covers archive layouts and truncated clues, but not an archive layout of 'Category: X Question: ... Answer: ...' where the ANSWER itself is cut off with '...'. In that case the visible fragment is a prefix and must be completed to the full standard name using the other passages. A generic 'conflict' or 'war' clue with a date range is also not explicitly tied to the keep-head-noun exception. These two small additions reinforce behaviors that worked, and they do not touch the protected block or add any new global rule that could regress other passes.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Archive lines may also be formatted 'CATEGORY | clue text | answer'. Take the answer that follows the clue, even if the whole context is one short passage.",
+        "content": "- Another archive layout is 'Category: X Question: <clue> Answer: <text>...'. If the answer is itself cut off by an ellipsis ('Answer: Hundred...'), the visible text is only the START of the answer. Complete it to the full standard name using the other passages that repeat the same entity (encyclopedia titles, 'Hundred Years' War'). Do not answer with just the fragment, and do not switch to an anchor word from the clue."
+      },
+      {
+        "op": "insert_after",
+        "target": "The same holds for named events, deals, treaties, wars and laws when the clue gives only a generic descriptor with the head word ('1853 purchase that brought the U.S. to its present area' -> 'Gadsden Purchase', not 'Gadsden').",
+        "content": " This also applies when the clue says 'this conflict / this war / this battle' with a date range: answer with the standard full name that includes the head noun if the bare modifier is not a name ('this 1337-1453 conflict' -> 'Hundred Years' War', not 'Hundred Years')."
+      }
+    ]
+  },
+  "source_type": "success"
+}

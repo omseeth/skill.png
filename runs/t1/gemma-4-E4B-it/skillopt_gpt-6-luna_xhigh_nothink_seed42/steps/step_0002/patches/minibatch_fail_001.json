@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_incremental_filtering",
+      "count": 6,
+      "description": "Follow-up preferences triggered fresh or incorrect-domain searches instead of retrieving matching cached results and filtering only the new constraints."
+    },
+    {
+      "failure_type": "result_assignment_and_cache_persistence",
+      "count": 8,
+      "description": "Search and filter outputs were not consistently assigned and immediately saved; one trajectory even passed a tool function rather than its result to the cache."
+    },
+    {
+      "failure_type": "domain_scope",
+      "count": 2,
+      "description": "The agent acted on a previously mentioned but unrelated domain instead of limiting calls to the domain affected by the current turn."
+    },
+    {
+      "failure_type": "tool_parameter_format",
+      "count": 1,
+      "description": "A broad afternoon preference was sent as an unsupported time format in a new search rather than applied to cached flights using the accepted format."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the core cache and save requirements, but the trajectories show these are not being applied reliably. These edits turn them into explicit follow-up and code-generation procedures, clarify current-turn domain scope, and address the observed flight-time format failure.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Cache-aware tool workflow",
+        "content": "- For follow-up turns, identify which domain each new constraint changes and select the most relevant matching cached result, including an already-filtered result when it preserves earlier constraints. Retrieve it by its exact key and filter only the new constraints; do not rerun a search just to add a preference. Apply trip-wide flight preferences to every relevant cached leg. Leave unrelated domains untouched merely because they appeared earlier in the conversation."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool results and constraints",
+        "content": "- Use this call pattern without exception: assign each result-returning call to a result variable, then immediately save that variable (for example, `hotels = search_hotels(...)` followed by `save_to_cache(key=\"hotels\", value=hotels)`). For a refinement, assign the cache retrieval, pass it as `prior_results`, assign the filter output, and save that output under a new key. Never leave a search or filter call unassigned, print it instead of saving it, or pass the tool function itself as the cache value."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Flight itinerary legs",
+        "content": "- On follow-up turns, filter each cached flight leg affected by a trip-wide preference, including the return leg unless the user makes the preference leg-specific. For flight time ranges, use a format accepted by the tool (for example, `12:00 PM`), not an unvalidated `HH:MM:SS` string. Translate a broad preference such as “afternoon” to its bounded interval in the accepted format."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

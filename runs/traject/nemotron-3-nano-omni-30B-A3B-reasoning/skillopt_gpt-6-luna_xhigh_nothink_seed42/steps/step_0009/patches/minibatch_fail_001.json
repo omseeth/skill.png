@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection",
+      "count": 5,
+      "description": "Selected a related but mismatched endpoint, including confusion between current conditions, hotel searches, listings, and specific-ID lookups."
+    },
+    {
+      "failure_type": "parameter_mapping",
+      "count": 7,
+      "description": "Misapplied, omitted, or added qualifiers, including provider-specific location codes, sort fields, canonical values, and unrequested options."
+    },
+    {
+      "failure_type": "output_structure",
+      "count": 2,
+      "description": "Returned malformed JSON or grouped calls into extra nested sections instead of one valid call list."
+    },
+    {
+      "failure_type": "call_coverage",
+      "count": 2,
+      "description": "Added a duplicate call or omitted a requested operation."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers endpoint choice, call reconciliation, and schema mapping, so broader edits would repeat existing guidance. These additions address two remaining ambiguities exposed by the batch: avoiding supported-but-unrequested optional values and making the required flat-list serialization explicit.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Distinguish parameters that can be confused, such as quantities versus repetitions or operation-specific values versus ordinary search terms. Include supported optional parameters needed to express explicit constraints; do not silently relax a constrained request. Use documented defaults only when they fit the request, and do not invent unsupported arguments, identifiers, credentials, or values.",
+        "content": "\n- Do not add a supported optional parameter unless it expresses a user-requested qualifier; do not infer units, locale, sorting, or filters from context. Use the endpoint's documented default when no such qualifier was requested."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Before submitting, reconcile the calls against the requested actions and qualifiers, then verify that the output is valid JSON when JSON is required, with no stray fields, nested call objects, or extra prose that violates the contract.",
+        "content": "\n- For a list-based answer contract, serialize all invocations as exactly one flat JSON array, with one call object per invocation. Do not add planning, converted-parameter, or other grouped sections."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

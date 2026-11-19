@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_scope_update",
+      "count": 6,
+      "description": "Agents reran base searches or proximity work, or selected a less-constrained cache result instead of filtering the compatible cached result for the latest preference."
+    },
+    {
+      "failure_type": "scope_and_value_interpretation",
+      "count": 2,
+      "description": "Agents applied a broad prior category instead of the named place scope, or shortened or substituted user-provided neighborhood and category values."
+    }
+  ],
+  "patch": {
+    "reasoning": "The dominant failures need a clearer operational rule for choosing cache entries and applying only the new constraint, especially when a cached result is already filtered or proximity-derived and multiple domains are affected. A more explicit rule for mapping an assistant-suggested place to the requested filter scope addresses the remaining reference-resolution error. Existing exact-value guidance already covers literal category and neighborhood preservation, so it is not repeated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Identify only the domains or itinerary legs changed by the latest user turn. For each changed request, if a compatible cached result exists, retrieve it with `get_results_from_cache(key=\"<literal cache key shown in the summary>\")` and assign the returned object to a local variable; cache keys and summaries are not Python result variables. Choose the most constrained cached result that still covers the request: its domain, location, dates or leg, and original scope must be compatible, and it must not be narrower than the requested scope. Prefer a result that already embodies the greatest number of still-active criteria, and retrieve it by its exact cache key. A result restricted to a different category or entity does not establish that a newly requested specific entity is included; search if the cached scope cannot cover it. Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result. A cached proximity result may also be used as filter input when its candidate set remains valid. Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no cached result can cover the changed scope.",
+        "content": "- Identify only the domains or itinerary legs changed by the latest user turn. For each changed scope, read cache summaries as evidence of which active constraints are already embodied, then retrieve the most constrained compatible result by its exact cache key. This includes a filtered or nearest-derived result when its candidate set covers the requested domain and scope; do not fall back to a less-constrained base result. Apply the matching `filter_*` tool only with newly supplied constraints and any active constraints missing from the retrieved result—never reapply constraints its summary already confirms. If a new neighborhood or location applies to both hotel and restaurant requests, filter each affected domain separately; a compatible nearest-derived result may be the filter input for its domain. Do not rerun a base search or recompute `search_nearest` for a filter-only update. Search only if no cached candidate set can cover the requested domain, location, dates or leg, category, or entity; filters can narrow but not broaden a candidate set. Do not process unaffected domains or legs."
+      },
+      {
+        "op": "replace",
+        "target": "- When the user asks about a place, category, or entity the assistant just suggested (for example, “What's there?”), treat it as a request to inspect that scope: retrieve a compatible cached result and filter it to that scope, or search if no compatible result can cover it. An assistant's proximity suggestion alone does not authorize `search_nearest`; use it only when the user explicitly requests or accepts proximity.",
+        "content": "- When the user asks about a place, category, or entity the assistant just suggested (for example, “What's there?”), treat the mentioned item as the requested scope, not merely as a restatement of the prior broad category: retrieve a compatible cached result and filter specifically to that scope, or search if no compatible result can cover it. For a named geographic area or neighborhood presented as a place to explore, use its exact phrase in `neighborhood`; use `attraction_name` when the user is asking about a specific attraction entity itself. Do not reapply an already-embodied category unless requested. An assistant's proximity suggestion alone does not authorize `search_nearest`; use it only when the user explicitly requests or accepts proximity."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

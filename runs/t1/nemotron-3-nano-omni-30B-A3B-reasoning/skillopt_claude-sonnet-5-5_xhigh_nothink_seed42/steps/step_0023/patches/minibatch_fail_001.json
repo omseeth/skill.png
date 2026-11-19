@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "filter_on_missing_cache_key",
+      "count": 2,
+      "description": "Agent loaded or filtered a domain whose key is not in CACHE (hotels in one case, restaurants in the other). This produced None or NameError instead of a first search or a single seek_information."
+    },
+    {
+      "failure_type": "ignored_answer_re_asked",
+      "count": 2,
+      "description": "The user's reply supplied the dates (plus rooms in one case), and the origin was stated in turn 1. The agent still called seek_information and asked again."
+    },
+    {
+      "failure_type": "fabricated_dates_bare_search",
+      "count": 1,
+      "description": "A flight request with no date was answered with a search using TOOL CONFIG example dates. The call was also unassigned and nested inside save_to_cache."
+    },
+    {
+      "failure_type": "wrong_location_param",
+      "count": 1,
+      "description": "State code AZ was passed as city= in search_attractions instead of state=."
+    },
+    {
+      "failure_type": "dropped_requested_domain",
+      "count": 1,
+      "description": "Hotel was requested earlier and its dates were now known, but only a flight search was run, with arrival_date misused for the return date."
+    },
+    {
+      "failure_type": "optional_param_mismatch",
+      "count": 1,
+      "description": "The gold call has num_people=4, taken from the assistant's question about '4 people'. This looks like noisy gold and was not targeted."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four of the eight failures come from two behaviours. The agent acts on a domain whose key is absent from CACHE, and it re-asks for values the user already gave (dates, an origin, a room count). Two existing bullets cause the second behaviour. Rule 24 ('room count and no dates -> only seek_information') fires even when the reply contains dates. Rule 7 ('only a destination -> origin missing') fires even when 'from Tucson' was stated. I add one short inventory step at the top of the CACHE GATE. It pairs each prohibition with a positive trigger and covers missing keys, values known in any turn, hotel-after-dates, dates only from user turns, and state= for state codes. I also narrow the two misleading bullets with in-place replacements, so the skill grows very little. I did not add any new cross-domain filtering behaviour, because earlier rejected patches that did so regressed.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\n00. INVENTORY FIRST (positive triggers, before any code):\n   - KEYS: only keys spelled in CACHE may be passed to get_results_from_cache or filtered. A requested domain whose key is NOT in CACHE gets `x = search_*(...)` + save when its mandatory args are known in ANY turn. A restaurant or attraction city is the trip destination. Example: 'I have a tomato allergy and prefer Persian' with flight and hotel keys for Portland and no 'restaurants' key -> `restaurants = search_restaurants(city=\"Portland\", cuisine=[\"Persian\"], has_tomato_allergy_options=True)` + save as 'restaurants'. If a mandatory arg is missing, the output is one seek_information. Never write get_results_from_cache or filter_* for a key that is not in CACHE.\n   - VALUES: collect origin ('from X'), destination or city, dates, rooms and amenities from ALL turns. If the LAST user turn contains dates, the assistant's date question is answered, so search now. Never ask again for something already stated (origin, dates, city). Two dates after a flight request are outbound and return. Two dates after a hotel request are check-in and check-out.\n   - HOTEL REQUESTED EARLIER + dates now known -> search_hotels in this block with num_rooms ('2 rooms' -> num_rooms=2) and every amenity stated in any turn ('pet-friendly' -> is_pet_friendly=True, 'kids club' -> has_kids_club=True, 'beach' -> has_beach_access=True). Do not drop it.\n   - DATES come only from user turns, never from TOOL CONFIG examples. If no user turn gives a date for a requested flight, the whole output is `seek_information(\"We need the departure date for the flight.\")`. This holds even when the request also names a layover city, airline, class, one-way or party size.\n   - LOCATION: a state name or 2-letter code (AZ, OR, GA) is `state=\"AZ\"` with no city= argument. Example: `attractions = search_attractions(type=[\"Social\", \"Cultural\"], state=\"AZ\")` + save as 'attractions'.\n"
+      },
+      {
+        "op": "replace",
+        "target": "Hotel requested with only a city, party size or room count and no dates ('2 people to Lexington, need a hotel', then 'We need 2 rooms'):",
+        "content": "If NO check-in/check-out date appears anywhere in the conversation (a reply that gives dates plus a room count, e.g. 'June 2, 2025 to June 13, 2025, and 2 rooms', is NOT this case: search_hotels with num_rooms=2 and the stated amenities) and a hotel was requested with only a city, party size or room count ('2 people to Lexington, need a hotel', then 'We need 2 rooms'):"
+      },
+      {
+        "op": "replace",
+        "target": "If the user gave only a destination for the flight (e.g. 'a trip to Lexington, flights and hotels'), the origin city is also a missing mandatory arg.",
+        "content": "If the user gave only a destination for the flight (e.g. 'a trip to Lexington, flights and hotels') and no 'from <city>' or airport in ANY turn, the origin city is also a missing mandatory arg. A stated 'from Tucson' in any turn is the origin, and you must not ask for it again."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

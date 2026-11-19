@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_contextual_date_resolution",
+      "count": 3,
+      "description": "Explicit travel dates supplied in response to a date question were treated as missing despite enough itinerary context to search."
+    },
+    {
+      "failure_type": "cached_update_noop",
+      "count": 2,
+      "description": "A new party-size or proposed-location criterion was ignored even though compatible cached results were available."
+    },
+    {
+      "failure_type": "result_persistence_omission",
+      "count": 3,
+      "description": "Search or filter results were not saved to the cache."
+    },
+    {
+      "failure_type": "invalid_time_range_and_cached_filter_selection",
+      "count": 1,
+      "description": "A time follow-up used invalid time formatting and searched anew instead of filtering compatible cached flights."
+    },
+    {
+      "failure_type": "runtime_contract_violation",
+      "count": 1,
+      "description": "The generated code imported a nonexistent tools module."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify how to interpret dates in answers to travel-date questions and how to encode clock-time constraints, addressing the repeated incomplete-date errors and the invalid time-range call. Cache persistence, cached-result updates, and the no-import contract are already stated clearly, including in the protected section, so repeating them would not patch a skill gap.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Associate dates with explicitly stated itinerary legs in the order and context given, and do not ask again for dates already supplied.",
+        "content": " When the user supplies a preferred or ideal travel date in response to a question about travel dates, treat it as a usable itinerary date, not as missing. For an already-requested trip, use the stated travel date as the flight departure date and, when lodging is requested, as check-in if the user has supplied a stay duration; use an explicitly stated return date for the return-leg departure and hotel checkout. Calculate checkout from a known duration in nights with `adjust_date`. Do not apply this mapping to an event date or infer unrequested domains or legs."
+      },
+      {
+        "op": "insert_after",
+        "target": "For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`.",
+        "content": " For time-range fields, use the schema's accepted clock notation (for example, `08:23 PM`), not 24-hour values with seconds unless the schema requires them. Encode an exact time as `[time, time]`; encode “by” or “until” a time as `[12:00 AM, time]`, and “at or after” a time as `[time, 11:59 PM]`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

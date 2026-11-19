@@ -1,0 +1,39 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_coverage",
+      "count": 8,
+      "description": "Calls were missed, substituted, or routed to tools chosen by topical similarity rather than by the specific requested operation."
+    },
+    {
+      "failure_type": "overcalling",
+      "count": 6,
+      "description": "Agents added unrelated or redundant endpoints instead of selecting the smallest set that covers the request."
+    },
+    {
+      "failure_type": "parameter_and_call_schema_errors",
+      "count": 7,
+      "description": "Calls included invented or misplaced parameters, incorrect values, malformed call objects, or a non-exact tool name."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill is empty, and the recurring failures concern practical tool routing, controlling call scope, and checking parameter and output structure. These rules address those common gaps without encoding task-specific tool choices.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Plan tool calls\n- Break the query into its distinct requested outcomes, then map each outcome to the listed endpoint whose operation directly fulfills it. Prefer an endpoint the user explicitly names. Match by function, not merely by shared topic.\n- Build the smallest complete call set: cover every requested outcome, but do not add related data, parallel substitutes, or redundant validators. Repeat calls only when needed for distinct requested inputs; use one endpoint for multiple checks when it demonstrably covers them. Words such as “comprehensive” do not authorize unrelated calls."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Parameter discipline\n- Take values from the query or unambiguous context, preserving identifiers and the endpoint’s required geographic hierarchy. Normalize a value only as needed to fit the schema; do not substitute one location level for another.\n- Follow the listed schema exactly: put parameters in the required or optional bucket where specified and preserve their declared types. Include optional filters only when the request calls for them. Do not invent defaults, limits, credentials, IDs, or filler values such as `none`; do not fabricate a required value that the query does not provide."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Final call check\nBefore submitting, verify that every call uses the exact listed `Provider: endpoint` name and that each requested outcome is covered without extras. Under the active answer format, use one object per call and keep parameter buckets and object keys in their specified places. Do not merge calls into one object, duplicate keys, or use a provider description in place of the endpoint name."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

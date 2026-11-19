@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "answer_format",
+      "count": 5,
+      "description": "The answer was over-qualified with a type word, corporate suffix, clue word or middle initial, so EM failed even though the entity was right: 'Denver Mint' (Denver), 'Hallmark Cards' (Hallmark), 'Adirondack Mountains' (the Adirondacks), 'Transit of Venus' (a transit), 'Lyndon B. Johnson' (Lyndon Johnson)."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "The answer did not fit the slot type. The agent gave the clue's anchor place ('Saratoga Springs') for 'They were once called Saratoga Chips', and the process ('transpiration') for 'this part of the tree'."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "For a bare pair of real names ('Princess Caroline & Princess Stephanie') the agent answered a relationship word ('sisters') instead of the proper-noun entity they share (Monaco)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Five of eight failures were correct entities carrying extra words, so the exact-match key rejected them. The existing head-noun exception and 'drop descriptors' rules are being applied inconsistently. I add one explicit, example-driven rule that drops type words, corporate suffixes and clue-repeated anchors, and one rule on middle initials. The other three failures are slot-type errors: a place or process given instead of the thing or part asked for, and a relationship word given instead of the shared proper noun. I add targeted rules for those two cases. The edits are narrow so they should not disturb the rules that currently work.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "for a separate modifier already stated in the clue ('hasty' + pudding).",
+        "content": "\n- Apply the bare-word test strictly and do NOT repeat the type noun the clue already supplies ('this mint', 'these mountains', 'this gift company', 'this term'). If a trivia answer key would accept the bare name, give only the bare name: 'this mint whose mark is a \"D\"' -> 'Denver' (not 'Denver Mint'); 'this gift company' -> 'Hallmark' (not 'Hallmark Cards'; always drop Cards/Inc/Co./Corp./Company); 'Lake Placid is in these mountains' -> 'the Adirondacks' (ranges take their short plural name: Rockies, Alps, Andes, Adirondacks, not 'Adirondack Mountains'). Also drop clue-supplied anchor words from a term: 'the term for the passing of Venus in front of the sun' -> 'a transit' (not 'Transit of Venus'). Keep a head noun only when the bare word names a different thing (Roman Empire, hydrogen bomb)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For nickname clues about a person ('known as \"Uncle Walter\"'), answer with the real name as it appears in the context (Walter Cronkite), not the nickname. Still apply the person-name rule above.",
+        "content": "\n- Person names: default to 'First Last' with no middle initial, middle name or generational suffix ('Lyndon Johnson', not 'Lyndon B. Johnson'; 'George Bush', not 'George H. W. Bush'). Keep an initial only if a verbatim archive answer in the context shows it, or the name is almost never written without it ('John F. Kennedy')."
+      },
+      {
+        "op": "insert_after",
+        "target": "Other named entities in the clue are anchors, never the answer.",
+        "content": "\n- The answer's category is set by the clue's noun or pronoun, not by the dominant topic of the passages. 'Water is lost through this PART of the tree' -> a part ('the leaves'), not the process the passages discuss ('transpiration'). 'THEY were once called \"Saratoga Chips\" after the town where they were first made' -> the thing that bore the old name ('Potato chips'), not the town named in the clue ('Saratoga Springs'). With a pronoun subject ('they', 'it', 'these'), the answer is the generic object being described. Places, processes and people named in the clue are anchors."
+      },
+      {
+        "op": "insert_after",
+        "target": "If the list is of real people, answer with the team, state or other entity they share.",
+        "content": " This holds for a bare pair or list of real names ('Princess Caroline & Princess Stephanie'). Answer with the shared proper noun that the passages tie them to (the country, state, family, team or band: 'Monaco'). NEVER answer with a relationship or descriptor word such as 'sisters', 'brothers', 'actors' or 'princesses'."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

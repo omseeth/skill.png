@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every success answered with the entity named by the clue's 'this X' / 'he' slot (country, state, city, person, novel). The answer was never the anchor already in the clue, such as the Highlands, Franklin, Marius & Cinna, or Stephen Crane.",
+    "Where the passages held an archive line (J!-Archive or trivia dump) repeating the clue, the answer was copied in its exact form ('Bob Mackie'). Otherwise the winner was the entity that co-occurred with most clue details across independent passages (Israel, Tennessee, San Francisco, Rome).",
+    "Translation clue ('translates to this in English'): the answer was the English gloss in parentheses next to the foreign title in the passages ('Mi Vida Loca (My Crazy Life)'), given without the outer quotes or parentheses.",
+    "A leading parenthetical speaker intro ('(Hi, I'm Pam Tillis)') was treated as context that fixes who 'my/I' refers to, not as the answer. A trailing caption ('(Papillon Barbie)') was likewise decoration.",
+    "Titles kept their natural full form including a leading 'The' ('The Red Badge of Courage'). Person-slot clues got a bare name ('Geppetto'), and noisy passages were resolved with a quick own-knowledge sanity check."
+  ],
+  "patch": {
+    "reasoning": "All eight passes share an implicit procedure: identify the slot type, find evidence in the passages, and check the candidate against the clue. The agent emits a bare answer and the rules are buried in a long list, so a short mandatory template at the very top is the lever for making this procedure explicit and reliable on harder clues. Two clue types seen in successes are only loosely covered: translation clues and speaker-intro parentheticals, so they get one compact bullet. One redundant bullet is deleted so the document does not grow.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Question Answering Skill",
+        "content": "\n## Mandatory answer line (write ONE line before the answer tags, every time)\n`Type: <the noun the clue asks for> | Evidence: <quoted passage line, or own fact> | Check: <candidate substituted into the clue's blank reads correctly, is NOT a word already in the clue, and fits every name/number/year in the clue; form = bare short answer>`\n- Type comes from 'this X' / 'he' / 'she' / the category noun. Evidence is an archive line repeating the clue (copy its answer form, Rule 3) or the entity that co-occurs with most clue details across passages.\n- Substitution test: if the candidate is the wrong kind of thing (a conference instead of a city, a base instead of an acid) or repeats a clue noun, reject it and pick the entity the clue is describing. This line replaces the separate check line in the strategic guidance; do not write two.\n- Then put ONLY the bare answer in the tags.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "answer with the common English name (Conch).",
+        "content": "\n- Translation clues ('\"Mi Vida Loca\" translates to this in English', 'in English this is'): look for the passage line that glosses the foreign title ('Mi Vida Loca (My Crazy Life)') and answer with that English gloss, without the surrounding parentheses or quotes. A leading parenthetical like '(Hi, I'm Pam Tillis)' only tells you who 'I/my' is; that person is an anchor, never the answer."
+      },
+      {
+        "op": "delete",
+        "target": "- Put only the bare answer in the answer tags. Do not write a sentence, restate the clue, or add dates, qualifiers or alternatives. Brief reasoning belongs before the tags."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,75 @@
+{
+  "reasoning": "Failure edits are kept first. (1) The LINE TEMPLATES insert is the highest-support fix: three of eight trajectories were unparseable, and a literal line shape to imitate is the kind of rule the meta-guidance says works. I folded the success group's fully-filled Blaze Verify line into it as a third template, with both lists non-empty, placed next to the format spec. That replaces the separate success insert near the self-check, and I dropped the repeated tool-name reminder because the skill already has it. (2) The 'Required: none -> []' replace is kept, with the trailing period handled so the original '.' does not double up. (3) The named-retailer rule and (4) the MX sibling rule are kept as schema-fact fixes, trimmed for budget. Success edits that cover patterns the failure edits do not were merged as small replacements of existing lines, which keeps additions capped. These cover the first-N plus page=1 rule, count words as numbers, the named person's schema field, schema allowed-value tokens, and endpoint names that already fix a qualifier. I also kept the multi-value comma-list rule, with an explicit boundary against 'N entities -> N calls'. Nothing touches the SLOW_UPDATE block. I did not add the unrequested 'remove skeleton pass' edit, because neither group proposed it.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- The answer is one flat, bracket-balanced list `[{...}, {...}]` inside `<answer>` tags. Do not close the list early or leave stray brackets.",
+      "content": "\n- LINE TEMPLATES (copy the shape; every call line has all three keys, each once, and ends `]},`):\n  - required only: `{\"tool name\": \"Shazam: songs/get-count\", \"required parameters\": [{\"name\": \"key\", \"value\": \"40333609\"}], \"optional parameters\": []},`\n  - optional only: `{\"tool name\": \"Genius - Song Lyrics: Videos\", \"required parameters\": [], \"optional parameters\": [{\"name\": \"artist_id\", \"value\": \"16775\"}, {\"name\": \"per_page\", \"value\": \"15\"}]},`\n  - both filled: `{\"tool name\": \"Blaze Verify: Verify an email\", \"required parameters\": [{\"name\": \"email\", \"value\": \"support@company-domain.com\"}], \"optional parameters\": [{\"name\": \"smtp\", \"value\": \"true\"}, {\"name\": \"timeout\", \"value\": \"10\"}]},`\n  - The LAST call line ends `]}` with no comma, and the next line is `]</answer>` (the closing `]` is never omitted).\n  - A call line never ends in `\"},`, `\"}` or `], \"},`. That is a half-written `optional parameters` key (real zero-score output: `\"required parameters\": [{\"name\": \"key\", \"value\": \"40333609\"}], \"},`). Always write the full `\"optional parameters\": [...]` and then `}`.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "(e.g. CheapShark `title`, `limit`; Flight Info `FlightNumber`)",
+      "content": "(e.g. CheapShark `title`, `limit`; Flight Info `FlightNumber`; `Genius - Song Lyrics: Videos` `artist_id`, `per_page`; `The Legend of Zelda: List of The Legend of Zelda games` `name`, `limit`). This holds even when the value is the call's main entity or ID. Before writing each call, read its `Required parameters:` line: if it says `none`, write `\"required parameters\": []` and put every value in the optional list",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Tool selection",
+      "content": "\n- NAMED RETAILERS AND SHOPPING FILTERS. A 'compare across BestBuy, Wayfair, Zappos and Aliexpress' clause needs one search call per named retailer that has a keyword-search tool, so do not drop Aliexpress (`Aliexpress DataHub: Aliexpress - Item Search 2`, optional `q`, `region`=`US`, `currency`=`USD`, `page`=`1`) or BestBuy (`keyword`, `page`). A product search with a price range and 'free shipping' needs the tool whose optionals include `startPrice`, `endPrice` and `switches` (`Aliexpress DataHub: Aliexpress - Item Search 2`: startPrice=`600`, endPrice=`900`, `switches`=`freeShipping`). 'Some iPhone accessories' is a separate `Aliexpress DataHub: Aliexpress - Item Search` call with `q`. Never put a value outside an enum's listed options into a param (Shopee `site` accepts only my/th/vn/ph/sg/id/tw/br, so `US` is invalid and that tool cannot serve a US query).",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "'MX records' -> the MX tool.",
+      "content": "'MX records' -> the MX tool; when `Email Existence Validator: Get the MX Records` is listed, use it (not `Email API: Check Email MX Records`), and that query's disposable clause then uses `Email Existence Validator: Check for Disposable emails`.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Parameters",
+      "content": "\n\n- MULTI-VALUE PARAMS. One clause naming several outlets or values, with a tool param that takes a comma-separated list, is ONE call with the values joined by commas and no spaces: 'from CNN and BBC' on `News API_v2: Search` -> required `q`=<topic>, optional `publisher`=`cnn.com,bbc.com`. Use N calls only when the param takes a single value. When the param description gives a literal for the request ('Use \"global\" for global stats'), pass that literal (`location`=`global`).",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "'first 20' -> pageSize `20`;",
+      "content": "'first 20' or 'first 15 posts' on a paginated tool that has a page field -> the size field AND page `1` (pageSize `20` + page `1`; per_page `15` + page `1`);",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "An unused number means a missed parameter.",
+      "content": "An unused number means a missed parameter. Count words are numbers too: 'rolled 5 dice once' -> dice `5`, rolls `1`; 'twice' -> `2`.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).",
+      "content": "- A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`). A named person ('talks by X', 'songs by X') -> the schema's person field (`speaker`, `artist`, `author`), never dropped.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "'at least 5 minutes' -> min_duration `300` (seconds).",
+      "content": "'at least 5 minutes' -> min_duration `300` (seconds).\n  - Use the schema's own token, not the query's phrase: 'toys and games' -> category `toysgames` (copy it from the allowed-values list in the description); 'top 10' on a `range` param -> `1-10`; 'British English' -> `en-GB`.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "Never emit a parameter with an empty value.",
+      "content": "Never emit a parameter with an empty value. If the endpoint's own name already fixes a qualifier (`Dice Roll Simulator: Regular die` = six-sided, `Gas Price: canada`, `Moka News: Recent 50`), add no param for it and leave the lists `[]`.",
+      "support_count": 1,
+      "source_type": "success"
+    }
+  ]
+}

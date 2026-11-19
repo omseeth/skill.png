@@ -1,0 +1,37 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "On a first turn where the user gives a route or city plus context (group size, school trip, family reunion, 'planning a trip') but no dates, the agent output only a seek_information naming the missing mandatory items. For flight+hotel it combined flight and hotel items in one call (5 of 8 trajectories).",
+    "On a neighborhood answer ('Yes, near Downtown Anchorage'), the agent loaded the latest filtered hotels key, filtered with only the new neighborhood, and saved under a new key.",
+    "In the Lexington flight+hotel trajectory, the gold seek_information also names the missing departure city, because the user gave only the destination. The current skill's examples mention only dates.",
+    "When a user adds flights after hotel dates are already cached, the gold asks only for the departure city. The stay dates supply the flight dates, and the hotel cache is not re-filtered.",
+    "When a hotel request gives amenities, rating or a purpose but no stay dates, the correct output is seek_information for the dates. Weaker runs invented dates and a kids_club kwarg instead.",
+    "When the user says 'Okay, that sounds good' and the filtered_* CACHE summary already lists the assistant's proposal as applied, the gold is a plain cache retrieval, not another filter."
+  ],
+  "patch": {
+    "reasoning": "Most successes were first-turn seek_information cases that the skill already handles, so those need no new rules. The batch exposes four gaps. (1) seek_information text should name a missing origin city, not just dates. (2) Adding flights after hotel dates are known should ask only for the origin and reuse the hotel dates, not re-filter hotels or import modules. (3) A hotel request with amenities, rating or purpose but no dates must be a seek, never a search with invented dates or invalid kwargs. (4) A bare agreement is a pure retrieval when the CACHE already shows the proposal applied, rather than a re-filter that overwrites an existing key.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Reuse values the user has actually stated and ask only for what is still missing.",
+        "content": "\n- Origin counts as a mandatory flight arg. If the user gives only a destination ('a trip to Lexington, I need flights and hotels'), name the departure city as well as the dates. Example: seek_information(\"We need the departure city and departure date for the flight, and the check-in and check-out dates for the hotel.\"). If the user already named the origin, do not ask for it."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not search, and do not ask about class, airline, time, return date, or passenger count.",
+        "content": "\n- The same holds for hotels. A hotel request with a city plus amenities ('kids club', 'beach access'), a rating, stars, a purpose ('family vacation') or a party size, but no stated check-in/check-out dates, is still missing the dates. Output only `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. Never call search_hotels with invented, example or identical check-in/check-out dates, and never infer num_people from context. An amenity word is not always a valid kwarg ('kids club' is has_kids_club, never kids_club), but with no dates there is no search at all."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Search only the domain whose mandatory args just became complete. Leave other domains' existing cache entries untouched (e.g. restaurants already cached, now the hotel dates arrive: call search_hotels only).",
+        "content": "\n- Flights added after hotel dates are known ('yeah help me with flights too', CACHE has 'hotels' for May 22-25): the stay dates supply the flight dates (check-in = outbound departure, check-out = return). Only the origin is missing, so output just `seek_information(\"We need the departure city for the flight.\")`. If the origin is already known, search the outbound leg on the check-in date and the return leg on the check-out date (Rule 9). Never answer by re-filtering or re-saving the hotels key, and never write import lines."
+      },
+      {
+        "op": "insert_after",
+        "target": "Only a refusal or 'no preference' ('Not really', 'Anything is fine') with an existing cache entry means pure retrieval.",
+        "content": "\n  - Exception: if the CACHE summary of a `filtered_*` key already lists the assistant's proposal as applied (e.g. 'Additionally filtering for neighborhood(s): [Downtown Lexington]') and the user only agrees ('Okay, that sounds good', 'Sure'), there is nothing new to filter. Output only `x = get_results_from_cache(key=\"<that domain's key>\")`. Never re-filter, and never re-save under a key that already exists in the CACHE. A 'yes' to a proposal that is NOT yet listed as applied is still a new constraint."
+      }
+    ]
+  },
+  "source_type": "success"
+}

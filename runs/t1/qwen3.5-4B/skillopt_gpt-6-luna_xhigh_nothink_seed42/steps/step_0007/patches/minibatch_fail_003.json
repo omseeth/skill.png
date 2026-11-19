@@ -1,0 +1,51 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "tool_invocation_contract_violation",
+      "count": 4,
+      "description": "Agents imported the unavailable tools module instead of calling injected functions directly."
+    },
+    {
+      "failure_type": "requested_domain_and_input_orchestration",
+      "count": 2,
+      "description": "Agents failed to distinguish requested domains and available inputs, either omitting an applicable missing-value request or asking about an unrequested domain."
+    },
+    {
+      "failure_type": "proximity_intent_resolution",
+      "count": 2,
+      "description": "Agents misidentified the reference place or organizing domain in near/access requests, leading to missing or irrelevant searches."
+    },
+    {
+      "failure_type": "location_parameter_mapping",
+      "count": 2,
+      "description": "Agents shortened user-provided neighborhood names instead of passing the full stated neighborhood value."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add a final execution-contract check for the repeated import error; clarify domain-by-domain missing-input handling and same-trip hotel dates, resolving the current ambiguity about whether complete independent searches may proceed; and make proximity intent and neighborhood mapping more operational.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Tool functions are injected directly into the execution namespace; there is no `tools` module. Call provided tools by name without importing, redefining, or wrapping them. Use keyword arguments except for `seek_information`, and return code in the required format.",
+        "content": "- Tool functions are injected directly into the execution namespace; there is no `tools` module. Call provided tools by name without importing, redefining, or wrapping them. Use keyword arguments except for `seek_information`, and return code in the required format. Before returning, check that the generated code contains no import statements and no `tools.` references."
+      },
+      {
+        "op": "replace",
+        "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available.",
+        "content": "- First identify only the travel domains explicitly requested in the full conversation; do not add a domain or ask for its information merely because it is customary for a trip. Check required inputs separately for each requested domain against the conversation and relevant cache. Flights require a departure date; hotels require a city, check-in date, and checkout date; restaurants require a city. For lodging clearly tied to the same trip, use an explicit trip interval’s first date as check-in and return date as checkout. If only the trip’s outbound date is established, use it as check-in but ask for the checkout date rather than inventing a stay length. If any requested domain still lacks required inputs, make exactly one `seek_information(...)` call listing only those missing values. Do not search or filter an incomplete domain, but do proceed in the same turn with independent requested domains whose inputs are complete. Do not guess values or ask for optional preferences as if they were required."
+      },
+      {
+        "op": "replace",
+        "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "- Match arguments to the tool schema’s expected type and cardinality. Map a stated neighborhood to `neighborhood` using the full wording the user gave, including any city name (for example, for “Downtown Fresno,” use `neighborhood=[\"Downtown Fresno\"]`, not `[\"Downtown\"]`); pass the city separately when known. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`)."
+      },
+      {
+        "op": "replace",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- For any request for something “near,” “close to,” or with “access to” another place or category, identify the requested items and the reference place/category from the conversation. Ensure compatible results for both are available, searching for a specifically named reference entity in its appropriate domain when needed; do not treat a named entity as a neighborhood or another category without evidence. Call `search_nearest` and save its result. When the user wants items near a reference place, group by the requested items; when the user wants lodging near or with access to another category, group by hotel. Search only the domains needed for that relationship."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_update_omission",
+      "count": 3,
+      "description": "Agents returned “No planning needed” even though newly stated hotel or restaurant criteria were not reflected in compatible cached results."
+    },
+    {
+      "failure_type": "result_persistence_omission",
+      "count": 3,
+      "description": "Agents made searches but did not save the results under cache keys."
+    },
+    {
+      "failure_type": "unsupported_parameter_inference",
+      "count": 2,
+      "description": "Agents populated unrelated allergy flags or guessed room and traveler counts from context."
+    },
+    {
+      "failure_type": "tool_invocation_contract_violation",
+      "count": 2,
+      "description": "Agents imported the unavailable `tools` module instead of calling injected functions directly."
+    },
+    {
+      "failure_type": "multi_leg_mapping_error",
+      "count": 1,
+      "description": "A round-trip request was sent as one flight search rather than separate outbound and reversed return searches."
+    },
+    {
+      "failure_type": "stated_criterion_loss",
+      "count": 1,
+      "description": "A stated hotel neighborhood was omitted and an attraction category label was changed."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already covers direct tool calls, round-trip searches, cache updates, and saving results, so repeating those rules would not patch a skill gap. Clarifying how to map optional constraints to supported parameters addresses the recurring over-inference and helps preserve explicitly stated criteria and labels.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "- Match arguments to the tool schema’s expected type, cardinality, and meaning. Pass every explicitly stated constraint that has a supported parameter, and do not add optional parameters unless their values are explicitly stated or unambiguously resolved by the conversation. Do not infer room or traveler counts from family or group descriptions, or set multiple related flags just in case of one stated allergy or dietary constraint. Map a preference only to supported parameter(s) that genuinely represent it; if no equivalent exists, omit it rather than approximating it with an unrelated field. Preserve user-stated categorical labels and entity text unless the schema specifies a canonical mapping. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

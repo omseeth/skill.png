@@ -1,0 +1,36 @@
+{
+  "batch_size": 6,
+  "success_patterns": [
+    "Every clause of narrative or comma-list queries got exactly one call, including vague ones. For example, 'fetch a template from the dcj9_test tool' became `dcj9: dcj9_test` with the only optional param filled from the query word (`get_test`=`template`). 'Complete periodic table' became `all`=`true`.",
+    "Siblings were separated by the clause's verb and by the schema param the query's input fits. 'Practice question' -> Retrieve practice question, but 'details about a drill' -> Retrieve drill details. 'A random 7-letter word' -> the single-word tool with wordLength=7. 'Exactly 16 strokes' -> Kanji stroke number. 'Radical position hen' -> Radical position. 'Province code 050000' -> the Number of Schools tool whose param is kode_wilayah_propinsi_id, even though the title says City/District.",
+    "'Domain X available for registration' went to `fast Email verifier: FreeDomain`, one call per domain. Full addresses went to email-level tools, and each distinct check on the same email got its own call.",
+    "Every stated qualifier was mapped to an optional param: min/max length, startsWith, starid, from_record_date, topic, min_duration in seconds, speaker slug, per_page and page.",
+    "In the weaker answers, direction and ordering words were mishandled. 'Since 2017' was mapped to to_record_date, 'on politics' was dropped, and 'most recent reviews' got page instead of sort_order=DATE_DESCENDING. Asos lang was written `en_US` instead of `en-US`."
+  ],
+  "patch": {
+    "reasoning": "The successes show consistent clause-to-call enumeration and sibling matching, but the partially wrong answers show direction/ordering words and optional-only inputs being handled loosely. The edits add short, concrete rules with one before->after example each. They cover: (1) direction and order words mapping to the right bounded or sort param, (2) optional-only tools taking a value from the query's wording, (3) the schema param, not the title, deciding between granularity siblings, and (4) domain-availability routing. None restates existing text.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Parameters",
+        "content": "- DIRECTION AND ORDER WORDS. 'since / after / from <date>' -> the `from_*` bound, never `to_*` (BAD `to_record_date`=`2017-12-31` for 'since 2017'; GOOD `from_record_date`=`2017-01-01`). 'before / until' -> `to_*`. 'Most recent / latest / newest' reviews or items -> the tool's sort field (`Wayfair: reviews/list`: `sort_order`=`DATE_DESCENDING`), not `page`. A topic phrase ('on politics') -> the `topic` param. Locale values keep the schema's separator (Asos `lang`=`en-US`, never `en_US`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Parameters",
+        "content": "- OPTIONAL-ONLY TOOLS STILL GET THEIR CALL. If the query names a tool whose params are all optional (even one with a vague or 'Insufficient information' description), call it and fill the single free param with the query's own word, never an empty value ('fetch a template from the dcj9_test tool' -> `dcj9: dcj9_test`, `get_test`=`template`; 'complete periodic table information' -> `periodicTable: periodic table`, `all`=`true`). A random-word tool with 'starting with X, 4-6 letters' -> `startsWith`=`X`, `minLength`=`4`, `maxLength`=`6`."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "- THE QUERY'S INPUT AND VERB PICK THE SIBLING, NOT THE TITLE ALONE. Match the input to the schema param name: 'province with code 050000, number of schools' -> `Indonesia School List: Number of Schools in Indonesian City / District (Kabupaten / Kota)` with `kode_wilayah_propinsi_id`=`050000`, even though the title says City/District. Match the verb to the endpoint: 'a practice question from drill ID X' -> `Drillster 2.0: Retrieve practice question`, but 'details about the drill X' -> `Drillster 2.0: Retrieve drill details`. 'A random 7-letter word' (singular) -> `Random Words: Get a random word` with `wordLength`=`7`, not the 'multiple words' tool. 'Kanji with exactly 16 strokes' -> `...: Kanji stroke number` (`ks`=`16`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Which calls to make",
+        "content": "- DOMAIN AVAILABILITY. 'Is the domain X available for registration' -> `fast Email verifier: FreeDomain` (`domain`=`X`, bare domain), one call per domain even when the same tool repeats (two domains = two objects). In a mixed list, each email clause (MX records, disposable, deliverable) keeps its own email-level tool with the full address."
+      }
+    ]
+  },
+  "source_type": "success"
+}

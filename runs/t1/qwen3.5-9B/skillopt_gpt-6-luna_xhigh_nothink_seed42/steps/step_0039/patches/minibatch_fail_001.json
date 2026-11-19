@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_call_and_parameter_contract",
+      "count": 4,
+      "description": "Calls omitted explicit criteria or required saves, duplicated work, or added unsupported extra operations."
+    },
+    {
+      "failure_type": "cached_follow_up_not_completed",
+      "count": 2,
+      "description": "A follow-up constraint was not applied to cached results, or was incorrectly treated as already complete."
+    },
+    {
+      "failure_type": "independent_domain_prerequisite_handling",
+      "count": 1,
+      "description": "Missing flight and hotel dates blocked a restaurant search whose destination was already known."
+    },
+    {
+      "failure_type": "date_and_time_handling",
+      "count": 2,
+      "description": "Flight time bounds were formatted incorrectly, and hotel dates were calculated or inferred without support."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed cache, save, location-mapping, and domain-readiness failures already contradict explicit skill rules, so repeating them would add little. These edits address two narrow gaps exposed by the batch: explicitly mapping a named restaurant cuisine to its tool field, and treating “by” as an upper flight-time bound.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- **Combine known criteria on initial searches:**",
+        "content": "For an initial restaurant request, map each explicitly named cuisine to `cuisine=[...]` in the same `search_restaurants` call, preserving the user's wording; a city-only search does not satisfy a cuisine-specific request."
+      },
+      {
+        "op": "replace",
+        "target": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X” uses `[\"12:00 AM\", X]`, and “after X” uses `[X, \"11:59 PM\"]`, preserving the stated AM/PM value.",
+        "content": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X,” “by X,” and “no later than X” use `[\"12:00 AM\", X]`; “after X” uses `[X, \"11:59 PM\"]`. Preserve the stated AM/PM value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

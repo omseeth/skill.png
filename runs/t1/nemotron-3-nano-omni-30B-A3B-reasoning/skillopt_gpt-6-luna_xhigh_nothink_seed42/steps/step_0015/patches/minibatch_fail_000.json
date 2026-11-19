@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_conversation_or_cache_coverage",
+      "count": 6,
+      "description": "Plans missed new constraints, requested domains, or pending trip actions, or reprocessed a domain already covered by valid cache results."
+    },
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 5,
+      "description": "Search or refinement results were not consistently assigned and saved to cache."
+    },
+    {
+      "failure_type": "execution_environment_misuse",
+      "count": 2,
+      "description": "Agents imported unavailable modules or redeclared models instead of calling the runtime-provided tools directly."
+    },
+    {
+      "failure_type": "unsupported_inference_or_semantic_mismatch",
+      "count": 2,
+      "description": "An agent invented mandatory hotel dates or mapped an allergy to an unrelated supported option."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already directly covers cache-delta auditing and result persistence, so repeating those instructions would not address a gap. These edits clarify runtime-safe code generation, allow ready domains to proceed while another domain awaits required information, and fill missing mappings for explicit non-stop requests and hotel dates within an explicitly dated trip.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- Tools and output models are already provided by the runtime: call them directly without importing tool modules, Pydantic, or typing helpers, and do not redefine or wrap tools or models. For dietary and allergy restrictions, use only a supported option that semantically corresponds to the stated restriction; never substitute an unrelated option merely because there is no exact field (for example, do not map a nightshade allergy to a nut-allergy option)."
+      },
+      {
+        "op": "insert_after",
+        "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+        "content": "\n- Check mandatory-input readiness independently for each requested domain. If one domain is missing required information, still search or refine other requested domains whose required inputs are available, and ask in the single `seek_information` call only for the missing mandatory information."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Represent flight legs separately",
+        "content": "\n- Map an explicit request for a non-stop or direct flight to `num_layovers=[0]` on every affected leg; do not rely on the tool's default layover setting."
+      },
+      {
+        "op": "insert_after",
+        "target": "Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+        "content": "\n- When a hotel is requested as part of the same trip and the conversation explicitly gives the trip's outbound and return dates, use the outbound date as hotel check-in and the return departure date as hotel check-out unless separate hotel dates are stated. Do not invent hotel dates when the trip dates are absent."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

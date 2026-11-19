@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "action_coverage",
+      "count": 6,
+      "description": "Compound requests lost distinct requested outcomes, including secondary results and separate checks."
+    },
+    {
+      "failure_type": "endpoint_selection",
+      "count": 6,
+      "description": "Some calls used a partial or mismatched operation instead of the endpoint for the requested result."
+    },
+    {
+      "failure_type": "schema_mapping",
+      "count": 7,
+      "description": "Calls confused or omitted supported fields, canonical values, units, sorting, or required/optional parameter buckets."
+    },
+    {
+      "failure_type": "call_hygiene",
+      "count": 3,
+      "description": "Some responses included duplicate or unrelated calls, and one response was too malformed to parse."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already covers general action accounting, schema use, and output validation. These edits sharpen recurring gaps: counting distinct outputs within a clause, selecting controls for independently requested units, distinguishing overlapping market fields, and expressing recency through sorting rather than pagination.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Track requested actions",
+        "content": "- Decompose by requested result, not only by sentence or clause: phrases such as “including” and “also” can request separate outputs. Preserve both the primary result and each secondary result (for example, product details plus similar items, or a forecast plus alerts); treat them as one call only when the endpoint documents that it returns both."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Select the right endpoint",
+        "content": "- When different measurements have different requested units, choose an endpoint that can express each unit separately. A generic `units` field is not sufficient unless its documentation says it applies to every requested measurement; use dedicated temperature, speed, or other unit fields independently when available."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Map constraints to the schema",
+        "content": "- When an endpoint has multiple geographic or market fields (such as region, shipping location, country, or locale), choose each field by its documented meaning, not by a similar label or example. For an explicitly requested market or locale profile, use documented canonical mappings to supply the supported fields needed to express it; do not guess values."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Map constraints to the schema",
+        "content": "- For lists or reviews described as “newest,” “latest,” or “most recent,” use a documented date-recency sort when available. Page 1 or the default first page does not itself express recency; handle pagination separately when requested or required."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

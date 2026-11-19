@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_incremental_scope",
+      "count": 7,
+      "description": "Follow-ups often reran searches or proximity calls, repeated unaffected domains, or failed to filter the most relevant cached result with only the new constraint."
+    },
+    {
+      "failure_type": "result_variable_binding",
+      "count": 3,
+      "description": "Tool results were saved using undefined placeholder variables instead of assigning each call's return value first."
+    },
+    {
+      "failure_type": "constraint_or_itinerary_mapping",
+      "count": 3,
+      "description": "Some calls inferred unsupported values or mishandled flight-leg or time constraints."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers general cache reuse, result assignment, and constraint mapping. The clearest remaining ambiguity is how to handle a new constraint that applies across domains already joined by a proximity result; this clarification encourages domain-specific filtering without repeating proximity work.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Cache-aware tool workflow",
+        "content": "- When a follow-up constraint applies to multiple active domains (for example, a neighborhood requested “for both”), retrieve and filter each domain separately with its matching `filter_*` tool, preserving earlier criteria. If a compatible cached `search_nearest` result already represents the requested proximity relationship, refine that result and any other affected cached domain result rather than rerunning `search_nearest`; recompute proximity only if the target, grouping, or underlying scope changes."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

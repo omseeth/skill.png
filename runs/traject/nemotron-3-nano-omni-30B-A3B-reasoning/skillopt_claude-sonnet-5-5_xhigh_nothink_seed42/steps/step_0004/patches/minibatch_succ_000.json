@@ -1,0 +1,35 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every successful answer made exactly one call per distinct request in the query: 9 calls for 9 gaming clauses, 6 calls for 3 emails x 2 named tools, 5 calls for 5 news clauses. No clause was dropped and no extra helper tool was added.",
+    "Where a tool takes a single value and the query lists several entities (emails), the agent fanned out into one call per entity per named tool.",
+    "Where the query names a provider or tool (Alpha Email Verification, Email Existence Validator, BizToc, Reuters, dev.to), the agent used that provider's endpoint.",
+    "Where sibling endpoints existed, the agent matched the one whose name mirrored the query's quantity or variant wording: 'Custom die' for a 20-sided die, 'Regular die' for a 6-sided die, 'Cards' with pulls for 5 cards, 'Get the month's top articles' rather than 'all relevant articles', and 'Get All Sources' for a sources list.",
+    "Optional parameters were filled only from constraints the query stated or clearly implied: pulls=5, sides=20, page=1 and pageSize=10, category=toysgames, country=US and language=en. Tools with no stated constraints got empty lists.",
+    "Tools that split an email into username and domain were filled by splitting the email. Other values such as emails, domains and levels were copied verbatim from the query.",
+    "Distractor tools sharing a keyword (send-mail, account-info, temp-mail fetch, chess puzzles, election feeds, movie news) were ignored."
+  ],
+  "patch": {
+    "reasoning": "All 8 successes followed a simple loop: split the query into atomic requests, map each to the single most literal endpoint (honouring named providers and sibling-variant wording), fan out per entity, and fill only the parameters the query states. This workflow is not yet in the skill. Earlier rejected attempts used long rulebooks with many speculative rules and lowered the score, so these edits are short and cover only behaviours seen working across several trajectories.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## 1. Cover every request, once\n- Before answering, split the query into atomic requests: each sentence, each then/next/also/finally clause, and each item in a list. Map each to one call.\n- Check the first and last clauses before finalizing. Dropped clauses are the commonest miss.\n- If a tool takes one value and the query lists N entities (emails, domains, SKUs), emit N separate calls, one per entity. If the query names two tools for the same entities, make N calls to each (3 emails x 2 tools = 6 calls).\n- Add no calls the query does not ask for. Skip tools that only share a keyword (send-mail, account info, bulk or admin helpers, create/delete tools, unrelated topic feeds). If one endpoint covers a clause, call it once."
+      },
+      {
+        "op": "append",
+        "content": "\n## 2. Choose the endpoint that mirrors the query\n- Pick the tool whose name and description literally match the clause's verb, object, scope and time horizon. Examples: 'this month's top articles' -> the 'month's top articles' endpoint, not 'all articles'; 'list of available sources' -> the 'Get All Sources' endpoint of the named provider; 'recent blog posts' -> the Blog endpoint, not News.\n- If the query names a provider or tool ('using the Alpha Email Verification tool', 'BizToc', 'Reuters'), call that provider's endpoint for that clause.\n- Distinguish sibling endpoints by quantity or variant: several cards -> 'Cards' (with a count param), a single card -> 'Card'; a die with N sides -> 'Custom die'; a standard 6-sided die -> 'Regular die'. 'Roll both a 20-sided and a regular die' means two calls.\n- Match the input type. A bare domain needs a domain-level tool, and a full email needs an email-level tool. Use a MX-records tool for MX records, a disposable-check tool for disposable, and an SMTP tool for SMTP."
+      },
+      {
+        "op": "append",
+        "content": "\n## 3. Fill parameters from the query, nothing more\n- Use only parameter names from the chosen tool's schema. Put each one in `required parameters` or `optional parameters` exactly as the schema lists it. A tool with 'Required parameters: none' gets `[]`.\n- Copy emails, domains, IDs, levels, names and numbers verbatim from the query. If a tool takes `username` and `domain` separately, split the email at '@'. Write every value as a quoted string (`\"5\"`, not `5`).\n- Map each constraint the query states or clearly implies to the matching optional parameter. Examples: '5 random cards' -> pulls `5`; '20-sided' -> sides `20`; 'first page, 10 per page' -> page `1`, pageSize `10`; 'about toys and games' -> category `toysgames`; 'US news in English' -> country `US`, language `en`; 'level 3' -> level `3`.\n- Do not add optional parameters the query never mentions (limit, sort, format flags, defaults), and never invent a value for them. If the query gives no constraint, leave the optional list empty."
+      },
+      {
+        "op": "append",
+        "content": "\n## 4. Output hygiene\n- Copy `tool name` exactly from the tool list in the form `Provider: API`, keeping the original spelling, spacing and symbols.\n- Give every call the three keys `tool name`, `required parameters`, `optional parameters`, using `[]` when empty. Each parameter is `{\"name\": \"x\", \"value\": \"y\"}`.\n- Output ONE flat JSON list inside `<answer>...</answer>`, with balanced brackets and no repeated or looped entries."
+      }
+    ]
+  },
+  "source_type": "success"
+}

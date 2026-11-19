@@ -1,0 +1,47 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_or_tool_mismatch",
+      "count": 7,
+      "description": "Agents selected a related endpoint or noncanonical tool name instead of matching the requested operation and input to the endpoint contract."
+    },
+    {
+      "failure_type": "incomplete_request_coverage",
+      "count": 4,
+      "description": "Agents missed independent requested outputs, checks, entities, or filters when decomposing multi-part requests."
+    },
+    {
+      "failure_type": "argument_or_output_schema_error",
+      "count": 3,
+      "description": "Agents omitted or misformatted parameters, used unsupported or duplicated arguments, or violated the required response structure."
+    },
+    {
+      "failure_type": "extraneous_calls_or_arguments",
+      "count": 2,
+      "description": "Agents added redundant or unrelated calls and arguments beyond the requested checks."
+    }
+  ],
+  "patch": {
+    "reasoning": "The recurring problems are choosing by broad topic rather than endpoint function, losing parts of multi-facet requests, and failing to validate arguments or the final response shape. These focused checks address those errors while avoiding instructions to guess values, fill every optional parameter, or make merely related calls.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Match the endpoint contract\n- Choose at the endpoint level: compare the requested operation, input scope, and desired output with the endpoint's documented function and schema. A related provider or broad subject match is not enough; for example, retrieving records is distinct from general validation, and a named-location lookup is distinct from retrieving a global dataset.\n- Use the exact canonical tool name from the catalog. When a request requires distinct outputs that no single endpoint supplies, select an endpoint for each output rather than substituting a related one."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Track request coverage\n- Build a coverage ledger of each distinct requested entity and deliverable, including explicitly named checks, constraints, and filters. Apply a constraint across entities only when the wording indicates that scope. Mark which planned call covers each item and add calls only for uncovered items.\n- For comprehensive or multi-facet requests, cover each stated facet with a documented endpoint when one call cannot provide it. Do not infer adjacent checks or add duplicate validators merely because they are related. If an endpoint supports multiple requested criteria, encode all of them using its documented format and match semantics."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Audit arguments against each schema\n- For every call, supply all required parameters using the exact parameter names and documented value types; represent parameter entries in the calling interface's required structure. Map each explicit identifier and constraint to the appropriate endpoint parameter. Do not carry parameter names or assumptions over from a similar endpoint.\n- Include optional parameters only when requested or needed to fulfill the request. Check enum and compound-value formats against the schema, and remove duplicate keys, unsupported arguments, and values not grounded in the request or documentation."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Validate the final response\n- Follow the calling interface's exact wrapper and object schema. Return only the requested tool-call list, with one valid object per call, exact catalog tool names, and correctly structured required and optional parameters. Do not add prose, a separate final-answer field, or other non-call objects.\n- Before submitting, check that the response parses and that every planned call is represented once, with no missing requested action or unintended extra call."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

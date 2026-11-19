@@ -1,0 +1,61 @@
+{
+  "step": 7,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 28,
+  "failure_patterns": [
+    {
+      "pattern": "missing_calls: Long or narrative queries were under-enumerated: 2 of 8 calls in one case, and a missing Asos 'searching for iPhone cases' call in another.",
+      "count": 28,
+      "task_ids": [
+        "parallel_gaming_simple:23",
+        "parallel_education_simple:21",
+        "parallel_ecommerce_simple:21",
+        "parallel_finance_simple:185",
+        "parallel_email_simple:65",
+        "parallel_weather_simple:15",
+        "parallel_ecommerce_simple:14",
+        "parallel_education_simple:28",
+        "parallel_gaming_simple:13",
+        "parallel_education_simple:110",
+        "parallel_email_simple:159",
+        "parallel_ecommerce_simple:108",
+        "parallel_news_media_simple:90",
+        "parallel_ecommerce_simple:35",
+        "parallel_ecommerce_simple:174",
+        "parallel_ecommerce_simple:124",
+        "parallel_travel_simple:183",
+        "parallel_gaming_simple:71",
+        "parallel_email_simple:38",
+        "parallel_ecommerce_simple:188",
+        "parallel_news_media_simple:136",
+        "parallel_ecommerce_simple:32",
+        "parallel_travel_simple:88",
+        "parallel_email_simple:181",
+        "parallel_education_simple:76",
+        "parallel_gaming_simple:15",
+        "parallel_gaming_simple:116",
+        "parallel_email_simple:32"
+      ]
+    }
+  ],
+  "score_before": 0.39325842696629215,
+  "score_after": 0.39325842696629215,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "\n- Long or narrative queries ('First..., Then..., Finally...', 'searched X, then Y... They also investigated other platforms: ...') are checklists with one or more calls per sentence. Write the checklist out first and count it: an 8-clause query that yields 2 calls has stopped early. Every named platform, ASIN, SKU, ID or endpoint (e.g. 'Bybit's Public Trading Records', 'Alpha Vantage's DIGITAL_CURRENCY_DAILY') and every action ('checking countries', 'browsing categories', 'searching for X', 'reading reviews', 'mark price movements ... klines') gets its own call, including sentences after 'also', 'then' or a colon, and the opening verb ('searched for chairs on Wayfair' -> the Wayfair search call even when a SKU follows). If a clause names a provider and an action, use that provider's closest endpoint even when the match is loose (e.g. 'searching for iPhone cases' on Asos -> its search/auto-complete endpoint). Map noun phrases: 'categories and country availability' -> categories list + countries list; 'regional settings' -> the region-parameters endpoint; 'a specific store (ID, seller ID)' -> the store endpoint with both ids.\n- Hedged, trailing or final requests are real requests ('I also checked which countries Asos sells to, though this seems less relevant'; 'finally retrieve a chess puzzle with a 1500 rating'). Always make the call, and re-check the last sentence of the query last, because that is where calls are most often dropped. Only closing commentary about purpose ('this allowed me to examine...', 'likely comparing...') asks for no call.",
+      "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for."
+    },
+    {
+      "op": "replace",
+      "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely. Build the name mechanically: it is exactly the text after `### ` in that tool's block (e.g. `Lost Ark: get classes`, `Zappos Realtime Data: Zappos product detail by Product ID`, `BestBuy Product Data: BestBuyProductData`). NEVER use the text of the `Provider:` line (the long tagline after a dash, e.g. `Rocket League — Ranks, stats, news & more…`) and never put ` — ` in a tool name. If the query quotes a name such as 'Dice Roll Simulator: Regular dice', copy it verbatim. When one provider has several endpoints (Lost Ark, Rocket League, Wayfair, fast Email verifier, Dice Roll Simulator), each call needs its own full `Provider: API` name. Copy names character for character, including lowercase initials (`fast Email verifier: FreeDomain`, not `Fast Email verifier: ...`).",
+      "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- Keep the answer short: one call per distinct request in the query (usually 3-12 calls). Never repeat an identical call unless the query asks for that action twice. Never loop over numbers or re-list the same tool again and again. 'Run code to calculate orbital periods for Mercury, Venus, Earth and Mars' is ONE call to the code tool, with the whole program in its single `code` value. Once the last clause is covered, close with `}]</answer>` immediately. An answer that never closes scores zero.\n- Separate calls only with `}, {` inside the single outer `[ ]`. Never write `], [` or `}],` between calls. Every call, even to the same tool or in the same sentence, is its own `{...}`.\n- Self-check every object: `{\"tool name\": ..., \"required parameters\": [...], \"optional parameters\": [...]}`. The string `\"optional parameters\"` appears exactly once per object. Never append a second `\"optional parameters\": []` after a filled list, and never put a second `\"tool name\"` or second parameter set inside one object.\n- `required parameters` and `optional parameters` contain only `{\"name\": \"x\", \"value\": \"y\"}` objects, never bare names like `[\"page_id\"]`. If the query only says 'main page' or 'default', still give the value from its wording (page_id `main`, sort `0`).",
+      "target": "Do not close the list early or leave stray brackets."
+    }
+  ]
+}

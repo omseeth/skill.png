@@ -1,0 +1,34 @@
+{
+  "reasoning": "Failure-driven edits were kept in full and take priority. Both groups had edits on the same anchor text, so I merged them into single edits to avoid ordering ambiguity and duplicated text: (a) the 'Never give only the provider...' replace, combining the failure rules (full heading incl. tails, no tagline, provider must match the heading) with the success rules (verbatim non-Latin or odd-punctuation headings); (b) the 'Each parameter is...' insert, combining the failure rules (no bare strings, one list per key) with the success rule (a single optional is still an object); (c) the 'Do not invent parameters...' insert, combining the failure rules (required `page`, qualifier mapping, status and range words) with the success rule (code conversion and keyword trimming); (d) the 'If the query names a tool or provider...' insert, combining the failure rules (outlet source endpoint, domain-level disposable) with the success rule (single vs batch endpoints, regular die). The success edit's empty-value rule duplicated the failure version, so I kept the failure one. Success-only edits covering patterns the failures do not address (search subject in text-filter optionals and page plus size, since/before date bounds, scope and time words picking siblings, narrative checklist with recap sentences getting no call, one call per named outlet) were kept as separate edits. For merged edits, support_count is the sum of the two sources. No edits touch the protected SLOW_UPDATE section. [optimizer-ranked: selected 3/15 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- Each parameter is `{\"name\": \"x\", \"value\": \"y\"}`. Every value is a quoted string, including numbers (`\"2023\"`, `\"1\"`, `\"9098084\"`).",
+      "content": "\n- Both lists contain ONLY `{\"name\": ..., \"value\": ...}` objects. Never write bare strings or repeat a name (wrong: `\"required parameters\": [\"region\"]`, `\"required parameters\": [\"grade\", \"grade\"]`; right: `[{\"name\": \"grade\", \"value\": \"2\"}]`). Even a single optional is an object inside the list: `\"optional parameters\": [{\"name\": \"sort-by\", \"value\": \"popularity\"}]`, never `[\"sort-by\", \"popularity\"]`. Build each call as: tool name, then ONE `required parameters` list, then ONE `optional parameters` list holding every optional value. Wrong: `\"optional parameters\": [{\"name\": \"composer\", \"value\": \"Bellman\"}], \"optional parameters\": []`, because the second key erases the first.",
+      "support_count": 11,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+      "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely. The name is only the `### ` heading line (e.g. `Lost Ark: get stats`, `Epic Games Store - Free Games: Free Games`). Copy the complete heading character for character, including non-Latin script, hyphens, spaces, extra colons and any tail such as `?{parameters}`, `(basic)`, `/v1/weather` or `{type}` (e.g. `Arabic news API: Youm7 - اليوم السابع`, `Kubric: The Comprehensive Movie News API: Basic Search`, `dev-to-api: Get the month's top articles`; the heading is `National Weather Service: /alerts?{parameters}`, not `.../alerts`). Never copy the `Provider:` description line or any ` — tagline` text, and never put ` — ` in a tool name. The provider must be the one printed in that same heading: do not attach an endpoint to a sibling provider with a similar name (`Current conditions (detailed)` belongs to `Easy Weather`, not `RapidWeather`). Before answering, find each name verbatim as a `### ` heading in the tool list.",
+      "support_count": 5,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).",
+      "content": "\n  - The subject of a search clause goes in the tool's text-filter optional (`title`, `name`, `q`, `keyword`) even when that field is optional: 'Batman games' -> title `batman`; 'Zelda games with Majora in the title' -> name `Majora`. 'First 20 results' or 'first page with 15 results' on a paged tool -> page `1` AND the size field (`pageSize` `20`). A platform word ('Steam giveaways') -> platform `steam`.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 3 has the highest support (11) and fixes malformed parameter lists and duplicate-key overwrites, which break the output format. Edit 2 fixes exact tool-heading copying, a systematic zero-score failure the current skill covers only briefly. Edit 5 (support 8) is a general principle about putting the query's subject in the text-filter optional and mapping paging qualifiers. Edits 9, 1, 6 and 7 are close runners-up but are more entity-specific, partly redundant with existing content, or bundle too many rules.",
+    "selected_indices": [
+      3,
+      2,
+      5
+    ]
+  }
+}

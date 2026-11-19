@@ -1,0 +1,41 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "result_cache_protocol",
+      "count": 2,
+      "description": "A filter or search result was left without the required cache retrieval, assignment, or save."
+    },
+    {
+      "failure_type": "unnecessary_or_duplicate_operations",
+      "count": 3,
+      "description": "Generated code added unrelated cache work, helper code, or duplicate searches and result merging."
+    },
+    {
+      "failure_type": "constraint_tracking",
+      "count": 3,
+      "description": "Some hotel or attraction criteria were inferred, omitted, or carried forward incorrectly from the conversation."
+    },
+    {
+      "failure_type": "date_handling",
+      "count": 1,
+      "description": "A stated date and trip duration were parsed and calculated in Python instead of using the date tool."
+    },
+    {
+      "failure_type": "cached_base_selection",
+      "count": 1,
+      "description": "The selected cached flight base differed from the gold base despite containing prior filters."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed issues already contradict explicit skill rules, so repeating those rules is unlikely to help. One narrower gap is hotel party size: a count given earlier in the conversation can be missing from a cached hotel result and needs to be included when applying a later hotel update. The edit makes that case explicit while retaining the existing prohibition on inferred counts.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+        "content": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. For a hotel search or update, carry any explicitly stated party size from the full conversation into `num_people` unless the latest suitable hotel result already reflects it. If the cached base lacks the count, include `num_people` in the same hotel filter as other pending hotel constraints, even when the count was supplied earlier. “Solo” means `num_people=1`. Do not infer unspoken counts or pass traveler counts to flight tools."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 4,
+      "description": "Existing rules were not applied. 'Eric' is a contestant name after 'right:' in an archive line. 'Juan Carlos I' is a list item given for a list of real people that should name the shared country. 'Conan the Destroyer' echoes a clue word instead of the shared base name. 'dugong' ignores the clue's 'found in Florida' descriptor."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "No rule for 'this way / this manner' slots, which ask for an adverb of manner ('backwards') and not a consequence named in the joke. No rule for spoonerism clues, where the answer is the intended, un-swapped phrase."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 2,
+      "description": "Gold keys differ only by an optional or spelling variant: 'Lake Superior' vs 'Superior', 'Showboat' vs 'Show Boat'. Not reliably fixable by a rule."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four edits target the recurring, clue-visible mechanisms. (1) The contestant name after 'right:' or 'wrong:' was returned instead of the archived answer. This is a strict, checkable parsing rule placed at the top of Rule 3. (2) The 'this way / how' slot type is missing. The agent answered with a result named in the joke, not the manner. (3) A bare list of real people (rulers, presidents) asks for the shared country or entity. The old rule was buried inside the fictional-character bullet and ignored. (4) Wordplay and variant clues: a spoonerism asks for the intended phrase, a clue giving several epithets of one name in different years asks for the shared base name, and a descriptor on 'this X' must be matched even when a passage echoes the anchor. Each key is visible in the clue text, so regression risk to stable passes is low. The optional-word gold keys (Lake Superior, Showboat) are deliberately not chased.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 3: Look for the clue repeated verbatim in the context",
+        "content": "- PARSE ARCHIVE LINES STRICTLY: in 'CLUE | ANSWER. right: Name. wrong: Name.' the answer is ONLY the text immediately after the clue's '|' and before '. right:'. Any name after 'right:' or 'wrong:' is a quiz CONTESTANT and is NEVER the answer (not even a bare first name). If you were about to answer with a name taken from after 'right:' or 'wrong:', stop and take the text before it instead."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 2: Answer the referent, not a word from the clue",
+        "content": "- 'this way', 'in this manner', 'like this', 'how' ('when you play it this way, X happens') ask for the MANNER: an adverb or short phrase ('backwards', 'by hand'). The results listed in the clue (what returns, what happens) are consequences and anchors, never the answer. Find the passage that completes 'play it ___' / 'do it ___' and copy that word.\n- A bare comma-separated list of REAL people or office-holders (kings, presidents, players, 'Ferdinand VII, Juan Carlos') asks for the one country, dynasty, team or institution they share. Answer with that shared entity, never with one of the listed names or a regnal form of one."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Jokes, asides and filler in the clue ('(If I eat it, can I hear the ocean?)', 'Need help in this subject? Call up...') are decoration.",
+        "content": " Further wordplay and variant clues:\n  - SPOONERISM: if the clue says someone 'once talked of / said' a garbled phrase (Dr. Spooner), the answer is the INTENDED phrase obtained by swapping the initial sounds of the clue's words ('queer old dean' -> 'dear old queen'). Give that phrase, not a person it was aimed at.\n  - SAME ENTITY, DIFFERENT YEARS OR EPITHETS: when the clue gives two roles, epithets or years for one character ('in year A he's a destroyer, in year B just a barbarian'), the answer is the base name both versions share (the first name), without the epithet words that the clue already states.\n  - DESCRIPTOR ON 'THIS X': a qualifier attached to 'this <noun>' ('found in Florida', 'rare') must fit the answer. If a passage echoes the clue by naming one relative or associate of the anchor, but that entity does not satisfy the qualifier, choose the entity that does."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

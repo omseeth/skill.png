@@ -1,0 +1,42 @@
+{
+  "reasoning": "I kept all 10 failure edits unchanged in substance, since they are the corrective, higher-level merged patches and the success group does not conflict with them. The first failure edit is the merged top-of-file checklist. It had no support_count, so I set it to 3 because it came from three overlapping patches. The 4 success edits cover points the failure edits do not: first-search carry-over of earlier optional constraints, seek-only turns containing nothing extra, a restaurant request with no city asking only for the city, and an assistant's 'hotel near X' offer followed by hotel amenities being a plain filter. I kept them as lower-priority additions. Two pairs of edits share an insert target (Rule 13 'Only refine domains...' and Rule 14 'Include optional details...'). They are complementary, not conflicting, so I kept both in each pair. All targets exist verbatim in the current skill, and none touches the protected section, which has no markers here. [optimizer-ranked: selected 4/14 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "  - search_restaurants: city.",
+      "content": "  - A restaurant request that gives only a dietary need or allergy ('nightshade allergy'), an occasion ('birthday'), a cuisine or a 'don't know' reply, with no city anywhere in the conversation, is still missing the city. Output only `seek_information(\"We need the city for the restaurant.\")`. Do not search and do not ask about cuisine, budget or rating.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Only refine domains the last turn actually talks about. Never invent filter values (e.g. a made-up cuisine list or budget) for another domain.",
+      "content": "- An assistant offer such as 'I can help you find a hotel near City Museum' does not by itself trigger search_nearest. If the user then answers with hotel amenities ('a gym and wifi') and the CACHE holds 'hotels' (plus 'attractions'), do exactly `hotels = get_results_from_cache(key=\"hotels\")`, `filtered_hotels = filter_hotels(prior_results=hotels, gym_present=True, free_wifi_included=True)`, `save_to_cache(key=\"filtered_hotels\", value=filtered_hotels)`. Do not re-search or reload attractions, and do not call search_nearest unless the user explicitly asks for results sorted by nearness.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Include optional details the user explicitly stated (num_rooms, num_people, budget, amenities, cuisine, ...) as keyword args in the search call, and nothing the user did not say.",
+      "content": "- The first search must carry EVERY optional constraint stated in ANY earlier turn, not just the last one (rating, amenities, neighborhood, budget, party size). Example: turn 1 'hotel in St. Louis, with a meeting room and business facilities, rating at least 4.5', last turn 'arriving December 12, 2025, leaving December 14, 2025, Downtown St. Louis' -> `x = search_hotels(city=\"St. Louis\", checkin_date=[\"December 12, 2025\"], checkout_date=[\"December 14, 2025\"], rating=[4.5, 5], has_meeting_rooms=True, has_business_center=True, neighborhood=[\"Downtown St. Louis\"])` + `save_to_cache(key=\"hotels\", value=x)`. 'Meeting room' -> has_meeting_rooms; 'business facilities/center' -> has_business_center; neighborhood copies the user's wording including the city.",
+      "support_count": 5,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+      "content": "## Pre-output checklist (apply to every answer)\n1. Every search_*, filter_*, sort_results and search_nearest call is written `x = tool(...)` and followed on the next line by `save_to_cache(key=\"...\", value=x)`, even on the very first turn of a one-domain request. A bare `search_restaurants(...)` / `search_attractions(...)` line is ALWAYS wrong. Never use `_` as a value (`value=_` raises NameError) and never re-save an unchanged loaded result. First-search keys are the plain domain names: \"flights\", \"hotels\", \"restaurants\", \"attractions\". Example: `restaurants = search_restaurants(city=\"Memphis\", cuisine=[\"Turkish\"], has_vegetarian_options=True)` then `save_to_cache(key=\"restaurants\", value=restaurants)`.\n2. Output only short tool calls inside <CODE>. Never write `import` or `from ... import` (not even `from cache import ...`; the tools are already defined). No if/else, no `is None` cache probes, no print, no placeholder variables, and at most a one-line comment.\n3. A US state name or abbreviation ('OR', 'GA') is `state=\"OR\"`, never `city=\"OR\"`.\n4. Every kwarg must come from something the USER literally said. `return_date` does not exist (a round trip is two searches, Rule 9). 'One-way', '2 travelers', 'for 5 people', 'wedding' add no flight kwargs. Only 'non-stop'/'direct' adds num_layovers=[0]. Never add flight_class, budget, stars, num_people, or any `False` value nobody asked for. Things only the assistant mentioned ('room service?') are not user constraints.\n5. Only load keys that literally appear in the CACHE summary. A domain with no key is searched, never loaded, and never invent keys (if the CACHE has 'flights' and 'return_flights', there is no 'departure_flights').\n6. On a refinement, first list what the loaded key's CACHE summary already shows (cuisine, dietary flags, neighborhood, amenities, budget, rating, dates, travelers) and pass only the new constraint from the last turn. Touch only the domain(s) the LAST turn answers.\n7. A flight class/time/airline/budget preference is applied to EVERY flight leg key: load the most refined key of each leg, filter it, and save it under a new key.\n8. seek_information names only a domain the user actually requested and only args not given in ANY turn (Rule 31). Never call it when the value is already written somewhere in the conversation.",
+      "support_count": 3,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "I ranked by recurring failure patterns (support count), then by generality and by how much each edit adds beyond the existing rules. [12] has the highest support (8) and fixes a common mandatory-arg error, where a restaurant request with no city gets searched or asked about the wrong things; the existing rules do not cover it. [5] also has support 8. It stops the model from over-triggering search_nearest or re-searching after an assistant offer, and the fix is a concrete load, filter, save pattern. [7] (support 5) states a general principle that the first search must carry every optional constraint from all earlier turns, which supplements Rule 14. [0] is a broad pre-output checklist that consolidates many recurring format errors (bare calls without a save, `value=_`, imports, state vs city, invented kwargs and keys). It partly duplicates existing rules, but it is general and goes at the top of the skill where it is most visible. [11] (support 5) is useful but mostly restates the seek_information guidance already in Rules 6 and 7, so it ranks fifth. [13], [1], [3], [8], [9] and [10] cover narrower scenarios or have support of 1-2.",
+    "selected_indices": [
+      12,
+      5,
+      7,
+      0
+    ]
+  }
+}

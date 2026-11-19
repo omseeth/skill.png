@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 5,
+      "description": "Searches or filters were left unsaved, or a ready search was omitted while seeking missing information."
+    },
+    {
+      "failure_type": "cache_follow_up_selection",
+      "count": 3,
+      "description": "Follow-ups were treated as complete despite new criteria, used a restrictive or unsuitable cached base, or reapplied already-reflected constraints."
+    },
+    {
+      "failure_type": "schema_field_mapping",
+      "count": 3,
+      "description": "Criteria were mapped to incorrect schema fields or values, including flight-class casing, arrival dates, and state abbreviations."
+    },
+    {
+      "failure_type": "pending_domain_omission",
+      "count": 1,
+      "description": "A restaurant search with available required inputs was omitted while asking for missing flight and hotel dates."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already covers saving tool results, completing ready domains, and correctly mapping states and travel dates, so repeating those rules would not address a content gap. These edits clarify the missing hotel star-count mapping and flight-class enum casing, and explain how to handle an explicit replacement of a previously requested category when selecting a cache base.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+        "content": "For hotel star-count criteria, use the `stars` field: an exact count maps to `[x, x]`, and “at least x stars” maps to `[x, 5]`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Format flight time ranges as required:** For `departure_time` and `arrival_time`, use the validator's accepted 12-hour format with AM/PM (for example, `12:00 PM`), not `HH:MM:SS`. Choose a supported interval for vague time periods.",
+        "content": "\n\nFor `flight_class`, use the supported lowercase labels `business`, `economy`, or `first`, matching the user's stated class."
+      },
+      {
+        "op": "insert_after",
+        "target": "A result summary satisfies a request only when it reflects all current constraints.",
+        "content": " If the user explicitly replaces an earlier categorical preference (for example, “actually, only [category]”), treat the replacement as current and do not carry the superseded category forward. Do not use a cached result restricted to the superseded category to discover the replacement; use a broader suitable cached base if available, otherwise search afresh with the current location, replacement category, and other explicit criteria."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

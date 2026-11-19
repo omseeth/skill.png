@@ -1,0 +1,40 @@
+{
+  "reasoning": "Preserved all four corrective failure-driven edits because they address distinct planning and cache-handling failures. Added the success-driven afternoon time mapping because it reinforces flight-time guidance without conflicting with the failure edits. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "content": "For a hotel search, map an explicitly stated headcount or party size with a clearly specified number to `num_people` (for example, “solo” means `num_people=1`). Generic descriptions such as “a family” or “a family with kids” do not specify a traveler count; leave `num_people` unset unless the user provides one. Apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "If a later constraint changes an underlying domain result used by a proximity result, refresh and save `search_nearest` using the updated result and the latest suitable cached result for the other domain.",
+      "content": "If a later constraint changes an underlying domain result used by a previously completed proximity result, do not automatically rerun `search_nearest`; update only the domain affected by the current turn. Recompute and save the nearest result only when the current turn explicitly asks to refresh proximity or that proximity task remains explicitly pending or unfulfilled. When recomputing is warranted, use the updated result and the latest suitable cached result for the other domain.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns, then decide separately for every requested or clearly pending domain.",
+      "content": "On each turn, make a domain-by-domain ledger from the full conversation and cache: include every requested, accepted, or pending deliverable and all still-active explicit criteria from every turn. Compare each criterion with the latest relevant cache summary, marking it satisfied, missing from the result, or blocked by a required input. Complete every actionable missing operation; seek information only for blocked operations, without letting one blocked domain prevent work on another. Do not add unrequested domains.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Apply only the new same-domain filter and save the update under a fresh relevant key.",
+      "content": "Apply one same-domain filter, where supported, containing all active explicit criteria missing from the chosen cached base—not just the latest additions—and save the update under a fresh relevant key.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Format flight time ranges as required:** For `departure_time` and `arrival_time`, use the validator's accepted 12-hour format with AM/PM (for example, `12:00 PM`), not `HH:MM:SS`. Choose a supported interval for vague time periods.",
+      "content": "- **Format flight time ranges as required:** For `departure_time` and `arrival_time`, use the validator's accepted 12-hour format with AM/PM (for example, `12:00 PM`), not `HH:MM:SS`. Choose a supported interval for vague time periods; map “afternoon” to `[\"12:00 PM\", \"5:00 PM\"]`.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ]
+}

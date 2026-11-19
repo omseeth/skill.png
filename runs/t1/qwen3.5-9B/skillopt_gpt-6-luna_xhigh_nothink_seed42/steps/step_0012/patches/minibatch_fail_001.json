@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_followup_misresolution",
+      "count": 4,
+      "description": "Agents omitted pending work, ignored a specifically requested attraction, misread an area question as proximity, or repeated a restaurant search already satisfied by cache."
+    },
+    {
+      "failure_type": "tool_protocol_noncompliance",
+      "count": 2,
+      "description": "Result-producing searches were left unsaved, despite the required assign-and-save protocol."
+    },
+    {
+      "failure_type": "unsupported_inference_or_scope_expansion",
+      "count": 3,
+      "description": "Agents added unrequested work or invented trip details such as group size, family size, or hotel dates."
+    },
+    {
+      "failure_type": "round_trip_leg_omission",
+      "count": 1,
+      "description": "A provided travel date range established a return date, but the return flight search was omitted."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures are already explicitly covered by the skill and prior cache-persistence edits, so repeating those rules is not warranted. The area-follow-up rule can be made more operational by specifying the neighborhood filter mapping that was missed.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion. Retrieve the latest suitable cached result and apply the corresponding same-domain filter when needed. Use `search_nearest` only if the user requests proximity.",
+        "content": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion. Retrieve the latest suitable cached result and apply the corresponding same-domain filter when needed. When the referent is a neighborhood or area, use it as the `neighborhood` filter value, retaining the full provided area name; do not treat an area-exploration question as a proximity request. Use `search_nearest` only if the user requests proximity."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

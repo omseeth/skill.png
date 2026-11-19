@@ -1,0 +1,57 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_assignment_or_save_on_first_search",
+      "count": 2,
+      "description": "A first-turn search_attractions call was emitted bare, with no variable assignment and no save_to_cache. One of the two also passed the state 'GA' as city."
+    },
+    {
+      "failure_type": "over_seeking_information",
+      "count": 2,
+      "description": "seek_information was called even though the conversation already gave the city (Fresno) or the depart/return dates (May 21 / May 31). The 'context is not a date' rule was over-applied."
+    },
+    {
+      "failure_type": "stale_key_or_repassed_constraints_on_refinement",
+      "count": 2,
+      "description": "The agent loaded filtered_hotels instead of the most refined filtered_hotels1 and re-passed budget. In another case it re-passed amenities the cache summary already listed."
+    },
+    {
+      "failure_type": "invalid_or_wrong_param_mapping",
+      "count": 2,
+      "description": "'fitness center' was written as the invented kwarg fitness_present, which fails validation; the correct param is has_fitness_class. 'GA' was written as city instead of state."
+    },
+    {
+      "failure_type": "misread_proposal_followup",
+      "count": 1,
+      "description": "The assistant proposed the neighborhood Spenard and the user replied 'No, I haven't. What's there?'. The agent only retrieved the cache instead of filtering by that neighborhood."
+    },
+    {
+      "failure_type": "multi_city_hotel_coverage",
+      "count": 1,
+      "description": "A request for flights and hotels in each city of a multi-city trip produced a hotel search for only one city."
+    }
+  ],
+  "patch": {
+    "reasoning": "Failures cluster into (a) code-hygiene misses on first searches (no assignment/save, state vs city, invented kwargs), (b) seek_information called when the needed values were already in the conversation, (c) refinements that load a stale key or re-pass constraints the cache summary already shows, and (d) follow-ups that answer a proposal with a question, plus multi-city hotel coverage. The four edits are short rules that add only what the existing rules lack. They use concrete examples taken from these failures and avoid duplicating earlier rules.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Rule 21: First searches are always assigned and saved; check param names and types\n- Every search_* call is `x = search_*(...)` followed by `save_to_cache(key=\"<domain>\", value=x)`, even for a one-turn attraction or restaurant request. A bare `search_attractions(...)` with no assignment and no save is wrong. First-search keys are \"flights\", \"hotels\", \"restaurants\", \"attractions\" (round trip: departure_flights/return_flights).\n- search_attractions: a US state name or abbreviation ('GA', 'Georgia') goes in `state=\"GA\"`, never in city. 'Art and Scenic attractions in GA' -> `attractions = search_attractions(type=[\"Art\", \"Scenic\"], state=\"GA\")` then `save_to_cache(key=\"attractions\", value=attractions)`.\n- Restaurant first request 'a restaurant in Fresno that serves Persian food and is halal' -> `restaurants = search_restaurants(city=\"Fresno\", cuisine=[\"Persian\"], has_halal_options=True)` then save under \"restaurants\".\n- Hotel amenity wording: 'fitness center' or 'fitness classes' -> `has_fitness_class=True`; 'gym' -> `gym_present=True`. There is no `fitness_present` kwarg. Never invent kwargs; every kwarg must exist in the TOOL CONFIG arg list."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 22: Verify before seek_information (values already in the conversation count)\n- Before writing seek_information, re-read ALL user turns and list what is literally stated. These are stated values: a city after 'in' ('a restaurant in Fresno' -> city=\"Fresno\"); 'I'm looking to depart on May 21, 2025 and return on May 31, 2025' (BOTH flight dates); origin and destination from earlier turns ('flight from Tucson', 'trip to Raleigh'). If origin, destination and date(s) appear anywhere in the conversation, search; do not ask for the departure date.\n- Depart/return pair with a known origin and destination -> two search_flights calls with two saves (Rule 9): `departure_flights` for the origin->destination date and `return_flights` for the destination->origin date. If a hotel is also requested, add the hotel search too.\n- 'Context is not a date' (Rule 6) applies only when NO date at all is given. Never ask for something the user already said, and never ask for the city when the user named one."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 23: Load the most refined key and pass only the delta\n- When the CACHE has several keys for one domain (e.g. hotels, filtered_hotels, filtered_hotels1), load the one whose summary has the MOST 'Additionally filtering for ...' clauses (the highest suffix, e.g. filtered_hotels1 over filtered_hotels). Save the result under the next unused key (filtered_hotels2).\n- Read that summary and drop everything it already lists (budget, stars, neighborhood, amenities). Example: filtered_hotels1 lists 'stars range: [2, 2], neighborhood(s): [Summerlin], has_business_center, budget: $115' and the user says 'wifi and meeting rooms would be essential' -> `x = get_results_from_cache(key=\"filtered_hotels1\")`, `y = filter_hotels(prior_results=x, free_wifi_included=True, has_meeting_rooms=True)`, `save_to_cache(key=\"filtered_hotels2\", value=y)`. No budget.\n- Example: summary lists 'airport_shuttle_present, has_free_parking' and the user says 'budget around 725, fitness center would be fantastic' -> `filter_hotels(prior_results=x, budget=725, has_fitness_class=True)` only. Do not re-pass the shuttle or parking."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 24: Curious replies to a proposal; multi-city hotels\n- If the assistant's last message proposed a specific neighborhood, attraction or restaurant ('Have you considered Spenard?') and the user answers with interest or a question ('No, I haven't. What's there?', 'Tell me more'), that is a request to see it, not a no-preference reply. Filter the cached domain by the proposed value and save under a new key: `x = get_results_from_cache(key=\"attractions\")`, `y = filter_attractions(prior_results=x, neighborhood=[\"Spenard\"])`, `save_to_cache(key=\"neighborhood_attractions\", value=y)`. Do not just retrieve.\n- Multi-city trip with 'hotels in each city': run one search_hotels per city the user will stay in (each city named as a flight destination), in the same code block. Save them as \"hotels\", \"hotels2\", ... Use the stated travel dates for check-in/check-out. Do not drop the second city. Multiple flight legs are saved as \"flights\", \"flights2\", ... or per Rule 9 names, one search per leg."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

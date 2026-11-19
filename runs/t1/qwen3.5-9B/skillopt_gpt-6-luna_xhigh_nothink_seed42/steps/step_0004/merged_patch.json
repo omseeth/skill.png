@@ -1,0 +1,66 @@
+{
+  "reasoning": "Failure-driven changes take priority for cache handling, location values, round-trip searches, flight time ranges, ratings, hotel dates, party size, and persistence checks. The success-driven clarification about vague trip descriptions complements the failure guidance on missing required dates, so it is retained as a separate edit. The accepted-offer insight adds a distinct pending-deliverable requirement and is also retained.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- **Handle follow-ups incrementally through the cache:** On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns. Use the cache summary to identify the latest suitable base for each affected result, then retrieve it with `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only newly stated or changed constraints not already reflected in the base, using the appropriate same-domain filter. A broad search summary that does not reflect a new constraint does not satisfy it. If an update applies to multiple cached results, such as outbound and return flight legs, retrieve, filter, and process each independently. Do not mix domains, repeat already-applied constraints, rerun completed work, or touch unrelated results. Search afresh only when no suitable cached base exists; do nothing only when the cached results satisfy all current constraints. Save each updated result under a relevant fresh key, following the persistence rule.",
+      "content": "- **Handle follow-ups incrementally through the cache:** Reconcile the full conversation and cache on every turn, including explicitly requested tasks still pending from earlier turns. For each requested result, compare the current constraints with the latest suitable cached result; the existence of a result or a broad summary alone does not mean a new constraint is satisfied. If a constraint is not reflected in the base, retrieve it using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; never rely on variables from earlier code or turns. Apply only new or changed constraints with the appropriate same-domain filter. If an update applies to multiple results, such as outbound and return flight legs, retrieve, filter, and process each independently. Do not mix domains, repeat already-applied constraints, rerun work when a suitable cached base exists, copy or re-save unchanged results, or touch unrelated results. Search afresh only when no suitable cached base exists; do nothing only when all current and pending requested constraints are reflected in suitable cached results. Save each updated result under a fresh, descriptive key. If one requested domain lacks a required input, seek only that missing information while proceeding with other explicitly requested domains whose required inputs are available.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value.",
+      "content": "Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood`, and airport codes to the corresponding airport-code field. Preserve the complete user-provided value for each field; do not trim locality qualifiers from a neighborhood phrase or replace the full phrase with only the neighborhood name.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Search round-trip flights as separate legs:** Search outbound from origin to destination using the outbound date, then return from destination to origin using the return date as that leg's `departure_date`. Cache each leg separately; do not use the return date as the outbound `arrival_date`.",
+      "content": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Format flight time ranges as required:** For `departure_time` and `arrival_time`, use the validator's accepted 12-hour format with AM/PM (for example, `12:00 PM`), not `HH:MM:SS`. Choose a supported interval for vague time periods.",
+      "content": "- **Format flight time ranges as required:** Use the validator's accepted 12-hour format with AM/PM (for example, `12:00 PM`), not `HH:MM:SS`. A request to depart “at” a specific time is an exact range `[time, time]`; an arrival deadline phrased as “by” a time is a range from `12:00 AM` through that time, not an exact-time range. Choose a supported interval for vague time periods.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+      "content": "For numeric ratings and hotel star counts, treat a single value without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Check required city inputs and distinguish event dates from travel dates:** `search_hotels` and `search_restaurants` require `city`. A date given only for an event, such as a wedding or reunion, is not a flight departure date or hotel stay date unless the user explicitly identifies it as travel timing.",
+      "content": "- **Check required city inputs and distinguish event dates from travel dates:** `search_hotels` and `search_restaurants` require `city`. When lodging is requested for an explicitly planned trip and both trip dates are known, use the trip start and end dates as hotel check-in and check-out. When an explicit trip start date and number of hotel nights are known, use the start date as check-in and call `adjust_date` with the night count to compute checkout. For a hotel added to an ongoing itinerary, reuse a clearly established trip date as check-in when applicable; do not guess check-in by subtracting a day from checkout. If a required hotel date cannot be established from user-provided itinerary details, seek it. Preserve user-provided date strings unless conversion is required, and use `adjust_date` rather than importing date libraries or doing date arithmetic in Python. A date given only for an event, such as a wedding or reunion, is not a flight departure date or hotel stay date unless the user explicitly identifies it as travel timing.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "append",
+      "content": "\n- **Carry party size only when the user confirms it:** Pass an explicitly user-provided traveler count to hotel searches as `num_people`, but never to flight tools. Do not treat a number introduced only in an assistant question or suggestion as confirmed when the user answers without affirming it.\n- **Audit persistence before returning code:** Check that every search, filter, sort, and `search_nearest` call is assigned to a variable and that its exact result is saved with `save_to_cache` under a fresh, descriptive key before the code ends. This applies to initial searches and follow-up updates, including code with only one tool call.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Distinguish required dates from optional details when seeking information:** `search_flights` requires `departure_date`; `arrival_date` is optional, even for a round trip. `search_hotels` requires both `checkin_date` and `checkout_date`, while `num_people` and `num_rooms` are optional. Phrases such as “last-minute” do not provide a date. Ask only for missing required values, not optional counts or dates.",
+      "content": "- **Distinguish required dates from optional details when seeking information:** `search_flights` requires `departure_date`; `arrival_date` is optional, even for a round trip. `search_hotels` requires both `checkin_date` and `checkout_date`, while `num_people` and `num_rooms` are optional. Phrases such as “last-minute,” “weekend getaway,” or “family vacation” do not provide exact travel dates. Do not infer or substitute sample dates; ask only for missing required values, not optional counts or dates.",
+      "support_count": 7,
+      "source_type": "success"
+    },
+    {
+      "op": "append",
+      "content": "\n- **Retrieve accepted pending offers from cache:** Treat an affirmative reply that accepts an earlier offer to provide recommendations or results as a request to deliver them. Retrieve the relevant latest cached result, even if no new search or filter is needed; use the no-planning response only when there is no pending deliverable.",
+      "support_count": 7,
+      "source_type": "success"
+    }
+  ]
+}

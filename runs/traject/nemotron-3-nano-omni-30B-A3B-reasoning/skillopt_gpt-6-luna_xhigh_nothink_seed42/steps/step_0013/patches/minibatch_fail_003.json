@@ -1,0 +1,36 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection",
+      "count": 3,
+      "description": "Some calls used an endpoint for a related but different output or record type, or missed a named retailer's product-search endpoint."
+    },
+    {
+      "failure_type": "schema_value_mapping",
+      "count": 4,
+      "description": "Calls used noncanonical values, incorrect parameter buckets or types, or values not grounded in the request."
+    },
+    {
+      "failure_type": "action_reconciliation",
+      "count": 3,
+      "description": "Some trajectories omitted a requested operation or added an unrelated call inferred from incidental context."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers general action auditing and schema mapping, so the edits target narrower gaps: selecting the exact record type for catalog requests and preventing fabricated values for supported required fields.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## List and catalog requests",
+        "content": "- Match a catalog endpoint to the requested record type as well as the provider or franchise: a list of games requires a games endpoint, not another collection from that franchise."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Map constraints to the schema",
+        "content": "- Never invent a value merely because a supported field is required. If the query provides no value for a required identifier or selector and it cannot be derived using a documented mapping, use an appropriate search or discovery endpoint instead; if none fits, do not fabricate a call."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

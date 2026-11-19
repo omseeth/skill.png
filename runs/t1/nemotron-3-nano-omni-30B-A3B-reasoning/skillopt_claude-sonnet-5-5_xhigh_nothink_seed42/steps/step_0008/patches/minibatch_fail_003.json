@@ -1,0 +1,26 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "missing_partial_search_in_multi_domain_first_turn",
+      "count": 1,
+      "description": "User asked for hotel + restaurant in Memphis with no dates. The agent output only seek_information for hotel dates and skipped search_restaurants(city='Memphis') plus save_to_cache, which the restaurant domain's complete mandatory args required. This cost recall on tool calls (tool_f1 0.5)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Rule 6 already describes 'search the complete domain, then seek_information for the incomplete one', but Rule 7 still says 'Do not run a partial search...', and the agent read it as a ban on any search when a sibling domain is incomplete. Fix this by removing the ambiguity in Rule 7 and adding a short, explicit final step to the quick decision checklist. The new step uses the exact failing pattern: a hotel and restaurant request where only the city is known. It also states that trip descriptors such as 'family vacation' add no parameters.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Do not run a partial search with made-up values for another domain.",
+        "content": "Never fill an incomplete domain with made-up values. DO still search every other requested domain whose mandatory args are complete (e.g. restaurants when the city is stated) before the final seek_information; a lone seek_information is correct only when NO requested domain can be searched."
+      },
+      {
+        "op": "insert_after",
+        "target": "4. Pass only the constraints the user literally stated. Never ask about optional details, and never seek information for a domain the user has not requested.",
+        "content": "5. Multi-domain first turn with a missing hotel/flight arg: do not output seek_information alone if another requested domain is searchable. Restaurants need only a city, and attractions can be searched once a city or state is known. Example: 'family vacation to Memphis, need a hotel and restaurant recommendation' (empty cache, no dates) -> `restaurants = search_restaurants(city=\"Memphis\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. Trip descriptors like 'family vacation' add no kwargs (no num_people, has_kids_club or cuisine). Always put the seek_information line last."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

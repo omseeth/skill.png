@@ -1,0 +1,32 @@
+{
+  "batch_size": 6,
+  "success_patterns": [
+    "Slot type was named correctly from the clue's 'this/these/him' phrase (bird, spacecraft, person, character, holiday, cheese), and the answer was the bare entity that recurs across many passages with the clue's distinctive words. The anchors (Louisiana seal, New York Times Magazine, Burbank, Vermont/Tillamook) were not returned.",
+    "When the clue gives two or more examples or varieties ('Vermont & Tillamook are American varieties of this cheese'), the agent answered the single parent category that the passages list them under (Cheddar), not one of the examples.",
+    "When the clue is a quoted epithet attributed to a source ('NYT Magazine called him \"King of the Techno-Thriller\"'), the agent matched the quoted phrase to passages of the form '<Name>, \"epithet\"'. It answered the named person and treated the publication as an anchor.",
+    "A passage reproduced the clue with no answer (a YouTube or forum quiz listing). The agent did not stall or invent an answer. It treated that passage as confirmation only and took the answer from the topical passages (trick-or-treating -> Halloween).",
+    "For a translation clue ('name means \"union\"'), the agent answered the original-language name itself, bare and without a number or type word (Soyuz), using the passage that glosses it.",
+    "Form was correct: the regnal numeral was kept for a title character (Richard III), and no extra descriptors were added."
+  ],
+  "patch": {
+    "reasoning": "Every success in this batch follows the existing Rule 2/3/4 behaviors, so no new top-level rules are needed. Three reusable reading strategies are only implicit in the skill. (1) A clue that lists examples or varieties asks for the parent category. (2) A clue repeated in a passage without an answer is not an archive hit, and a quoted-epithet clue should be matched to '<Name>, \"epithet\"' passages. (3) A translation clue wants the original-language name. Each is encoded as one short bullet next to the related existing bullet, so net length stays small and no existing rule is weakened.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "the answer is exactly one of the listed options, copied verbatim. Use the context to pick which.",
+        "content": "\n- 'X & Y are varieties / examples / kinds of this <category>' ('Vermont & Tillamook are American varieties of this cheese'): the clue names MEMBERS and asks for the single PARENT that the passages list all of them under (Cheddar). Never answer with one of the named members, and keep the bare parent word."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "\n- A passage that repeats the clue with NO answer after it (a video title, forum or quiz listing, crossword-solver page) only confirms the clue wording. It is not an archive hit, so take the answer from the topical passages instead. If the clue is a quoted epithet or title attributed to a source ('The NYT Magazine called him \"King of the Techno-Thriller\"'), search for the same quoted phrase next to a name in the passages ('<Name>, \"king of the techno-thriller\"'). That name is the answer, and the publication is an anchor."
+      },
+      {
+        "op": "insert_after",
+        "target": "answer with the common English name (Conch).",
+        "content": "\n- Translation clues ('The name of these Russian spacecraft means \"union\"', 'is Latin for ...'): the answer is the original-language name or word itself. Find the passage that glosses it ('Soyuz, literally union') and give it bare, with no number, plural or type word (Soyuz, not 'Soyuz spacecraft')."
+      }
+    ]
+  },
+  "source_type": "success"
+}

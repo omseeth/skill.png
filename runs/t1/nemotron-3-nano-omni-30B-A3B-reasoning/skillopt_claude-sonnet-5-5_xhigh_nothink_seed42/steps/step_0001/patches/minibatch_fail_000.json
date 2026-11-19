@@ -1,0 +1,53 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_not_reused_for_refinement",
+      "count": 5,
+      "description": "A follow-up turn only adds constraints (class, traveler count, amenities, neighborhood), but the agent re-searched or called filter_* on an undefined variable or a variable from an earlier turn, instead of get_results_from_cache(...) then filter_*."
+    },
+    {
+      "failure_type": "missing_save_to_cache_or_assignment",
+      "count": 5,
+      "description": "Tool results were not assigned to a variable and saved with save_to_cache, so the cache state was wrong."
+    },
+    {
+      "failure_type": "wrong_or_missing_parameters",
+      "count": 4,
+      "description": "Invented parameter names (laundry_service_present), dropped stated amenities (wifi/gym), missed the solo-traveler num_people=1, missed the flight class from 'first flight', and expanded a date range into many dates."
+    },
+    {
+      "failure_type": "round_trip_not_split",
+      "count": 1,
+      "description": "A date range 'May 22 to June 5' was passed as two departure dates in one search, instead of separate outbound and return searches."
+    },
+    {
+      "failure_type": "wrong_no_planning_needed",
+      "count": 1,
+      "description": "The agent printed 'No planning needed' even though the user requested new domains (hotel and attractions) that were absent from the cache."
+    }
+  ],
+  "patch": {
+    "reasoning": "Across the batch, the agent mostly knows the intent but breaks the code conventions. It ignores the cache when the user only refines a previous result, never saves results, uses undefined variables, and mis-maps user phrases to tool parameters. It also mishandles round-trip flights and uses 'No planning needed' too eagerly. The edits give a concrete cache-first refinement pattern, a mandatory assign-and-save template, a phrase-to-parameter mapping with exact names, and rules for flights and for when 'No planning needed' is allowed.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Rule 1: Refinements reuse the cache (never re-search, never use bare variables)\n- If the cache already holds results for a domain and the latest user turn only ADDS constraints (flight class, number of travelers/rooms, amenities, neighborhood, stars, budget, cuisine, rating, etc.), do NOT call search_* again. Load the cached result and call the matching filter_*:\n  `hotels = get_results_from_cache(key=\"hotels\")`\n  `filtered_hotels = filter_hotels(prior_results=hotels, num_people=3)`\n  `save_to_cache(key=\"filtered_hotels\", value=filtered_hotels)`\n- If several filter results are cached for one domain (e.g. flights split into departure_flights and return_flights), refine EACH relevant cached result with its own get/filter/save triple.\n- Choose the cache key whose summary already reflects the most recent state for that domain (e.g. a `nearest_*` or previously filtered key beats the raw search key). Copy the key string exactly from the CACHE section.\n- Never pass an undefined name (e.g. `prior_results=filtered_hotels`) or an inline call into a tool. Always do `x = get_results_from_cache(key=\"...\")` first, then use `x`.\n- Use a NEW unique key for each saved result so earlier cache entries are not overwritten.\n- A filter_* call must carry the criteria the user just stated. Never call it with only prior_results."
+      },
+      {
+        "op": "append",
+        "content": "## Rule 2: Every search/filter/sort/nearest call is assigned and saved\n- Never leave a tool call bare. Pattern: `name = tool(...)` followed by `save_to_cache(key=\"<unique_key>\", value=name)`. This applies to search_flights, search_hotels, search_restaurants, search_attractions, all filter_* calls, sort_results and search_nearest.\n- Typical keys: `hotels`, `restaurants`, `attractions`, `departure_flights`, `return_flights`, `filtered_hotels`, `filtered_departure_flights`, etc. If a key already exists in CACHE, pick a new name (e.g. `filtered_hotels2`).\n- One user request with several domains or legs means one assign-and-save pair per call, in order."
+      },
+      {
+        "op": "append",
+        "content": "## Rule 3: Map user phrases to EXACT parameter names and include every stated constraint\n- Use only parameter names that appear in the TOOL CONFIG of that exact tool. Do not invent names such as `laundry_service_present`.\n- Common mappings: wifi -> `free_wifi_included=True`; gym -> `gym_present=True`; pool -> `pool_present=True`; laundry -> `has_laundry_service=True`; business facilities/center -> `has_business_center=True`; spa -> `has_spa_services=True`; breakfast -> `breakfast_included=True`; parking -> `has_free_parking=True`.\n- Stars: 'N star' -> `stars=[N, N]`; 'at least N stars' -> `stars=[N, 5]`. Rating: 'at least X' -> `rating=[X, 5]`. A neighborhood goes in `neighborhood=[\"<as written>\"]`. Attraction categories go in `type=[...]`.\n- Travelers: 'solo' / 'just me' / 'alone' -> `num_people=1`; 'N of us' / 'N people' -> `num_people=N`; 'N rooms' -> `num_rooms=N`.\n- Include every constraint the user has stated in the conversation for that domain (amenities, stars, neighborhood, budget, travelers). Do not drop any, and do not add ones the user never mentioned.\n- A date range 'X to Y' for a hotel is `checkin_date=[\"X\"], checkout_date=[\"Y\"]`. NEVER expand it into a list of every day in between."
+      },
+      {
+        "op": "append",
+        "content": "## Rule 4: Flights and when to print 'No planning needed'\n- Round trip ('depart X and return Y'; 'X to Y' dates with a flight): make TWO searches. Outbound: origin -> destination, `departure_date=[\"X\"]`, saved as `departure_flights`. Return: destination -> origin, `departure_date=[\"Y\"]`, saved as `return_flights`. Never put the return date in the outbound search's departure_date list.\n- Flight class stated anywhere in the conversation applies to flights. 'first flight' / 'first class' -> `flight_class=[\"first\"]`; 'business class' -> `flight_class=[\"business\"]`; 'economy' -> `flight_class=[\"economy\"]`. If the flights are already cached and the class is given later, filter both cached legs with `filter_flights(prior_results=..., flight_class=[...])` (Rule 1). If searching fresh, pass flight_class in both searches.\n- Print \"No planning needed\" ONLY when the cache already fully satisfies everything the user has asked for, including every domain mentioned so far. If the latest turn introduces a domain that is not in the cache (e.g. hotel or attractions when only flights are cached) or a new constraint, generate the search_*/filter_* code for it. Cached flights do not mean hotels and attractions are done.\n- When the user asks for hotels and attractions where the hotel need not be near the attractions, search both independently and save each. Call search_nearest only if proximity is requested."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

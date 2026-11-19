@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_scope",
+      "count": 5,
+      "description": "Some trajectories chose adjacent or proxy tools, missed expected facets, or added overlapping or unrequested calls."
+    },
+    {
+      "failure_type": "schema_and_argument_mapping",
+      "count": 5,
+      "description": "Some trajectories truncated an endpoint name, misgrouped parameters, substituted an operation value, or failed to follow the expected value encoding."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already addresses endpoint scope and avoiding unrelated calls, so these edits focus on recurring execution gaps: preserving literal endpoint identifiers, respecting the schema's required/optional groups, matching operation selectors to the requested operation, and separating parameter types from output serialization.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Choose the most directly fitting documented endpoint using its exact `Provider: endpoint` name.",
+        "content": "Choose the most directly fitting documented endpoint and copy its exact `Provider: endpoint` name. Preserve the full endpoint text, including route suffixes, path or query templates, punctuation, and capitalization; do not shorten or normalize it."
+      },
+      {
+        "op": "replace",
+        "target": "Use exact parameter names, satisfy the schema's semantic types, include every required parameter, and put parameters in the required or optional group specified by the tool.",
+        "content": "Use exact parameter names and satisfy the schema. The tool's Required and Optional lists alone determine which output array receives each parameter: include every required parameter in the required array, and keep requested optional parameters in the optional array rather than promoting them to required."
+      },
+      {
+        "op": "replace",
+        "target": "Preserve query values and their entity associations, converting them only to documented formats such as API codes, list syntax, or canonical enum spelling.",
+        "content": "Preserve query values and their entity associations, converting them only to documented formats such as API codes, list syntax, or canonical enum spelling. For a parameter that selects an operation or mode (for example, a function selector), use the documented value corresponding to the requested operation; do not substitute a different valid-looking token. Do not guess undocumented encodings or enum values."
+      },
+      {
+        "op": "replace",
+        "target": "Serialize values according to the required call-format convention: follow explicit examples that consistently encode values as strings, even for numeric or boolean parameters; otherwise follow the declared schema types.",
+        "content": "Treat a parameter's semantic type and its output serialization as separate checks. Follow the required call-format convention: if its examples consistently encode `value` fields as strings, serialize all values as strings, including numeric and boolean parameters; otherwise use the declared schema types. Keep the underlying value faithful to the requested value and documented parameter semantics."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

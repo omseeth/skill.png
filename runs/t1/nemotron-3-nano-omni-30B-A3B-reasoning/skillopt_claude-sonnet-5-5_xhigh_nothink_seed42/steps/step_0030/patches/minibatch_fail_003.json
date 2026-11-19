@@ -1,0 +1,41 @@
+{
+  "batch_size": 3,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_key_applied",
+      "count": 3,
+      "description": "The reply was applied to a cached key of a different domain. A hotel reply was filtered onto 'attractions' (T2), a dates reply re-loaded 'attractions' (T3), and T1 re-filtered flights and loaded a non-existent 'hotels' key."
+    },
+    {
+      "failure_type": "missed_first_search_for_uncached_domain",
+      "count": 2,
+      "description": "A requested hotel with no CACHE key and known dates was not searched. T1 had the flight dates and T3 had a dates-only reply. Expected search_hotels carrying stars, budget, num_people, neighborhood and business center/gym."
+    },
+    {
+      "failure_type": "missed_seek_information",
+      "count": 1,
+      "description": "A hotel amenity reply with no hotel dates and no hotels key should have output only seek_information (T2). The agent filtered attractions instead."
+    },
+    {
+      "failure_type": "load_and_resave_unchanged",
+      "count": 2,
+      "description": "get_results_from_cache followed by save_to_cache of the same object (T3), or a filter that re-passes an existing constraint (T2), instead of the required search."
+    }
+  ],
+  "patch": {
+    "reasoning": "All three failures come from one mistake: the agent works on whichever domain's key exists in CACHE instead of the domain the last message is about. The correct handling already exists as buried examples in the CACHE GATE and 4b, but it was ignored, and the agent copied the examples' non-existent 'hotels' key. Adding more examples would repeat a failed pattern. Instead I promote one mechanical key-ownership check to the very top of the skill. It forces a first search (keys exist for other domains, dates known) or a lone seek_information (dates missing), and bans loading another domain's key or re-saving an unchanged load. I also amend the Rule 8 retrieval clause, which licenses the T3 retrieve-and-resave, so a dates reply for an uncached domain counts as a search trigger.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- KEY-OWNERSHIP CHECK (do this before the SEARCH GATE). (1) List the CACHE keys and tag each with its domain (flights / return_flights / filtered_*flights = flights; hotels* / filtered_hotels* / final_hotels* = hotels; restaurants* = restaurants; attractions* = attractions). (2) Tag the domain of the LAST user message by its words (hotel, stars, pool, room service, gym, wifi, per-night budget, hotel party size, check-in / check-out dates -> hotels). (3) If no cached key belongs to that domain, write NO get_results_from_cache and NO filter_* for it. Never apply its words to another domain's key: a hotel reply is never filtered onto 'attractions' or a flight key, and a flight class from an earlier turn is never re-applied. Never load a key that is not spelled in CACHE. A requested domain with no key is either a first search or a seek_information:\n  - Check-in AND check-out both known (stated in the last message, or the outbound and return flight dates): `hotels = search_hotels(city=<trip city from any turn>, checkin_date=[...], checkout_date=[...], <every hotel constraint stated in any turn: num_people only from a stated number, budget, stars=[n, n], neighborhood, amenities>)` + `save_to_cache(key=\"hotels\", value=hotels)`. A dates-only reply ('We're checking in on <date> and checking out on <date>') while CACHE holds only 'attractions' ends in this search, not in a retrieval of 'attractions'. When only flight keys are cached and the turn describes a hotel, this search is the whole answer for hotels: add no flight lines. Another requested domain with no key (e.g. attractions with a known city) is searched in the same block.\n  - Dates missing: the whole output is `seek_information(\"We need to ask for the check-in and check-out dates\")`. Example: CACHE only 'attractions' and the reply 'Yes, we need a hotel with a pool and room service.' -> that one line, with no filter_attractions and no search.\n  - A block that loads a key and then saves the same object unchanged is always wrong. It means you skipped the search or filter for the domain the message is about."
+      },
+      {
+        "op": "replace",
+        "target": "and the cache already holds results for the domain under discussion, do NOT re-run search_*",
+        "content": "and the cache already holds results for the domain under discussion (a reply that supplies dates, a city or other mandatory values for a domain with NO key is not 'no new constraint': it triggers that domain's first search, see Rule 14), do NOT re-run search_*"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

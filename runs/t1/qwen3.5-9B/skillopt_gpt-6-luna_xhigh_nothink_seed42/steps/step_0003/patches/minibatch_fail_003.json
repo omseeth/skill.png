@@ -1,0 +1,31 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "round-trip flight/date handling",
+      "count": 3,
+      "description": "Agents misused the return date as an arrival-date constraint or omitted the separate return-leg search; one also reformatted dates unnecessarily."
+    },
+    {
+      "failure_type": "cache lifecycle",
+      "count": 3,
+      "description": "Follow-up filtering skipped explicit cache retrieval, while new searches or filters were not consistently saved."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the intended behavior, but these failures show that the instructions need a more operational pattern: spell out the two one-way flight calls and clarify date handling, and make cache-key retrieval and saving explicit for both follow-ups and fresh results.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Search round-trip flights as separate legs:** Search outbound from origin to destination using the outbound date, then return from destination to origin using the return date as that leg's `departure_date`. Cache each leg separately; do not use the return date as the outbound `arrival_date`.",
+        "content": "- **Search round-trip flights as two one-way legs:** Make separate calls: origin to destination with the outbound date in `departure_date`, and destination to origin with the return date in `departure_date`; assign and cache each result separately. A stated return date is the departure date of the return leg, not an `arrival_date` constraint on the outbound search. Pass dates in their original accepted string form; do not import, parse, or reformat them when the tool accepts them as given."
+      },
+      {
+        "op": "replace",
+        "target": "- **Handle follow-ups incrementally through the cache:** Retrieve the relevant cached result with `get_results_from_cache`, apply only the new constraints using the appropriate same-domain filter, and save the updated result under a relevant key. Do not mix domains. Search afresh only when there is no suitable cached base; if cached results already satisfy the latest request, do nothing. Avoid repeating unrelated searches, filters, or other operations.",
+        "content": "- **Handle follow-ups incrementally through the cache:** For a follow-up, call `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign its result before filtering; do not rely on a Python variable from an earlier turn. Apply only the new constraints with the same-domain filter, assign the output, and save it under a new relevant key. For fresh searches, assign and save every result as well. Cache separate flight legs under distinct keys. Do not mix domains. Search afresh only when there is no suitable cached base; if cached results already satisfy the latest request, do nothing. Avoid repeating unrelated operations."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

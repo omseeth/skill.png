@@ -1,0 +1,34 @@
+{
+  "reasoning": "Preserved all seven distinct failure-driven edits as the higher-priority corrective guidance. The success-driven clarification insight addresses a separate follow-up behavior, so it is retained without displacing or duplicating a failure edit. No edits target the protected section. [optimizer-ranked: selected 3/8 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Treat a short answer to an assistant's clarification question as an explicit user-provided value or preference; an affirmative answer accepting an offered domain or option is a request to proceed.",
+      "content": "Treat a short answer to an assistant's clarification question as an explicit user-provided value or preference. If the answer declines to narrow a preference (for example, “I'm flexible” or “not really”), treat it as continuing the requested broad search, not as cancellation; when a matching result is already cached, retrieve and assign it for the response even if no filter is needed. An affirmative answer accepting an offered domain or option is a request to proceed.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+      "content": "For hotel or restaurant rating scores, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and “at least x” is `[x, 5]`. For hotel star counts, map “at least x stars” to `stars=[x, 5]`, “exactly x stars” or an explicit x-star count to `stars=[x, x]`, and an explicit range to its stated bounds. When the user asks for a “good” or “best” option without specifying an objective filter, do not invent search criteria; search using the explicit criteria, then, when a rating sort is supported for that domain, assign and cache a descending `sort_results` output using the schema's rating column (for example, `rating_hotels` or `rating_restaurants`).",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results. Do not pass the attraction name as a `neighborhood` value or approximate proximity with a neighborhood filter. If a later constraint changes an underlying domain result, such as filtering the hotel set, recompute and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call.",
+      "content": "- **Use proximity tools only for proximity requests:** A request for a hotel or restaurant near a named attraction, hotel, or restaurant is a proximity request; identify the anchor and target domains from the conversation, and retrieve or search for suitable results in both. Call `search_nearest` with exactly two result-domain arguments among `hotels`, `attractions`, and `restaurants`; set `groupBy` to the target domain the user wants near the anchor. Search for a named attraction when requested. By contrast, “near Downtown” or “near [neighborhood/district]” is a location constraint, not a proximity request: use the full area phrase in `neighborhood` with its city, and filter a suitable cached result when available. Do not use an area as a proximity anchor or an attraction name as a neighborhood. If a later constraint changes an underlying result, recompute and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call.",
+      "support_count": 1,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 7 has the strongest evidence and prevents a common follow-up from being mistaken for cancellation. Edit 2 adds useful guidance for frequent rating, star-count, and broad “best” requests that the current skill does not cover. Edit 5 extends proximity handling to hotel and restaurant anchors and clarifies how to distinguish those requests from neighborhood constraints.",
+    "selected_indices": [
+      7,
+      2,
+      5
+    ]
+  }
+}

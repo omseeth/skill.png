@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_call_minimality",
+      "count": 4,
+      "description": "Agents chose a less direct endpoint or added overlapping or unrelated calls instead of limiting calls to distinct requested checks."
+    },
+    {
+      "failure_type": "schema_serialization_and_grouping",
+      "count": 3,
+      "description": "Agents serialized numeric values as numbers despite string-valued format examples, or placed parameters in the wrong group or shape."
+    },
+    {
+      "failure_type": "multi_facet_coverage_and_target_fidelity",
+      "count": 2,
+      "description": "Agents missed an explicit facet or altered a search target rather than preserving the requested subject."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers coverage checklists and required-versus-optional grouping, so those rules need no duplication. These edits sharpen endpoint tie-breaking when tools overlap and clarify that call-format examples take precedence over schema types for serialization.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Keep only calls that cover distinct requested results; reject speculative, duplicate, or adjacent calls, and candidates whose schemas cannot express the requested target without misusing fields or inventing arguments.",
+        "content": "When several endpoints appear to fit, choose the one whose documented operation most directly performs the requested check; a broad endpoint is suitable only when it fully covers the requested result. A request to use multiple tools does not justify multiple alternatives for the same facet—add a call only for a distinct requested result."
+      },
+      {
+        "op": "replace",
+        "target": "Serialize values according to the required call-format convention: follow explicit examples that consistently encode values as strings, even for numeric or boolean parameters; otherwise follow the declared schema types.",
+        "content": "Serialize values according to the required call-format examples before falling back to schema types. If an applicable example encodes numeric or boolean-like values as strings, use strings for matching parameters even when the schema declares NUMBER or BOOLEAN; use native types only when no applicable format example establishes an encoding."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

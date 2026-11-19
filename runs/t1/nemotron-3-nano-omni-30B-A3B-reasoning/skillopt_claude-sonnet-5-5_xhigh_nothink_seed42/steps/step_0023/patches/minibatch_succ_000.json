@@ -1,0 +1,22 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Missing mandatory args with no cache key: output only a short seek_information. Examples: a flight request with an airport habit ('I normally fly from LEX') but no date, and a hotel budget reply with no check-in/check-out dates.",
+    "Round-trip date reply ('May 15, 2025 to May 19, 2025') becomes two assigned and saved search_flights calls with origin and destination taken from earlier turns, and no hotel or other domain added when none was requested.",
+    "Budget-only or rating-plus-budget replies on a cached restaurants key become a restaurant-only filter. They pass only the last turn's values (budget=30; rating=[4.5, 5], budget=40), with no re-passed cuisine or city.",
+    "First hotel search after restaurants are already cached carries every stated constraint (city, dates, stars, neighborhood) and leaves the restaurants key untouched.",
+    "Descriptors with no tool parameter ('business lunch', 'great view') are dropped. Only city and cuisine reach the restaurant search.",
+    "One miss that still passed: an airport code stated in an earlier turn ('I normally fly from SJC') was not carried into the later round-trip search. Gold adds start_airport on the outbound leg and end_airport on the return leg."
+  ],
+  "patch": {
+    "reasoning": "Nearly every observed success is already covered by the CACHE GATE, Rule 6, Rule 9 and the slow-update guidance, so I propose no new rules. The one gap is that Rule 9's date-reply bullet says 'Add no other params', which can suppress an airport code the user named in an earlier turn. Gold carries that code as start_airport and end_airport on the two legs. The edit pairs the prohibition with its positive trigger and does not add a new example.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Add no other params: no airline, flight_class, budget, times or num_people.",
+        "content": "Carry an airport code the user named in ANY earlier turn ('I normally fly from SJC'): start_airport=\"SJC\" on the outbound leg and end_airport=\"SJC\" on the return leg, even when this turn only gives dates. Add no other params: no airline, flight_class, budget, times or num_people."
+      }
+    ]
+  },
+  "source_type": "success"
+}

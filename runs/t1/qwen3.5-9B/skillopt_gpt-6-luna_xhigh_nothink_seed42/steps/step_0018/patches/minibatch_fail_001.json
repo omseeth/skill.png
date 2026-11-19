@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_followup_reconciliation",
+      "count": 5,
+      "description": "Follow-ups used stale or undefined cached results, repeated existing filters, or skipped a separately requested pending domain."
+    },
+    {
+      "failure_type": "result_assignment_and_cache_persistence",
+      "count": 3,
+      "description": "Initial search results were left unassigned or were not saved to cache."
+    },
+    {
+      "failure_type": "location_field_mapping",
+      "count": 2,
+      "description": "State abbreviations were passed as attraction cities instead of using the state field."
+    },
+    {
+      "failure_type": "hotel_occupancy_criteria_mapping",
+      "count": 1,
+      "description": "A follow-up specifying both rooms and travelers did not apply the corresponding hotel filters."
+    },
+    {
+      "failure_type": "flight_return_leg_date_mapping",
+      "count": 1,
+      "description": "A return-flight request used the trip's first date as the return departure date and the return date as an arrival constraint."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures repeat behaviors the skill already addresses, including cache retrieval, saving tool outputs, state-field mapping, and return-leg dates, so duplicating those rules is unwarranted. The edits clarify two uncovered interpretation details: mapping room count separately from party size, and limiting a clarification answer's scope so it does not cancel other pending domains.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+        "content": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. For hotel searches and filters, map an explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`) and an explicitly stated room count to `num_rooms`. If a follow-up supplies both, apply both fields together in one same-domain filter on a suitable cached hotel result. Do not infer unspoken counts or pass traveler counts to flight tools."
+      },
+      {
+        "op": "replace",
+        "target": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion.",
+        "content": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. Scope a yes/no or restrictive clarification answer to the domain and question asked: for example, “no, only the return flight” changes which flight leg is requested, but does not cancel separately requested hotel or restaurant planning unless the user explicitly withdraws it. An affirmative answer accepting an offered domain or option is a request to proceed. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

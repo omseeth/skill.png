@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_incremental_filtering",
+      "count": 6,
+      "description": "Follow-up turns often triggered fresh or unrelated searches instead of retrieving compatible cached results and filtering only changed criteria."
+    },
+    {
+      "failure_type": "tool_result_persistence_and_variable_discipline",
+      "count": 4,
+      "description": "Some trajectories omitted required cache writes, called tools inline, or saved an undefined result variable."
+    },
+    {
+      "failure_type": "criterion_and_field_mapping",
+      "count": 3,
+      "description": "Agents used the wrong location field or category label, or treated an exact rating as a minimum threshold."
+    },
+    {
+      "failure_type": "invalid_flight_time_format",
+      "count": 1,
+      "description": "A flight time range used HH:MM:SS values rejected by the tool."
+    },
+    {
+      "failure_type": "nearest_results_prioritization",
+      "count": 1,
+      "description": "The nearest-results call prioritized hotels rather than the requested restaurants."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify how to select and reuse the most refined compatible cached result, map exact ratings and category labels, format flight times accepted by the tool, and prioritize the requested domain in proximity results. The existing result-assignment and cache-save rule already directly covers persistence failures, so it is not duplicated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- At each turn, inspect cache summaries and identify which domains or itinerary legs the latest turn changes. For each changed request, retrieve by exact key a compatible cached result for the same domain, location, dates, and leg whenever its candidate set can be narrowed to the request. It need not already include newly supplied filterable criteria such as cuisine, budget, rating, or amenities. Apply the matching `filter_*` tool to that result with the new constraints, retaining constraints already embodied in the cached result. Do not repeat a base search just to add filterable criteria. Search only when no compatible cached result exists or the request's scope has changed; leave unaffected domains and legs alone.",
+        "content": "- Reconstruct the current request from the full conversation and latest answer, then identify only the changed domains or itinerary legs. For each changed request, retrieve by exact key the most refined compatible cached result whose scope can cover it; a broader result may be narrowed with `filter_*` to add new filterable criteria. Preserve constraints already embodied in the result, and do not re-filter unchanged constraints or repeat searches for unchanged domains or legs. Search only when no compatible result exists or the request's scope has changed. For proximity calls, reuse compatible cached results for the other domain rather than searching again solely to compute nearest results."
+      },
+      {
+        "op": "replace",
+        "target": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+        "content": "- Pass only supported criteria, map each value to its corresponding field, and preserve the user's entity and category labels rather than substituting a similar label. For attractions, put a state abbreviation in `state`, not `city`. For ratings, interpret “at least N” as the inclusive range from N to the supported maximum, and an unqualified exact rating as `[N, N]`. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for “at least N stars,” use the inclusive range from N to the field's maximum. Use accepted formats and do not add unrelated preferences."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool results and constraints",
+        "content": "- For flight-time ranges, use the tool's accepted 12-hour AM/PM format (for example, `[\"12:12 AM\", \"11:59 PM\"]`), not `HH:MM:SS`. For a one-sided time constraint, use the stated time as the relevant boundary and the appropriate start- or end-of-day time for the other boundary."
+      },
+      {
+        "op": "replace",
+        "target": "- When the user requests proximity, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "- When the user requests proximity between domains, pass the relevant hotel and attraction or restaurant results to `search_nearest`. Set `groupBy` to the domain the user wants prioritized: for example, restaurants near a hotel means `groupBy=\"restaurant\"`, while hotels near attractions means `groupBy=\"hotel\"`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

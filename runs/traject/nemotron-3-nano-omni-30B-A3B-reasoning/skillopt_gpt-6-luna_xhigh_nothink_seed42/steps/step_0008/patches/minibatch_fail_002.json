@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "call_coverage",
+      "count": 2,
+      "description": "Multi-stage requests lost several described actions, particularly when the query narrated them as a sequence or retrospective."
+    },
+    {
+      "failure_type": "endpoint_selection",
+      "count": 5,
+      "description": "Agents sometimes chose a related endpoint rather than the one whose operation and cardinality matched the specific requested result."
+    },
+    {
+      "failure_type": "schema_mapping",
+      "count": 4,
+      "description": "Calls had missing or misplaced parameter values, incorrect required/optional placement, or values that did not match the declared type or canonical form."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch shows that broad guidance is not enough to prevent omissions in narrated tasks, selection of merely related endpoints, or schema mismatches during serialization. These edits make action accounting explicit for retrospective phrasing, sharpen endpoint matching for the requested operation and quantity, and add a concrete per-call schema audit.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Turn each explicit clause into a requested action, target, and set of qualifiers. In one-turn tasks, narrated sequences such as “first,” “then,” and “finally” describe requested actions, not actions already completed.",
+        "content": "- Turn every clause describing an outcome into a requested action, target, and set of qualifiers. In one-turn tasks, treat both imperative sequences and narrative or retrospective phrasing (for example, “the user first accessed ... then retrieved ...”) as requested actions unless the prompt explicitly says they were already completed outside this task. Before choosing tools, enumerate these actions in query order, including the final clause."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Choose an endpoint by its documented operation, output, target, and support for the requested qualifiers—not merely by a shared topic or entity name. Prefer the most specific endpoint that fits the request; use separate endpoints when distinct deliverables require them.",
+        "content": "- When endpoints overlap, match the endpoint-level operation and parameter schema to the particular deliverable; do not substitute a broadly related endpoint for one that directly performs the requested check. Match cardinality too: use an endpoint that supports the requested number of results and supply its quantity field when available."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Follow the active prompt’s answer contract. Represent each invocation as its own call object with exactly the required keys and value types; keep calls in the required wrapper and do not merge calls or duplicate fields.",
+        "content": "- Audit each call against the tool schema before serialization: include every required parameter as a correctly formed name/value pair, place optional parameters in the optional slot, and do not leave bare names or placeholders. Preserve declared value types and exact enum or canonical values; map each qualifier to the field that represents it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

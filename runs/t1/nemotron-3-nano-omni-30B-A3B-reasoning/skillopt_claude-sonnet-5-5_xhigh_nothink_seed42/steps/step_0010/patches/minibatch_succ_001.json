@@ -1,0 +1,26 @@
+{
+  "batch_size": 5,
+  "success_patterns": [
+    "First hotel search: all optional constraints stated across earlier turns (rating, amenities, neighborhood) were collected into ONE search_hotels call once the dates arrived. 'Meeting room and business facilities' became has_meeting_rooms and has_business_center, 'at least 4.5' became rating=[4.5, 5], and the neighborhood kept the user's wording ('Downtown St. Louis').",
+    "Round-trip flight preference with mixed key names (CACHE 'flights' plus 'return_flights'): each leg was loaded under its exact key, filtered with the same preference, and saved under a new key. No search_flights re-run.",
+    "A hotel-only answer (budget plus pool) in a hotel+restaurant conversation filtered only the hotels key with the new constraints, as load, filter, save. The restaurants key was untouched.",
+    "When mandatory hotel dates were missing in a flight+hotel conversation (no dates at all, or only the checkout date missing), the agent returned seek_information naming only the missing items instead of searching with guessed values.",
+    "Trajectory 5 lost some tool precision (tool_f1 0.67) because a needless get_results_from_cache call was placed before seek_information."
+  ],
+  "patch": {
+    "reasoning": "The skill already covers most observed successes (refinement via cache, per-leg flight filtering, hotel-only routing, seek_information for missing dates). Two small gaps remain. First, the agent that correctly merged constraints from several earlier turns into the first hotel search is worth reinforcing, with the amenity-wording map that made it correct. Second, in seek-only turns an extra cache load counts as a false-positive tool call, so the skill should say to output just the seek_information call. Both additions are short to avoid bloating the skill.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Include optional details the user explicitly stated (num_rooms, num_people, budget, amenities, cuisine, ...) as keyword args in the search call, and nothing the user did not say.",
+        "content": "- The first search must carry EVERY optional constraint stated in ANY earlier turn, not just the last one (rating, amenities, neighborhood, budget, party size). Example: turn 1 'hotel in St. Louis, with a meeting room and business facilities, rating at least 4.5', last turn 'arriving December 12, 2025, leaving December 14, 2025, Downtown St. Louis' -> `x = search_hotels(city=\"St. Louis\", checkin_date=[\"December 12, 2025\"], checkout_date=[\"December 14, 2025\"], rating=[4.5, 5], has_meeting_rooms=True, has_business_center=True, neighborhood=[\"Downtown St. Louis\"])` + `save_to_cache(key=\"hotels\", value=x)`. 'Meeting room' -> has_meeting_rooms; 'business facilities/center' -> has_business_center; neighborhood copies the user's wording including the city."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Keep it to one short sentence, e.g. seek_information(\"We need to ask for the check-in and check-out dates\") or seek_information(\"We need the departure date for the flight\").",
+        "content": "- A seek-only turn is just the seek_information call. Do not add get_results_from_cache loads, filters or explanatory comment lines before it. Even when flights are already cached and only the hotel checkout date is missing, output only `seek_information(\"We need the check-out date for the hotel.\")`, because any extra tool call counts as an error."
+      }
+    ]
+  },
+  "source_type": "success"
+}

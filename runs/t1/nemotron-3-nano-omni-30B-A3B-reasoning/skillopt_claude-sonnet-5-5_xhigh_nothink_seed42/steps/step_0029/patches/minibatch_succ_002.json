@@ -1,0 +1,18 @@
+{
+  "batch_size": 1,
+  "success_patterns": [
+    "The only trajectory here is a reply to an open preference question ('Not really, just something fun.') with the 'attractions' key already cached. The gold answer is a single get_results_from_cache with no search, filter or save. The trajectory only passed on cache state: it re-ran search_attractions with the old criteria (tool_f1 0.0, 2 extra calls), so the skill's retrieval rule was not followed.",
+    "A refusal or no-preference reply on a domain that already has a cache key adds no constraint, so the correct output is retrieval only."
+  ],
+  "patch": {
+    "reasoning": "Rules 8 and 10 already say that a refusal means pure retrieval. However, the top-of-document SEARCH GATE says every cached-domain reply becomes a three-line load, filter, save block, and it does not mention refusals. The agent followed neither the gate nor Rule 8 and re-searched. Moving the refusal case into the SEARCH GATE puts it where the decision is made, instead of adding another sibling example. The trigger is limited to explicit refusal wording, which avoids over-applying retrieval to bare 'Yes' replies.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "A search_* call is allowed only for a domain with NO key.",
+        "content": "A search_* call is allowed only for a domain with NO key. Positive trigger for retrieval: if the reply is an explicit refusal or no-preference answer to an open question ('Not really, just something fun', 'No preference', 'Anything is fine') and that domain's key is present, the whole output is the single line `x = get_results_from_cache(key=\"<most refined key of that domain>\")`, with no search, no filter and no save. A 'Yes' or a reply that names a value is never a refusal, so it still gets a filter."
+      }
+    ]
+  },
+  "source_type": "success"
+}

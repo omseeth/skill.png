@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_refinement_and_result_lifecycle",
+      "count": 3,
+      "description": "Agents searched instead of refining compatible cached results, or failed to apply a new preference separately to each cached flight leg."
+    },
+    {
+      "failure_type": "scope_creep_and_proximity_handling",
+      "count": 3,
+      "description": "Agents repeated completed or unrelated work, or made a nearest-results call without both required domain results."
+    },
+    {
+      "failure_type": "flight_leg_handling",
+      "count": 2,
+      "description": "Agents combined round-trip dates into one direction or searched legs that already had compatible cached results."
+    },
+    {
+      "failure_type": "schema_value_mapping",
+      "count": 2,
+      "description": "Agents omitted the supported traveler count for a solo hotel search or encoded an exact star rating incorrectly."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify the cache decision as a concrete choice between refining, searching, and leaving completed work alone; tighten proximity calls to require both actual result objects; and make per-leg cache refinement explicit. The solo mapping sharpens an existing rule where an available hotel field was missed. Exact star-range encoding is already covered, so it does not need another edit.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "- Treat the latest user turn as a delta to the pending plan. For each affected domain, inspect listed cache summaries and select the latest compatible result that covers the target and earlier criteria. If only a new filter is needed, retrieve that exact key and call the matching filter with only the new criterion(s); bind and save the refinement under a new key. Do not repeat the base search. If no compatible base result exists, search once with all explicit criteria; do not then filter for criteria already included in that search. Leave unaffected domains alone and do not rely on variables from earlier executions."
+      },
+      {
+        "op": "replace",
+        "target": "- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain), not the reference domain: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`.",
+        "content": "- When a proximity request is still pending, pass both compatible domain result objects—retrieved from their exact listed cache keys or produced by current calls—to `search_nearest`; never pass `None` for one side. Specify exactly the two domains being compared. Set `groupBy` to the focal domain whose candidates the user wants ranked or recommended: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`. Do not repeat a completed proximity action solely because a later turn refines one domain."
+      },
+      {
+        "op": "replace",
+        "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.",
+        "content": "- Represent every explicitly described flight segment as its own directional action with its stated origin, destination, and departure date. For a round trip, search origin-to-destination on D1 and destination-to-origin on D2, using `departure_date=[D1]` and `departure_date=[D2]` respectively; never combine the dates or send D2 as `arrival_date` or `return_date`. Before calling tools, check each leg against its compatible directional cache entry: retrieve and filter that leg for newly added preferences when available, and search only legs with no compatible result. Bind and save each new search or refinement. Apply `flight_class` to both legs only when explicitly requested. Do not pass a qualitative airline attribute as a named airline value unless it corresponds to a supported airline."
+      },
+      {
+        "op": "replace",
+        "target": "Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it.",
+        "content": "For a hotel search, map “solo” to `num_people=1` when that supported traveler-count field is available; do not infer `num_rooms` from it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

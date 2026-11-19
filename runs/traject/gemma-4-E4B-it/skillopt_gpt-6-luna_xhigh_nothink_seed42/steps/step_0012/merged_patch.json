@@ -1,0 +1,60 @@
+{
+  "reasoning": "Prioritized all distinct failure-driven corrections and retained their support counts. Kept the success-driven hostname normalization and canonical initial-position guidance because they add specific coverage not addressed by the failure patches or existing rules. All edits target content outside the protected section.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "For multi-value filters, preserve whether the user asks for any listed value or for all of them to match. Use the endpoint's documented list encoding and, when available, its documented match-mode parameter; do not assume comma-separated values or an all-match mode without schema support.",
+      "content": "\n\nWhen a request supplies multiple targets or values for a parameter whose schema is scalar, make a separate call for each value, keeping other arguments associated with the appropriate target. Repeat a parameter within one call only when the endpoint explicitly documents repeated values or batch/list encoding; do not treat an undocumented repeated scalar parameter as bulk input.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Handle independent calls, pagination, and explicit sorting requests.**",
+      "content": "\n\nFor explicit sorting requests, use the requested criterion and its canonical token as documented by the selected endpoint; do not substitute a proxy metric or borrow a sort label from another tool. Treat direction as a separate constraint, and include a direction parameter only when the endpoint documents it.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Use the matching selector only when its value is established by the endpoint documentation or a standard, well-known value for that API; do not guess unsupported selectors or use an unrelated operation just to claim coverage.",
+      "content": "\n\nWhen the request explicitly identifies a selector dimension supported by the schema (for example, searching by group name rather than members), pass the matching documented token even if it is also the default. Do not infer a selector merely from naming an entity.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Use a canonical country code only when the field or documentation expects one; keep subarea names in their matching fields.",
+      "content": "\n\nDo not infer a field's geographic level from its label alone; use the endpoint documentation to determine its meaning. For example, a field named `state` may be documented as a country selector. If the mapping is unclear, do not assign a geographic level by guesswork.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Serialize values according to the required call-format convention: follow explicit examples that consistently encode values as strings, even for numeric or boolean parameters; otherwise follow the declared schema types.",
+      "content": "Serialize each `value` according to the required call-format examples: when examples consistently encode values as strings, including numeric- or boolean-looking values, encode them as strings too. Follow an explicitly demonstrated typed convention when present; if examples do not establish string encoding, follow the declared schema types. This affects serialization only, not the semantic value or required/optional grouping.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "append",
+      "content": "\n\n## Computation and code-execution requests\n\nWhen a requested deliverable is a computation and a listed code-execution endpoint accepts source code, translate the described formula, entities, and specified assumptions into minimal runnable code; do not omit the call solely because the user described the computation rather than supplying code. Use only supplied inputs or unambiguous standard constants. If essential nonstandard inputs are missing, do not fabricate them.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Preserve query values and their entity associations, converting them only to documented formats such as API codes, list syntax, or canonical enum spelling.",
+      "content": "For news publisher/source filters whose schema expects domain hosts, convert recognized outlet names to canonical lowercase hostnames (for example, CNN to `cnn.com` and BBC to `bbc.com`), then combine multiple outlets using the documented delimiter; do not pass bare or display-name labels when hostnames are expected.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "When the user explicitly requests the first page, pass `page=1` on every applicable paginated call; do the same where applicable when a requested count is served by a paginated endpoint.",
+      "content": "When the user explicitly requests the first page, pass `page=1` on every applicable paginated call; do the same where applicable when a requested count is served by a paginated endpoint. For an initial collection retrieval even without an explicit first-page request, use the documented or unambiguous canonical initial position when the endpoint exposes a page/index convention (for example, `page=1` for one-based pages or `start=0`/`offset=0` for zero-based indexes). Do not confuse an offset with a page number or invent a result limit.",
+      "support_count": 7,
+      "source_type": "success"
+    }
+  ]
+}

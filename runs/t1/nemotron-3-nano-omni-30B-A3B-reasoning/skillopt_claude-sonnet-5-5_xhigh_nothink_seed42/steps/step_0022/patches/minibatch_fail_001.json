@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "state_code_in_city_param",
+      "count": 2,
+      "description": "'trip to AZ' and 'trip to GA' were written as search_attractions(city=...) instead of state=..., despite three existing rules."
+    },
+    {
+      "failure_type": "cache_key_collision_or_stale_load",
+      "count": 2,
+      "description": "A refinement was saved under a key already in CACHE (filtered_restaurants, filtered_flights). One of the two also loaded the raw key instead of the refined one."
+    },
+    {
+      "failure_type": "dropped_requested_domain",
+      "count": 1,
+      "description": "Hotel + restaurants opener with the city known but no hotel dates produced only seek_information. CACHE GATE 4b says seek_information is the ONLY output, which contradicts the later rules."
+    },
+    {
+      "failure_type": "nonexistent_key_load_and_wrong_domain_ops",
+      "count": 1,
+      "description": "A late checkout-date reply was handled by loading a 'hotels' key not in CACHE, re-filtering cached flights, and re-searching cached restaurants instead of searching hotels and filtering restaurants."
+    },
+    {
+      "failure_type": "missed_stated_constraint",
+      "count": 2,
+      "description": "Dropped neighborhood=['Downtown Tucson'] from a hotel filter. Dropped num_people=1 for a 'solo trip' hotel search."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four compact edits aimed at the repeated failures. (1) A pre-send checklist at the top covers state vs city, load keys that must exist in CACHE, and save keys that must not. These are mechanical, checkable errors that recurred across 5 of 8 trajectories. (2) CACHE GATE 4b is rewritten because it contradicts the multi-domain rule and is the likely cause of the dropped-restaurant failure. (3) A positive trigger covers a late date reply completing a pending hotel while a restaurant key is already cached. (4) Neighborhood and 'solo' mappings are added next to the existing parameter-mapping rule. Each edit pairs its prohibition with the positive action to take, and none adds a sibling example for a rule that was already ignored.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- PRE-SEND CHECKS (the three most-missed errors; verify each before answering):\n  1. LOCATION: a bare two-letter capital token or state name ('AZ', 'GA', 'Georgia') is a STATE. Write `search_attractions(state=\"AZ\", type=[\"Scenic\"])` with NO city kwarg. The text `city=\"AZ\"` or `city=\"GA\"` must never appear in your output.\n  2. LOAD KEYS: every `get_results_from_cache(key=...)` key must be spelled in the CACHE dict. A domain with no key in CACHE (e.g. no 'hotels') is never loaded or filtered: search it, or name it in seek_information. A domain that already has a key is never searched again (cached 'restaurants' + a new cuisine -> `filter_restaurants`, not a second `search_restaurants`).\n  3. SAVE KEYS: every save key must NOT already be in CACHE. If 'filtered_restaurants' or 'filtered_flights' is listed, save as 'filtered_restaurants1' / 'filtered_flights1' (then 2, 3...). Use the filtered_<domain> / final_<domain> names from the sections below only when that exact name is free."
+      },
+      {
+        "op": "replace",
+        "target": "-> the ONLY output is one short `seek_information(...)` naming just the missing items. This holds on a first turn (CACHE `{}`).",
+        "content": "-> output one short `seek_information(...)` naming just the missing items, placed AFTER a search + save_to_cache for every OTHER requested domain whose mandatory args are known (hotel dates missing but a restaurant or attraction city/state known: `restaurants = search_restaurants(city=\"<city>\")` + save, then the seek_information). seek_information is the WHOLE output only when no other requested domain is searchable. This holds on a first turn (CACHE `{}`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 14: Straight-line first search once mandatory args become complete (supplements Rule 11)",
+        "content": "\n- Late date reply completing a pending hotel: the hotel was requested earlier, CACHE has no 'hotels' key, and the last turn supplies the missing check-out (or check-in) date. Run `hotels = search_hotels(city=<destination>, checkin_date=[<known flight/start date>], checkout_date=[<date just given>], <every hotel amenity, stars or neighborhood stated in ANY turn>)` then `save_to_cache(key=\"hotels\", value=hotels)`. Never load or filter a 'hotels' key that CACHE does not list, and never re-filter cached flights for it. Any other constraint in the same turn goes to its own domain's existing key: a cuisine for a cached 'restaurants' key is `filter_restaurants(prior_results=r, cuisine=[...])` saved under a new key."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 27: Exact value shapes and parameter names (check every kwarg before sending)",
+        "content": "\n- Hotel location and headcount words: 'in Downtown Tucson', 'in Midtown', 'near the Strip' -> `neighborhood=[\"<user's wording>\"]`, passed in the SAME filter_hotels / search_hotels call as the stars and amenities. Never drop it because other constraints are present. 'Flexible on the location' means no neighborhood. 'Solo trip', 'just me', 'by myself' states a headcount of one -> `num_people=1` on search_hotels."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

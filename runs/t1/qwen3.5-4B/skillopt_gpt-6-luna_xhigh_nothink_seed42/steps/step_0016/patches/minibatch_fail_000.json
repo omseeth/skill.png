@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_namespace_import",
+      "count": 4,
+      "description": "Agents imported tools from a nonexistent `tools` module despite the skill's existing direct-call rule."
+    },
+    {
+      "failure_type": "criteria_application",
+      "count": 4,
+      "description": "Agents missed or ignored active criteria provided in clarification replies, including preferences, party size, and time bounds."
+    },
+    {
+      "failure_type": "required_input_guessing",
+      "count": 1,
+      "description": "An agent invented hotel dates from examples instead of requesting missing required dates while performing the independent restaurant search."
+    },
+    {
+      "failure_type": "result_lifecycle",
+      "count": 1,
+      "description": "An agent failed to save newly generated search results to cache."
+    },
+    {
+      "failure_type": "entity_or_schema_value_drift",
+      "count": 2,
+      "description": "Attraction searches added or substituted a location or category value instead of using the user's stated value in the matching field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers direct tool calls, missing required inputs, schema matching, and saving results. The most common remaining actionable gap is that agents fail to treat clarification replies as new active plan information or apply every criterion in the reply. This edit makes that obligation explicit without duplicating the existing rules.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve every reply against the immediately preceding assistant question or proposal. Treat answers to clarification questions—including party size, dates, time bounds, and preferences—and affirmative acceptance of a proposed entity or category as active plan information, even when phrased as a statement or simply “yes.” Apply every new criterion in the reply, not just the most salient one. For each affected result, reuse the closest compatible cached result and filter it using all newly supplied criteria not already satisfied, then save the update under a unique key. If an accepted entity or category is not covered by a compatible cached result, search for it using known required inputs. Do not return “No planning needed” while any such criterion remains unmet."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

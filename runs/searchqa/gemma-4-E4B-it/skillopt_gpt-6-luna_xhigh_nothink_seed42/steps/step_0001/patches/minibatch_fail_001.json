@@ -1,0 +1,25 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "answer_format",
+      "count": 2,
+      "description": "Returned a fuller paraphrase than the minimal requested answer, such as a complete fact instead of the attribute alone."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 3,
+      "description": "Misidentified the requested answer slot, treated a clue as a true/false statement, or abstained despite a context-supported candidate."
+    }
+  ],
+  "patch": {
+    "reasoning": "The failures share two gaps: selecting the exact entity or attribute requested, and interpreting clue-like prompts that omit an explicit question word. Add guidance to give only the minimal answer, resolve the intended slot, and use relevant context without requiring every relation to be stated verbatim.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Answer Selection and Clue Interpretation\n- Identify the exact answer slot requested (person, group, attribute, title, etc.) and return only the minimal answer that fills it. Do not add a sentence, explanation, or descriptive qualifier; for example, when asked which vitamin, give the vitamin name alone. Use a shorter name, such as a surname, when it uniquely identifies the person in context.\n- Treat clue-like fragments or declarative descriptions as implicit questions when they point to an omitted identity (including through words such as “his” or “this”). Answer with that identity; give a true/false response only when the prompt explicitly asks for a truth judgment.\n- Combine the question’s clues with relevant context mentions to identify the best-supported candidate, even if the exact relationship is not repeated verbatim in a passage. Do not abstain merely because the connection is implicit, but do not invent an answer when the context offers no supporting candidate."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

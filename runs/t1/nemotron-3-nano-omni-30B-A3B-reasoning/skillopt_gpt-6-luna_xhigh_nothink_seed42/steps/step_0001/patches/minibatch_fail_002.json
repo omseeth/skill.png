@@ -1,0 +1,43 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_workflow",
+      "count": 8,
+      "description": "Every trajectory omitted required result saving; some also skipped an update because they treated existing cached results as making the request complete."
+    },
+    {
+      "failure_type": "cache_reuse",
+      "count": 4,
+      "description": "When relevant results were cached, agents failed to retrieve the appropriate cache key and filter those results for the new constraint."
+    },
+    {
+      "failure_type": "itinerary_segmentation",
+      "count": 2,
+      "description": "Agents combined separate trip legs into one search or assigned dates and routes to the wrong flight segment."
+    },
+    {
+      "failure_type": "parameter_mapping",
+      "count": 5,
+      "description": "Agents inferred unstated preferences or party details, used the wrong field for a preference, or passed a parameter unsupported by the selected tool."
+    }
+  ],
+  "patch": {
+    "reasoning": "The trajectories share a failure to produce complete cache-aware tool workflows. Additional rules should clarify that new constraints require updating relevant cached results, that each itinerary leg is a separate search, and that parameters must be explicitly supported and correctly matched to the user's stated preference.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Complete cache-aware workflows\nFor every search, filter, sort, or nearest-results call, assign its result to a variable and save it with `save_to_cache` under a new, descriptive key. If the cache summary shows relevant prior results and the user adds or changes a constraint, retrieve the most relevant result with `get_results_from_cache(key=\"...\")`, apply the appropriate filter or other update, and save the updated result. Existing results do not make a request complete when the latest turn adds a new constraint; use `print(\"No planning needed\")` only when no new work is required."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Represent itinerary legs separately\nTreat each explicitly described flight segment as its own search, using that leg's origin, destination, and departure date. For a simple round trip, search the outbound leg and the return leg separately, reversing the route for the return. For multi-city trips, preserve the stated sequence of destinations and pair each date range with its corresponding leg; do not combine dates or invent arrival dates."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Match parameters to stated preferences and tool schemas\nPass only parameters supported by the selected tool and explicitly specified by the user. Map a preference to the corresponding field (for example, hotel star requirements use `stars`, not `rating`). Do not infer room counts, party sizes, or specific amenities from broad descriptions such as “solo,” “family,” or “kid-friendly”; use a matching field only when the user states that detail or preference. A traveler count is not a flight-search parameter unless the tool schema provides one."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,46 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "structure_error",
+      "count": 1,
+      "description": "A doubled `]]` closed the required list and the whole list early inside an object (Aliexpress calls), so parse failed and the task scored 0 with n_pred=0. The same task also put optional-only params (q, page, sort, storeId) under required."
+    },
+    {
+      "failure_type": "missing_calls",
+      "count": 2,
+      "description": "The last item of a comma/'and' list inside one sentence was dropped: 'supported countries' (Asos countries/list) and 'common product information' (Wayfair get-common-info)."
+    },
+    {
+      "failure_type": "wrong_tool_or_missing_qualifier_params",
+      "count": 2,
+      "description": "Used a headlines tool with no keyword param instead of a keyword search tool with a source filter, and left out the qualifier optionals (active=true, level_of_government=Federal). Also picked a different MX provider than the gold in the email task."
+    },
+    {
+      "failure_type": "missing_schema_defaults",
+      "count": 1,
+      "description": "Left off the Asos v2/auto-complete defaults (currency, sizeSchema, store) and the Wayfair products/search defaults (curpage, itemsperpage, sortby) that the strategy section requires."
+    }
+  ],
+  "patch": {
+    "reasoning": "The strategy section already states most of these rules, and they were still violated. The edits therefore change form: literal bad-versus-good strings and checks at the very end of the self-check, where they are harder to skip. Edit 1 targets the unparseable `]]` inside an object and the required-versus-optional placement mistake. It also adds a defaults checklist to the end-of-answer check, since defaults were skipped. Edit 2 adds an explicit rule that every item in a comma/'and' list is its own call, because the final list item is the one dropped. Edit 3 covers search-tool choice (keyword plus source filter) and mapping adjectives such as active/federal to boolean/enum optionals.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "with no padding calls.",
+        "content": "\n7. Per-object bracket check. The `required parameters` list closes with ONE `]` followed by a comma. BAD `{\"name\": \"page\", \"value\": \"1\"}]], \"optional parameters\": []}` (the double `]]` ends the whole answer early, nothing parses, score 0). GOOD `{\"name\": \"page\", \"value\": \"1\"}], \"optional parameters\": []}`. When the schema says 'Required parameters: none' (e.g. Aliexpress Item Search `q`/`page`/`sort`, Store Item Search `storeId`/`sellerId`), write `\"required parameters\": []` and put those values in `optional parameters`.\n8. Default-optionals check. Every `Asos: v2/auto-complete` call lists all five optionals (`country`, `currency`, `lang`, `sizeSchema`, `store`). Every `Wayfair: products/search` call lists `curpage`, `itemsperpage` and `sortby`. `Asos: countries/list` lists `lang`. If one is missing, add it before answering."
+      },
+      {
+        "op": "insert_after",
+        "target": "Add any missing call and delete any call that no clause asks for.",
+        "content": "\n- COMMA-LIST RULE. Every item in a comma or 'and' list inside one sentence is its own call, and the LAST item after 'and' is the one most often dropped. Mark each item in the checklist. 'Explored Asos by checking categories, searching for X, and viewing supported countries' = `Asos: categories/list` + `Asos: v2/auto-complete` + `Asos: countries/list`. 'Pricing, warranty, reviews, and common product information' for one SKU = `get-pricing` + `get-warranty-services` + `reviews/list` + `get-common-info`, four calls. After writing the JSON, count objects against the checklist again."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n- SEARCH vs HEADLINES, and qualifiers. A clause 'search news about <topic> from <named outlets/country>' needs a tool whose params take a keyword and a source filter (`News API_v2: Search`: required `q`, optional `publisher`, `country`). A 'latest headlines' tool with no keyword param cannot express it. Turn every adjective in the clause into the schema's BOOLEAN/ENUM/filter optionals. 'Current active federal politicians' -> `Goverlytics: politicians` with `active`=`true`, `level_of_government`=`Federal`. An empty `optional parameters` list on a clause that carries qualifiers is almost always wrong, so re-read the schema's optional list for each one."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

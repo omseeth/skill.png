@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_persistence_omission",
+      "count": 4,
+      "description": "Searches were called without assigning and saving their returned results to cache."
+    },
+    {
+      "failure_type": "incremental_cache_and_follow_up_handling",
+      "count": 4,
+      "description": "Agents skipped needed follow-up work, failed to search an accepted new category, or repeated criteria already applied."
+    },
+    {
+      "failure_type": "semantic_parameter_mapping",
+      "count": 1,
+      "description": "A state abbreviation was passed as a city instead of using the state parameter."
+    },
+    {
+      "failure_type": "tool_invocation_contract_violation",
+      "count": 1,
+      "description": "The agent imported the unavailable tools module; the current skill already explicitly prohibits this."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make cache decisions and persistence operationally explicit: this addresses omitted saves, false no-op decisions, redundant filtering, and stale proximity results. Clarify that accepting a proposed search is an actionable request, and specify geographic field mapping. The import failure is already directly prohibited by the skill, so no duplicative edit is warranted.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied in a search. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- On each turn, compare every current request and criterion with the full conversation and relevant cache summaries. Treat a summary as evidence of satisfaction only when it explicitly supports that criterion; a broad result, item count, or result’s existence is not enough. For any unmet new criterion, retrieve the closest compatible result with `get_results_from_cache`, apply the matching filter with that result as `prior_results` and only the criteria not already satisfied, assign the output, and save it under a unique cache key. Do not filter unrelated results; search when the cache does not cover the requested domain, subject, entity, or category. Assign and immediately save the return value of every new search, filter, sort, or nearest-result call under a unique key; do not overwrite existing cache entries. If an updated result is part of a current proximity request, recompute `search_nearest` using the updated result and its compatible cached counterpart, then save the nearest result. Use “No planning needed” only when compatible cached results explicitly satisfy every current request and no further operation is needed."
+      },
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry the accepted entity, category, preference, or action forward exactly as stated. When the affirmation accepts a proposed search or planning action, perform that action; treat an accepted new category or subject as a new request rather than a no-op or as already covered by unrelated cached results."
+      },
+      {
+        "op": "replace",
+        "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "- Match arguments to the tool schema’s expected type, cardinality, and meaning. Map geographic values to the parameter for their level: pass a state name or abbreviation to `state`, not `city`, and pass a city to `city`. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

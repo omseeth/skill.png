@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "answer_format",
+      "count": 4,
+      "description": "Overextended or mismatched the conventional answer form, such as adding name components or using the wrong number (trajectories 1, 2, 4, and 7)."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "Returned a subtype or material/property instead of the answer category requested by the clue (trajectories 3 and 8)."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 1,
+      "description": "The partial-name instruction encouraged returning only the blank component when the expected answer was the complete conventional entity name (trajectory 6)."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A bare personal-name prompt expected an associated country, but did not state that relation explicitly (trajectory 5)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most form and answer-slot errors are already covered by the skill, so repeating those rules would not address a clear gap. The partial-name instruction is too broad for fill-in clues asking for a named entity as a whole; revise it to distinguish that case from prompts explicitly asking for only a name part. The bare-name prompt does not support a safe general rule about which association to return.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- For completion or compound clues, identify the missing shared component that makes the alternatives fit; do not repeat a clue-supplied component or return one full compound. For partial-name prompts, give only the requested unknown name part. Omit components already stated in the question unless they are needed for unambiguous identification.",
+        "content": "- For completion or compound clues, identify the missing shared component that makes the alternatives fit; do not repeat a clue-supplied component or return one full compound unless the clue asks for the full conventional name of a named entity. For a partial-name prompt that explicitly asks for the unknown component, give only that part; when the answer slot is the named entity itself, return its complete conventional name even if some components appear in the clue."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

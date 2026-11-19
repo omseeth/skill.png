@@ -1,0 +1,47 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "Result persistence omission",
+      "count": 8,
+      "description": "Every trajectory omitted saving tool results to cache, including results needed for later turns."
+    },
+    {
+      "failure_type": "Cache-aware incremental planning",
+      "count": 5,
+      "description": "With relevant cached results available, agents reran searches instead of retrieving and filtering them for new criteria."
+    },
+    {
+      "failure_type": "Tool argument mapping or format",
+      "count": 2,
+      "description": "One trajectory used an invalid time format for an afternoon preference; another passed a state abbreviation as a city."
+    },
+    {
+      "failure_type": "Missing proximity planning",
+      "count": 1,
+      "description": "A request for hotel access to attractions did not use search_nearest to relate the hotel and attraction results."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill has no learned rules. These additions turn cache use and result persistence into concrete steps, and cover the smaller repeated tool-selection errors without adding task-specific itinerary details.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "### Cache-first incremental planning\nAt each turn, inspect the cache summaries before searching. If a relevant result already exists and the user adds or changes criteria, retrieve it with `get_results_from_cache` and apply the appropriate `filter_*` tool; do not repeat the original search. Apply new preferences to every relevant cached result or itinerary leg, and do not regenerate results for unrelated domains that were already handled."
+      },
+      {
+        "op": "append",
+        "content": "### Persist every result\nAssign the output of every search, filter, sort, or nearest-result call to a variable, then immediately save that result with `save_to_cache` under a unique key. Pass the result variable to subsequent calls that depend on it. Do not replace saving a result with printing it."
+      },
+      {
+        "op": "append",
+        "content": "### Connect proximity requests\nWhen the user asks for a hotel near, or with access to, attractions or restaurants, use the relevant hotel and attraction/restaurant results with `search_nearest` after searching or filtering them. Set `groupBy` to the domain the user wants prioritized, and save the nearest-results output."
+      },
+      {
+        "op": "append",
+        "content": "### Validate argument mapping and formats\nBefore calling a tool, match each value to the correct field: a state abbreviation belongs in `state`, not `city`. Preserve the user's entity text. For preferences such as a flight daypart, use the tool's accepted time-range format rather than assuming a format; for example, an afternoon range can be represented as `[\"12:00 PM\", \"5:00 PM\"]` when supported."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

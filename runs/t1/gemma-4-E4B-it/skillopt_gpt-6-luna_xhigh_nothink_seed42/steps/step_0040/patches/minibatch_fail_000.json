@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_selection",
+      "count": 5,
+      "description": "Filter-only follow-ups triggered fresh searches or failed to retrieve and filter a compatible cached result."
+    },
+    {
+      "failure_type": "unaffected_scope_regeneration",
+      "count": 3,
+      "description": "Agents repeated work for unchanged domains or flight legs, or saved an unchanged cached result again."
+    },
+    {
+      "failure_type": "flight_leg_scope",
+      "count": 2,
+      "description": "Flight calls included an unrequested leg or encoded a return date as an outbound arrival date."
+    },
+    {
+      "failure_type": "required_argument_validation",
+      "count": 1,
+      "description": "A hotel search was called without mandatory dates instead of seeking the missing details."
+    },
+    {
+      "failure_type": "result_assignment",
+      "count": 1,
+      "description": "A cache save used the search function itself rather than the result returned by the search."
+    },
+    {
+      "failure_type": "supported_field_mapping",
+      "count": 1,
+      "description": "A hotel request for beach access was not mapped to the supported beach-access amenity."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent failures concern deciding which scopes the latest turn actually changes and reusing compatible cached candidates. A prominent execution gate makes that decision, required-argument checks, and independent-scope handling explicit before tool selection. A focused flight clarification addresses direction-limited requests; a field-mapping clarification covers the omitted hotel amenity.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "**Per-turn execution gate (before tool selection):** Read the full conversation, the preceding assistant question or offer, and the cache summary; identify only actions changed or newly requested by the latest turn. For each changed scope:\n1. If a compatible cached result covers its domain, location, dates or leg, and requested scope, retrieve the most constrained compatible result by its exact cache key. For a new or changed filterable constraint, apply the matching filter for that constraint (and any active criteria not embodied in the result), then save the filtered result. Do not base-search a covered scope, repeat an already-embodied filter, or regenerate unaffected domains or legs.\n2. If the user only accepts an offer to present recommendations already covered by cache, retrieve the relevant result for use; do not search, filter, or save a duplicate.\n3. Base-search only a genuinely new or cache-uncovered scope, with all active supported criteria. Before each search, validate its mandatory arguments. Do not call an incomplete search; seek only its missing mandatory details while continuing any independent requested actions that are complete."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Flight itinerary legs",
+        "content": "\n- Respect an explicitly limited leg: if the user says they want only the return flight, search only the reverse-direction return leg on its stated date; do not also search an outbound leg merely because an earlier message mentioned that route. Keep each requested direction as its own search, and do not use `arrival_date` on an outbound search to represent a separate return leg."
+      },
+      {
+        "op": "replace",
+        "target": "For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; do not treat a request to stay in a named district as a proximity search.",
+        "content": "For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; do not treat a request to stay in a named district as a proximity search. Map an explicit request for a hotel with beach access, including “a hotel near the beach” as a lodging feature, to `has_beach_access=True` when that supported amenity expresses the request."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

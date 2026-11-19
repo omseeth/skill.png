@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_update_and_result_selection",
+      "count": 5,
+      "description": "Agents repeated searches or used broad or stale cached results instead of filtering the latest suitable result with only the new constraint."
+    },
+    {
+      "failure_type": "date_format_handling",
+      "count": 3,
+      "description": "Agents converted user-provided dates with Python rather than passing the original date strings unchanged."
+    },
+    {
+      "failure_type": "unsupported_hotel_occupancy_inference",
+      "count": 2,
+      "description": "Agents added hotel occupancy counts that were not stated for the hotel booking, including a flight-only traveler count."
+    },
+    {
+      "failure_type": "independent_domain_omission",
+      "count": 1,
+      "description": "A missing itinerary date blocked a separately requested restaurant search whose location was already known."
+    },
+    {
+      "failure_type": "round_trip_followup_scope",
+      "count": 1,
+      "description": "A shared flight preference was applied to only one leg instead of updating both cached itinerary legs independently."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers these topics broadly, so these edits sharpen the decision points that failed: which cached base to choose, which constraints a hotel headcount applies to, preserving date strings, and proceeding with ready domains when another domain lacks required inputs. The cache clarification also makes shared round-trip updates explicit.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+        "content": "For a hotel search, map a stated party size to `num_people` when it is explicitly intended for hotel occupancy; a count specified solely for flight passengers does not automatically set hotel occupancy. Apply a newly supplied hotel count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken hotel counts or pass traveler counts to flight tools."
+      },
+      {
+        "op": "replace",
+        "target": "If a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns.",
+        "content": "If a new constraint is not reflected in cache, choose the latest suitable result that already includes all prior applicable constraints, preferring an updated or filtered result over the original broad search. Retrieve it by its exact cache-summary key into a variable, apply only the new constraint, and save under a fresh key; do not repeat a search when the result can be filtered or rely on variables from earlier turns. For a shared round-trip flight preference, retrieve and update the outbound and return results independently."
+      },
+      {
+        "op": "replace",
+        "target": "Pass user-provided date strings unchanged to date-taking tools unless the schema explicitly requires a different format; do not parse, reformat, or calculate dates in Python or import date libraries.",
+        "content": "Pass user-provided date strings to date-taking tools exactly as given; tool examples in another format do not require converting them. Do not parse or reformat dates in Python or import date libraries. Use `adjust_date` only for the stated checkout-date calculation described above."
+      },
+      {
+        "op": "replace",
+        "target": "If required inputs are missing, ask for them while still completing other requested domains whose required inputs are available.",
+        "content": "Evaluate required inputs separately for each requested domain. If an itinerary search lacks required dates, ask only for those dates while completing any independent requested search whose required inputs are available—for example, search for restaurants when the destination city is known."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

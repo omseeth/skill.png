@@ -1,0 +1,24 @@
+{
+  "reasoning": "Preserved the higher-priority failure guidance on tool use, cache reuse, constraints, and flight legs. Added the distinct success guidance to check required inputs before planning, and retained its non-overlapping rule to use keyword arguments except for seek_information. The success cache-retrieval guidance is covered by the failure patch and is deduplicated.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+      "content": "## Learned Rules\n\n- Before planning calls, check the tool schema for required inputs and use information already provided in the conversation. If required inputs for any requested domain are missing, make a single `seek_information` call asking only for those missing inputs. Defer searches and other planning calls until they are supplied. Do not invent values or assume defaults, such as a one-night hotel stay or checkout date.",
+      "support_count": 2,
+      "source_type": "success"
+    },
+    {
+      "op": "append",
+      "content": "\n\n## Reliable tool use and incremental travel planning\n- Call provided tool functions directly; do not import, redefine, or wrap them. Keep generated code limited to the tool calls needed, and return it in the required format without extra commentary. Return `print(\"No planning needed\")` only when cached results already satisfy the full current request and no further operation is needed.\n- Read the full conversation and cache summaries. Carry forward relevant earlier details, pass explicitly stated values to the matching supported parameters, and do not invent preferences, optional values, or unrelated search domains. Preserve user-provided values; for example, map a state abbreviation to `state`, not `city`. For hotels, map “solo” to `num_people=1` and a stated party size to `num_people`; do not confuse guest count with room count.\n- When a user adds or changes criteria, retrieve the most specific compatible cached result, including a previously filtered result when available. Apply new constraints to every affected result set, but do not reprocess unrelated domains or repeat work whose results already satisfy the request. If no compatible cache result is available, use supported constraints directly in the search rather than broad-searching and filtering unnecessarily. Use `search_nearest` for requests about proximity or access between result types.\n- Save every newly generated search or transformation result—including filtered, sorted, or nearest results—under a unique cache key.\n- For flights, search each explicitly requested leg separately, using its correct direction and date. Apply preferences that cover the whole trip to every affected leg, and reuse and filter compatible cached leg results when available. For multi-city itineraries, search only the specified legs; do not omit a provided leg or invent one.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "append",
+      "content": "\n\n- Use keyword arguments for tool calls except for `seek_information`.",
+      "support_count": 1,
+      "source_type": "success"
+    }
+  ]
+}

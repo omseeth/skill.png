@@ -1,0 +1,40 @@
+{
+  "reasoning": "Preserved all failure-driven edits, which take priority and address distinct tool validation, cache reuse, budget mapping, and deferred requests. Included the success-driven clarification because general trip context without a specified domain is not addressed by the failure patches. The patches are at the same merge level, and none targets the protected section.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "Do not add unrelated preferences.",
+      "content": "\n- Before each tool call, verify every keyword against that specific tool's declared arguments and ensure the user's preference semantically matches the field's supported values. Do not invent conversational aliases, pass unsupported fields, or put qualitative descriptors into categorical fields unless they name a valid option (for example, do not pass “kid-friendly” as an airline). If no supported argument captures an optional preference, omit it and proceed with the supported request without inventing a substitute or asking for unsupported details.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Search only when no cached result can cover the changed scope.",
+      "content": "\n- A cached result remains compatible when it covers the requested domain and original candidate scope but does not yet include a newly supplied filterable criterion; retrieve and filter it rather than searching again. This also applies to a saved proximity result when its candidate set remains valid: do not rerun `search_nearest` solely to apply a supported filter, such as party size.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+      "content": "\n- For restaurant requests, a phrase such as “in the [amount] range” ordinarily describes a per-person price budget; map it to `budget`, not `rating`, unless the user explicitly identifies the amount as a rating or score.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Required-argument checks",
+      "content": "\n- Track each requested domain or flight leg deferred solely because mandatory information is missing as pending, retaining its established route, dates, and supported preferences. When a later user turn supplies the missing information, revalidate and execute each pending request that is now complete without requiring the user to restate it. Keep incomplete requests pending and seek only their missing mandatory details; do not rerun completed, unchanged domains.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Required-argument checks",
+      "content": "\n- If the user provides only general trip context (such as a destination, occasion, or party size) without specifying a travel domain or task, do not infer what to search or assume a hotel request, and do not return a no-op. Use `seek_information` to ask what they want help finding; ask for hotel dates only if a hotel search was actually requested. Once the domain is clear, gather only its missing mandatory details. Apply traveler counts only to domains whose tools support party size; flight tools do not accept a passenger-count field.",
+      "support_count": 10,
+      "source_type": "success"
+    }
+  ]
+}

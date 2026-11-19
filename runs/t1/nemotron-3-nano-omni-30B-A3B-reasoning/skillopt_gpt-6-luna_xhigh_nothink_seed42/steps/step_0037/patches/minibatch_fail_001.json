@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_result_persistence_or_runtime_compliance",
+      "count": 7,
+      "description": "Most trajectories omitted saving required tool results or used code that prevented tool calls from executing."
+    },
+    {
+      "failure_type": "incomplete_pending_actions",
+      "count": 3,
+      "description": "Round-trip legs or independently ready domains were omitted despite having enough information to act."
+    },
+    {
+      "failure_type": "mandatory_input_readiness",
+      "count": 1,
+      "description": "A hotel search used invented dates instead of requesting missing mandatory dates while proceeding with a ready attraction search."
+    },
+    {
+      "failure_type": "constraint_update_or_schema_misapplication",
+      "count": 4,
+      "description": "Some calls mishandled revised preferences, location or value encoding, or added unrelated work."
+    }
+  ],
+  "patch": {
+    "reasoning": "The main recurring issue is incomplete execution: tool calls were left unsaved, round trips were collapsed into one search, and ready work was skipped when another domain was blocked. Make the planning and persistence steps more operational, clarify how explicit trip dates can serve a same-trip hotel request, and handle explicit corrections without retaining superseded preferences.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "- Before coding, make a checklist of every pending action by domain, exact target, relation, and applicable criteria, then verify that each planned call covers it. When the user explicitly corrects or replaces a criterion (for example, “actually,” “instead,” or “only”), discard the conflicting earlier value but retain all nonconflicting criteria. Do not refine a cached result that represents a superseded preference; use a compatible result or search with the still-valid criteria. Leave unchanged domains alone. Use `print(\"No planning needed\")` only when no requested action remains."
+      },
+      {
+        "op": "replace",
+        "target": "## Represent flight legs separately\n- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "## Represent flight legs separately\n- Search every explicitly described flight leg separately, using its origin, destination, and departure date. For an outbound date D1 and return date D2, make two calls: origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. Never combine the dates in one outbound search or encode D2 as an arrival or return-date argument. Apply stated criteria that cover both legs to each leg; “non-stop” or “direct” means `num_layovers=[0]` on each. Do not infer a flight class from trip purpose. Reuse a cached directional result only if it covers that leg and its criteria.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg; do not combine dates or invent arrival dates."
+      },
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- For every search, filter, sort, and nearest-results call, assign the exact returned object to a local variable and save that object with `save_to_cache` under a unique, descriptive key. Do this for every domain and every flight leg; never leave a bare tool call or discard its result. For a refinement, retrieve the exact listed compatible result into a local variable, pass it as `prior_results` when required, then bind and save the refinement under a new key. Use runtime-provided tools directly without imports, and do not use `print(\"No planning needed\")` after tool work."
+      },
+      {
+        "op": "replace",
+        "target": "## Missing mandatory information\nBefore searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness independently for each requested domain and, where applicable, each city or leg: proceed with searches or refinements for domains whose required inputs are available even if another is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across blocked domains. Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood. Optional preferences are not mandatory inputs.",
+        "content": "## Missing mandatory information\nFor each planned action, check that every required schema field has an explicit value; do not invent values or use defaults. Assess readiness independently by domain, location, and flight leg: proceed with ready searches or refinements even when another action is blocked, and make one `seek_information` call for the missing mandatory inputs across blocked actions. A hotel needs check-in and check-out dates. If the conversation gives explicit outbound and return dates for the same trip and requests a hotel for that trip, use those dates as the hotel stay dates unless a different hotel stay is stated; a single flight date or an event date alone is not enough. Optional preferences are not mandatory inputs."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

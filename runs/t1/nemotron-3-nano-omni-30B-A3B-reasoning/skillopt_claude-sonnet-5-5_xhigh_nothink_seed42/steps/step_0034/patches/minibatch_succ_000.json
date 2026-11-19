@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Single-domain refinement turns load only that domain's most refined key and filter only on kwargs from the last message (e.g. 'Downtown Raleigh' -> neighborhood only; 'rating at least 4.5 and around 65' -> rating=[4.5, 5], budget=65). No flight or hotel lines are written when the reply is about restaurants.",
+    "First-turn requests whose mandatory dates are missing (hotel with 'solo trip', flight with 'last-minute', round-trip flight + hotel for a 'family vacation') get one seek_information and no search call.",
+    "When a hotel's dates finally arrive, the first search_hotels carries the city, the user's date strings as written, and num_rooms and num_people stated in earlier turns (4 rooms, 5 people), and nothing else.",
+    "Two tasks scored only by luck: a flight request with just a route plus a time or layover preference was searched with a fake date ('January 1, 2025', '<date>') and crashed, leaving an empty cache that happened to match the seek_information gold. The fix is to treat these preferences as context and ask for the date. Where a time window is genuinely needed, the 12-hour time format is required."
+  ],
+  "patch": {
+    "reasoning": "Most successes already follow the existing rules, so I keep edits few and small, as the meta-skill advises. Two lucky passes show the DATE GATE leaking: the agent searched flights with a fabricated date because the request carried an arrival-time or layover preference. I extend the list of 'context, not dates' items and make the seek-only output explicit. The same task also hit an 'Unrecognized time format' error on a search_flights time window, and the 12-hour time rule only mentions filters. I extend that rule to search_flights. The hotel first-search success carries num_rooms and num_people from earlier turns, so I make that explicit in the date-answer rule.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "'One-way', 'N travelers', 'solo trip', 'weekend getaway', 'birthday' and 'special occasion' are context, not dates.",
+        "content": "'One-way', 'N travelers', 'solo trip', 'weekend getaway', 'birthday', 'special occasion', 'last-minute', an arrival or departure time wish ('arrive before 6:36 PM'), a layover city ('with a layover in San Antonio'), and a class or airline are context, not dates. A flight request that has only origin, destination and such preferences, with no literal date, gets ONLY `seek_information(\"We need the departure date for the flight.\")`. Never write search_flights with an invented date ('January 1, 2025') or a placeholder ('<date>')."
+      },
+      {
+        "op": "replace",
+        "target": "Time strings use the 12-hour style \"12:00 PM\" / \"5:00 PM\", because \"12:00:00\" raises 'Unrecognized time format'.",
+        "content": "Time strings in EVERY flight call (search_flights and filter_flights: departure_time, arrival_time) use the 12-hour style \"12:00 AM\" / \"6:36 PM\", because \"00:00:00\" and \"12:00:00\" raise 'Unrecognized time format'. This applies even though the TOOL CONFIG examples show 24-hour strings."
+      },
+      {
+        "op": "replace",
+        "target": "'Solo trip' / 'just me' -> `num_people=1`; any other party size only from a stated number.",
+        "content": "'Solo trip' / 'just me' -> `num_people=1`; any other party size only from a stated number. A room count or headcount stated in ANY earlier turn ('We need 4 rooms', 'traveling with 5 people') goes into this first search_hotels as num_rooms=4 / num_people=5."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,39 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_and_result_lifecycle",
+      "count": 5,
+      "description": "Agents omitted result saves, re-filtered already-satisfied cached results, or skipped filtering cached results after new criteria were added."
+    },
+    {
+      "failure_type": "tool_namespace_violation",
+      "count": 4,
+      "description": "Agents imported tools from a nonexistent module instead of calling injected functions directly."
+    },
+    {
+      "failure_type": "trip_date_and_context_handling",
+      "count": 4,
+      "description": "Agents missed stated dates, omitted a return-leg search, or failed to carry known trip dates and party size into lodging searches."
+    },
+    {
+      "failure_type": "schema_semantic_mapping",
+      "count": 2,
+      "description": "Agents mapped a state to a city field or an unsupported view preference to an unrelated neighborhood field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly requires direct injected-tool calls, result caching, round-trip searches, and cache-aware filtering, so repeating those instructions would not fill a documentation gap. The edits clarify two under-specified areas revealed by the batch: mapping user concepts to semantically matching fields, and carrying explicit itinerary context into searches across turns and domains.",
+    "edits": [
+      {
+        "insert_after": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "\n- Map values to fields by meaning, not merely by string form: when a tool distinguishes `city` from `state` and the user names a state or region, use the `state` field rather than treating it as a city. Do not place a preference in an unrelated field; if the tool has no matching field for a requested feature, search using the supported criteria and leave that feature unencoded."
+      },
+      {
+        "insert_after": "- Preserve user-provided dates, entity values, and casing. For a round trip, search each leg separately, reverse the outbound route for the return, and use the return leg’s departure date. Ask for an unknown endpoint rather than assuming a route.",
+        "content": "\n- Treat a specific date stated with wording such as “around” or “possibly” as an available date candidate, not as missing, unless the user explicitly says no date can yet be selected. If the user gives multiple outbound date options and one return date, search the outbound leg using those options and make a separate reverse-route return search using the return date only. When lodging is requested for the same trip, use the established outbound date as check-in and return date as checkout, and carry forward any known party size; seek information only for mandatory values that remain genuinely unknown."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

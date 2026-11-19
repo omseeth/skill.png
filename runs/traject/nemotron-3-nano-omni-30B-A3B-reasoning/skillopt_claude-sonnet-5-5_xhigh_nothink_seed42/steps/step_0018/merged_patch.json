@@ -1,0 +1,75 @@
+{
+  "reasoning": "I kept all 6 failure edits, since they carry the priority. They cover the long-value JSON format with a canonical line to imitate, all-optional tools and enum spelling, place name over guessed coordinates, the weather-pair boundary, qualifiers placed only on the tool whose schema lists them, and no padding with a 'both X and Y' boundary. Of the 5 success edits, I kept 4 because they cover patterns the failure edits do not: the number-in-heading exception, the named subject/coin/store field with one-sided dates, the `Regular die` vs `Custom die` split, and the missing-endpoint fallback. I dropped the success 'most recent -> sort field' edit. The failure edit on `Wayfair: reviews/list` already maps 'most recent' to `sort_order`=`DATE_DESCENDING`, so the failure version wins. Every target string exists in the current skill, and no two edits share a target. The 'both X and Y' boundary matches the meta-guidance rule-conflict guard: one tool covering two properties of one input is one call, and separate deliverables are separate calls. Nothing touches the protected SLOW_UPDATE block.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- Each parameter is `{\"name\": \"x\", \"value\": \"y\"}`. Every value is a quoted string, including numbers (`\"2023\"`, `\"1\"`, `\"9098084\"`).",
+      "content": "\n- LONG VALUES (code or multi-line text): keep the whole value on ONE line inside the quotes, write line breaks as `\\n`, use single quotes inside the code (no raw double quotes or raw newlines), and close the value with `\"}` before the list's `]`. GOOD: `{\"tool name\": \"Safe Exam: judget0\", \"required parameters\": [], \"optional parameters\": [{\"name\": \"code\", \"value\": \"import math\\nfor r in [0.39, 0.72]:\\n    print(2 * math.pi * r)\"}]},`. A call with only required values still ends with its optional key: `{\"tool name\": \"Numbers: Get year fact\", \"required parameters\": [{\"name\": \"year\", \"value\": \"1969\"}], \"optional parameters\": []},`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Parameters",
+      "content": "\n- ALL-OPTIONAL TOOLS AND ENUMS. When the schema says `Required parameters: none` (e.g. every `Aliexpress DataHub` search/store variant), `q`, `page`, `region`, `currency`, `sort`, `storeId` and `sellerId` all go in `optional parameters`. 'Store 1102051418 (seller ID 231651707)' -> `storeId` AND `sellerId`, with nothing borrowed from a neighbouring clause. Enum values copy the schema's token spelling: 'sorted by best match' -> `sort`=`BEST_MATCH`; `Wayfair: reviews/list` 'most helpful' -> `sort_order`=`HELPFUL`, 'most recent' -> `DATE_DESCENDING`, 'highest rated' -> `RATING_DESCENDING`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "'Ran Python code to calculate orbital periods' is one `Safe Exam: judget0` call with the code in `code`.",
+      "content": "\n- PLACE NAME, NOT GUESSED COORDINATES. When the query gives only a place name, pass it to the field that accepts names (`WeatherAPI.com: Astronomy API` `q`=`Breckenridge`) and leave `lat`/`lon`/`point` out. Use coordinates only when the query states them, copied exactly. 'Active weather alerts' on `National Weather Service: /alerts?{parameters}` -> optional `active`=`1`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Do not drop either, and do not add a third weather tool.",
+      "content": "Do not drop either, and do not add a third weather tool. Boundary: this applies only when the query names two different deliverables. One 'weather forecast' request plus 'daily forecast for the next few weeks' is ONE forecast call (the `daily` tool). Never add a narrow single-metric tool (`Cloud Cast: Get wind speed`, humidity, astronomy) or a summary/hourly sibling that no clause names. Each named extra (nearby cities, active alerts) is its own call.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Tool selection",
+      "content": "\n- QUALIFIERS GO ONLY ON THE TOOL WHOSE SCHEMA LISTS THEM. 'Detailed information about SKU X, including A and B' = the generic detail tool that is actually listed PLUS one call per named facet. A value such as `postalCode` belongs only to the facet that has it. BAD: `get-images` with `postalCode`=`10001`. GOOD: `get-home-services` with `sku` + optional `postalCode`=`10001`, and `get-images` with only `sku`.\n- ID LOOKUP. 'Details of the product with ID 9098084' -> the tool whose required param is that ID (`Zappos Realtime Data: Zappos product detail by Product ID`, `product_id`=`9098084`), never a search tool with the ID stuffed into `keyword` or `q`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+      "content": "\n- NO PADDING, KEEP THE NAMED PROVIDER. A context clause ('compare within the broader US mutual fund market') is ONE call to the list tool that names it (`Twelve Data: MFs Family List`, optional `country`). Do not add indicator or statistic endpoints (`VAR`, `MACD`, `DEMA`) or crypto tools that no clause names. When the query names a provider for one clause ('news from Yahoo Finance') and that provider also lists the neighbouring clause's endpoint, use it (`Yahoo Finance_v2: stock/upgrade-downgrade-history`) before a lookalike provider. Use another provider only for endpoints the first lacks.\n- 'BOTH X AND Y' ON ONE INPUT. Boundary: two different facets or deliverables are two calls ('a basic validation and its MX records' for info@acme-corp.com -> `Email Address Validator: Validate Email Address` + `Email Existence Validator: Get the MX Records`). Only two properties that ONE tool's description covers together ('valid AND disposable') collapse into one call.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "An unused number means a missed parameter.",
+      "content": "An unused number means a missed parameter, EXCEPT when the chosen endpoint's own heading already carries it ('the 100 most recent articles using Moka News' -> `Moka News: Recent 100` with `[]`/`[]`, no `limit`=`100`, and the number never moves onto a neighbouring clause's call).",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).",
+      "content": "A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`). A named subject, coin or store goes into the optional field that names it, even when the tool would default to it: 'price deals for Diablo IV, limit to 10' -> `CheapShark - Game Deals: List of Games` with `title`=`Diablo IV` AND `limit`=`10` (limit alone returns unrelated games); 'Bitcoin volatility between two timestamps' on `Bybit: Query historical volatility` -> `baseCoin`=`BTC` plus `startTime`/`endTime`. One-sided dates stay one-sided: 'since October 2023' -> `from`=`2023-10-01` only, with no `to`, `country` or other bound the clause never states.",
+      "support_count": 2,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "Several dice -> `Custom dice`, one die -> `Custom die`.",
+      "content": "Several dice -> `Custom dice`, one die -> `Custom die` (`sides`=N). A plain 'six-sided die' -> `Regular die` with both lists `[]` when that tool is listed; use `Custom die` only for another side count ('20-sided die' -> `sides`=`20`).",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "each placed per that tool's schema.",
+      "content": "each placed per that tool's schema. If the endpoint you expect is not listed (e.g. no `Check for Disposable emails`), take the listed tool whose `Description:` states that facet (`Alpha Email Verification: Email Checker` 'identifies if it's a disposable email'). Never drop the clause, and never swap in a free-provider or syntax-only tool.",
+      "support_count": 1,
+      "source_type": "success"
+    }
+  ]
+}

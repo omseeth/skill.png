@@ -1,0 +1,46 @@
+{
+  "reasoning": "Consolidated the repeated follow-up and active-request guidance into one checklist, and combined the overlapping cache-refinement advice into one actionable rule. Clarified that missing mandatory inputs block only incomplete actions, while explicitly stated unambiguous trip dates can supply hotel dates. Preserved distinct flight-leg, proximity, exact-value, time-format, and tool-environment corrections. Omitted repeated result-saving guidance because the current skill already requires saving each exact tool result. [optimizer-ranked: selected 4/9 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+      "content": "\n- Before planning, enumerate all still-active requested actions from the full conversation, including each requested domain and item, and each flight leg. Treat replies to follow-up questions as supplying or updating a detail for the item and domain under discussion, not as replacing earlier requests. Interpret a brief affirmative reply as accepting the immediately preceding offer and requesting its offered action or preference; retain other active requests. For each checklist entry, identify valid cache satisfaction, a needed refinement or search, or missing mandatory information. Do not leave any requested action or constraint uncovered. Apply direction-neutral flight preferences to each applicable leg separately.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+      "content": "- For a newly introduced constraint on a cached result, retrieve the most refined compatible result under an actual listed key into a local variable and pass that exact object as `prior_results` to the matching filter. Include every newly introduced, schema-supported constraint as its named filter argument; passing only `prior_results` does not apply the constraint. Do not resend criteria already represented in the cached result. Save refined results under a new key. If no compatible base exists, search when mandatory inputs are complete.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+      "content": "Check mandatory inputs separately for each requested action and domain against explicit values in the full conversation; related context does not automatically satisfy a required field. Do not infer missing mandatory values or use defaults. If any requested action lacks mandatory information, make one `seek_information` call asking only for the missing mandatory inputs across the incomplete actions. Still execute and cache other independently requested actions whose own mandatory inputs are available. Optional preferences are not mandatory inputs. For example, missing hotel dates do not block a restaurant search when its city is known; a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city.\n\nWhen the conversation gives an unambiguous trip start and end date for a stay at the same destination, and no separate lodging dates are supplied, use those dates as hotel check-in and check-out. If the dates or their relationship to the destination are ambiguous, ask rather than infer.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip, search outbound and return separately, reversing the route for the return; do not use an unsupported `return_date` argument or treat the return date as another outbound date. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+      "content": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a flight between two cities with a stated travel-date span, treat the first date as outbound and the second as return unless the trip is explicitly one-way or multi-city. Search the return separately with the route reversed; do not use an unsupported `return_date` argument or treat both dates as outbound dates in one call. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 0 addresses recurring multi-turn omissions by making active requests and accepted follow-up preferences explicit. Edit 1 closes a concrete cache-refinement gap: the new constraint must be passed to the filter, not just the cached results. Edit 6 prevents missing inputs for one domain from blocking independently actionable requests in others. Edit 5 clarifies how to handle a common two-date flight span while preserving separate outbound and return searches. The remaining edits are narrower or substantially overlap existing guidance.",
+    "selected_indices": [
+      0,
+      1,
+      6,
+      5
+    ]
+  }
+}

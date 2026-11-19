@@ -1,0 +1,31 @@
+{
+  "batch_size": 3,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_refinement_and_domain_selection",
+      "count": 3,
+      "description": "Agents failed to apply the latest hotel constraint to the appropriate field and compatible hotel result: they skipped refinement, reprocessed restaurants, or used an unrelated hotel filter."
+    },
+    {
+      "failure_type": "tool_execution_protocol",
+      "count": 1,
+      "description": "One agent imported tools that were already available and printed an assumed result attribute, causing runtime failure."
+    }
+  ],
+  "patch": {
+    "reasoning": "The hotel-field mappings address the explicit traveler count and amenity constraints in the batch, while requiring new hotel criteria to be checked against cache coverage helps prevent skipping them. The proximity clarification targets unnecessary restaurant filtering and nearest-result calls after a hotel-only update. The import/output misuse is already explicitly prohibited by the task instructions, so no duplicate skill edit is warranted.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+        "content": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Map an explicitly stated hotel traveler count to `num_people` when supported, not `num_rooms`; do not infer counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one. For hotels, map an explicit Wi-Fi requirement to `free_wifi_included=True` and a meeting-room requirement to `has_meeting_rooms=True`. When a turn adds hotel criteria, check each against the selected compatible hotel cache result; any criterion not already represented remains unsatisfied and must be applied with the appropriate hotel filter."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+        "content": "\n- After a proximity result has been created, a later change to one domain’s own criteria does not by itself renew the proximity request. Refine only the changed domain and do not re-filter the unchanged partner domain or rerun `search_nearest` unless the user changes or renews the proximity request. Use a nearest result as the prior input for a domain filter only when it contains candidates for that same focal domain and target; otherwise use the compatible domain-specific result."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

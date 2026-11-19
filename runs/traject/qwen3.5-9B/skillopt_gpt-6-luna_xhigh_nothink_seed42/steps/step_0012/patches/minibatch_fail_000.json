@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "facet_coverage_omission",
+      "count": 5,
+      "description": "Calls omitted a separately requested result or a directly relevant scope field, such as a forecast horizon, selector, pagination value, or narrated operation."
+    },
+    {
+      "failure_type": "endpoint_capability_selection",
+      "count": 4,
+      "description": "Some calls used an endpoint or tool identifier that did not best match the requested operation or its exact output facets."
+    },
+    {
+      "failure_type": "parameter_semantics_or_token",
+      "count": 5,
+      "description": "Values were mapped to the wrong selector dimension or did not use the expected canonical token or casing."
+    },
+    {
+      "failure_type": "value_serialization",
+      "count": 4,
+      "description": "Numeric or boolean-like parameter values were emitted as native JSON values despite the response-format rule requiring strings."
+    }
+  ],
+  "patch": {
+    "reasoning": "The main recurring gap is that multi-part requests were not audited facet by facet, allowing a related result to stand in for a differently scoped one or a relevant optional field to be omitted. The revised ledger makes that check more operational; the selector clarification addresses dimension mix-ups. Existing skill guidance already covers endpoint-local required/optional placement and scalar string serialization, so those rules are not duplicated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before selecting calls, make a coverage ledger: list each requested result and its explicit constraints and facets (for example, geographic levels, time horizon, price or shipping filters, and requested metrics). Map each entry to the endpoint and schema field that provides it. Count an entry as covered only when the endpoint documents that exact result and scope; related or adjacent data do not suffice. If no single endpoint covers every entry, use separate appropriate calls. In the final audit, verify that every ledger entry is covered and every requested constraint is bound to a supported field.",
+        "content": "- Before selecting calls, make a coverage ledger with one row for each distinct requested output facet and each constraint on it—not just one row per topic or provider. Map every row to the specific endpoint operation and schema field that provides it. Count a row as covered only when that operation supports the exact output at the requested scope and the schema can bind its constraints; a broad description, adjacent result, or different time horizon does not suffice. Use separate appropriate calls for uncovered facets. In the final audit, check every row and confirm that each requested scope or filter is bound to a supported field."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Preserve user-provided identifiers and meaningful free text unless the schema requires a documented conversion. For categorical filters, codes, and selectors, map the request to the documented parameter meaning—not a similarly named field—and use the endpoint's canonical accepted token and casing from its enums or examples. Do not pass a descriptive word as a category value when it changes the field's meaning; preserve original wording when no conversion is documented. Interpret directional constraints according to field semantics.",
+        "content": "\n- If a selector is split across multiple dimensions, bind each requested value to the field for that dimension rather than the nearest-looking field (for example, distinguish a card rank/value from a suit). Set another dimension to an unrestricted value only when the request calls for that scope and the schema documents the accepted token."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

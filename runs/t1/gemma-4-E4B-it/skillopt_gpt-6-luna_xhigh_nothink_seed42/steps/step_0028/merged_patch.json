@@ -1,0 +1,47 @@
+{
+  "reasoning": "Preserved all six failure-driven edits, which sharpen cache-scope decisions, correct recurring tool-call and itinerary errors, and are consistent with the existing skill. Omitted the success-driven hotel-date inference because inferring a hotel stay from flight dates could conflict with the requirement to ask for missing mandatory stay details rather than guess.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.",
+      "content": "**Follow-up decision boundary:** Decide independently for each changed domain or itinerary leg by comparing the requested domain, location, dates or leg, and category/entity scope with cache summaries. If no compatible cached candidate set covers that scope—including a replaced category or entity not covered by a broader result—make a base search with all active supported criteria. If the scope is unchanged and the user adds or changes only filterable constraints, such as budget, amenity, cuisine, rating, flight class, or time, retrieve the exact compatible key, apply newly supplied constraints and any active constraints not already embodied in that result, and save the filtered result. Filters can narrow candidates but cannot broaden them. Do not repeat a base search for filter-only updates or reprocess unchanged domains or legs; repeat retrieve-filter-save separately for each affected leg.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed. For flight `departure_time` and `arrival_time`, use 12-hour strings with an AM/PM suffix (for example, `[\"12:00 AM\", \"04:33 AM\"]`); represent midnight as `12:00 AM`, not `00:00:00`, and do not pass 24-hour `HH:MM:SS` strings to flight tools.",
+      "content": "Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed. For flight `departure_time` and `arrival_time`, use 12-hour strings with an AM/PM suffix (for example, `[\"12:00 AM\", \"04:33 AM\"]`). Represent midnight only as `12:00 AM`; never use `00:00 AM` or `00:00:00`, and do not pass 24-hour `HH:MM:SS` strings to flight tools.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+      "content": "\nWhen a terse flight reply answers a preceding question about airline or class, map the supplied airline name or designator to `airline` and the cabin preference to `flight_class`; do not interpret an airline designator as a time preference. If compatible flight results are cached, retrieve and filter them instead of repeating the base search, separately for each affected leg.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "content": "\nFor filter-only updates to cached flights or hotels, retrieve the exact compatible result, apply the new supported filter, and save the assigned result. Do this separately for each affected flight leg, and do not rerun an unchanged compatible leg. For a hotel result with a compatible city and stay, newly supplied supported budget, amenity, `num_rooms`, or `num_people` criteria are filter updates, not reasons to repeat `search_hotels`. For an explicit proximity request, reuse an unchanged compatible counterpart as-is and filter only the domain whose criteria changed.\n```python\noutbound_prior = get_results_from_cache(key=\"<exact outbound key>\")\noutbound_filtered = filter_flights(prior_results=outbound_prior, budget=<requested budget>)\nsave_to_cache(key=\"<new filtered outbound key>\", value=outbound_filtered)\nreturn_prior = get_results_from_cache(key=\"<exact return key>\")\nreturn_filtered = filter_flights(prior_results=return_prior, budget=<requested budget>)\nsave_to_cache(key=\"<new filtered return key>\", value=return_filtered)\n\nhotel_prior = get_results_from_cache(key=\"<exact compatible hotel key>\")\nfiltered_hotels = filter_hotels(prior_results=hotel_prior, amenities=[\"<requested amenity>\"])\nsave_to_cache(key=\"<new filtered hotel key>\", value=filtered_hotels)\n```",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "A no-op response is appropriate only when the latest turn adds no actionable request and compatible cached results already cover all active requests.",
+      "content": "A no-op response is appropriate only when the latest turn adds no actionable request and compatible cached results already cover all active requests. If the user declines an optional refinement or says they have no specific preference, treat the existing scope as unchanged and return the compatible cached result as-is; do not repeat its search, filter it, or save an unchanged result. Retrieve the exact cache key only if needed to access the result, and leave unrelated scopes untouched.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search.",
+      "content": "Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a sequential multi-city itinerary, search only the consecutive directions the user describes; do not add reverse flights for intermediate legs unless a return is explicitly requested. If a date range is given for each sequential segment, use that segment's first date as its departure date; the range alone does not imply a return flight. For a single-route round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search.",
+      "support_count": 1,
+      "source_type": "failure"
+    }
+  ]
+}

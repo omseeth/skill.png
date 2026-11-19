@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "first_search_skipped_for_domain_without_key",
+      "count": 2,
+      "description": "The turn touched a domain with no CACHE key (hotel + attractions after flights; hotel dates after restaurants). The agent loaded a nonexistent 'hotels'/'attractions' key, re-filtered flights, or filtered another domain's key instead of searching."
+    },
+    {
+      "failure_type": "round_trip_first_turn_dropped_hotel_or_nested_search",
+      "count": 2,
+      "description": "Flight dates arrived while a hotel was requested, and the hotel search was dropped. One run also nested a second search_flights as a return_flights= kwarg."
+    },
+    {
+      "failure_type": "example_key_leakage_wrong_key_loaded",
+      "count": 1,
+      "description": "A hotel amenity reply loaded the raw 'hotels' key and saved to the existing 'filtered_hotels', copying the rule examples, instead of loading the newest hotels key."
+    },
+    {
+      "failure_type": "pure_retrieval_turned_into_copy_save",
+      "count": 1,
+      "description": "'Okay, that sounds good' after the neighborhood filter was already cached should be one retrieval line. The agent re-saved the same object under a new key."
+    },
+    {
+      "failure_type": "search_nearest_domain_mixup",
+      "count": 1,
+      "description": "Hotel amenity reply with hotels and attractions cached. The agent passed the attractions result as hotels= and skipped filtering hotels."
+    },
+    {
+      "failure_type": "state_in_city_param",
+      "count": 1,
+      "description": "'AZ' was placed in city= instead of state= despite repeated rules. Treated as noise; adding more text is unlikely to help."
+    }
+  ],
+  "patch": {
+    "reasoning": "The meta-skill warns against adding gates, so these edits are replacements or small clarifications at the points where the agent currently follows a conflicting or leaking instruction. (1) Rule 9's date-reply bullet says 'add no other params', which contradicts the stated-class rule and sits right where the hotel request gets dropped; I rewrite it to include the hotel search and forbid nested searches (T4, T7). (2) Item 1 of the CACHE gate becomes a real key check that states the rule examples load 'hotels' only because no other hotels key existed; this targets the first-search skips and the wrong-key load (T1, T2, T3). (3) Rule 10's pure-retrieval exception now says explicitly that nothing is saved (T5). (4) Rule 26 gets a short placeholder-based recipe so search_nearest takes each domain from its own key after a hotel filter (T6). The state/city miss is left alone because the rule already appears several times.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Add no other params: no airline, flight_class, budget, times or num_people.",
+        "content": "Add a flight_class or airline only if the user stated one (it goes in BOTH legs); never add budget, times, num_layovers or num_people unless stated. If a hotel was requested anywhere in the conversation (even 'a hotel stay for a special occasion') and CACHE has no hotels key, the same block ends with `hotels = search_hotels(city=<destination>, checkin_date=[\"<first date>\"], checkout_date=[\"<return date>\"])` + `save_to_cache(key=\"hotels\", value=hotels)`, carrying only hotel constraints the user stated. Each leg is its own assigned statement: never pass return_flights= or return_date= into search_flights, and never nest one search inside another. Cache key names are free."
+      },
+      {
+        "op": "replace",
+        "target": "1. Copy the CACHE keys of each domain the LAST user turn touches (flights / hotels / restaurants / attractions, including filtered_*, nearest_*, hotels2, final_* names).",
+        "content": "1. KEY CHECK. For each domain the LAST user turn touches (flights / hotels / restaurants / attractions), look at the real CACHE. No key for that domain -> FIRST SEARCH for it (never load a key that is not listed, and never filter another domain's key as a stand-in). Has keys -> load the newest one (filtered_*, final_*, hotels2, nearest_* beat the raw key) and save under a name not in CACHE. The examples above load 'hotels' and save 'filtered_hotels' only because CACHE there held no other hotels key. If 'filtered_hotels' is already in CACHE, load it and save as 'filtered_hotels1'."
+      },
+      {
+        "op": "replace",
+        "target": "Treat it as pure retrieval: `x = get_results_from_cache(key=\"<domain key>\")`, with no search, no filter and no print('No planning needed').",
+        "content": "Treat it as pure retrieval: the whole output is the single line `x = get_results_from_cache(key=\"<most refined domain key>\")`, with no search, no filter, no save_to_cache (never re-save the loaded object under a new key) and no print('No planning needed'). The strategic block's 'always a filter' wording does not apply here because nothing is left to filter."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Without a hotels key, 'near the hotel' needs no search_nearest. Just run the normal first search.",
+        "content": "- search_nearest takes exactly two of hotels / attractions / restaurants, each loaded from its OWN domain key. Never pass an attractions or restaurants result as hotels=. When hotels and attractions are both cached, the assistant offered hotels near the attraction, and the reply gives hotel constraints: `h = get_results_from_cache(key=\"<newest hotels key>\")`, `f = filter_hotels(prior_results=h, <kwargs from the last message>)` + save under an unused key, `a = get_results_from_cache(key=\"<newest attractions key>\")`, `n = search_nearest(hotels=f, attractions=a, groupBy=\"hotel\")` + `save_to_cache(key=\"nearest_hotels\", value=n)`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

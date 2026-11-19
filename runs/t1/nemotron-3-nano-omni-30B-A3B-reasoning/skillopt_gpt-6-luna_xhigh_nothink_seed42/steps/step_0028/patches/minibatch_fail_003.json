@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_selection_and_result_lifecycle",
+      "count": 5,
+      "description": "Agents re-searched instead of refining compatible cached results, reprocessed unaffected domains, or omitted required cache saves."
+    },
+    {
+      "failure_type": "flight_leg_and_argument_errors",
+      "count": 4,
+      "description": "Flight calls omitted itinerary legs or used an incorrect airport field, unsupported passenger argument, or stale criteria."
+    },
+    {
+      "failure_type": "contextual_reply_misinterpretation",
+      "count": 2,
+      "description": "Agents missed a preference implied by the assistant's question or treated acceptance of a proposed category search as no action."
+    },
+    {
+      "failure_type": "tool_execution_overreach",
+      "count": 2,
+      "description": "Agents imported unavailable tools or added unnecessary result rendering and cache actions."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the general cache-refinement, cache-saving, and direct-tool rules, so repeating them is unlikely to help. These edits clarify the remaining gaps: a cached result is unusable when it enforces a criterion the user has replaced; flight plans need an explicit per-leg audit; airport identifiers must follow the schema's scalar types; and short replies must be interpreted in the exact context of the assistant's question or offer.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "## Represent flight legs separately\n- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "## Represent flight legs separately\n- Before emitting flight calls, enumerate every explicitly stated route leg and audit the plan against that list. Each leg must be covered by a compatible directional cache result or its own search with the exact origin, destination, and departure date. A round trip from A to B on D1 with a return on D2 requires separate A-to-B and B-to-A calls, using D1 and D2 respectively. A stated return date is the return leg’s departure date, not an extra outbound date or an `arrival_date` or `return_date` argument.\n- For multi-city trips, preserve the stated destination sequence and match each leg to its stated departure date. When the user gives date ranges for itinerary segments, use the start date for that segment’s departure; do not turn the range-end date into another departure or invent an arrival-date argument. Do not omit later legs.\n- Apply each new flight preference to every pending leg it governs, refining each compatible cached directional result or searching when none is available. Do not send passenger counts unless the flight schema supports them. Bind and save every new leg search or refinement."
+      },
+      {
+        "op": "replace",
+        "target": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.",
+        "content": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Check the criteria represented by each cache entry before refining it. If the user explicitly replaces a prior criterion, a result that still enforces the superseded criterion is incompatible; use an earlier cache entry only if it is known to be compatible, otherwise make a new search with the replacement and other still-valid criteria. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- For airport identifiers, preserve a user-provided code exactly and pass it as a scalar. Use the schema-supported airport field that accepts the identifier (such as `start_airport` or `end_airport`); use a code-suffixed field only when its documented meaning and declared type match. Never wrap a single code in a list when the schema declares a string."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Resolve short replies to the exact pending action\n- When the assistant asks for a choice among tool criteria, interpret the reply in those requested slots and carry forward every supplied value; for example, a carrier abbreviation in response to an airline question is an airline preference, not a time of day. When the user accepts an offer to search a specific domain or category, treat that exact search as pending. A cached result covers it only if the cache entry is known to match the offered domain and category; a result for another target or category is not sufficient."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

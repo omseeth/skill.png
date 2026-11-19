@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_incremental_filtering",
+      "count": 5,
+      "description": "Follow-up constraints triggered fresh searches instead of retrieving compatible cached results and filtering them."
+    },
+    {
+      "failure_type": "result_assignment_and_cache_write",
+      "count": 3,
+      "description": "Results were not assigned before saving, or a function or undefined variable was saved instead of the returned result."
+    },
+    {
+      "failure_type": "flight_leg_handling",
+      "count": 2,
+      "description": "Return travel was encoded as an arrival date rather than handled as a separate reverse-direction flight leg."
+    },
+    {
+      "failure_type": "constraint_mapping_and_formatting",
+      "count": 3,
+      "description": "Some hotel neighborhood or party-size details were omitted or invented, and one flight time range used an invalid format."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache-reuse, separate-flight-leg, and result-saving failures are already explicitly covered by the current skill, so repeating those rules is unlikely to help. These edits address narrower ambiguities that remain: using party-size facts established earlier in the dialogue, mapping named districts to the neighborhood field, and converting times to the format required by the tool.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+        "content": "- Map explicit traveler descriptors and counts established anywhere in the full conversation to supported party-size fields. For hotel searches, “solo” or “traveling alone” means `num_people=1`; use a clearly established people count from earlier dialogue even if the latest reply only supplies a room count. Keep `num_people` and `num_rooms` distinct: use each only for its stated count, and do not infer one from the other or infer an exact count from vague terms such as “family.”"
+      },
+      {
+        "op": "insert_after",
+        "target": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+        "content": "\n- For hotels and restaurants, map a named district or neighborhood to `neighborhood`, and use the surrounding city in `city`; do not treat a request to stay in a named district as a proximity search.\n- For time ranges, follow the exact format accepted by the relevant tool and convert natural-language times before calling it. Do not mix 12-hour suffixes with 24-hour values; for example, represent midnight as `00:00:00`, not `00:00 PM`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,30 @@
+{
+  "batch_size": 7,
+  "success_patterns": [
+    "Six of the seven trajectories are correct seek_information-only outputs. Each had a flight or hotel request with no explicit date: 'last-minute', 'reunion on May 26' (an event date, but no departure date or origin), 'special occasion', or 'flights and hotels' with no dates. None searched with guessed values. Each asked one short sentence naming only the missing mandatory items.",
+    "When a multi-domain request (flight and hotel) has nothing concrete, one combined seek_information names the missing items for every domain. The gold wording also names the missing departure city when only the destination was given.",
+    "A neutral reply ('Okay, that sounds good') after the CACHE already holds the filtered results for the assistant's proposal was handled as a pure get_results_from_cache retrieval. There was no new search or filter and no print('No planning needed').",
+    "Trajectory 7 is labelled successful but is a real failure: it invented dates, num_people and a nonexistent `kids_club` kwarg for a hotel request with no dates. It is not a pattern to encode. It does show that a first-turn hotel request loaded with amenity and rating details is still only a seek_information case."
+  ],
+  "patch": {
+    "reasoning": "The skill already covers the dominant success pattern, which is asking for missing mandatory dates instead of fabricating them. Because a previous large rewrite was rejected, I propose three small clarifications, each tied to an observed case. (1) Reinforce that a first-turn hotel request with rich preference details but no dates is still only seek_information. This directly addresses the one failing case that looks like a success and the two correct hotel cases. (2) Make the multi-domain seek wording name the missing origin city, as the gold does. (3) Resolve the tension between Rule 8 and Rule 10 when the CACHE already reflects the proposal the user is accepting.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not search, and do not ask about class, airline, time, return date, or passenger count.",
+        "content": "\n- The same holds for hotels. A hotel request with a city plus purpose or amenity details ('family vacation', 'special occasion', 'kids club and beach access', 'rating of at least 3.5') but no check-in and check-out dates is still missing mandatory args. Output only `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. Do not call search_hotels with made-up dates, party size, or amenity kwargs, even though the user listed preferences."
+      },
+      {
+        "op": "insert_after",
+        "target": "Example: seek_information(\"We need the departure date for the flight, and the check-in and check-out dates for the hotel.\")",
+        "content": "\n  If the user gave only a destination for the flight (e.g. 'a trip to Lexington, flights and hotels'), the origin city is also a missing mandatory arg. Name it in the same sentence: seek_information(\"We need the departure city and departure date for the flight, and the check-in and check-out dates for the hotel.\")"
+      },
+      {
+        "op": "insert_after",
+        "target": "Only a refusal or 'no preference' ('Not really', 'Anything is fine') with an existing cache entry means pure retrieval.",
+        "content": "\n  - Exception: if the CACHE summary already shows the accepted proposal applied (e.g. a filtered_* entry listing 'Additionally filtering for neighborhood(s): [Downtown Fresno]', which is what the assistant just proposed) and the user only says 'Okay, that sounds good', nothing new is left to apply. Treat it as pure retrieval: `x = get_results_from_cache(key=\"<domain key>\")`, with no search, no filter and no print('No planning needed')."
+      }
+    ]
+  },
+  "source_type": "success"
+}

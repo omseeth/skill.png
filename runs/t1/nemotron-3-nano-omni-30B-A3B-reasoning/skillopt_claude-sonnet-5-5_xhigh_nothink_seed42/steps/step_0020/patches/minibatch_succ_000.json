@@ -1,0 +1,25 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Turn-1 requests where a mandatory arg was missing (hotel dates for 'weekend getaway', 'last-minute', 'ocean view'; flight date for 'school trip' or 'large group') were handled with a single short seek_information call. The successful ones made no search and invented no dates.",
+    "When the CACHE already held hotels and the user replied with budget plus an amenity, the agent used the exact three-line load, filter, save pattern on the hotels key. It passed only the new constraints (budget=200, has_fitness_class=True) and saved under a new key.",
+    "Party size ('4 people', '3 people') was treated as context rather than a trigger to search. The hotel and flight searches still waited for dates.",
+    "The three runs that scored code_success=0 all broke the zero-cache rules. They emitted a malformed bare search with stray tags, filtered another domain's cache key, or searched with invented dates plus a flight num_people. Each of these should have been a lone seek_information."
+  ],
+  "patch": {
+    "reasoning": "The skill already covers most observed behaviour, but the failures in this batch came from ignoring the 'missing mandatory arg -> only seek_information' path. Those failures were a first-turn search with example dates, a hotel-filter call on an attractions key, and a malformed bare search. A short rule inside the CACHE GATE, which is read every turn, covers the no-key and missing-arg case. A short domain-inference bullet next to the seek_information guidance addresses over-asking, such as hotel dates on a flight-only request.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "4. Domain has NO key and all its mandatory args are known -> first search (`x = search_*(...)` then `save_to_cache`).",
+        "content": "5. Domain has NO key and a mandatory arg is missing (hotel: check-in AND check-out dates; flight: departure date; restaurant: city) -> the ONLY output is one short `seek_information(...)` naming just the missing items. This holds on a first turn (CACHE `{}`). It also holds when the reply only gives hotel budget, stars, amenities or party size while the CACHE has only another domain (e.g. 'attractions'). Never run filter_hotels (or any filter) on another domain's cache key, never search with guessed or TOOL CONFIG example dates, and never add num_people, flight_class or num_layovers to search_flights. Correct whole output for 'a hotel in Tucson with a view of the ocean' (CACHE `{}`): `seek_information(\"We need the check-in and check-out dates for the hotel.\")`, with no search_hotels call."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 7: Writing seek_information, including multi-domain requests",
+        "content": "- Name only the domain(s) the user actually requested. A flight-only opener with origin and destination ('large group booking from Atlanta to Tucson for a school trip') -> ask only for the departure date, and do not add hotel dates because no hotel was requested. A trip opener with origin and destination but no service named ('a weekend getaway to St. Louis from San Jose') implies a flight -> ask for the departure date. A hotel-only opener ('last-minute hotel deal in Fresno for 4 people', 'hotel in Tucson with an ocean view') -> ask only for check-in and check-out dates. Party size, occasion words and timing words ('last-minute', 'weekend', 'school trip') never fill a date or trigger a search."
+      }
+    ]
+  },
+  "source_type": "success"
+}

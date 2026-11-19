@@ -1,0 +1,69 @@
+{
+  "reasoning": "Combined the overlapping cache rules into one operational coverage-ledger rule, and consolidated the suggested-place and attraction-anchor guidance. Added concrete restaurant and hotel filter patterns plus the distinct occupancy, neighborhood, proximity, rating-field, and result-binding clarifications. I did not add a blanket ban on refreshing nearest results after a filter changes candidates, which could conflict with the existing proximity workflow. No protected content is edited.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Identify only the domains or itinerary legs changed by the latest user turn. For each changed request, if a compatible cached result exists, retrieve it with `get_results_from_cache(key=\"<literal cache key shown in the summary>\")` and assign the returned object to a local variable; cache keys and summaries are not Python result variables. Choose the most constrained cached result that still covers the request: its domain, location, dates or leg, and original scope must be compatible, and it must not be narrower than the requested scope. Prefer a result that already embodies the greatest number of still-active criteria, and retrieve it by its exact cache key. A result restricted to a different category or entity does not establish that a newly requested specific entity is included; search if the cached scope cannot cover it. Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result. A cached proximity result may also be used as filter input when its candidate set remains valid. Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no cached result can cover the changed scope.",
+      "content": "- Identify only the domains or itinerary legs changed by the latest user turn, plus pending requests that have just become complete. Use cache summaries as a coverage ledger. For each changed scope, retrieve the most constrained compatible result by its exact cache key: its domain, location, dates or leg, category or entity scope, and candidate set must cover the request. Prefer a result that already embodies the greatest number of still-active criteria. A filtered or nearest-derived result is suitable when its candidates still cover the requested scope; filters can narrow a candidate set but cannot broaden it. Apply the matching `filter_*` tool only for newly supplied supported constraints and active constraints not already embodied in the retrieved result; do not reapply embodied filters. When a constraint affects multiple domains, handle each affected domain separately. If no compatible result covers a newly requested scope, make one base search with all active supported criteria. Do not repeat base searches for filterable updates or retrieve, filter, search, or save unchanged domains or legs unless they are needed as input to a requested operation or the user asks to receive their cached result. If the user accepts an offer to show or recommend a scope already covered by cache, retrieve that exact result once and do not search, filter, or save it again.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "content": "\nFor same-scope restaurant rating or budget follow-ups, retrieve the compatible result and filter it rather than repeating the base search. For example:\n```python\nprior_restaurants = get_results_from_cache(key=\"<exact compatible restaurant key>\")\nfiltered_restaurants = filter_restaurants(\n    prior_results=prior_restaurants,\n    rating=[<minimum rating>, 5],\n    budget=<maximum per-person budget>,\n)\nsave_to_cache(key=\"<descriptive filtered restaurant key>\", value=filtered_restaurants)\n```\nFor a same-city, same-stay hotel follow-up with newly supplied occupancy or budget constraints:\n```python\nhotel_prior = get_results_from_cache(key=\"<exact compatible hotel key>\")\nfiltered_hotels = filter_hotels(prior_results=hotel_prior, num_people=<user-stated count>, budget=<requested budget>)\nsave_to_cache(key=\"<descriptive filtered hotel key>\", value=filtered_hotels)\n```\nInclude only constraints that are newly supplied and not already embodied in the cached result; omit unused keywords.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- When the user asks about a place, category, or entity the assistant just suggested (for example, “What's there?”), treat it as a request to inspect that scope: retrieve a compatible cached result and filter it to that scope, or search if no compatible result can cover it. An assistant's proximity suggestion alone does not authorize `search_nearest`; use it only when the user explicitly requests or accepts proximity.",
+      "content": "- When the user asks about a place, category, or entity the assistant just suggested (for example, “What's there?”), treat the mentioned item as the requested scope, not merely as a restatement of the prior broad category: retrieve a compatible cached result and filter specifically to that scope, or search if no compatible result can cover it. For a named geographic area or neighborhood presented as a place to explore, use `neighborhood`; use `attraction_name` when the user asks about a specific attraction entity itself. If a specific attraction is a proximity anchor, pass its exact user-provided name in `attraction_name`; do not carry over a broader `type` filter unless the user asks for the attraction to satisfy that category too. Do not reapply a category already embodied in the cached result unless requested. An assistant's proximity suggestion alone does not authorize `search_nearest`; use it only when the user explicitly requests or accepts proximity.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; do not treat a request to stay in a named district as a proximity search.",
+      "content": " Preserve the complete user-provided neighborhood phrase, including any city-qualified wording, exactly in `neighborhood`; do not shorten it.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+      "content": "\nDo not default `num_people` or `num_rooms` from an occasion or vague trip description such as “weekend getaway”; use them only when the user states a count or an explicit descriptor makes it unambiguous.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "content": "\nWhen the user accepts an offer to find one domain near another, retrieve each compatible result by its exact cache key. If the cached candidates already cover both requested scopes and their criteria, use them directly; otherwise, search or filter only the side whose scope or criteria are not covered. Do not repeat searches or filters for criteria already embodied in the cached results.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+      "content": "For restaurant ratings and hotel guest-review scores, interpret “N or higher” as a minimum threshold and use `[N, 5]` in `rating`; use `[N, N]` only for an explicitly exact score. Hotel star classifications use `stars` only, never `rating`.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Before finalizing tool code, verify that each `save_to_cache(value=...)` names the local variable assigned the corresponding tool result—not a guessed name derived from the domain or cache key. For example, assign `hotels = search_hotels(...)` and save with `value=hotels`.",
+      "content": "- Result binding is mandatory: assign each result-producing tool call to a local variable in the call statement, then immediately pass that exact bound variable to `save_to_cache`. Never call a tool without assignment and then save a guessed or undefined name derived from the domain or cache key. For example: `hotels = search_hotels(...)` followed by `save_to_cache(key=\"hotels\", value=hotels)`.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

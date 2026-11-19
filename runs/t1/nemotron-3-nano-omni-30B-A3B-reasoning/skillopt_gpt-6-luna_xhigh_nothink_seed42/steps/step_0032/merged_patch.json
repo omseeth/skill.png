@@ -1,0 +1,61 @@
+{
+  "reasoning": "Preserved the failure-driven edits, including the accepted-proximity distinction, and consolidated result handling while retaining the existing conditions for the prescribed “No planning needed” message. Kept the non-conflicting success-driven clarification about missing mandatory inputs. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "content": "- For every planned result-producing search, filter, sort, or nearest-results call, bind its exact return value to a fresh local variable and immediately save that object with `save_to_cache` under a unique, descriptive key before using it downstream. Do this separately for each ready flight leg, named target, and refinement; save each refined return value under a new key, never the prior or base object. Never leave a call bare, discard or reconstruct tool results, or save the wrong result. A retrieved result completes an item only when no new action or constraint remains and it already covers that item. Keep generated code to necessary executable tool calls; avoid narrative, debugging, and speculative presentation, and use `print(\"No planning needed\")` only when its stated no-action conditions are met.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Validate tool arguments and preserve user intent",
+      "content": "- Treat explicit qualitative time-of-day preferences as constraints even when phrased flexibly (for example, “preferably in the afternoon”). For each applicable leg, encode the preference using the schema-supported `departure_time` or `arrival_time` argument and its documented format; do not invent unsupported endpoints.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+      "content": "- Preserve an explicitly stated preferred airport on the leg where it applies. Use the schema-supported origin-airport argument for an outbound leg and destination-airport argument for a return leg, keeping the user’s airport identifier literal even when city names are also provided.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`.",
+      "content": "Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`; a state or region, including a state abbreviation, belongs in `state`, not `city`; a city belongs in `city`; and a named attraction belongs in `attraction_name`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+      "content": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list or widen an exact value. For minimum-only or maximum-only criteria, use the documented scale bounds for the other endpoint: for example, on a 0–5 hotel or restaurant rating scale, encode “at least x” as `[x, 5]` and “at most x” as `[0, x]`. Follow the schema for other bounds and do not invent endpoints.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Call `search_nearest` only when the user explicitly requests proximity between supported domains. Before calling it, verify that each cached result covers the specific requested target, not merely the same domain or city. For example, a generic city attraction search does not cover a separately named attraction; search for the named attraction using `attraction_name` unless the cache summary shows that exact target is already covered.",
+      "content": "- Call `search_nearest` only when the user explicitly requests proximity between supported domains or affirmatively accepts a concrete assistant offer to find nearby options; an unaccepted suggestion or mere interest in visiting or dining at a place is not enough. Before calling it, verify that each cached result covers the specific requested target, not merely the same domain or city. For example, a generic city attraction search does not cover a separately named attraction; search for the named attraction using `attraction_name` unless the cache summary shows that exact target is already covered.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Optional preferences are not mandatory inputs.",
+      "content": "When an assistant proposes a concrete party size and the user accepts it without correction, carry that confirmed value as `num_people` wherever the relevant tool schema supports it; do not treat it as a room count.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field.",
+      "content": "Descriptions such as “last-minute” or “weekend getaway” do not specify flight departure dates, and occasions or dietary needs (for example, a birthday or gluten-free request) do not specify a restaurant city. Ask for the actual missing mandatory value rather than substituting a default.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ]
+}

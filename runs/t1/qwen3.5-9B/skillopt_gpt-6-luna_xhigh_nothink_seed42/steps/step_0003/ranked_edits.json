@@ -1,0 +1,41 @@
+{
+  "reasoning": "Preserved all seven failure-driven edits at their stated support counts because they address corrective behavior. The success-driven patch substantially overlaps the failure-driven guidance on missing dates, independent domain handling, and round-trip legs, so that overlapping content is deduplicated. Its distinct clarification that hotels and restaurants require a city, and that an event date alone is not a travel date, is retained as a separate success edit. [optimizer-ranked: selected 4/8 edits]",
+  "edits": [
+    {
+      "op": "append",
+      "content": "- **Check required city inputs and distinguish event dates from travel dates:** `search_hotels` and `search_restaurants` require `city`. A date given only for an event, such as a wedding or reunion, is not a flight departure date or hotel stay date unless the user explicitly identifies it as travel timing.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- **Handle follow-ups incrementally through the cache:** Retrieve the relevant cached result with `get_results_from_cache`, apply only the new constraints using the appropriate same-domain filter, and save the updated result under a relevant key. Do not mix domains. Search afresh only when there is no suitable cached base; if cached results already satisfy the latest request, do nothing. Avoid repeating unrelated searches, filters, or other operations.",
+      "content": "- **Handle follow-ups incrementally through the cache:** On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns. Use the cache summary to identify the latest suitable base for each affected result, then retrieve it with `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only newly stated or changed constraints not already reflected in the base, using the appropriate same-domain filter. A broad search summary that does not reflect a new constraint does not satisfy it. If an update applies to multiple cached results, such as outbound and return flight legs, retrieve, filter, and process each independently. Do not mix domains, repeat already-applied constraints, rerun completed work, or touch unrelated results. Search afresh only when no suitable cached base exists; do nothing only when the cached results satisfy all current constraints. Save each updated result under a relevant fresh key, following the persistence rule.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Keep code to necessary tool calls and result assignments; save each new result to cache. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+      "content": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Assign every result-producing call—search, filter, sort, or `search_nearest`—to a variable and save that exact result with `save_to_cache` under a fresh, descriptive key. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Honor the user's request and values:** Use only domains explicitly requested; do not infer extra searches, preferences, amenities, or substitute similar categories. Preserve names, categories, criteria, and date strings unless a tool requires a format conversion. Map a specified neighborhood to the neighborhood field, not the city field. Check required inputs independently by domain: seek missing information, but proceed with other requested searches whose inputs are available. For ratings, represent “exactly x” as `[x, x]` and “at least x” as `[x, 5]`.",
+      "content": "- **Honor the user's request and values:** Use only explicitly requested domains; do not infer extra searches, preferences, amenities, or substitute similar categories. Do not map vague amenity wording to a narrower tool flag without clear equivalence. Preserve complete names, categories, criteria, and date strings unless a tool requires a format conversion. Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value. When a domain is newly requested during an ongoing trip, use the already-established destination as its location when that context clearly applies rather than asking for a city already known. Check required inputs independently by domain: seek missing information, but proceed with other requested searches whose inputs are available. For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+      "support_count": 3,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 7 addresses a common missing-input issue and prevents confusing event dates with travel dates. Edit 2 strengthens follow-up handling across turns and cached results; edit 0 makes result persistence explicit for every result-producing operation. Edit 1 adds broadly useful guidance on location fields, vague amenities, and ratings. The remaining edits target narrower flight or proximity cases.",
+    "selected_indices": [
+      7,
+      2,
+      0,
+      1
+    ]
+  }
+}

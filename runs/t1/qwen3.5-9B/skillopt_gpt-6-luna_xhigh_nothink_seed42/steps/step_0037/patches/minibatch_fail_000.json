@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_contract_violation",
+      "count": 3,
+      "description": "A result was not saved, a stale or broad cached base was used, or existing work was repeated instead of applying a delta."
+    },
+    {
+      "failure_type": "required_date_handling",
+      "count": 2,
+      "description": "The agent invented missing hotel dates or challenged explicitly supplied dates based only on their apparent order."
+    },
+    {
+      "failure_type": "contextual_value_or_field_mapping",
+      "count": 4,
+      "description": "Conversation values were omitted or assigned to the wrong field, including an airline code, state abbreviation, and previously stated party size."
+    },
+    {
+      "failure_type": "operation_scope_and_deduplication",
+      "count": 4,
+      "description": "The agent made duplicate or unnecessary calls, split criteria that belonged in one search, or touched unrelated results."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures disregard rules already present, so the edits stay narrow: make cache-base selection more explicit, prevent chronology checks from blocking searches with established dates, and clarify airline-code interpretation in context. Existing state mapping, call-saving, and combined-search rules need no restatement.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "If a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only the new same-domain filter and save the update under a fresh relevant key.",
+        "content": "If the cache summary lists multiple keys for a pending deliverable, choose the most-refined matching result for the same domain, location, and itinerary leg that already reflects earlier constraints still in force—not the original broad search. Retrieve it this turn into a variable using its exact listed key; never rely on an earlier-turn variable or overwrite an existing key. Apply only the constraint(s) absent from that base, assign the exact filter result, and save it under a fresh key."
+      },
+      {
+        "op": "insert_after",
+        "target": "When a hotel is added to an ongoing itinerary, reuse a clearly established trip date as check-in when applicable; do not guess check-in by subtracting a day from checkout.",
+        "content": "When required hotel dates are explicitly provided or established by the itinerary, do not seek confirmation solely because they appear to be in an unusual or reversed order; use the stated dates unchanged. Seek information only for a genuinely missing or ambiguous required date."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion.",
+        "content": "\nWhen the assistant asks for an airline or class, interpret a short carrier name or code as `airline` and a service-class term as `flight_class`; do not interpret a carrier code as a time-of-day preference unless the user was asked about flight times."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

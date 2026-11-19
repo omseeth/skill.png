@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "answer_format",
+      "count": 4,
+      "description": "Answers expanded or over-enumerated the requested referent, adding a longer name, generic descriptor, or multiple possible sources."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Agents missed the requested answer slot, treating a clue label or related information as the answer instead of identifying the referenced person or term."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 1,
+      "description": "The grammatical-number instruction encouraged a plural answer where the expected response was the conventional singular headword."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that dictionary-style answers should use the conventional headword form rather than mechanically copying the clue's grammar, and that trivia category labels are metadata rather than answers. Add a narrow rule for bare slogan prompts, where the context may imply the associated person rather than a definition. Other over-expansion failures are already addressed by the existing concise-answer rules, so duplicating them is unwarranted.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "match grammatical number and necessary articles",
+        "content": "use the requested answer's conventional form rather than mechanically copying nearby grammar: generic phenomena or concepts usually take a singular headword even when the clue describes plural instances; use plural only when the answer itself is plural, and retain necessary articles"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Evidence Cross-Checking",
+        "content": "\n- In trivia or quiz-show material, distinguish the actual clue from category headings and formatting tokens (including quoted category letters or words). Treat those labels as hints or metadata, not as the answer, unless the question explicitly asks for the label."
+      },
+      {
+        "op": "insert_after",
+        "target": "### Original vs. altered titles",
+        "content": "\n### Bare slogan prompts\nWhen the prompt consists only of a slogan or catchphrase, use direct context to identify the person or entity most strongly associated with it, if that association supplies the implicit answer. Return that referent rather than defining the slogan, unless the question asks for its meaning."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

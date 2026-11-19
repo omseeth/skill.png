@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "The archive line held the clue followed by the answer ('| a bouncer. right: Frank.', '| a eucalyptus tree'). The agent answered the contestant name 'Frank' or shortened the archived answer to 'Eucalyptus'."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 4,
+      "description": "The agent over-qualified a correct entity, where the gold answer is the bare head word or name: 'President of Vietnam' (Vietnam), 'Amazon River' (the Amazon), 'speech balloon' (a balloon), 'Jean-Honore Fragonard' (Fragonard)."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "Slot-type and common-noun clues were mishandled. 'One of these ... holes' got the clue word 'spring' instead of 'sinkhole'. 'This war' got the person 'Themistocles' from an unrelated passage instead of 'World War II', which the agent knew but did not use."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three patterns recur. (1) The agent mishandles verbatim archive hits: it takes the contestant name after 'right:' as the answer, or trims an archived answer such as 'a eucalyptus tree'. This conflicts with the Rule 4 stripping advice, so verbatim must be made to win explicitly. (2) The agent over-qualifies answers with role, type or first-name words, while gold keys use the bare head word or surname. (3) For 'this <noun>' and 'one of these <noun>' clues with no visible archived answer, the agent grabs a clue word or an off-topic passage entity instead of the common noun or entity of the right type, and does not use its own knowledge. Bare 'Title + Name' clues also need to map to the country. The edits are targeted and avoid the broad bundles rejected earlier.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Before the answer tags, briefly quote the matched line.",
+        "content": "\n- In 'CLUE | answer. right: Name. Wrong: ...' lines, the text after 'right:' or 'wrong:' is a CONTESTANT (e.g. 'Frank'), never the answer. The answer is the text between the clue's end and '. right:'. Copy it in full, including its leading article and any generic noun it contains ('a bouncer', 'a eucalyptus tree'). A verbatim archive answer overrides every Rule 4 instruction to strip words or shorten, so do not trim it to 'Eucalyptus'."
+      },
+      {
+        "op": "insert_after",
+        "target": "Brief reasoning belongs before the tags.",
+        "content": "\n- Do not over-qualify the answer. Use the bare head name or noun, not a role, type or modifier phrase built from the passages. 'President of Vietnam' -> 'Vietnam'. 'Amazon River' -> 'Amazon' (drop River/Lake/Mountains when the bare name is standard and the clue does not use the word). 'speech balloon' -> 'balloon' when the clue defines a generic term. Keep a type word only when it is part of a proper name, such as 'World War II' or 'Hundred Years' War'.\n- For artists, composers, writers, scientists and historical figures with no verbatim answer in the context, give the SURNAME alone, as Jeopardy answer keys do ('Fragonard', not 'Jean-Honore Fragonard'). Use the full name only when a verbatim hit shows it, or when the surname alone is ambiguous (e.g. a famous family or siblings). Ignore 'seen here' and 'VIDEO DAILY DOUBLE' decorations."
+      },
+      {
+        "op": "insert_after",
+        "target": "Other named entities in the clue are anchors, never the answer.",
+        "content": "\n- 'One of these <X>' / 'this <noun>' with a generic noun: the answer is the common noun or category the description defines, never a word already in the clue ('water-filled one of these holes' -> 'sinkhole', not 'spring'; 'the guy hired to throw unruly people out of bars' -> 'bouncer'). 'This war / this city / this river' needs an entity of exactly that type. A person from an unrelated passage that merely shares words with the clue ('Themistocles') is wrong. If the archive snippet shows only the clue and no passage states the key claim, use your own knowledge of the most famous entity that satisfies the superlative or description ('material cost greater than all other wars put together' -> 'World War II')."
+      },
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- A bare 'Title + Person name' or lone proper noun with no verb ('President Tran Duc Luong', 'Timonium') is a category-style clue. Answer with the country, state or larger entity that all the passages tie it to ('Vietnam'), not the title or role ('President of Vietnam')."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

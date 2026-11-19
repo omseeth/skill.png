@@ -1,0 +1,44 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "missed_call_recall",
+      "count": 2,
+      "description": "Agent omitted calls the gold set expects. In T4 it skipped the Bible 'information about faith' topic call after calling /today. In T1 it skipped the parameterless crypto, Arabic/Middle East, tech-article and source-list feeds that matched the query's topic keywords."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 1,
+      "description": "Agent used generic 'Spotify: Search' twice instead of the specific 'Spotify _v2: Get user Playlists' (user_id=cruilla) and the multi-platform 'Miza: Song search' (festival music)."
+    },
+    {
+      "failure_type": "missing_optional_argument",
+      "count": 1,
+      "description": "Agent dropped the optional range '1-10' even though the query said 'top 10'. It also emitted the optional parameter as a bare string instead of a {name, value} object."
+    },
+    {
+      "failure_type": "argument_format_case",
+      "count": 2,
+      "description": "Agent used 'DE' where the gold had lowercase 'de' for a free-text marketplace domain, and passed the integer 16 instead of the string \"16\"."
+    }
+  ],
+  "patch": {
+    "reasoning": "Failures fall into four groups: under-decomposing the query into calls, picking a generic endpoint over a specific one, dropping query-stated constraints as optional args, and argument value formatting. The four edits address these in turn: a clause-by-clause call checklist, an endpoint-selection rule, optional-argument and value-format conventions, and a rule for including topic-matching parameterless feeds. Every rule is stated generically with no task-specific values.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Rule 1: Decompose the query into a call checklist\n- Before answering, split the query into every distinct request clause (separated by commas, 'then', 'also', 'and', 'finally'). Each clause needs its own call.\n- A phrase like \"today's X insight AND some information about Y\" means two calls: the 'today/daily' endpoint and a separate topic/search endpoint with Y as the argument.\n- The same endpoint may be called more than once with different arguments when the query names several entities, for example two users or two search terms.\n- Before finalizing, re-read the query and tick off each clause against a call. Add any clause that has no call."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 2: Pick the most specific endpoint\n- Match the query's noun phrase to the endpoint whose name or description says exactly that. Do not default to a generic 'Search' endpoint.\n  - 'Playlists from user X' -> an endpoint like 'Get user Playlists' that takes user_id=X.\n  - 'Search across music platforms' -> the endpoint whose description says it searches multiple platforms.\n  - A named chart, list, or radical/stroke lookup -> its dedicated endpoint.\n- Use a generic search endpoint only if no dedicated endpoint fits.\n- When the query supplies an identifier (user id, SKU, ASIN, channel id, path), prefer the endpoint whose required parameter is that identifier.\n- When the query gives a broad topic or region and the tool list has parameterless feed, list or sources endpoints that clearly match its keywords (for example a crypto/blockchain feed for 'blockchain', Arabic-news feeds for 'Middle East', a developer-articles feed for 'tech', news 'sources list' endpoints), include them as complementary calls alongside the main search call. Do not include feeds for unrelated topics or countries."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 3: Argument values and optional parameters\n- Include an optional parameter whenever the query states a matching constraint. Examples: 'top 10' -> a range param '1-10'; 'up to 15 articles' -> pageSize/limit '15'; 'from the UAE in English' -> country and language; 'for beginners' stays in the search text; 'recent N' -> num 'N'.\n- Every optional and required parameter must be an object with name and value, e.g. {\"name\": \"range\", \"value\": \"1-10\"}. Never list bare parameter names.\n- Write every value as a quoted string, including numbers, e.g. \"16\" and \"2022\".\n- Case conventions: if the tool lists allowed options (e.g. country codes AE, US), copy them exactly as listed. If the parameter is free text with no listed options (e.g. a marketplace 'domain' such as Germany), use the lowercase short code such as 'de'.\n- Copy entity names from the query, and keep the search keywords the query specifies unchanged."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

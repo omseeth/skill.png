@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_cache_save",
+      "count": 3,
+      "description": "Initial attraction, restaurant, or flight searches were left bare instead of assigning and saving the exact result."
+    },
+    {
+      "failure_type": "cached_delta_mishandled",
+      "count": 2,
+      "description": "Constraint-only follow-ups repeated searches or used stale variables and failed to filter the latest cached result into a fresh key."
+    },
+    {
+      "failure_type": "multi_city_leg_overgeneration",
+      "count": 1,
+      "description": "Date ranges attached to explicitly listed multi-city legs were treated as round trips, adding unrequested reverse legs."
+    },
+    {
+      "failure_type": "date_or_parameter_inference",
+      "count": 2,
+      "description": "Date handling or optional parameters deviated from the conversation, including inferred hotel occupancy and extra flight-date constraints."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains general cache and date rules, but several trajectories still omit saves or mishandle constraint-only updates. These small operational clarifications emphasize the required call pattern, make the follow-up branch explicit, and distinguish ordered multi-city legs from an explicitly requested round trip without changing the existing single-route date-range rule.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Write every result-producing search, filter, sort, or `search_nearest` call in two steps: assign its returned result to a variable, then save that exact, complete result object with `save_to_cache` under a fresh, descriptive key.",
+        "content": "Immediately pair every result-producing search, filter, sort, or `search_nearest` call—even a single initial search—with `result = tool(...)` followed by `save_to_cache(key=\"<fresh descriptive key>\", value=result)`. Never omit the save because a search is simple or its result is not being filtered."
+      },
+      {
+        "op": "replace",
+        "target": "If a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only the new same-domain filter and save the update under a fresh relevant key.",
+        "content": "For a constraint-only follow-up with a suitable cached base, do not repeat the search: retrieve the latest suitable result using its exact cache-summary key into a variable this turn, apply only the new constraint with the same-domain filter, assign the result, and save it under a fresh key. Never use a prior-turn variable or overwrite an existing result."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+        "content": "\n\nFor an explicitly ordered multi-city route with multiple specified flight legs, search each listed leg on its corresponding stated start date. Do not infer a reverse leg from a date range associated with a leg; add return legs only when the user explicitly requests a round trip or return flight for that route or segment."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,34 @@
+{
+  "reasoning": "Preserved all five failure-driven edits, including the more specific cache workflow, date handling, and schema guidance. Deduplicated the success-driven cache-read suggestion because the failure edit already directs the workflow to relevant active domains and away from unrelated completed ones. Added the distinct airport-code mapping insight. No edits target the protected section. [optimizer-ranked: selected 3/6 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+      "content": "- On each turn, use the full conversation and cache summaries to identify active requested actions by domain. A later reply updates the domain under discussion; it does not cancel earlier requests in other domains unless the user explicitly cancels them. For each action, reuse the closest cached result matching its domain and subject: search if no compatible result exists, otherwise apply only criteria not already applied. Do not filter a different subject, touch completed unrelated domains, or sort unless requested; combine compatible criteria in one tool call when supported. Assign every tool output, including cache retrievals and search, filter, sort, or nearest results, to a variable before reusing it. Save each new search under its established base key and each transformation under a distinct key; add suffixes only when multiple same-domain results must coexist. Never leave a result-producing call bare or save an undefined or unchanged result. Use “No planning needed” only when the cache satisfies every active request and no action remains.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Map location values by kind: put a named district or neighborhood in a supported `neighborhood` field while retaining its containing city in `city`, and put state names or standard postal abbreviations in `state`, not `city`.",
+      "content": " For flights, pass an explicitly provided airport code in the corresponding `start_airport_code` or `end_airport_code` field; do not substitute it for a city or airport-name value.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "A field's presence alone does not make every wording a valid value: for fields expecting named choices (such as `airline` or `hotel_name`), pass only explicitly named choices. Do not encode a generic quality such as “kid-friendly” as an entity value when the schema has no matching criterion.",
+      "content": "A field's presence alone does not make every wording a valid value. For fields expecting named choices (such as `airline` or `hotel_name`), pass only explicitly named choices. Map ordinary-language descriptions to a supported schema criterion when the meaning is unambiguous (for example, map “laundry facilities” to `has_laundry_service` when that field is in the tool schema); if no field represents a preference, omit it rather than adding an unsupported argument. For controlled-choice fields, use a choice and spelling or casing accepted by the schema, while preserving the user's casing for free-form entity values. Do not infer party size, room count, or specific amenities from broad suitability requests. When party size is explicit for the hotel stay, pass it as `num_people` (use `1` for an explicitly solo trip), but do not infer `num_rooms`. Do not encode a generic quality such as “kid-friendly” as an entity value when the schema has no matching criterion.",
+      "support_count": 3,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Prioritize the cache/workflow improvements because they address recurring stateful-turn failures and align with the skill’s longitudinal guidance. The airport-code mapping is a clear, actionable gap with the strongest support. The broader schema-mapping and party-size guidance is useful but more detailed and less strongly supported.",
+    "selected_indices": [
+      0,
+      5,
+      2
+    ]
+  }
+}

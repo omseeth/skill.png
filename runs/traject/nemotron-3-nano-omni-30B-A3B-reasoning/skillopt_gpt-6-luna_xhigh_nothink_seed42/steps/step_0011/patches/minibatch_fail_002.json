@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection",
+      "count": 7,
+      "description": "Calls used a mismatched or less suitable endpoint, or missed a requested operation, despite related tools being available."
+    },
+    {
+      "failure_type": "unrequested_or_duplicate_calls",
+      "count": 3,
+      "description": "Agents added redundant calls or unrelated tools beyond the requested deliverables."
+    },
+    {
+      "failure_type": "parameter_mapping",
+      "count": 4,
+      "description": "Calls used unsupported or noncanonical values, or omitted parameters needed to express the requested result set."
+    },
+    {
+      "failure_type": "answer_contract",
+      "count": 1,
+      "description": "The response was overgenerated and failed JSON parsing."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers action ledgers, endpoint matching, avoiding fan-out, and JSON validation, so those rules do not need repeating. The edits clarify two narrower gaps visible in the batch: matching endpoint choice to the requested operation rather than the topic, and interpreting follow-up requests for more results as pagination.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Select the right endpoint",
+        "content": "- Treat the requested operation as a hard requirement: autocomplete returns suggestions, not product listings, and a current-weather endpoint does not provide a forecast unless its documentation says so. For distinct requested outputs, select the endpoint documented for each operation even when the target or topic is the same."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Map constraints to the schema",
+        "content": "- Interpret continuation requests such as “more,” “next,” or “continue” relative to earlier results. When the endpoint supports pagination, advance the page for the later result set and keep that page attached to its requested filters or sort order; do not repeat the first page."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

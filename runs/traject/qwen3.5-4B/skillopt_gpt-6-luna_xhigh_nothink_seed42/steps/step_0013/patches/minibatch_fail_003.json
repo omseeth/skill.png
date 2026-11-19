@@ -1,0 +1,26 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_or_tool_identity_mismatch",
+      "count": 2,
+      "description": "Call sets included unrelated or wrongly selected operations, and one trajectory also omitted requested operations."
+    },
+    {
+      "failure_type": "schema_argument_mapping",
+      "count": 2,
+      "description": "Both TED calls mapped a minimum-duration request to the maximum-duration field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already gives broad coverage and endpoint-selection guidance, so avoid duplicating it. Both trajectories inverted a one-sided duration threshold; make the mapping from comparison direction to minimum or maximum fields explicit.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Map every numeric range or threshold to the endpoint's corresponding filter fields, regardless of domain. When both bounds are available, set both; keep range bounds distinct from result counts and page sizes. For example, a requested length range maps to minimum- and maximum-length fields, not a per-page count. Do not omit a bound or repurpose a count field.",
+        "content": "- Map every numeric range or threshold to the endpoint's corresponding filter fields, regardless of domain. For one-sided thresholds, map larger/longer, above, or at-least requirements to a minimum/lower-bound field, and smaller/shorter, below, or at-most requirements to a maximum/upper-bound field; do not substitute the opposite bound just because it accepts a similar value. Preserve strict versus inclusive comparison when the schema supports it. When both bounds are available, set both; keep range bounds distinct from result counts and page sizes. For example, a requested length range maps to minimum- and maximum-length fields, not a per-page count. Do not omit a bound or repurpose a count field."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

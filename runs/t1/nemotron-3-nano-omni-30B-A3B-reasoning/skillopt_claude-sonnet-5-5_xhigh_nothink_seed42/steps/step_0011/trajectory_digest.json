@@ -1,0 +1,66 @@
+{
+  "step": 11,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 28,
+  "failure_patterns": [
+    {
+      "pattern": "missing_assignment_and_save: First searches were emitted as bare calls with no variable assignment and no save_to_cache (restaurants x2, attractions, flights). The round-trip case also used the nonexistent return_date kwarg.",
+      "count": 28,
+      "task_ids": [
+        "restaurant:train:25:28:0",
+        "flighthotelrestaurant:train:3:4:1",
+        "flighthotelrestaurant:train:7:23:5",
+        "attraction:train:1:8:0",
+        "attraction:train:21:2:0",
+        "hotelattraction:train:11:20:1",
+        "attraction:train:14:32:0",
+        "flight:train:17:11:1",
+        "hotelrestaurant:train:22:31:1",
+        "restaurant:train:6:56:0",
+        "hotel:train:22:44:2",
+        "hotelattraction:train:16:52:3",
+        "hotelrestaurant:train:2:9:3",
+        "hotelrestaurant:train:18:45:3",
+        "hotelattraction:train:24:13:4",
+        "attraction:train:6:29:0",
+        "flighthotel:train:21:6:1",
+        "flighthotel:train:25:15:3",
+        "flighthotelrestaurant:train:11:35:2",
+        "hotel:train:3:17:1",
+        "hotel:train:15:31:1",
+        "restaurant:train:8:21:3",
+        "restaurant:train:16:8:3",
+        "flighthotelattraction:train:11:19:3",
+        "flighthotelattraction:train:12:40:2",
+        "hotel:train:18:28:4",
+        "flighthotelrestaurant:train:25:1:3",
+        "hotelattraction:train:12:9:0"
+      ]
+    }
+  ],
+  "score_before": 0.41,
+  "score_after": 0.39,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "## TOP-PRIORITY CHECKLIST (verify before EVERY response; these are the most often broken rules)\n1. Output only plain tool calls inside <CODE></CODE>. Never write `import` or `from ... import` (even `from cache import ...` raises ModuleNotFoundError). No print(), no prose, no reasoning comments (at most one short line), and no helper variables such as `checkin_date = [...]`. All tools and cache helpers are already defined.\n2. Every search_*/filter_*/sort_results/search_nearest call is assigned to a variable and followed on its own line by `save_to_cache(key=..., value=...)`. A bare `search_attractions(...)` is wrong. Never nest a search call inside save_to_cache, and never nest get_results_from_cache inside filter_*. Templates:\n   `restaurants = search_restaurants(city=\"Fresno\", cuisine=[\"Persian\"], has_halal_options=True)` then `save_to_cache(key=\"restaurants\", value=restaurants)`\n   `attractions = search_attractions(type=[\"Social\"], state=\"NV\")` then `save_to_cache(key=\"attractions\", value=attractions)`\n3. A US state name or abbreviation ('NV', 'GA', 'Georgia') goes in `state=`, never in `city=`. Do not pass city unless a city was named.\n4. Use only kwargs that exist in the tool's arg list (TOOL CONFIG). search_flights has NO return_date; search_restaurants has NO num_people. A round trip is TWO assigned and saved search_flights calls under exactly \"departure_flights\" and \"return_flights\" (Rule 9). Never copy values from tool usage examples (example cities, dates such as 2025-08-03, airline codes). Use only what the user said.\n5. The CACHE dict is the only source of keys. Load only a key that literally appears in it. A domain with no key and complete mandatory args gets a first search carrying ALL its constraints from every earlier turn (Rule 25). A domain that already has a key is refined with load -> filter -> save, never re-searched.\n6. On a refinement, pass ONLY the new constraint from the last user turn. Everything the CACHE summary lists (city, neighborhood, cuisine, dietary flags such as has_vegan_options, rating, budget, amenities, dates) is already applied. Example: CACHE 'neighborhood(s): [Downtown St. Louis], cuisine(s): [Norwegian], has_gluten_free_options, has_vegan_options' and the user says 'I'm looking to spend around 85' -> `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, budget=85)`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`. Do NOT repeat cuisine or dietary flags.\n7. Touch only the domain(s) the last turn changed or answered. Do not re-filter or re-search other cached domains because their preferences came up earlier.\n8. Map each amenity word to its own exact parameter (sauna -> has_sauna, hot tub -> has_hot_tub, spa -> has_spa_services, gym -> gym_present, pool -> pool_present). Never substitute a near-synonym, and never pass False or unmentioned amenities.\n9. Never call search_hotels unless you can point to an explicit check-in date AND check-out date in the user's messages (Rules 6 and 24).",
+      "target": "(No learned rules yet. Rules will be added through the reflection process.)"
+    },
+    {
+      "op": "append",
+      "content": "\n## Rule 25: CACHE keys are ground truth; first searches; scope of the last turn\n- Before every `get_results_from_cache`, find that exact key string in the CACHE dict and copy it exactly (if CACHE has 'flights' and 'return_flights', load those, not 'departure_flights'). If CACHE is `{}`, write no get_results_from_cache and no filter_* at all. Loading a missing key returns None and filter_* then fails with 'prior_results ... NoneType'.\n- Each turn, for every domain requested anywhere in the conversation, ask: is there a key for it in CACHE? If there is NO key and the mandatory args are complete, run a first search (`x = search_*(...)` plus `save_to_cache`), even when the last turn only supplied stars, amenities or dates. Example: CACHE holds only flight keys (or only 'attractions') and the hotel is now described -> `hotels = search_hotels(...)`, never `get_results_from_cache(key=\"hotels\")` followed by a filter. Pass every constraint for that domain stated in ANY earlier turn (party size -> num_people, budget, stars, each named amenity, neighborhood).\n- Hotel dates when flights were requested with outbound and return dates: checkin_date=[outbound date], checkout_date=[return date]. Cached flight keys must not be re-searched or re-filtered by that turn.\n- If the user names an attraction type and a specific attraction, run `search_attractions(city=..., type=[\"Scenic\"], attraction_name=[\"<exact name>\"])` and save it as 'attractions'.\n- Scope: if the last turn answers a question about ONE domain, output only that domain's load -> filter -> save. Example: CACHE has 'hotels', 'final_hotels' (budget and business center already applied) and 'restaurants'; last turn 'a restaurant with a rating of at least 4.5 and around 65' -> `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, rating=[4.5, 5], budget=65)`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`. Do NOT touch hotels. Likewise a hotel-only reply ('Yes, laundry facilities and room service') -> only `filter_hotels(prior_results=h, has_laundry_service=True, has_room_service=True)` and its save; do not touch flights even though a class was stated earlier.\n- A reply to a flight-class, airline or time question ('economy would be great', 'first') refines the cached flights and NEVER triggers search_flights, even on a multi-leg trip. Load EVERY flight key in CACHE (the most refined version of each leg), call `filter_flights(prior_results=x, flight_class=[\"economy\"])` on each, and save each under a new key (e.g. filtered_first_departure_flights), even if the CACHE summaries lack a result count.\n- If the last turn supplies travel dates while flights and a hotel were requested and 'restaurants' is already cached, run only the flight search(es) and search_hotels. Leave restaurants untouched.\n",
+      "target": ""
+    },
+    {
+      "op": "append",
+      "content": "\n## Rule 24: Hard gate on hotel dates; recognising supplied mandatory args; one seek_information\n- Before writing `search_hotels`, point to an explicit check-in date AND check-out date in the user's messages. Answers about rooms, people, budget, city, neighborhood or amenities are NOT dates. If you cannot point to both, do not call search_hotels. Never pass `[]` and never reuse example dates from TOOL CONFIG. Example: 'hotel in Memphis for 2 people' then 'We need 2 rooms.' -> the ONLY output is `seek_information(\"We need to ask for the check-in and check-out dates\")`.\n- A date pair ('May 19, 2025 to May 29, 2025', 'checking in on X and out on Y') supplies BOTH hotel dates. Search at once: `search_hotels(city=<city from conversation>, checkin_date=[\"May 19, 2025\"], checkout_date=[\"May 29, 2025\"])` plus `save_to_cache(key=\"hotels\", ...)`. Do not seek_information again. If restaurants are already cached, search hotels only.\n- The city for hotels, restaurants and attractions is the destination stated anywhere ('from Tucson to Colorado Springs', 'hotel in Downtown Colorado Springs' -> city=\"Colorado Springs\"). Never ask for a city that can be read from the conversation.\n- An attraction request naming a city or state plus a type is always complete. 'hotel in San Jose for 5 people and we want Scenic attractions' with no dates -> `attractions = search_attractions(city=\"San Jose\", type=[\"Scenic\"])`, `save_to_cache(key=\"attractions\", value=attractions)`, then `seek_information(\"We need the check-in and check-out dates for the hotel\")`. Do not search hotels.\n- Multi-domain turn with some domains incomplete: first run each complete domain with search plus save, then add exactly ONE seek_information at the END listing every missing item across the other domains. Example (flights + hotel + restaurant, no dates yet): `restaurants = search_restaurants(city=\"Colorado Springs\", rating=[3.0, 3.0], has_nut_allergy_options=True)`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need the departure dates for the flights and the check-in and check-out dates for the hotel.\")`. Never emit several seek_information calls or skip a complete domain.\n- Dietary phrasing: 'child has a nut allergy' -> `has_nut_allergy_options=True`; 'I don't eat dairy' -> `has_dairy_allergy_options=True`. Never pass False for a need the user has.\n",
+      "target": ""
+    },
+    {
+      "op": "append",
+      "content": "\n## Rule 23: Hotel parameter mapping (search_hotels / filter_hotels)\n- `city` is only the base city (\"Atlanta\"). A district or area goes in `neighborhood=[...]` using the user's wording, including the city name. 'a hotel in Midtown Atlanta' -> `city=\"Atlanta\", neighborhood=[\"Midtown Atlanta\"]`. 'a hotel in Downtown St. Louis' -> `city=\"St. Louis\", neighborhood=[\"Downtown St. Louis\"]`. Never put a neighborhood in city and never shorten it to [\"Downtown\"].\n- View phrases are amenities, never neighborhoods: 'city view' -> `has_city_view_rooms_present=True`; 'ocean view' -> `has_ocean_view_rooms_present=True`; 'rooftop bar' -> `has_rooftop_bar=True`.\n- Amenity wording: 'sauna' -> `has_sauna=True`; 'hot tub' or 'jacuzzi' -> `has_hot_tub=True`; only the word 'spa' or 'spa services' -> `has_spa_services=True` (never a stand-in for sauna or hot tub); 'fitness center/classes' -> `has_fitness_class=True`; 'gym' -> `gym_present=True`. `pool_present` and `gym_present` have NO `has_` prefix, while `has_kids_club`, `has_laundry_service`, `has_room_service`, `has_balcony` do. `has_pool_present` or `kids_club` raise validation errors. Check every kwarg against TOOL CONFIG.\n- Map each stated amenity to exactly its own param ('free parking' -> `has_free_parking=True` only). Never add `free_wifi_included` or other extras the user did not say. An option merely listed in the assistant's question is not a constraint unless the user picks it.\n- Style words ('luxurious', 'nice', 'anniversary') produce no param. `stars` takes two values: '1 star' -> `stars=[1, 1]`, 'at least 5 star' -> `stars=[5, 5]`.\n- Counts: 'we'll need 4 rooms' -> `num_rooms=4`. If a headcount appears in the conversation (e.g. 'how many rooms for 4 people?' answered), also pass `num_people=4`.\n- When the dates finally arrive and the CACHE has no hotel key, the first search_hotels call must carry every hotel preference stated in earlier turns (neighborhood, budget, stars, view, rooftop bar, rooms, people). Example: turn 1 'luxurious hotel in Atlanta with a city view and a rooftop bar', later 'May 20, 2025 to May 22, 2025, 4 rooms' (4 people mentioned) -> `hotels = search_hotels(city=\"Atlanta\", checkin_date=[\"May 20, 2025\"], checkout_date=[\"May 22, 2025\"], num_rooms=4, num_people=4, has_rooftop_bar=True, has_city_view_rooms_present=True)` then `save_to_cache(key=\"hotels\", value=hotels)`.\n",
+      "target": ""
+    }
+  ]
+}

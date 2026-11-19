@@ -1,0 +1,43 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_update_misclassification",
+      "count": 3,
+      "description": "Follow-up preferences for cached flights, hotels, and restaurants triggered new searches instead of retrieving and filtering compatible cached results."
+    },
+    {
+      "failure_type": "constraint_mapping_and_context",
+      "count": 4,
+      "description": "Agents misread the conversation or mapped values incorrectly, including treating a business-trip purpose as flight class, a state as a city, an attraction label as a synonym, or a budget as a rating."
+    },
+    {
+      "failure_type": "tool_result_handling",
+      "count": 3,
+      "description": "Some code saved an undefined or different variable, repeated a tool call inside save_to_cache, or otherwise failed to save the actual assigned result."
+    },
+    {
+      "failure_type": "missing_required_information",
+      "count": 1,
+      "description": "A hotel search ran without its mandatory check-in and check-out dates instead of asking for them while continuing the complete attraction search."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the cache-update decision boundary and result-handling pattern more operational, and clarify how conversation context determines supported fields. The missing-date case is already explicitly covered by the required-argument checks, so no redundant edit is needed for it.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Follow-up constraint updates\nWhen a user answers a question about an additional preference for a scope that already has compatible cached results, treat the reply as a constraint update: retrieve the exact compatible cache key, call the matching `filter_*` tool with the new criterion and any still-active criterion not already embodied in that result, then save the filtered result under a new key. Do not repeat the base search merely because the preference arrived on a later turn. Use a new base search only when the requested domain, location, dates, leg, or scope cannot be covered by the cached candidate set."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Resolve values from conversational context\nBefore choosing a tool field, resolve terse replies against the preceding assistant question: a number supplied in response to a budget question is a budget, not a rating. Distinguish trip purpose from an explicit preference: “business trip” does not by itself request `flight_class=[\"business\"]`. For attractions, pass a state abbreviation in `state` rather than `city`, and preserve the user's category text exactly (for example, do not change `Scenic` to `Scenery`)."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Save the actual tool result\nFor each search, filter, sort, or nearest call, call the tool exactly once, bind its return value to a defined variable, and immediately save that same variable. Never place a tool call inside `save_to_cache`, repeat the call to obtain a value for saving, or save a variable name that was never assigned. For example: `filtered = filter_flights(prior_results=prior, flight_class=classes)` followed by `save_to_cache(key=\"filtered_flights\", value=filtered)`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

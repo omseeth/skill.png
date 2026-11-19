@@ -1,0 +1,28 @@
+{
+  "reasoning": "Consolidated the overlapping cache guidance into one stronger persistence-and-refinement rule, and combined both proximity proposals at their shared insertion point. Kept the distinct hotel-field mappings, schema mappings, and per-domain missing-input check. Existing flight-leg guidance is already explicit, and no edits target the protected section. [optimizer-ranked: selected 2/5 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+      "content": "\n- Treat a lodging request for “access to” an attraction category as a proximity request. Also treat a named attraction supplied in direct response to a question about which attraction the lodging should be near as the exact proximity target. Search for the requested category or named attraction if no compatible cached result covers it, then call `search_nearest` with the lodging results and `groupBy=\"hotel\"`. Interest in visiting or dining at a place alone still does not imply proximity. After a proximity result has been created, a later change to one domain’s own criteria does not by itself renew the proximity request: refine only the changed domain, and do not re-filter the unchanged partner domain or rerun `search_nearest` unless the user changes or renews the proximity request. Use a nearest result as the prior input for a domain filter only when it contains candidates for that same focal domain and target; otherwise use the compatible domain-specific result.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+      "content": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Map an explicitly stated hotel traveler count to `num_people` when supported, not `num_rooms`; do not infer counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. Map an explicit hotel Wi-Fi requirement to `free_wifi_included=True` and a meeting-room requirement to `has_meeting_rooms=True` when those fields are supported. A traveler count is not a flight-search parameter unless the schema provides one.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 4 adds missing guidance for recognizing attraction-access proximity requests and handling later changes without rerunning unrelated work. Edit 0 adds concrete hotel-field mappings while reinforcing the existing distinction between traveler and room counts. The other edits largely restate guidance already present in the skill.",
+    "selected_indices": [
+      4,
+      0
+    ]
+  }
+}

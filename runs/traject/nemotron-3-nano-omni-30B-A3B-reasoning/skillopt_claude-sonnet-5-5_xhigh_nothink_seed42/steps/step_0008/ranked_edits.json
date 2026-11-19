@@ -1,0 +1,34 @@
+{
+  "reasoning": "Failure edits are kept as the base. Where a success edit shared an anchor with a failure edit, I merged the two into one edit so anchors stay unambiguous and nothing is applied twice. This covered four anchors. (1) The 'Never give only the provider...' replace now carries the failure rules (wrong/right examples, heading text only, no invented endpoints) plus the success rule to copy headings character for character. (2) The 'A named group...' / 'Group Name' anchor now holds the failure qualifier and value conventions plus the success 'exact vs bounded values' bullet. (3) The 'Email API: Get Fake Email Address' anchor now holds the failure description-matching, retailer-search and Airbnb bullets plus the success scope-word sibling-endpoint bullet. (4) The 'Before answering, tick each sentence' anchor now holds the failure count-by-request-kind bullet plus the success narrative-checklist and duplicate-guard bullets. Success edits with unique anchors were kept as-is: the compound-clause bullet after 'Do not add helper...' and the literal value-spelling bullet after 'Do not invent parameters...'. No real conflicts appeared. The duplicate guard is worded to respect the rule that an action requested twice gets two identical calls. Nothing targets the protected SLOW_UPDATE block. [optimizer-ranked: selected 3/11 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Do not close the list early or leave stray brackets.",
+      "content": "Do not close the list early or leave stray brackets. Calls are separated only by `}, {`. A `]` in the middle (`}], {`, `}]}, {`, `], [`) ends the answer and makes every later call unparseable (score zero). The single `]` comes after the last object, right before `</answer>`: finish with `}]</answer>`, never `]]` or `}]}`.\n- Every entry in a parameter list is a `{\"name\": ..., \"value\": ...}` object, never a bare name or string (wrong `\"required parameters\": [\"offset\"]`; right `[{\"name\": \"offset\", \"value\": \"0\"}]`). An endpoint name is not a parameter. Every call has all three keys even when it has only required or only optional parameters (never omit `\"optional parameters\": []`). `\"optional parameters\"` appears exactly once per object, last. `\"optional parameters\": [{...}], \"optional parameters\": []` throws away the filled list, so merge every optional value (platform, sort-by, type, page, pulls, ...) into that one list.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+      "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely (wrong: `BestBuyProductData`, `email Check SMTP`; right: `BestBuy Product Data: BestBuyProductData`, `fast Email verifier: email Check SMTP`). The name is the `### ` heading text only: never paste the `Provider:` description line or its ` — tagline`. Copy the heading character for character, including slashes, braces, parentheses and lowercase initials (e.g. `OpenCritic API: /game/hall-of-fame/{year}`, `Learn to read and write Japanese kanji: Study list (AP exam)`). Never invent, shorten or paraphrase an endpoint (`Priceline com Provider: Search locations` does not exist; the heading is `Priceline com Provider: Search hotels locations`). Before answering, find each call's name verbatim as a `### ` heading in the tool list. Keep its spelling and case, lowercase first letters, suffixes such as `(Deprecating)` and numbers such as `Item Search 3`.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+      "content": "\n- Count calls by kind of request, not by platform: each distinct data type asked for gets its own endpoint, and later sentences are as real as the first. 'Current pollution' + '48-hour forecast' + 'sun position' = three tools (current-data tool, forecast tool with hours `48`, sun tool). 'Pricing, warranty services, reviews and common product information' = four Wayfair endpoints (get-pricing, get-warranty-services, reviews/list, get-common-info). 'Images, reviews, delivery services, financing options for SKU X' = get-images, reviews/list, get-home-services, get-financing-offers. 'Detailed information about item X, including similar items' = the detail tool (e.g. `products/v2/detail`) AND the similar-items tool. 'On both ASOS and Wayfair' or 'alternatives on other platforms like Aliexpress and Asos' = one call per named platform (plus the host retailer's own search or auto-complete if the query asks for it). 'A store (storeId, sellerId)' -> the store item-search endpoint with both ids. 'Available base regions' -> `User Basic Parameters` with `filter`=`baseRegion`.\n- First-person or narrative queries ('I rolled..., I looked up..., I checked the latest news..., Finally I retrieved...') are checklists: one call per sentence, in order. Endpoints that need no input ('latest news', 'news feed', 'list of stats') still get a call with `[]` for both parameter lists. Do not add optional fields such as `callback` unless the query states a value for them.\n- In long lists, emit each call once unless the query asks for the same action twice. Scan for accidental repeats, and for a tool reused with another item's parameters (e.g. Ukrainian-word filters sent to the English random-word tool). Remove them or switch to the matching tool.",
+      "support_count": 4,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Output-format failures score zero, so the bracket/key-structure edit (1) is top. Tool-name exactness (0) is the next most widespread failure, since a wrong name fails the call. Edit 10 adds a general completeness and dedup principle (one call per distinct request, narrative queries as checklists) with high support. Edits 2, 3 and 7 are partly redundant with existing skill content or too specific; 4, 5, 6, 8 and 9 are narrower or have lower support.",
+    "selected_indices": [
+      1,
+      0,
+      10
+    ]
+  }
+}

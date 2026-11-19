@@ -1,0 +1,53 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "fabricated_or_placeholder_mandatory_args",
+      "count": 4,
+      "description": "Invented a city ('Dallas'), wrote an '<origin>' placeholder, used tool-example dates, or filtered an attractions key as if it were hotels, instead of calling seek_information for the missing mandatory arg."
+    },
+    {
+      "failure_type": "malformed_code_structure",
+      "count": 2,
+      "description": "Bare search call plus a duplicate search nested inside save_to_cache(value=...), and a list passed to the string-typed end_airport_code (ValidationError)."
+    },
+    {
+      "failure_type": "wrong_param_mapping",
+      "count": 1,
+      "description": "'3 rooms' was copied into num_people, 'hotel with a kitchen' was dropped (should be has_inroom_kitchen=True), and non-gold cache keys were used for the round-trip flights."
+    },
+    {
+      "failure_type": "missing_search_nearest",
+      "count": 1,
+      "description": "'restaurant near the hotel' needs filter_restaurants plus search_nearest(hotels, restaurants, groupBy='restaurant'); the plain '3.5 rating' was also given as [3.5, 5]."
+    },
+    {
+      "failure_type": "over_scoped_refinement",
+      "count": 1,
+      "description": "A reply to a hotel-amenity question also re-filtered restaurants whose constraints were already applied in CACHE."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four of eight failures are fabricated or placeholder mandatory args, or cross-domain cache misuse, where the model should have emitted seek_information. The existing Rule 6 is abstract, so concrete cases are added at the top of that rule. The other recurring failures are nested search calls inside save_to_cache, list-typed airport params, wrong round-trip cache keys, and room count copied into num_people, plus a missed has_inroom_kitchen. Two further gaps are 'near the hotel' (which needs search_nearest) and replies to a single-domain question re-filtering other domains. Each gap gets a short, concrete rule with examples drawn from these trajectories.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 6: Never fabricate mandatory parameters (dates especially)",
+        "content": "\n- Concrete cases to check before writing ANY search_* call:\n  - Never write placeholders (e.g. `\"<origin>\"`) and never reuse tool-example values (city 'Dallas', 'Key West', dates like '2025-08-03'/'2025-08-04'/'2025-08-05'). If a mandatory value is not literally in the conversation, it is MISSING.\n  - Restaurant request (cuisine, budget, dietary need) with no city in ANY turn: output only `seek_information(\"We need to ask for the city\")`. A budget reply like 'around 70' does not supply a city. No search call, no guessed city.\n  - Flights requested after another domain: the destination is the city already established (e.g. the hotel city). If no origin city/airport was ever stated, output only `seek_information(\"We need to ask for the departure city\")`. If hotel check-in/check-out dates were already given, they supply the flight dates (outbound = check-in, return = check-out), so ask only for what is still missing.\n  - Hotel requested with no dates and the CACHE has no hotels key (e.g. CACHE holds only 'attractions' or 'restaurants'): this is a first search with missing mandatory args, so output `seek_information(\"We need to ask for the check-in and check-out dates\")`. Never pass another domain's cache key into filter_hotels (an attractions entry is not a hotels entry). Budget, stars and amenity replies are not dates.\n  - Flight + hotel + restaurant requested, restaurant city known, no dates anywhere: `restaurants = search_restaurants(city=..., <stated dietary/rating/budget params>)`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then ONE `seek_information(\"We need to ask for the departure dates and checkin and checkout dates\")`. Do not search flights or hotels with invented dates.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 26: Call syntax, airport params and flight cache keys\n- Never nest a tool call inside save_to_cache or another call, and never leave a search_* call unassigned. Wrong: `search_flights(...)` followed by `save_to_cache(key=\"flights\", value=search_flights(...))` (this runs the search twice). Right: `flights = search_flights(...)` then `save_to_cache(key=\"flights\", value=flights)`.\n- A named airport is a plain STRING param: 'ANC is our preferred arrival airport' -> `end_airport=\"ANC\"` (keep end_airport_city too); a departure airport 'SJC' -> `start_airport=\"SJC\"`. start_airport_code and end_airport_code are also single strings, never lists (a list raises a ValidationError). Example: `flights = search_flights(start_airport_city=\"Raleigh\", end_airport_city=\"Anchorage\", end_airport=\"ANC\", departure_date=[\"May 20, 2025\"])`.\n- A round trip is saved under exactly `departure_flights` and `return_flights`, never flights_outbound, flights_return or outbound_flights. The hotel is saved as `hotels`.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 27: Hotel parameter mapping on a first search\n- 'a hotel with a kitchen' -> `has_inroom_kitchen=True`. Map every amenity stated in ANY earlier turn to its own param when the first search_hotels finally runs (e.g. turn 1 'hotel with a kitchen', last turn gives dates -> include has_inroom_kitchen=True).\n- A room count ('we need 3 rooms') -> `num_rooms=3` ONLY. num_people is set only from an explicit headcount ('there are 3 of us', 'for 2 people'). Never copy a room count into num_people, and never infer a headcount from words like 'family vacation'.\n- Round trip + hotel with both dates known: `checkin_date=[<outbound date>]`, `checkout_date=[<return date>]`, city = destination.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 28: 'Near the hotel' requests and single-domain scope\n- When the user wants restaurants (or attractions) 'near the hotel' and a hotels key is in CACHE, filter the requested domain with the new constraints, then call search_nearest and save it. Load the MOST REFINED hotels key (e.g. hotels2) and set groupBy to the domain being sought. Example (CACHE has 'restaurants' and 'hotels2'; last turn 'French would be amazing, and a restaurant with a 3.5 rating near the hotel'):\n  `restaurants = get_results_from_cache(key=\"restaurants\")`\n  `hotels2 = get_results_from_cache(key=\"hotels2\")`\n  `filtered_restaurants = filter_restaurants(prior_results=restaurants, cuisine=[\"French\"], rating=[3.5, 3.5])`\n  `save_to_cache(key=\"filtered_restaurants\", value=filtered_restaurants)`\n  `nearest_restaurants = search_nearest(hotels=hotels2, restaurants=filtered_restaurants, groupBy=\"restaurant\")`\n  `save_to_cache(key=\"nearest_restaurants\", value=nearest_restaurants)`\n- Rating wording: a plain 'a 3.5 rating' -> `rating=[3.5, 3.5]`; only 'at least 3.5' -> `[3.5, 5]`.\n- Scope: a reply to the assistant's hotel-amenity question touches ONLY hotels. Example: CACHE has 'hotels2' and 'filtered_restaurants' (Romanian, rating already applied) and the user says 'A gym and laundry service would be great' -> `h = get_results_from_cache(key=\"hotels2\")`, `h2 = filter_hotels(prior_results=h, gym_present=True, has_laundry_service=True)`, `save_to_cache(key=\"filtered_hotels\", value=h2)`. Do NOT re-load or re-filter restaurants whose constraints the CACHE summary already lists.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

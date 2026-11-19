@@ -1,0 +1,72 @@
+{
+  "step": 2,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 34,
+  "failure_patterns": [
+    {
+      "pattern": "cache_reuse_and_incremental_filtering: Follow-up constraints often triggered fresh searches or used a less-refined cached result instead of retrieving and filtering the most relevant cached result.",
+      "count": 34,
+      "task_ids": [
+        "flight:train:3:8:2",
+        "restaurant:train:5:60:2",
+        "flighthotelattraction:train:4:36:2",
+        "hotel:train:6:3:2",
+        "restaurant:train:3:7:1",
+        "hotelrestaurant:train:13:9:2",
+        "hotelrestaurant:train:16:37:3",
+        "hotelattraction:train:10:21:5",
+        "flighthotelrestaurant:train:4:13:5",
+        "flighthotelattraction:train:6:59:4",
+        "flighthotelattraction:train:4:32:4",
+        "flight:train:16:11:1",
+        "hotelrestaurant:train:20:10:1",
+        "hotel:train:16:1:4",
+        "hotelattraction:train:24:38:1",
+        "hotelattraction:train:1:6:3",
+        "flighthotelrestaurant:train:19:35:2",
+        "flighthotelrestaurant:train:7:23:5",
+        "restaurant:train:13:21:3",
+        "flighthotelattraction:train:20:16:1",
+        "hotel:train:17:36:2",
+        "flighthotel:train:4:60:1",
+        "flighthotelattraction:train:3:59:4",
+        "flighthotelattraction:train:3:53:1",
+        "flighthotelrestaurant:train:24:27:1",
+        "flighthotelattraction:train:12:16:4",
+        "restaurant:train:8:7:1",
+        "flighthotel:train:3:57:5",
+        "hotelrestaurant:train:22:24:3",
+        "restaurant:train:9:47:0",
+        "hotelrestaurant:train:3:1:4",
+        "hotelrestaurant:train:9:27:1",
+        "flighthotel:train:20:16:1",
+        "hotelattraction:train:5:30:2"
+      ]
+    }
+  ],
+  "score_before": 0.23,
+  "score_after": 0.23,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "- At each turn, inspect cache summaries and identify which domains or itinerary legs the latest turn changes. For each changed request, retrieve by exact key the most refined cached result that matches the domain, location, dates or leg, and constraints, then apply the matching `filter_*` tool with only the newly supplied constraints. A cached result is suitable only when its original query scope can cover the current request: do not use a narrow named-item result for a newly broad category request, or a broad-category result when the user now requests a specific item; do not carry earlier entity constraints into a distinct request unless reaffirmed. If no suitable result exists, make a focused search for the missing request. Apply trip-wide preferences to every relevant cached result or itinerary leg, and leave unaffected domains alone rather than repeating valid searches.",
+      "target": "- At each turn, inspect cache summaries before searching. If a relevant result exists for the same domain, city, dates, and itinerary leg, retrieve it with its exact key using `get_results_from_cache`, then apply the matching `filter_*` tool with that result as `prior_results` and the newly supplied constraints. If no suitable cached result exists, run a new search. Apply new preferences to all relevant cached results or itinerary legs, but do not repeat valid searches or regenerate unaffected domains."
+    },
+    {
+      "op": "insert_after",
+      "content": "- For hotel searches, require actual check-in and checkout dates; for flights, require an actual departure date for each leg, including the return leg of a round trip. Treat vague timing such as “last-minute” as missing date information, not as a date value.\n- Omit unspecified optional arguments rather than passing `None` placeholders.",
+      "target": "## Required-argument checks"
+    },
+    {
+      "op": "replace",
+      "content": "- Check mandatory inputs separately for every requested domain and itinerary leg against the full conversation and available context. If details are missing, do not call that domain's search or invent values or pass `None`; make one `seek_information` request listing only the missing mandatory details across affected domains and legs. Still run and cache other requested searches whose required inputs are complete; missing information for one domain or leg does not block a fully specified search in another. Do not ask for optional preferences.",
+      "target": "- Before calling a travel tool, check its required parameters against the full conversation and available context. If any required details are missing, use `seek_information` to ask only for those details; do not invent values, pass `None`, or run a partial search. For requests spanning multiple domains, bundle missing required details for all requested domains into the same information request. Do not ask for optional preferences."
+    },
+    {
+      "op": "replace",
+      "content": "## Flight itinerary legs\nTreat each explicitly described flight leg as its own directional search with its own origin, destination, and `departure_date`. For a round trip or stated outbound/return date range, make a separate outbound search from origin to destination on the first date and a return search from destination to origin using the return date as that call's `departure_date`. Never encode the return as `arrival_date` on the outbound call or assume an origin or destination that the user has not stated. Apply an explicitly requested flight class to both legs, and do not combine distinct legs by repeating keyword arguments in one call. On follow-up turns, filter each cached leg affected by a trip-wide preference, including the return leg unless the user makes the preference leg-specific. For flight-time constraints, use a format accepted by the tool (for example, `12:00 PM`, not an unvalidated `HH:MM:SS` string); translate broad preferences such as “afternoon” into a bounded interval using the accepted format.",
+      "target": "## Flight itinerary legs\nTreat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to both legs, and do not combine distinct legs by repeating keyword arguments in one call."
+    }
+  ]
+}

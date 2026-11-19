@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Hotel-only first turn (CACHE {}) with a city, amenities or rating, and only vague timing ('weekend getaway', 'special occasion', 'anniversary'): the whole output is a single seek_information naming check-in and check-out dates, with no search_hotels call (3 tasks).",
+    "Restaurant budget-only reply ('around 60 per person') with raw and filtered restaurants keys cached: load the most refined key, call filter_restaurants(budget=N) only, and save under a new unused key. Earlier cuisine and halal constraints were not re-passed (2 tasks).",
+    "The agents saved filtered results under arbitrary unused names such as 'filtered_restaurants_budget', not 'filtered_restaurants1', and still passed. Only 'a new, unused key' matters.",
+    "In a multi-city flight conversation (flights1/flights2/flights3 cached, no hotel requested), a 'There are N of us' reply was routed to filter_flights(num_people=N). That raises a ValidationError. It passed cache_em only because the save never ran. The gold output is no calls at all (2 tasks).",
+    "A degenerate 'import sys' output for a hotel-only first turn happened once. It matched the cache but produced no tool call and failed code_success."
+  ],
+  "patch": {
+    "reasoning": "Two edits remove conflicts or latent failures seen in this batch. (1) A party-size reply with no hotel requested was turned into filter_flights(num_people=...) in 2 of 8 tasks. It only passed because the call raised before saving, so on a valid schema it would have saved an extra flight key and failed. The fast-rule sentence 'At most get_results_from_cache for each flight key' invites this, and it conflicts with the slow block, which says the reply adds no constraint. (2) Key-naming rules conflict: Rule 23 says filtered_<x>1, the slow block says final_<x>, and the agent used arbitrary names. Those tasks still passed, so names are not scored. Collapsing the naming scheme to 'any unused name' follows the meta-skill's advice to shrink and de-conflict, and it makes the prompt shorter.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "At most `x = get_results_from_cache(key=\"<flight key>\")` for each cached flight key.",
+        "content": "Flight tools have no party-size parameter: never write `filter_flights(..., num_people=N)` or `search_flights(..., num_people=N)`. With only flight keys cached (flights, return_flights, flights1/flights2/flights3 ...) and no hotel requested, output only `print(\"No planning needed\")`: no filter, no search, no save."
+      },
+      {
+        "op": "replace",
+        "target": "- The key to SAVE must be a name that does NOT appear in CACHE. If 'filtered_<domain>' exists, save as 'filtered_<domain>1', then 'filtered_<domain>2', and so on. Never save a filter result under the key you loaded or under any existing key.",
+        "content": "- The key to SAVE can be any name that does NOT appear in CACHE (key names are not scored, so do not spend effort on the scheme). Never save under the key you loaded or under any existing key."
+      },
+      {
+        "op": "replace",
+        "target": "search_flights never takes num_people or num_layovers.",
+        "content": "search_flights and filter_flights never take num_people (an 'N of us' reply is not a flight filter) or num_layovers."
+      }
+    ]
+  },
+  "source_type": "success"
+}

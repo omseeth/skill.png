@@ -1,0 +1,31 @@
+{
+  "batch_size": 6,
+  "success_patterns": [
+    "Refinement turns on a cached domain are three straight-line statements (load the most refined key, filter_* with only the new constraints, save under a new key). They pass the new budget, amenity or headcount and nothing the CACHE summary already lists (trajectories 1 and 2).",
+    "A request for a domain with no cache key and complete mandatory args gets a first search carrying the city already established anywhere in the conversation, saved under the plain domain key (trajectories 3 and 4).",
+    "A named attraction plus its stated type with no 'attractions' key cached is one plain search_attractions(city, attraction_name, type) saved as 'attractions'. It gets no search_nearest and no hotel re-filter, even though hotels are cached (trajectory 4).",
+    "A bare headcount reply ('4') to the assistant's traveler-count question is combined with the budget in the same reply into one filter_hotels call (num_people plus budget). The restaurants key is left untouched (trajectory 2).",
+    "Weak spot: in two trajectories (5 and 6) the user answered about a hotel with no hotel key and no usable dates, and the agent reloaded and re-saved another domain's key unchanged. The gold output was a single seek_information, so these runs only passed on cache_em, not on tool_f1 (tool tp/fp/fn=0/2/1)."
+  ],
+  "patch": {
+    "reasoning": "Most successes already follow existing rules, so only gaps are patched. (1) The CACHE GATE has no branch for 'domain has no key AND a mandatory arg is missing'. Two trajectories filled that gap by reloading and re-saving an unrelated cached key, where the gold was a lone seek_information. (2) Rules 25 and 26 push a named attraction toward search_nearest, but the gold for 'Pittock Mansion, which is a Social attraction' with no attractions key cached was a plain first attractions search with name and type. (3) A bare headcount answer next to a budget (num_people=4 plus budget=55) is not explicitly covered; the skill only treats bare numbers as budgets.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "4. Domain has NO key and all its mandatory args are known -> first search (`x = search_*(...)` then `save_to_cache`).",
+        "content": "\n5. Domain has NO key and a mandatory arg is still missing (e.g. a hotel reply about budget, stars, neighborhood or amenities while no check-in/check-out dates were ever given, or only a flight date exists and no checkout date) -> the ONLY output is one `seek_information(...)` naming the missing items. Another domain's cached result (flights, attractions, restaurants) is never a substitute. Never write `x = get_results_from_cache(key=\"<other domain key>\")` followed by `save_to_cache` of the same value, because a loaded result saved unchanged is always wrong. Example: CACHE holds only 'attractions' (Anchorage, Culinary), the user asked for a hotel for 5 and says 'around 80 per night' -> `seek_information(\"We need to ask for the check-in and check-out dates\")` only. Example: CACHE holds 'flights' and 'filtered_flights' for May 20, and the user says 'Yes, near Downtown Anchorage with a 4 star rating' for the hotel -> `seek_information(\"We need to ask for the checkout date\")` only."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 26: Proximity requests ('near the hotel', 'near <attraction>') need search_nearest (overrides the 'do not touch the hotel cache' and 'type if stated' parts of Rule 10)",
+        "content": "- FIRST attractions search exception: if the CACHE has NO 'attractions' key and the user names a specific attraction together with its type ('Yes, we want to visit Pittock Mansion, which is a Social attraction.', with 'hotels' cached for Portland), this is the first attractions search, not a proximity follow-up. Write only `attractions = search_attractions(city=\"Portland\", attraction_name=[\"Pittock Mansion\"], type=[\"Social\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. Pass both name and type as stated. Do not load hotels, do not call search_nearest and do not filter_hotels. The name-only + search_nearest flow below applies only when an 'attractions' key already exists from an earlier type search."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 25: A reply to the assistant's question or proposal is a new constraint, so filter every affected key",
+        "content": "- A bare headcount reply to the assistant's traveler-count question ('4', 'There are 5 of us') with a hotels key cached is `num_people=4` on `filter_hotels` (only hotel tools have num_people; never add it to flight or restaurant calls). If the same reply also states a price ('and I'm looking to spend around 55 per night'), put both in ONE call: `h = get_results_from_cache(key=\"hotels\")`, `h2 = filter_hotels(prior_results=h, num_people=4, budget=55)`, `save_to_cache(key=\"filtered_hotels\", value=h2)`. A bare number is a budget only when the assistant's question was about price. Leave other cached domains (e.g. 'restaurants') untouched."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,85 @@
+{
+  "reasoning": "Replaced the opening cache boundary with a precedence-based turn classifier, as requested, rather than adding another generic cache reminder. Kept distinct corrections for return-only flights, alternative dates, proximity grouping, amenity fields, filter deltas, confirmed constraints, hotel date inference, recommendation ranking, and flight date/time mapping. Omitted the mixed-domain example because the existing required-input section already instructs agents to proceed with complete independent requests while asking only for missing mandatory details. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "content": "**Per-turn scope classifier (apply before tool selection):** Inspect the full conversation, preceding assistant question or offer, and cache summary; resolve terse replies and identify only the scopes changed by the latest turn. If the turn accepts an offer to run proximity, retrieve compatible cached hotel, attraction, or restaurant datasets and run `search_nearest`, searching only for a genuinely missing dataset; keep earlier explicit proximity requests active unless withdrawn, and for later filter updates use the relevant cached or composite result rather than rebuilding unchanged searches. Otherwise, for each changed scope, retrieve the exact key of the most constrained compatible cached result and apply and save newly changed supported constraints plus any still-active constraints not embodied in that result. Do not repeat its base search or regenerate unaffected domains or legs. Base-search only a genuinely new or uncovered scope, including all active supported criteria. Validate mandatory inputs separately for each changed domain or leg; execute complete independent requests and seek only missing required details for incomplete ones.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date.",
+      "content": " If the user explicitly requests only or just the return flight, search only the reverse-direction leg, using the established return date as that leg's `departure_date`; do not also search an outbound leg merely because an earlier turn established the route or gave a two-date span.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "For an established origin-destination route, treat a two-date travel span (for example, “from [date] to [date]”) as the outbound date and return date unless the conversation indicates otherwise.",
+      "content": "\nIf the user offers multiple alternative departure dates and one common return date, treat those dates as outbound `departure_date` options in one search, then search a separate reverse-direction return leg on the common return date. If a hotel is explicitly requested for that same itinerary, use the stated alternative start dates in `checkin_date` and the common trip end in `checkout_date`, retaining all other active hotel constraints.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "content": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. When the request is phrased as “X near Y,” use Y as the grouping anchor for `groupBy` (for example, a restaurant near a hotel uses `groupBy=\"hotel\"`).",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; do not treat a request to stay in a named district as a proximity search.",
+      "content": "For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; do not treat a request to stay in a named district as a proximity search. Map literal hotel amenity requests to their matching fields—for example, “free parking” to `has_free_parking=True` and “free Wi-Fi” to `free_wifi_included=True`—and never substitute one amenity for another.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result.",
+      "content": "Apply the matching `filter_*` tool using newly supplied or changed filterable fields and any still-active constraints not embodied in the selected result; do not substitute a previously applied filter for the latest constraint. A cached proximity result may also be used as filter input when its candidate set remains valid, including for later party-size or amenity changes.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Drop or replace a constraint only when the user withdraws or changes it.",
+      "content": "\nTreat only values the user states or clearly confirms as active constraints; an assistant-assumed or suggested value is not confirmation when the user answers another part of the question. If the assistant explicitly solicits a preference for one domain's recommendations and the user supplies it, activate or update that domain only; do not regenerate other domains unless the user changes them.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not guess travel dates or duration; ask for any required date that remains missing or unclear.",
+      "content": "\nWhen a hotel is explicitly part of the same trip and the conversation clearly establishes that the stay begins upon arrival at the destination, use the established trip-start or arrival date as check-in and any explicit trip-end date as checkout. Otherwise, keep genuinely unclear hotel dates pending and ask only for the missing dates.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+      "content": "\nWhen the user asks for a “good,” “best,” or highest-rated recommendation without specifying a rating threshold, rank the relevant results with `sort_results` in descending order using the supported rating column (for example, `rating_restaurants` or `rating_hotels`); do not invent a numeric rating filter.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed. For flight `departure_time` and `arrival_time`, use 12-hour strings with an AM/PM suffix (for example, `[\"12:00 AM\", \"04:33 AM\"]`); represent midnight as `12:00 AM`, not `00:00:00`, and do not pass 24-hour `HH:MM:SS` strings to flight tools.",
+      "content": "Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed. Keep flight dates and clock times separate: map an explicitly stated arrival or departure date to its date field, and a clock deadline only to the corresponding time field. Interpret “by T” as a range from midnight to T (for example, `arrival_date=[D]`, `arrival_time=[\"12:00 AM\", \"09:01 PM\"]` for arrival by 9:01 PM on D). Use 12-hour strings with an AM/PM suffix; represent midnight as `12:00 AM`, never `00:00 AM`, and do not pass 24-hour `HH:MM:SS` strings to flight tools.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

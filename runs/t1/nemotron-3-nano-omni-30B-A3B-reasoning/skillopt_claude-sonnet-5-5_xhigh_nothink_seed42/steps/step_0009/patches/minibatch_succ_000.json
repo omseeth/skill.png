@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Flight requests that give origin, destination and only context (school trip, a preferred arrival airport) produce just seek_information for the departure date, with no search call. This is already covered by Rule 6.",
+    "Hotel refinements (rooms, budget, amenities, neighborhood) load the most refined hotel key, filter only the new constraints and save under a new key. Constraints already shown in the CACHE summary are not repeated. This is already covered by Rules 2, 13 and 17.",
+    "A first restaurant search uses only the stated city and ignores descriptors such as 'business lunch'. This is already covered by Rule 21.",
+    "Two attraction 'no preference' replies ('Not really', 'Not really, just something fun') were answered by re-running search_attractions and re-saving. The gold behavior is a pure get_results_from_cache(key='attractions'). The agent only scored on cache_em, and tool_f1 was 0. Rule 8 already says to retrieve, but the agent ignored it, so a concrete worked example is needed.",
+    "One first search wrote a bare search_restaurants(...) and then nested a second search_restaurants(...) inside save_to_cache. This produced a duplicate tool call and a lower tool_f1."
+  ],
+  "patch": {
+    "reasoning": "Most successes follow existing rules. Two gaps remain where the agent passed on cache_em but diverged from gold at the tool level: (1) a 'no preference' follow-up with the domain already cached was handled by a redundant re-search instead of pure retrieval, and (2) a first search was duplicated by nesting it inside save_to_cache. A concrete worked example for the retrieval case, plus a short anti-duplication rule, should make these behaviors more reliable.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Decide what to call from the LAST user turn and the cache summary, not from the whole conversation history.",
+        "content": "- Worked example of a pure retrieval turn. The assistant asked 'Are you interested in anything specific?', the CACHE has 'attractions': 'Attraction search results in San Jose. attraction type(s): [Scenic].', and the user replies 'Not really' or 'Not really, just something fun.' The correct output is exactly one line: `attractions = get_results_from_cache(key=\"attractions\")`. Do NOT call search_attractions again (the type is already applied), do NOT save anything, and do NOT print(\"No planning needed\"). A refusal with no new constraint, plus a cached domain, always means retrieve only. 'Fun', 'nice' and similar words are not filter values."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Never write `import` or `from ... import ...` lines (e.g. `from cache import get_results_from_cache`). The tools are already defined, and an import raises ModuleNotFoundError.",
+        "content": "- Call each search_* exactly once. Never write a bare `search_restaurants(...)` line and then repeat the same search inside `save_to_cache(value=...)`, and never nest a search or filter call inside save_to_cache. Correct: `restaurants = search_restaurants(city=\"Fresno\")` then `save_to_cache(key=\"restaurants\", value=restaurants)`."
+      }
+    ]
+  },
+  "source_type": "success"
+}

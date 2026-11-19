@@ -1,0 +1,26 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "tool_namespace_import",
+      "count": 1,
+      "description": "The agent imported a nonexistent tools module despite the skill already requiring direct calls to injected functions."
+    },
+    {
+      "failure_type": "optional_parameter_omission",
+      "count": 1,
+      "description": "The agent failed to map the explicitly stated solo trip to the supported hotel guest-count field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The direct-call requirement already covers the import failure, so repeating it would not patch a skill gap. Add a focused rule to carry clearly established party and room counts into supported hotel fields, without treating absent optional values as required.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Never pass a preference as an unsupported extra argument or place it in an unrelated field. For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+        "content": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Carry explicitly stated or unambiguous values into matching supported optional fields; for hotel searches, interpret “solo” as `num_people=1` and pass stated party and room counts to their matching fields. Do not ask for optional values that are absent. Never pass a preference as an unsupported extra argument or place it in an unrelated field. For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

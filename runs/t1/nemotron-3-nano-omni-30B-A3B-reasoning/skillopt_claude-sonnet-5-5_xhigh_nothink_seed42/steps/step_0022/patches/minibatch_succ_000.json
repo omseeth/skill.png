@@ -1,0 +1,20 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Four of the eight successes were first turns with a missing mandatory arg and no other searchable domain (restaurant city missing, hotel dates missing for vague 'family vacation' or 'business trip' requests, flight departure date missing for 'last-minute'). Each output was exactly one short seek_information naming only the missing item. This is already covered by Rules 6, 7 and 4b.",
+    "A first search with all mandatory args known (Culinary attractions in Tucson) was written as an assigned search followed by save_to_cache under the simple domain key. This is covered by Rules 14 and 21.",
+    "Refinement turns loaded the most refined key of the single domain being discussed and passed only the last turn's new constraints: budget=50 plus pool_present=True for hotels, and budget=60 only for restaurants, with no cuisine or halal flag re-passed. Both saved under a fresh key and left other cached domains alone. This is covered by Rules 2, 13, 17 and 23 and by the strategic guidance.",
+    "In the Memphis restaurant task the agent saved as 'filtered_restaurants2', which is neither Rule 23's scheme nor the strategic section's final_* scheme, and the gold key was 'filtered_restaurants1'. It still scored cache_em 1.0, so any unused save key is accepted. Only the load key must be exact, and the two naming schemes in the skill are an unnecessary source of confusion."
+  ],
+  "patch": {
+    "reasoning": "Nearly every observed success is already encoded in the skill, so I am not adding sibling examples. The one new observation is that the save-key naming scheme does not affect the score as long as the key is unused. The skill currently gives two competing schemes (Rule 23 'filtered_<domain>1' versus the strategic section's 'final_<domain>'). A one-line tie-break removes that conflict without growing the skill or touching the protected section.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 23: Load the most refined CACHE key; never overwrite a key",
+        "content": "- Naming tie-break: the LOAD key must be spelled exactly as in CACHE. The SAVE key only needs to be unused, and filtered_<domain>1, filtered_<domain>2 or final_<domain> are all accepted. Do not spend effort choosing a scheme, but never reuse an existing key and never save an unmodified load."
+      }
+    ]
+  },
+  "source_type": "success"
+}

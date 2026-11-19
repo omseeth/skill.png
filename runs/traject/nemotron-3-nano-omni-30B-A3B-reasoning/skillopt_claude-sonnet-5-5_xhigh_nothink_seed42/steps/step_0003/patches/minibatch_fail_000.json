@@ -1,0 +1,48 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_coverage",
+      "count": 6,
+      "description": "Agent stopped after the first few clauses and omitted whole actions (e.g. 3 of 6 calls, 2 of 7, 5 of 9). Dropped clauses included the final call, sibling kanji endpoints, dice, drill-detail, and the BBC source."
+    },
+    {
+      "failure_type": "wrong_tool_or_name",
+      "count": 3,
+      "description": "Wrong provider or endpoint chosen (Pokemon Unite instead of Pokedex, Email API MX instead of Email Existence Validator). The 'Provider:' prefix was dropped from tool names ('CNN Arabic'). BBC was not mapped to a source tool."
+    },
+    {
+      "failure_type": "parameter_format_and_placement",
+      "count": 4,
+      "description": "Bare parameter names such as [\"rs\"], a duplicate 'themes' key, and required/optional lists swapped against the schema (topic put in optional, rating/themes put in required). Numbers were left unquoted."
+    },
+    {
+      "failure_type": "missing_implied_values",
+      "count": 4,
+      "description": "Constraints implied by the query were not mapped: country CA/uk, demo API key, enable list with verbose, number text, themesType."
+    }
+  ],
+  "patch": {
+    "reasoning": "Under-calling is the dominant failure across the batch, so the first edit adds a short per-clause checklist and spells out that sibling endpoints (stroke, grade, radical, meaning) are separate calls. The earlier long rule sets were rejected and may have hurt through side-effects, such as telling the agent to omit empty optionals or skip calls when a value is missing, and through sheer length. These edits are shorter, avoid those discouraging rules, and target only failures seen in the data: full 'Provider: API' names, schema-faithful placement, named-provider matching, and mapping every implied constraint to a parameter.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Rule 1: One call per action (stopping early is the most common failure)\n- Before answering, number every sentence/clause of the query as a checklist: each 'then / also / next / finally' clause, each list item, and each narrated past-tense step ('they looked up...', 'they retrieved...', 'they accessed...'). Every item that names a lookup, search, retrieval, check, draw, roll or conversion gets its own call. Your call count must be at least the checklist length.\n- Re-read the FIRST and LAST sentences before finalizing. Final clauses and middle clauses are dropped most often.\n- Different wordings usually map to different sibling endpoints of one provider, each needing its own call. For example 'kanji with N strokes', 'kanji of grade G', 'kanji with a radical meaning X', 'kanji meaning Y', 'radicals with N strokes' and 'study list' are all separate tools. 'Drawing cards' and 'rolling dice' are separate tools. Do not substitute one endpoint for a sibling.\n- If a clause names a source or provider (BBC, dev.to, Drillster, Pokédex, Epic Games Store), cover it with that provider's endpoint. If none exists, use the general by-source tool that takes the source as a parameter. Never skip the clause.\n- If a one-value tool must serve N listed entities (emails, IDs, domains), emit N calls."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 2: Output format and parameter placement\n- `tool name` = the full `Provider: API` string from the tool's `### ` heading (e.g. `Arabic news API: CNN Arabic`, never just `CNN Arabic`).\n- Every parameter is an object `{\"name\": \"x\", \"value\": \"y\"}`. Never emit bare names like `[\"rs\"]`, and never leave out the value. Write all values as quoted strings, including numbers (`\"16\"`, `\"true\"`).\n- Put each parameter in the list the schema gives it. Under 'Required parameters' it goes in `required parameters`. Under 'Optional parameters' it goes in `optional parameters`, even when it carries the query's main subject (count, rating, themes, country, text, all, X-RapidAPI-Key). Never move a required parameter to optional or the reverse. Use only parameter names the chosen tool lists.\n- Never repeat a parameter name inside one call. If a parameter takes several values, join them in one value, comma-separated or as array text like `[\"endgame\",\"promotion\"]` when the schema suggests it. If the query requires all of several themes, also set a companion mode parameter if the tool has one (e.g. themesType `ALL`).\n- Output ONE flat JSON list, bracket-balanced, closed with `]` then `</answer>`."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 3: Tool selection\n- Match the provider/product the query names (e.g. 'Pokédex' -> the Pokedex provider, not 'Pokemon Unite'). Then match the endpoint whose name and description mirror the query's verb, object and input type ('drill details' vs 'practice question' vs 'preferences'; 'Regular dice' for 'N dice'; 'Regular dice rolls' for 'N dice M times'; 'Cards' for several cards).\n- For email tasks, use one tool per check type: MX records, disposable/temporary, and general validity are different tools. Prefer a dedicated tool whose description literally names the check (e.g. 'Get the MX Records', 'Check for Disposable emails') over a generic validator. For a 'comprehensive validation (format, authenticity, legitimacy)' clause, use a validator whose description covers those checks.\n- For news from a named outlet with no dedicated endpoint (e.g. BBC), use the general news-by-source tool with the outlet id as source_id/source ('bbc'), not a topic-specific tool. Outlets that have dedicated endpoints each get their own call.\n- Ignore tools that create, delete, submit, authenticate, or generate temp accounts or fake data when the query only asks to look something up."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 4: Map every stated or implied constraint to a parameter\n- Fill every constraint the query states or clearly implies, using the chosen tool's own parameter names. Examples:\n  - 'for Canada' -> country `CA` (use the code format the description shows); 'UK region' -> `uk`\n  - 'level 3' -> level `3`; 'page 1' -> page `1`; 'grade 2' -> grade `2`; '7 strokes' -> `7`\n  - 'N random words' -> count `N`; 'minimum length 5' -> minLength `5`; 'between 5-10' -> minLength `5` and maxLength `10`\n  - 'draw 5 cards' -> pulls `5`; 'roll 4 dice' -> dice `4`; '3 times' -> rolls `3`\n  - 'rating of 1800', '5 puzzles' -> rating `1800`, count `5`\n  - 'with a demo key' -> the key parameter with value `demo`\n  - 'convert the number N to words' -> text `N`\n  - 'complete / all information' -> include the tool's `all` parameter (use `\"\"` if the query gives no value)\n  - 'verbose output that includes A, B, C' -> verbose `true` AND the enable-style parameter with the named items listed\n  - 'weekly' -> the type value in the form the schema lists\n- Copy IDs, names, numbers and Bible verses verbatim ('John 3:16'). For free-text search fields use the query's subject words without generic nouns the tool already implies (e.g. 'Japanese language learning' for a book-search tool).\n- Do not invent values or add optional parameters the query never implies."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

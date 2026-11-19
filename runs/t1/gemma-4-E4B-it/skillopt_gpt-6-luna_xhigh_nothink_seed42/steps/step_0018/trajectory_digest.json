@@ -1,0 +1,58 @@
+{
+  "step": 18,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 25,
+  "failure_patterns": [
+    {
+      "pattern": "cached_result_and_changed_scope_misuse: Agents repeated searches instead of filtering compatible cached results or acted on an unchanged domain while missing the latest request.",
+      "count": 25,
+      "task_ids": [
+        "hotel:train:8:33:2",
+        "restaurant:train:23:15:1",
+        "flighthotelrestaurant:train:8:34:3",
+        "attraction:train:9:34:1",
+        "hotelrestaurant:train:14:10:3",
+        "attraction:train:24:59:0",
+        "hotel:train:9:25:3",
+        "flighthotelattraction:train:3:40:1",
+        "hotelrestaurant:train:18:53:4",
+        "flight:train:10:18:3",
+        "hotelattraction:train:9:38:3",
+        "flighthotelrestaurant:train:15:1:3",
+        "flight:train:9:16:3",
+        "flighthotelattraction:train:10:53:3",
+        "flight:train:10:60:3",
+        "attraction:train:16:10:0",
+        "restaurant:train:13:41:2",
+        "flighthotel:train:16:1:1",
+        "flighthotelattraction:train:8:9:1",
+        "flight:train:22:18:2",
+        "flighthotel:train:20:16:1",
+        "flighthotel:train:9:39:6",
+        "hotelrestaurant:train:2:51:2",
+        "flighthotelattraction:train:12:30:3",
+        "flight:train:2:56:3"
+      ]
+    }
+  ],
+  "score_before": 0.405,
+  "score_after": 0.385,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "For hotels, `stars` means the property's star classification: “at least N stars” uses `stars=[N, 5]`, and exactly N stars uses `stars=[N, N]`. Use hotel `rating` only for guest-review scores; do not set it for a property-star request unless the user separately asks for a review-rating threshold. For restaurant ratings and hotel guest-review ratings, a minimum of N uses `rating=[N, 5]`; an explicitly exact rating uses `rating=[N, N]`.",
+      "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- A phrase such as “business trip” describes the purpose of travel, not the cabin or service class. Set `flight_class` only when the user explicitly specifies a flight class or cabin.\n- When a user asks for “a first flight” or a “first-class flight” as a fare preference, use `flight_class=[\"first\"]` on every described leg. Distinguish this from “the first flight” or “the earliest flight,” which refers to departure timing.",
+      "target": "Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to every described leg. If a filterable preference is supplied after compatible per-leg flight results are cached, retrieve and filter each affected leg separately rather than repeating its base search. Do not combine distinct legs by repeating keyword arguments in one call."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- When a hotel is explicitly requested for the same trip as a single-destination flight itinerary, use that destination as the hotel city if no other lodging city is indicated. If the user gives the trip's start and end dates for that stay, use them as check-in and checkout dates. Do not apply this inference to a multi-destination itinerary or when the conversation indicates a different hotel location; seek any still-missing mandatory details.",
+      "target": "- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs."
+    }
+  ]
+}

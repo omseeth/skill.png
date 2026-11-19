@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle",
+      "count": 5,
+      "description": "Fresh search results were emitted without binding the returned object and saving it to cache."
+    },
+    {
+      "failure_type": "cache_coverage_and_incremental_update",
+      "count": 3,
+      "description": "New hotel constraints were treated as already satisfied by cache entries that did not show those constraints."
+    },
+    {
+      "failure_type": "schema_location_mapping",
+      "count": 2,
+      "description": "A state abbreviation was passed as a city instead of using the attraction tool's state field."
+    },
+    {
+      "failure_type": "tool_schema_or_invocation",
+      "count": 2,
+      "description": "One trajectory used unsupported flight arguments and mishandled the return search; another imported unavailable tools and made unrelated calls."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly requires binding and saving tool results and validates flight arguments, so repeating those rules would not address a demonstrated gap. Clarifying that cache coverage needs affirmative evidence targets the missed hotel refinements; explicitly handling state abbreviations addresses both attraction searches.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.",
+        "content": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Treat a criterion as covered only when it is explicitly evidenced by the cache summary or the known search/filter call that produced that entry; do not infer coverage merely because a result exists for the same domain. Compare every pending criterion with that evidence, retrieve the latest compatible result, and refine any unmet criterion. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint."
+      },
+      {
+        "op": "replace",
+        "target": "For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`.",
+        "content": "For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. When the user supplies a state or state abbreviation as the attraction location, pass it in `state`, not `city`, preserving the supplied value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

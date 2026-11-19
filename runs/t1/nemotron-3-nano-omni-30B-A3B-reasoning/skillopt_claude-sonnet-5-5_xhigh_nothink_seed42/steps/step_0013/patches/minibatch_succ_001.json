@@ -1,0 +1,30 @@
+{
+  "batch_size": 6,
+  "success_patterns": [
+    "Four of six successes were single-call seek_information turns where mandatory args were missing: flight with no date plus wedding/layover context, or only a destination plus an occasion. The agent searched nothing and asked only for the missing mandatory item.",
+    "When the user's reply gave only an arrival date and deadline ('arrive on May 30, 2025 by 01:22 PM'), the agent still asked for the departure date. It did not treat the arrival date as departure_date.",
+    "A date pair for a round trip, plus a shared class preference, produced two assigned and saved search_flights calls with the class copied to both legs. This is already covered by Rule 9.",
+    "A bare numeric reply ('Around 30.') with a cached hotels key produced a three-line load, filter(budget=30) and save sequence with no re-search and no repeated filters. This is already covered by Rules 17 and 25."
+  ],
+  "patch": {
+    "reasoning": "Most successes confirm existing rules (seek_information-only turns, round-trip split, budget refinement). Two gaps remain. First, an arrival-only date or deadline can be mistaken for departure_date by the broad Rule 24 bullet. Second, layover preferences and a destination-plus-occasion opener with no domain are not listed as 'context, not a date'. These small additions keep seek_information-only turns clean without enlarging the skill much.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "a timing worry ('make sure we arrive on time')",
+        "content": "a timing worry ('make sure we arrive on time'), an arrival deadline ('I need to arrive by 1:22 PM'), a layover preference ('with a layover in St. Louis')"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 24: Dates, stay length and domain completeness (supplements Rules 6, 7, 9, 14)",
+        "content": "- Exception to the 'a date in the reply IS the departure_date' bullet below: a reply that gives only an ARRIVAL date or arrival time ('I need to arrive on May 30, 2025 by 01:22 PM') does not supply departure_date. departure_date is the mandatory arg, and arrival_date and arrival_time are optional. If no departure date was ever stated, output only `seek_information(\"We need the departure date for the flight.\")`. Do not call search_flights and do not move the arrival date into departure_date. If a departure date IS known and the user adds an arrival time or date, pass it as arrival_time / arrival_date on the search."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 7: Writing seek_information, including multi-domain requests",
+        "content": "- Opening turns that name only a destination plus an occasion ('a trip to Colorado Springs for my birthday', 'planning a trip from Anchorage to Las Vegas with a layover in St. Louis') have no complete domain. The whole output is ONE short seek_information call. Do not search, save or load anything. Ask only for the missing mandatory items: the departure date if flights are clearly implied (origin and destination given), otherwise the dates or the service needed (flight or hotel)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

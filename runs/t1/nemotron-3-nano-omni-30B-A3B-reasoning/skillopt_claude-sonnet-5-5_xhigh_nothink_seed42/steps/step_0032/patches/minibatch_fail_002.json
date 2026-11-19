@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_flight_legs",
+      "count": 2,
+      "description": "A class or time reply filtered only one of the cached flight keys (flights or departure_flights) and skipped return_flights."
+    },
+    {
+      "failure_type": "fabricated_or_placeholder_params",
+      "count": 3,
+      "description": "A placeholder city was written for a restaurant search with no city; num_people=4 was invented from 'family with kids'; num_people was omitted when the assistant's recap gave '4 people'."
+    },
+    {
+      "failure_type": "wrong_domain_refiltering",
+      "count": 1,
+      "description": "A hotel amenity reply also re-filtered flights with the earlier class and re-passed the pool and kids club already listed in the hotels summary."
+    },
+    {
+      "failure_type": "round_trip_syntax_error",
+      "count": 1,
+      "description": "A date reply 'depart X, return Y' produced one search_flights call with a bogus return_flights=departure_date kwarg (NameError) instead of two searches."
+    },
+    {
+      "failure_type": "state_vs_city",
+      "count": 1,
+      "description": "'a trip to CA' was written as city=\"CA\" instead of state=\"CA\"."
+    }
+  ],
+  "patch": {
+    "reasoning": "Two failures drop the return leg on a flight class or time reply, so edit 1 adds a mechanical two-block template covering every flight key. Three failures come from bad mandatory or optional params (a placeholder city, an invented num_people, a missed num_people), so edit 2 adds a short city/party-size gate beside the DATE GATE. One failure re-passes earlier constraints because Rule 2 says to include earlier-stated constraints the summary does not list. That clause contradicts the protected slow block, so edit 3 replaces it with 'new constraints only'. The round-trip NameError and the city=\"CA\" error are hygiene misses, so edit 4 adds one fixed four-line round-trip shape and a one-line state= reminder. Edits 1 and 4 are inserted at points that do not touch the -1 over-fire guard that the rejected previous step rewrote.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Conversely, when the last message is about hotels or restaurants, write no flight line.",
+        "content": "\n   - TWO-LEG CHECK (flight class / airline / time / ticket price replies): list every CACHE key that holds flights (e.g. 'flights' + 'return_flights', or 'departure_flights' + 'return_flights'). The output must contain one load/filter/save block per such key, with the identical kwarg in each block. Two flight keys means six lines. Stopping after the first leg is the most common error. Example shape: `a = get_results_from_cache(key=<first flight key>)`, `a2 = filter_flights(prior_results=a, <kwarg>)`, `save_to_cache(key=<unused name>, value=a2)`, then `b = get_results_from_cache(key=<second flight key>)`, `b2 = filter_flights(prior_results=b, <same kwarg>)`, `save_to_cache(key=<another unused name>, value=b2)`. A time-of-day phrase ('flexible, but preferably in the afternoon') is a flight time reply, so use departure_time on every leg. Hotel, restaurant and attraction replies still get zero flight lines."
+      },
+      {
+        "op": "insert_after",
+        "target": "search_flights never takes num_people or num_layovers.",
+        "content": "\n- CITY / PARTY-SIZE GATE: before search_restaurants, find the city literally in the conversation (the flight destination or hotel city counts). If there is none (e.g. only 'I'm gluten-free and want a restaurant'), the whole output is `seek_information(\"We need the city for the restaurant.\")`. Never write a placeholder such as city=\"<city>\". num_people / num_rooms come only from a NUMBER that appears in the conversation, in the user's words or in the assistant's recap (e.g. 'rooms for 4 people' -> num_people=4). Words like 'family', 'kids', 'anniversary' or 'couple' give no number, so omit num_people for them."
+      },
+      {
+        "op": "replace",
+        "target": "plus any earlier-stated constraint that the CACHE summary text (\"Additionally filtering for ...\" / search description) does not show as applied. Do NOT repeat filters or search parameters the summary already lists.",
+        "content": "and nothing else: every earlier turn (its search and each filter) is already inside the cached entry, so never re-pass an earlier amenity, stars, budget, class, cuisine or neighborhood, and never re-filter another domain's key (a hotel amenity reply touches only the hotels key)."
+      },
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- ROUND-TRIP SHAPE: when the user gives an outbound date and a return date for a flight ('depart X and return Y') and the origin and destination are known, write exactly these four lines using the dates as the user wrote them: `departure_flights = search_flights(start_airport_city=<origin>, end_airport_city=<destination>, departure_date=[<X>])`, `save_to_cache(key=\"departure_flights\", value=departure_flights)`, `return_flights = search_flights(start_airport_city=<destination>, end_airport_city=<origin>, departure_date=[<Y>])`, `save_to_cache(key=\"return_flights\", value=return_flights)`. search_flights has no return_flights, return_date or other keyword for the return, and no undefined variable may appear as an argument. Add a hotel or attraction search only if that domain was requested. A US state or two-letter code (CA, NV, OR...) always goes in state=, never city=."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

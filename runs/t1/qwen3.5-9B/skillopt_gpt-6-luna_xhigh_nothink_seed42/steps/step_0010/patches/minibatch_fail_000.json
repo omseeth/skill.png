@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "follow-up delta and cache lifecycle",
+      "count": 5,
+      "description": "Agents ignored new constraints, repeated completed domain work, or failed to save an updated result on follow-up turns."
+    },
+    {
+      "failure_type": "independent domain handling",
+      "count": 1,
+      "description": "A missing hotel date incorrectly blocked a restaurant search whose city and criteria were already available."
+    },
+    {
+      "failure_type": "tool schema mismatch",
+      "count": 1,
+      "description": "An amenity filter used paraphrased argument names instead of the exact identifiers accepted by the tool."
+    },
+    {
+      "failure_type": "location and prior-value fidelity",
+      "count": 2,
+      "description": "Agents misrouted a state abbreviation or failed to preserve earlier explicit constraints and complete location values."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits make the follow-up decision more operational, clarify that ready searches should proceed independently of blocked domains, and reinforce exact schema and location mappings. They address recurring errors without adding new tool behavior.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Return no-planning only when every requested or pending deliverable is already satisfied and the latest turn introduces no new request or constraint.",
+        "content": "Before returning no-planning, compare the latest user turn with each relevant cache summary. A new or changed constraint—including a brief answer to a clarification—that is not reflected in a result requires retrieving a suitable cached base and applying the same-domain filter, or making a fresh search if no suitable base exists and required inputs are available. Save every updated result under a fresh key; process outbound and return legs separately when applicable. When a fresh search is needed, carry forward all still-applicable explicit criteria from earlier turns. Do not repeat completed, unrelated domain work. Return no-planning only when there is no unmet request or new constraint."
+      },
+      {
+        "op": "replace",
+        "target": "Check required inputs independently by domain: seek missing information, but proceed with other requested searches whose inputs are available.",
+        "content": "Check required inputs independently for each requested domain. In an explicitly co-located request (for example, a hotel in a city and a nearby restaurant), reuse that city for each requested local search. A missing hotel check-in or check-out date must not block a restaurant search when its city and stated criteria are known. Ask only for required values missing for blocked domains, not for a location or date already supplied."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Learned rules",
+        "content": "\n- **Use exact schema field identifiers:** Translate natural-language requests to the exact argument names declared by the tool; do not invent shortened aliases. Preserve prefixes and suffixes such as `has_` and `_present` (for example, use `has_laundry_service=True` and `has_room_service=True` when those are the declared fields)."
+      },
+      {
+        "op": "replace",
+        "target": "Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value.",
+        "content": "Map cities to `city`, states or regions—including state abbreviations—to `state`, neighborhoods or named districts such as “Downtown [City]” to `neighborhood`, and airport codes to the corresponding airport-code field. Retain the full provided location name; do not put a state abbreviation in `city` or truncate a district name. A neighborhood or district preference is a location constraint, not a proximity request."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

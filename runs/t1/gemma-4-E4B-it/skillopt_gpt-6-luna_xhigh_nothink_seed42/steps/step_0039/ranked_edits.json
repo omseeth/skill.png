@@ -1,0 +1,26 @@
+{
+  "reasoning": "Prioritized the failure-driven turn classifier and its deduplication of lower-level cache guidance. Preserved the distinct failure insights on pending proximity follow-through, spending-range interpretation, airport identifiers, and event dates explicitly tied to flight arrival. Kept the success-driven canonical cache-key convention because it adds a separate, well-supported naming practice and aligns with the existing collision-avoidance guidance. No edits target the protected section. [optimizer-ranked: selected 2/8 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "content": "**Turn triage (before tool selection):** Resolve the latest turn against the full conversation, preceding assistant question or offer, and cache summary; identify only changed scopes.\n1. For a compatible cached scope, retrieve the most constrained compatible result by its exact key. Apply a filter and save only for new constraints and still-active constraints not already embodied in that result. Do not re-search, repeat an embodied filter, or regenerate unaffected domains or legs. If the user only accepts an offer to present already-covered recommendations, retrieve the result for use without refiltering or duplicate saving.\n2. An accepted offer activates its stated scope: use compatible cached data if it covers the scope; otherwise search only the genuinely new or uncovered scope with all active supported criteria. For an accepted or continuing proximity request, use compatible datasets with `search_nearest` rather than substituting a new category search; a generic affirmative implies proximity only when it was explicitly offered or requested.\n3. Validate mandatory inputs separately before each domain or leg action. If required details are missing, ask only for those details while continuing independent complete requests; do not guess or pass `None`.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Call `search_nearest` when the user explicitly requests or accepts proximity, including a clear spatial relation such as asking for restaurants near a hotel or a hotel with access to nearby attractions. Merely requesting a hotel and a restaurant recommendation, or independently mentioning a planned attraction visit in the same trip or city, does not imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "content": "\n- If the assistant offers to find one domain near another and asks a clarifying question to fulfill that offer (for example, asking about hotel amenities), a responsive answer supplies criteria within the pending proximity request. Retrieve compatible datasets, filter and save only the changed candidate set first, then run and save `search_nearest` with that updated result and the compatible unchanged counterpart. Do not use stale broader candidates or re-search an unaffected base scope.",
+      "support_count": 1,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 0 adds the broad precedence-based turn classifier the skill needs, reducing repeated cache and search mistakes across domains. Edit 3 closes a specific accepted-proximity-offer gap by requiring updated cached candidates to be filtered before running nearest; this complements rather than repeats the classifier.",
+    "selected_indices": [
+      0,
+      3
+    ]
+  }
+}

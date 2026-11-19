@@ -1,0 +1,45 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_planning_and_cache_scope",
+      "count": 7,
+      "description": "Agents repeated cached searches or refined unaffected domains, omitted newly actionable requests, or declared completion before pending work was handled."
+    },
+    {
+      "failure_type": "schema_argument_or_value_encoding",
+      "count": 6,
+      "description": "Agents used incorrect range endpoints, confused state with city, supplied invalid time formats, or passed an unsupported amenity argument."
+    },
+    {
+      "failure_type": "tool_call_plumbing",
+      "count": 5,
+      "description": "Agents omitted required result binding and cache saves or emitted no-op code instead of performing the requested tool actions."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch shows persistent failures to turn the full conversation into a complete, domain-scoped action list, despite existing general reminders. Replace the repeated opening audit/cache rules with an executable checklist that accounts for accepted offers, newly unblocked requests, all constraints, and completion. Clarify exact range encoding and flight-time formatting where concrete schema errors occurred, and add the missing room-service field mapping.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.\n- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. Interpret replies in the context of the assistant's concrete question or suggestion, not only their literal wording: a direct answer can supply the asked-for amenity or preference, and asking what is available after an area is suggested makes that area an actionable search target. A direct answer can also introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the reply says a criterion applies to “both,” apply it independently to every still-pending domain referenced in context (for example, hotels and restaurants), using each domain’s appropriate filter and latest compatible cached result; do not apply it only to the last-mentioned domain. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.\n- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.\n- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.",
+        "content": "- Resolve the latest reply against the immediately preceding assistant question and the full conversation. Build a checklist of every new or still-pending action by domain, target, location, and—where applicable—flight leg; treat direct answers and accepted suggestions as actionable when they add or confirm criteria. Apply “both” to each referenced pending domain and apply other valid criteria separately to each named location. An accepted offer requires the specific offered action; an accepted proximity offer requires `search_nearest`, while mere interest in a place does not.\n- Check readiness and cache coverage independently for each checklist item. For a changed preference, retrieve the latest exact listed compatible result and apply only the new constraint; search instead of filtering if no compatible base result exists and mandatory inputs are available. Leave unaffected domains alone, but re-check previously blocked items when a reply supplies information that makes them ready; handle every newly ready domain or leg. Ask once for missing mandatory inputs only for blocked items. Treat an item as complete only when its exact constraint is covered by a valid compatible cached result or has been applied by the required tool call. Bind and save each result-producing call as specified below.\n- Use `print(\"No planning needed\")` only when no requested action remains pending and valid cached results already cover every requested constraint."
+      },
+      {
+        "op": "replace",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "- Validate value encoding as well as argument names. For fields whose schema describes a range or minimum and maximum (such as hotel `stars`), an exact requested value x requires both endpoints: `[x, x]` (for example, exactly four stars is `stars=[4, 4]`). Do not use a singleton list for an exact range, widen it, or treat it as a minimum. Do not apply this endpoint rule to ordinary selection lists such as cuisines or attraction types. Follow the schema for non-exact bounds and do not invent endpoints."
+      },
+      {
+        "op": "append",
+        "content": "\n- Encode flight times in the format accepted by the tool, preserving AM/PM notation when provided (for example, an exact `12:22 PM` departure is `departure_time=[\"12:22 PM\", \"12:22 PM\"]`). Do not convert such times to `HH:MM:SS` or invent all-day time bounds when no time was requested."
+      },
+      {
+        "op": "replace",
+        "target": "- Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`.",
+        "content": "- Disambiguate hotel amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. Map “fitness center” to `has_fitness_class`, a literal request for a “gym” to `gym_present`, and “room service” to `has_room_service`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

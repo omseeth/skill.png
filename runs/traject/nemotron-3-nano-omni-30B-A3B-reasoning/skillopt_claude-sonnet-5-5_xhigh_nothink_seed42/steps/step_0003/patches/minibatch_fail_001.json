@@ -1,0 +1,53 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "dropped_clauses_under_coverage",
+      "count": 5,
+      "description": "The agent skipped whole parts of the query. It dropped the first search sentences and kept only the final aspects (traj 4), kept 2 of 10 requested actions (traj 5), skipped the final dev.to clause (traj 8), skipped per-city airport lookups (traj 3), and ran too few email and domain checks for 'comprehensive checks' (traj 2)."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 4,
+      "description": "The agent chose a tool that did not match the clause's noun or input type: airlineSearch for airport data, a city-name weather tool given coordinates, one disposable-check tool reused for every domain, and one validator reused for every email."
+    },
+    {
+      "failure_type": "over_calling_and_invented_values",
+      "count": 2,
+      "description": "The agent added unrequested calls (CheapShark, a D&D item tool for Pikachu, Steamcharts, Rocket League Club with an invented player name, heartbeat, inbox, free-provider and extra verifier calls). This produced 14-15 calls against a gold of 10."
+    },
+    {
+      "failure_type": "parameter_mapping_misses",
+      "count": 3,
+      "description": "Stated or implied constraints were not mapped to parameters: '5 dice' to dice, 'federal' to level_of_government, and reviews paging. Boolean values were emitted unquoted."
+    },
+    {
+      "failure_type": "output_format_error",
+      "count": 2,
+      "description": "Tool names were written as 'Provider — API' instead of 'Provider: API', and optional-parameter keys were omitted. One answer was also left without a closing </answer> tag."
+    }
+  ],
+  "patch": {
+    "reasoning": "The earlier rejected patches were long, 4-5 rule sets that scored below the empty-skill baseline, so this patch uses four compact, evidence-based rules. Each rule targets a failure seen again in this batch: format slips ('—' in tool names, missing keys and tags), dropped clauses (the most common failure), wrong or extra tool calls with invented values, and unmapped parameter constraints. The over-calling and under-calling rules are scoped by query type so they do not cancel each other: detailed narratives get strictly one call per sentence, while 'comprehensive' or high-level queries get every matching tool or platform endpoint. The rules avoid task-specific values and leave out unpredictable gold quirks such as default parameters and helper endpoints.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## 1. Output format (a malformed call scores zero)\n- `tool name` is the tool's `### ` heading copied exactly, in the form `Provider: API` (colon + space). Never use ' — ', never shorten it, never append the description.\n- Every call object has all three keys: `tool name`, `required parameters`, `optional parameters`. Use `[]` when empty and never omit a key.\n- Each parameter is `{\"name\": \"x\", \"value\": \"y\"}` and every value is a quoted string, including numbers and booleans (`\"5\"`, `\"true\"`).\n- Output ONE flat JSON list, and always close it with `]` followed by the `</answer>` tag.\n- Put each parameter in the list where the chosen tool's schema places it (Required vs Optional), and use only that tool's own parameter names."
+      },
+      {
+        "op": "append",
+        "content": "\n## 2. Cover every clause, in order\n- Before answering, split the query into atomic requests: every sentence, every then/also/finally/additionally clause, every list item, every narrated past-tense step ('I looked up...'), every named platform or provider, and every named aspect (images, reviews, financing, delivery, pricing, MX, SMTP, ...). Hedges like 'possibly' do not make an item optional.\n- Write at least one call per item, then re-read the FIRST and LAST sentences. Dropping the opening searches or the final clause is the most frequent failure. Never answer only the last-described part.\n- If a tool takes one value and the query names N entities (cities, domains, emails, SKUs, search terms), make N calls. 'Both locations' means two calls.\n- High-level queries ('compare options', 'explore alternatives on platforms X and Y', 'comprehensive checks') are not a license to stop at one or two calls. Give each named platform its own provider's search/suggestion endpoint(s), and give a named product each aspect endpoint the query lists. Count your calls against the checklist before finalizing."
+      },
+      {
+        "op": "append",
+        "content": "\n## 3. Pick tools by what each clause literally asks, and add nothing else\n- Match the clause's noun and verb to the tool's name and description. Airport data needs an airport tool, not an airline tool. 'MX records', 'SMTP', 'financing offers', 'delivery/home services', 'images', 'reviews', 'fake business email' and 'top of all time' each have a dedicated endpoint. Prefer it over a generic search.\n- The input type decides the tool. A domain needs a domain-level tool, and a full email needs an email-level tool. If a tool takes username and domain separately, split the email. If the query gives coordinates, use a tool whose field accepts lat/lon, not a city-name field.\n- A named game, platform or provider goes to its own tool. Never use another game's or service's tool just because it has a name-search field.\n- Every call must trace to a clause. Do not add unrelated tools from the list (status/heartbeat, inbox, bulk generators, other games, 'trending', 'club'-style extras), and do not run several different tools on the same item unless the query asks for several checks. Never invent a value (player name, id, email) to fill a required parameter. Skip that tool instead.\n- Exception: when the query asks for 'comprehensive', 'multiple' or 'various' checks on one subject (e.g. an email AND its domain), call every distinct tool whose description covers each check: the email-level disposable/validity checkers and the domain-level disposable, role-account and suggest-domain checks."
+      },
+      {
+        "op": "append",
+        "content": "\n## 4. Fill parameters from the query\n- Map every quantity, filter and qualifier in a clause to the matching parameter of the chosen tool. Scan the tool's optional parameters for each stated or implied constraint before finalizing. Examples: '5 dice rolled once' -> dice \"5\" and rolls \"1\"; 'limit 25' -> limit \"25\"; 'page 1, 10 results' -> page \"1\" and limit \"10\"; 'sorted by most helpful' -> sort_order HELPFUL; 'active federal politicians' -> active \"true\" plus the government-level parameter set to Federal; 'US sources' -> country; named outlets -> the publisher/source parameter.\n- The clause's subject keywords go verbatim into the search/name/query parameter. Copy IDs, SKUs, emails, domains and numbers exactly.\n- For enumerated or format-constrained parameters, use the values exactly as the description lists them.\n- Do not add parameters the query never states or implies, such as default language or currency, format flags, or empty or placeholder values."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

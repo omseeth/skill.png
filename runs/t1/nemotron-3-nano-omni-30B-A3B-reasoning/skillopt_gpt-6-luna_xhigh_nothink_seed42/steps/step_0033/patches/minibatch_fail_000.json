@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_or_misapplied_update",
+      "count": 7,
+      "description": "Latest constraints or still-pending actions were omitted or applied to the wrong target, domain, or flight leg."
+    },
+    {
+      "failure_type": "stale_or_unnecessary_tool_actions",
+      "count": 3,
+      "description": "Agents reused an outdated result or repeated and added unrelated searches, filters, or sorts instead of acting only on pending work."
+    },
+    {
+      "failure_type": "missing_result_persistence",
+      "count": 4,
+      "description": "Search or refinement results were not consistently bound and saved to cache."
+    },
+    {
+      "failure_type": "schema_or_mandatory_input_error",
+      "count": 3,
+      "description": "Calls used unsupported or inferred values, or proceeded without required information."
+    },
+    {
+      "failure_type": "unsupported_tool_import",
+      "count": 1,
+      "description": "A trajectory imported tools from an unavailable module instead of calling runtime-provided functions directly."
+    }
+  ],
+  "patch": {
+    "reasoning": "Sharpen the existing incremental-planning guidance into an explicit checklist so every pending constraint is handled once against the right result, and every blocked domain is treated separately. Clarify how alternative dates for one flight direction differ from a return leg, reinforce result persistence, and add the recurring exact hotel-field mapping for free parking. Existing guidance already prohibits tool imports, so no duplicate edit is needed there.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "- Before emitting code, enumerate every still-pending action from the full conversation, including the latest update, with a separate checklist item for each domain, target or location, and flight leg. List every applicable constraint and verify it is covered by a compatible result or an actual tool call. For each item, choose the appropriate path: retrieve a listed result if it already covers the request; retrieve the latest compatible result and filter only the new constraint; search with stated criteria if no compatible result exists and required inputs are explicit; otherwise ask once for missing mandatory inputs while proceeding with other ready items. Do not invent values, omit a ready item, repeat work on unchanged domains, or add unrelated searches, filters, sorts, or proximity calls. Use `print(\"No planning needed\")` only when no action remains pending and valid cached results cover the request."
+      },
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- Assign each cache retrieval to a local variable; do not nest `get_results_from_cache` inside another tool call. Bind the exact return value of every search, filter, sort, and nearest-results call to a variable and save it with `save_to_cache` under a unique, descriptive key before treating that action as complete. Save each refined result under a new key, including results for separate flight legs. Do not substitute hand-built dictionaries or redefined models for tool result objects."
+      },
+      {
+        "op": "replace",
+        "target": "- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. For alternative departure dates on the same directional leg, use one search with those alternatives in that leg’s `departure_date` list. Keep each return or other opposite-direction leg in its own search; do not combine dates across legs or invent arrival dates."
+      },
+      {
+        "op": "replace",
+        "target": "- Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`.",
+        "content": "- Disambiguate amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When supported by the hotel schema, map “fitness center” to `has_fitness_class`, a literal request for a “gym” to `gym_present`, and “free parking” to `has_free_parking`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

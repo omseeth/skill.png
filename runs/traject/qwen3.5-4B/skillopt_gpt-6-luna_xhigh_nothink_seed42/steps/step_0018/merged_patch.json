@@ -1,0 +1,29 @@
+{
+  "reasoning": "Kept the distinct call-level guidance on handling multiple named providers and requests for additional results, preserving random selection, and matching forecast horizon and cadence. Omitted the wrapper-only reminder because the existing final-validation guidance already requires the exact active wrapper and no extra text. Each retained edit is supported by one of the three source patches; none targets the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Deduplicate the call set: make one invocation per distinct requested operation and input unless the schema supports batching or the user requests repetition. Do not add related calls as extra checks. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint.",
+      "content": "- Deduplicate the call set: make one invocation per distinct requested operation and input unless the schema supports batching or the user requests repetition. When an action explicitly names multiple providers, create a distinct outcome for each named provider; a call to one source cannot fulfill another source's request. Treat explicit cues such as `again` or `recheck` as requests to repeat the relevant invocation even when its endpoint and subject are unchanged. For requests for more list results, use the next documented page or an appropriate documented result limit when available rather than repeating the same page. Do not add related calls as extra checks. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- For optional search-mode or entity-type selectors, use the documented choice that matches an entity class or mode clearly identified in the request, even if the user did not phrase it as a filter. Do not choose an arbitrary restrictive value for another selector dimension the user left unspecified; omit it, or use a documented all/any value only when needed to express the requested scope.",
+      "content": "\n- For random draws or selections, omit optional outcome selectors that would predetermine the result (for example, a specific suit or card value); use a documented unrestricted value only if the endpoint requires a selector.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Check temporal scope explicitly: current conditions are not forecasts, and location-specific active alerts are not aggregate alert counts. When coordinates are supplied and a matching coordinate-based endpoint exists, use it rather than inferring a city or changing the location form.",
+      "content": "- Check temporal scope and resolution explicitly: current conditions are not forecasts, and location-specific active alerts are not aggregate alert counts. Treat a requested forecast horizon and cadence as result-granularity constraints: an hourly or short-range endpoint does not fulfill a multi-day forecast when a matching multi-day operation is available, and do not extend an endpoint beyond its documented horizon. When coordinates are supplied and a matching coordinate-based endpoint exists, use it rather than inferring a city or changing the location form.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

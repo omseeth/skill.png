@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_cache_or_scope_error",
+      "count": 6,
+      "description": "Agents missed or misapplied pending updates, selected an unsuitable cached result, or reprocessed unrelated domains."
+    },
+    {
+      "failure_type": "missing_tool_result_persistence",
+      "count": 3,
+      "description": "Search results were not consistently bound and saved to cache."
+    },
+    {
+      "failure_type": "invalid_tool_execution",
+      "count": 2,
+      "description": "Generated code redefined models or called a filter without valid prior results."
+    },
+    {
+      "failure_type": "one_sided_range_encoding",
+      "count": 1,
+      "description": "A minimum rating was encoded as a singleton instead of a supported lower/upper pair."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most recurrent misses occur when choosing what action a turn requires: agents repeat covered work, use a base result instead of the latest compatible refinement, or overlook ready and still-pending items. Replacing the existing cache-selection rule with a per-item decision sequence makes those branches explicit. A separate value-encoding clarification addresses the singleton rating-range error. Existing instructions already cover saving tool results and avoiding imports or model redefinitions, so they are not duplicated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "- For each affected or still-pending item, compare the exact target, domain, location or flight leg, and every prior and new criterion against the listed cache summaries, then choose one path: (1) If a compatible result covers the complete request and results are expected, retrieve it by its exact listed key and use it; (2) if it covers earlier criteria but lacks new constraints, retrieve the latest compatible result that preserves those criteria and apply every missing delta, passing it as `prior_results` when required; (3) if no compatible result exists, search with the applicable stated criteria only when all mandatory inputs are available. Assess items independently: leave satisfied, unchanged domains alone, proceed with ready items even if others are blocked, and ask once for missing mandatory inputs across blocked items. Do not filter without compatible prior results, repeat covered filters, or rely on variables from earlier executions."
+      },
+      {
+        "op": "replace",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint pairs, encode an exact value x as `[x, x]`; for a one-sided threshold, include both endpoints using the tool's documented scale bounds (for example, a minimum x is `[x, upper_bound]` and a maximum x is `[lower_bound, x]`), never a singleton list. For approximate price or budget phrasing such as “around x,” use x as the supported maximum budget when the tool provides a budget cap rather than an interval. Follow the schema for other bounds and do not invent undocumented endpoints."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

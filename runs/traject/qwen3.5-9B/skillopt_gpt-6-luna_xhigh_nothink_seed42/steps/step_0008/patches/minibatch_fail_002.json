@@ -1,0 +1,25 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_request_coverage",
+      "count": 4,
+      "description": "Explicit deliverables or facets were omitted or left unbound, including geographic scope, search filters, a forecast, and company overview metrics."
+    },
+    {
+      "failure_type": "endpoint_or_parameter_mismatch",
+      "count": 2,
+      "description": "Endpoint or field choices failed to preserve requested product-search constraints or the hierarchy of geographic selectors."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already calls for decomposing requests and checking coverage, but the failures suggest that broad checks are not reliably catching lost facets or constraints. A concrete coverage ledger makes those checks auditable while retaining the rule against redundant calls: a facet counts as covered only when the endpoint explicitly documents that result and scope.",
+    "edits": [
+      {
+        "insert_after": "- Break the request into distinct operations and match each to an endpoint by its documented capability and parameter schema—not merely by provider or broad topic. Use the exact full tool identifier from the available-tools list. Do not substitute a tangential endpoint or call several similar alternatives for the same requested result.",
+        "content": "\n- Before selecting calls, make a coverage ledger: list each requested result and its explicit constraints and facets (for example, geographic levels, time horizon, price or shipping filters, and requested metrics). Map each entry to the endpoint and schema field that provides it. Count an entry as covered only when the endpoint documents that exact result and scope; related or adjacent data do not suffice. If no single endpoint covers every entry, use separate appropriate calls. In the final audit, verify that every ledger entry is covered and every requested constraint is bound to a supported field."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

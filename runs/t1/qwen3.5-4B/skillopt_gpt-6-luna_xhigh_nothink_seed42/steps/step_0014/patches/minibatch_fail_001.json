@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_lifecycle_after_conversational_narrowing",
+      "count": 5,
+      "description": "Agents treated follow-up answers adding locations or amenities as no-ops, or searched anew instead of narrowing compatible cached results."
+    },
+    {
+      "failure_type": "tool_namespace_import",
+      "count": 3,
+      "description": "Agents imported tools from a nonexistent module despite the existing instruction to call injected functions directly."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache guidance already covers filtering in general, but the affirmation rule only mentions carrying forward entities or categories. Make explicit that answers to follow-up questions can add active location or preference criteria, and that these criteria require updating a compatible cached result. The import failures are already directly prohibited by the skill, so no duplicative edit is warranted.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve each reply against the immediately preceding assistant question or proposal. Treat an answer that specifies or accepts a city, neighborhood, rating, amenity, or other filterable preference as a new active criterion, including brief affirmations accepting criteria proposed by the assistant. If a compatible cached result does not already satisfy that criterion, retrieve the closest compatible result, filter on only the newly added criteria, and save the update; do not use “No planning needed.” If the user names multiple locations to narrow a broad cached result, create a separate filter result for each location from that compatible result rather than starting a new search."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

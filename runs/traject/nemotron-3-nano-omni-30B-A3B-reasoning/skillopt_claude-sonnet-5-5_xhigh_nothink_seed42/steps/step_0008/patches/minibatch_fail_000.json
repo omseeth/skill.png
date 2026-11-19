@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_name_format",
+      "count": 2,
+      "description": "Tool name was the provider tagline line (T5) or dropped the `Provider:` prefix (`BestBuyProductData`, T8), so the call cannot match."
+    },
+    {
+      "failure_type": "wrong_sibling_tool",
+      "count": 5,
+      "description": "Picked a tool matching the topic rather than the query's wording. Format-only validator for 'deliverable' (T1), unrelated disposable or deliverability tools (T1, T7), Asos countries/list instead of auto-complete for a search (T8), Airbnb lat/lng instead of administrative divisions (T5)."
+    },
+    {
+      "failure_type": "missing_calls",
+      "count": 2,
+      "description": "Long or enumerated queries were under-covered. Only 2 of 10 calls in T4 (delivery services, financing, platform searches skipped); the Aliexpress store search was missed in T6. T8 also duplicated a search."
+    },
+    {
+      "failure_type": "parameter_values",
+      "count": 4,
+      "description": "Wrong or missing values: state=Lazio instead of country code IT with admin1..3 (T3, T5), UK instead of GB, missing lang/country/currency for Asos (T6, T8), missing filter=baseRegion (T6)."
+    },
+    {
+      "failure_type": "format_parse",
+      "count": 2,
+      "description": "Stray `}],{` closed the list early, giving a parse failure with zero predictions (T3), and a bare-string optional parameter list (T5)."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent unsolved failures are (a) tool names not copied as `Provider: API`, (b) picking a sibling endpoint that does not match the query's own wording, (c) dropping calls in long, enumerated queries, and (d) predictable parameter-value conventions (Airbnb admin hierarchy, UK->GB, Asos market fields). Earlier large multi-rule edits were rejected, so these four edits are short and use concrete examples taken from these failures. The bracket fix is a one-line sharpening of an existing rule, since a single stray `]` scores zero.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+        "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely (wrong: `BestBuyProductData`; right: `BestBuy Product Data: BestBuyProductData`). The name is the `### ` heading text only. Never paste the `Provider:` description line (the tagline after ` — `)."
+      },
+      {
+        "op": "replace",
+        "target": "Do not close the list early or leave stray brackets.",
+        "content": "Do not close the list early or leave stray brackets. Calls are separated only by `}, {`, never `}],{` or `], [`, and the single `]` comes after the last object. Parameter lists hold only `{\"name\": ..., \"value\": ...}` objects, never bare strings (`[\"Airplane data in json format\"]` is wrong; an endpoint name is not a parameter). Cover every clause, then close with `}]</answer>`."
+      },
+      {
+        "op": "insert_after",
+        "target": "'generate a fake business email' -> `Email API: Get Fake Email Address`).",
+        "content": "\n- Match the query's own words to the endpoint descriptions, not just the topic. 'Deliverable', 'working', 'really exists' -> a tool whose description says deliverable, working or SMTP, not a format-only syntax checker (`Check Valid Emails`, `Bulk Email Syntax Check`). 'Disposable or temporary' -> a tool whose description says it detects disposable or temporary addresses, not a generator. 'Valid and disposable' -> a tool whose description covers both. If the MX or SMTP endpoint you chose belongs to a provider that also has a disposable-check endpoint, use that sibling for the disposable clause.\n- 'Searching for X on <retailer>' -> that retailer's search or auto-complete endpoint (`Asos: v2/auto-complete`, `Wayfair: products/search`), not its countries or categories list. 'On Wayfair and BestBuy' means one search call each, with no duplicate calls.\n- Airbnb counts where the query names a country, region, area or city -> `Count Listings by administrative divisions`, not lat/lng or market. Use `state` = ISO country code (Italy -> `IT`), `admin1` = region (`Lazio`), `admin2` = province or metropolitan area (`Citta metropolitana di Roma Capitale`), `admin3` = city (`Roma`), plus `bedrooms` and `maxGuestCapacity`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+        "content": "\n- In enumerated or narrative queries every noun phrase gets its own call, and later sentences are as real as the first. Example: 'images, reviews, delivery services, financing options for SKU X' -> get-images, reviews/list, get-home-services, get-financing-offers. 'Alternatives on other platforms like Aliexpress and Asos' -> a search call on each named platform, plus the host retailer's own search or auto-complete. 'A store (storeId, sellerId)' -> the store item-search endpoint with both ids. 'Available base regions' -> `User Basic Parameters` with `filter`=`baseRegion`.\n- Market values: 'US and UK markets' -> two calls. US -> country `US`, lang `en-US`, currency `USD`, store `US`. UK -> country `GB` (not `UK`), lang `en-GB`, currency `GBP`. Fill whichever of country, lang, currency and store the tool offers. For Asos with no market stated, use the US values."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

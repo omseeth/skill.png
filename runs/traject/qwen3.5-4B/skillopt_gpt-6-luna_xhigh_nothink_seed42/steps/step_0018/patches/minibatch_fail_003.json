@@ -1,0 +1,36 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "coverage_omission",
+      "count": 3,
+      "description": "Collapsed explicit parallel-provider or repeated actions, omitting a requested provider call or recheck."
+    },
+    {
+      "failure_type": "endpoint_granularity",
+      "count": 1,
+      "description": "Used an hourly ski forecast endpoint for a requested seven-day forecast despite an available seven-day operation."
+    },
+    {
+      "failure_type": "argument_mapping",
+      "count": 4,
+      "description": "Dropped or mis-mapped supported arguments, including page progression, market constraints, search text, locale, and parameter placement."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify how to expand explicit multi-provider requests and repetition cues, including pagination for requests for more results. Make forecast horizon and cadence explicit endpoint-eligibility constraints. The other argument errors are already addressed by the skill’s schema and constraint-mapping rules, so they do not warrant duplicative edits.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Deduplicate the call set: make one invocation per distinct requested operation and input unless the schema supports batching or the user requests repetition. Do not add related calls as extra checks. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint.",
+        "content": "- Deduplicate the call set: make one invocation per distinct requested operation and input unless the schema supports batching or the user requests repetition. When an action explicitly names multiple providers (for example, a search on both providers), instantiate the outcome for each named provider; one source call cannot fulfill another source's result. Treat cues such as “again,” “recheck,” or “more” as explicit requests for another invocation, even when the endpoint and subject are unchanged. For a paginated list, map “more” or “next” to the next documented page when applicable. Do not add related calls as extra checks. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint."
+      },
+      {
+        "op": "replace",
+        "target": "- Check temporal scope explicitly: current conditions are not forecasts, and location-specific active alerts are not aggregate alert counts. When coordinates are supplied and a matching coordinate-based endpoint exists, use it rather than inferring a city or changing the location form.",
+        "content": "- Check temporal scope and resolution explicitly: current conditions are not forecasts, and location-specific active alerts are not aggregate alert counts. Treat a requested forecast horizon and cadence as result-granularity constraints: an hourly or short-range endpoint does not fulfill a multi-day forecast when a matching multi-day operation is available, and do not extend an endpoint beyond its documented horizon. When coordinates are supplied and a matching coordinate-based endpoint exists, use it rather than inferring a city or changing the location form."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

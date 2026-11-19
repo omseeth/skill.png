@@ -1,0 +1,47 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_lifecycle",
+      "count": 7,
+      "description": "Agents often omitted saving results or failed to retrieve and incrementally filter relevant cached results on follow-up turns."
+    },
+    {
+      "failure_type": "round_trip_flight_handling",
+      "count": 3,
+      "description": "Agents omitted the return leg or encoded its date as an arrival date instead of a separate flight departure date."
+    },
+    {
+      "failure_type": "scope_overreach",
+      "count": 3,
+      "description": "Agents called unrelated domain tools or nearest-result operations that the user had not requested."
+    },
+    {
+      "failure_type": "tool_schema_and_runtime_misuse",
+      "count": 2,
+      "description": "Agents used unsupported tool arguments or imported/redefined runtime-provided models."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill is still empty, and these operational errors recur across the batch. Focused rules clarify cache continuation, separate round-trip legs, requested-domain scope, and runtime schema discipline.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n- **Continue work through the cache:** Assign and save each new search or filter result under a fresh, relevant key. On a follow-up, retrieve the best matching cached results and apply only the newly requested constraints with the appropriate filter tool; save the filtered result rather than repeating the base search."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Search round-trip flights as separate legs:** Search outbound from origin to destination using the outbound date, then search the return from destination to origin using the return date as that leg's `departure_date`. Do not treat the return date as the outbound `arrival_date`; preserve the dates as stated by the user."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Keep tool calls within the requested scope:** Use only domains explicitly requested in the conversation; a destination or task category alone does not request hotels, restaurants, or attractions. Search for a named attraction when requested, but use `search_nearest` only when the user asks for proximity."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Follow the runtime tool schemas exactly:** Call the provided tools directly without imports or model redefinitions, and pass only supported arguments. Do not pass traveler counts to flight tools or invent optional criteria."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

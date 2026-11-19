@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_call_persistence",
+      "count": 4,
+      "description": "Searches, filters, and cache retrievals were left bare, nested, unsaved, or based on variables from an earlier turn."
+    },
+    {
+      "failure_type": "missing_input_handling",
+      "count": 3,
+      "description": "Hotel searches invented stay dates or asked for an input that was already known instead of seeking only the genuinely missing date."
+    },
+    {
+      "failure_type": "scope_and_independent_domain_handling",
+      "count": 3,
+      "description": "Agents inferred an unrequested hotel search or failed to complete a ready restaurant request while hotel information was missing."
+    },
+    {
+      "failure_type": "criterion_mapping",
+      "count": 1,
+      "description": "A stated restaurant cuisine was omitted from the search criteria."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already gives detailed cache-persistence and independent-input instructions, so repeating them would not address the demonstrated gap. These edits clarify three less explicit decision points: party size does not itself request lodging, cuisine names map to the restaurant cuisine field, and a flight departure date cannot establish a hotel checkout date.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not infer unspoken counts or pass traveler counts to flight tools.",
+        "content": "A party size or flight itinerary does not by itself request a hotel search; use `num_people` only when lodging is independently requested. For restaurant searches, map a stated food cuisine directly to the `cuisine` list (for example, “Italian restaurants” means `cuisine=[\"Italian\"]`) and include it with other explicit criteria in the initial search."
+      },
+      {
+        "op": "insert_after",
+        "target": "Use `adjust_date` only to compute checkout from an explicit trip start date and stated number of hotel nights.",
+        "content": "For a hotel requested as part of an ongoing flight itinerary, a known flight departure date may anchor check-in when the context clearly applies, but it does not establish checkout. Ask for checkout unless the user gave an explicit stay end date or hotel-night count."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

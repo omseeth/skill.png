@@ -1,0 +1,48 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "extra_or_redundant_calls",
+      "count": 3,
+      "description": "Agent added hedge or stacked calls no clause asked for: Numbers random fact, Spotify New releases for the Indonesia radio clause, and Bouncer plus Validate_Email plus disposable-domain tools instead of the one Email Checker that covers 'valid and disposable'."
+    },
+    {
+      "failure_type": "missing_implied_optional_params",
+      "count": 3,
+      "description": "Query qualifiers were not mapped to optional parameters that exist: 'recorded after January 2017' -> from_record_date, 'first page' -> page=1, 'Indonesia' -> keyword, and by=Group Name."
+    },
+    {
+      "failure_type": "value_format_case",
+      "count": 3,
+      "description": "Code, slug and type values were given in the wrong form. Gold uses lowercase: region 'us', type 'english', slug 'yuval_noah_harari' (the agent wrote hyphens), composer 'bellman'."
+    },
+    {
+      "failure_type": "malformed_call_json",
+      "count": 2,
+      "description": "The 'optional parameters' key was omitted in one answer, and in another a call had a duplicate 'optional parameters' key, so the composer value was lost."
+    }
+  ],
+  "patch": {
+    "reasoning": "Earlier rejected patches added long rule sets that probably made the agent over-think and drift. This patch is four short rules aimed at the failures seen here. One covers call-object structure (a missing or duplicated key lost values). One covers mapping every query qualifier to a matching optional parameter. One covers lowercase code and slug values. One covers not stacking redundant tools or adding calls with no matching clause.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Call structure\n- Every call object has exactly three keys, each appearing ONCE: `tool name`, `required parameters`, `optional parameters`. Always include all three, using `[]` when empty.\n- Put ALL optional parameters for a call in the single `optional parameters` list. A repeated key overwrites the first and loses values.\n- Place each parameter where the tool schema lists it. A name under 'Optional parameters' goes in `optional parameters`, even when it carries the query's main input (e.g. `composer`)."
+      },
+      {
+        "op": "append",
+        "content": "\n## Map every query qualifier to a parameter\n- For each call, check every qualifier in its clause (page, count, date bound, language, country or place, duration, sort, category) against the tool's optional parameters. If a parameter fits, include it. 'Include optionals only when the query asks' still means include them whenever the query states or implies a value.\n  - 'first page' -> page `1`.\n  - '10 per page' -> per_page `10`.\n  - 'at least 5 minutes' -> min_duration `300` (seconds).\n  - 'recorded after January 2017' -> from_record_date `2017-01-01`. Use the date field that matches the verb (recorded vs published).\n  - 'subtitles in Hebrew' -> subtitle_lang `he`.\n  - 'stations in Indonesia' -> a keyword or filter parameter such as `keyword`=`Indonesia`, when the tool has one.\n  - A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).\n- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound)."
+      },
+      {
+        "op": "append",
+        "content": "\n## Value formats\n- Copy IDs, SKUs, emails, domains, URLs, numbers and search text (`q`, `query`) verbatim from the query.\n- For fields that take a code, slug, category, region or type and have no listed options, use the lowercase form: region `us`, type `english`, language `he`. Multi-word slugs use lowercase with underscores (`yuval_noah_harari`, not `yuval-noah-harari`). Lowercase the value for a name-style filter such as `composer` too.\n- If the schema lists options or shows an example format, copy that exactly.\n- Write every value as a quoted string."
+      },
+      {
+        "op": "append",
+        "content": "\n## One call per clause, no extras\n- Make a short checklist of the query's requests. Each request gets exactly one call from the single tool whose name and description best match it. Every call must trace to a clause.\n- When one clause asks for two properties of the same input ('valid AND disposable'), choose the ONE tool whose description covers both (e.g. a checker described as 'valid and disposable'). Do not stack several validators on the same check. Do not add a second tool for a check that another clause already covers.\n- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names. Never pick a tool just because a parameter value fits (e.g. a country code). Pick the tool whose function matches the request (radio stations in a country -> the radio-stations tool, not a Spotify tool).\n- N distinct entities for a one-value tool means N calls. The same entity needing different checks (domain availability vs disposable) means one call per check, each with its own matching tool."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

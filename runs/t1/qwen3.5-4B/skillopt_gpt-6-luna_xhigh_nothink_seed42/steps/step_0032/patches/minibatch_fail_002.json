@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_persistence_omission",
+      "count": 7,
+      "description": "Generated search or filter results were not consistently assigned and saved to cache."
+    },
+    {
+      "failure_type": "cached_followup_not_reused",
+      "count": 1,
+      "description": "A new time preference triggered a fresh flight search instead of filtering each compatible cached itinerary leg."
+    },
+    {
+      "failure_type": "trip_date_duration_mapping",
+      "count": 1,
+      "description": "A flight date and hotel duration in the same trip context were treated as missing hotel dates."
+    },
+    {
+      "failure_type": "unsupported_preference_inference",
+      "count": 1,
+      "description": "Unstated restaurant budgets, ratings, and dietary options were inferred from the party context."
+    },
+    {
+      "failure_type": "location_slot_misclassification",
+      "count": 1,
+      "description": "A state abbreviation was passed as an attraction city rather than in the state field."
+    },
+    {
+      "failure_type": "incomplete_domain_and_cache_scope",
+      "count": 1,
+      "description": "A hotel request missing dates was treated as a no-op while unrelated cached attractions were retrieved and resaved."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most trajectories already violate existing cache instructions, so make result persistence operational in generated code and clarify the multi-leg follow-up case without broadening actions to unrelated domains. Add narrowly scoped guidance for the trip-date/duration combination and for avoiding inferred optional restaurant filters. Existing state-field and missing-required-input guidance already covers the remaining cases.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result.",
+        "content": "If the user adds a criterion to an existing request, retrieve compatible cached results for only that domain and apply only the new criterion. When the request has multiple explicitly requested itinerary legs and the criterion applies to each, filter each leg's compatible results separately rather than launching replacement searches."
+      },
+      {
+        "op": "replace",
+        "target": "Save each newly generated search or transformation result under a unique cache key.",
+        "content": "In generated code, assign every results-producing search, filter, sort, or `search_nearest` call to a variable, then immediately call `save_to_cache(key=<unique key>, value=<that variable>)`. Save each newly generated result separately; do not create a new result by merely retrieving and resaving an unchanged cached item."
+      },
+      {
+        "op": "insert_after",
+        "target": "When a hotel stay is given as a check-in date plus an unambiguous duration in nights rather than a checkout date, call `adjust_date(date=<check-in date>, delta_days=<number of nights>)` and use its returned date as checkout; do not treat the duration as missing.",
+        "content": "When a user explicitly requests both a flight to a destination and a hotel there, and gives the trip or flight start date together with the hotel duration without specifying a different lodging start, use that stated start date as hotel check-in and calculate checkout from the duration."
+      },
+      {
+        "op": "replace",
+        "target": "Do not infer party size, room count, or specific amenities from broad suitability requests.",
+        "content": "Do not infer party size, room count, budget, rating, cuisine, dietary options, or specific amenities from broad suitability requests or contextual details such as an event or guest count. Pass optional criteria only when the user explicitly states them or unambiguously requests them and the tool schema supports them."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

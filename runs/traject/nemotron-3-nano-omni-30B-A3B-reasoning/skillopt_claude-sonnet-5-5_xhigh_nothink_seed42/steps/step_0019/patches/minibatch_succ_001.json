@@ -1,0 +1,32 @@
+{
+  "batch_size": 7,
+  "success_patterns": [
+    "Every passing answer used the one-object-per-line layout. Each object had its three keys once, mid-answer lines ended `]},`, and the last line was followed by `]</answer>`. All 7 parsed cleanly.",
+    "Tool names were copied as `Provider: Endpoint` from the `### ` heading. This held for odd headings such as `Priceline com Provider: Download states`, `Urban Dictionary: Define a Word / Search` and `Learn to read and write Japanese kanji: Study list (Macquarie)`.",
+    "One call per distinct entity or facet with the same tool. Examples: Epic Games Free Games for US and DE; Auto Suggest for Bangkok, Lisbon and Medellin; three separate email checks on one address; seven numbered clauses giving seven calls.",
+    "Qualifiers in a clause were mapped to the schema's optional fields: 'first page, 10 per page' -> page=1, pageSize=10; 'limited to 100' -> limit=100; 'Majora, 25 games' -> name, limit; 'starts with / ends with' -> startsWith, endsWith; 'begins with p, 4-7 letters' -> beginsWith, minLength, maxLength.",
+    "Query wording was converted to the format the schema expects: 'Germany' -> country `DE`, 'June 21st' -> month `6` and day `21`, 'American Airlines (AA)' -> ident `AA`, and 'seasonal challenges' filled the required enum `type`=`seasonal`.",
+    "The sibling whose input or verb matched the clause was chosen: 'puzzle with ID' -> `Puzzle by Id`, 'regular dice' -> `Regular dice`, 'gaming author' -> `Author Search`. No padding calls were added."
+  ],
+  "patch": {
+    "reasoning": "All 7 trajectories passed, so the layout, naming and per-entity rules already work and should not be touched. Three small gaps recurred. First, converting query wording into the schema's value format (country name to code, month name to number, parenthesised code to identifier) shows up in 3 of 7 successes. It is only implicit in the skill today. Second, the existing 'Several dice -> Custom dice' rule could mislead on 'roll 5 regular dice', which passed only because the tool list was unambiguous. Third, an ID-bearing clause should pick the by-ID sibling, which the chess puzzle task showed. Each edit is one short sentence with a before/after example and no new top-level section, in line with the budget guidance.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Copy values verbatim from the query.",
+        "content": "\n- VALUE FORMAT FOLLOWS THE PARAM DESCRIPTION. When the schema text shows a format, convert the query's wording to it: country names -> the listed code ('Germany' with `country` described as 'E.g, ES, DE, US' -> `DE`; 'the US' -> `US`); month names -> numbers ('June 21st' -> `month`=`6`, `day`=`21`); a code in parentheses is the identifier ('American Airlines (AA)' -> `ident`=`AA`); an enum word in the clause fills a required enum ('seasonal challenges' -> `Rocket League: Challenges`, `type`=`seasonal`). 'Both the US and Germany' is one call per country, each with its own code."
+      },
+      {
+        "op": "replace",
+        "target": "Several dice -> `Custom dice`, one die -> `Custom die`.",
+        "content": "'Regular dice' (no side count) -> `Dice Roll Simulator: Regular dice` with `dice`=`5`; several dice with a stated side count -> `Custom dice`, one die -> `Custom die`."
+      },
+      {
+        "op": "replace",
+        "target": "`Chess Puzzles: Puzzles` with `rating`=`1500`, `count`=`1`.",
+        "content": "`Chess Puzzles: Puzzles` with `rating`=`1500`, `count`=`1`. But 'the puzzle with ID HxxIU' -> `Chess Puzzles: Puzzle by Id` with `id`=`HxxIU` (in its OPTIONAL list), not `Puzzles`."
+      }
+    ]
+  },
+  "source_type": "success"
+}

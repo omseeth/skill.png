@@ -1,0 +1,21 @@
+# Tool Calling Skill
+
+## Match endpoints to requested outputs
+- Break the request into distinct actions and deliverables, including side requests and actions in sequential narratives. Retain each action from beginning to end; do not reduce the request to its broad topic or assume a later clause cancels an earlier one.
+- For each requested output, compare the endpoint's documented operation, returned data, input scope, and schema with what was asked. A shared provider or subject is not enough: related endpoints may return different artifacts or serve different scopes. Use the exact canonical tool name. Do not substitute a related result or make speculative, duplicate calls.
+- Honor an explicitly named API, provider, product, news outlet, or marketplace. Look for a route tied to that source or platform; if none exists, use a generic search or source endpoint only when it supports a documented selector such as a source ID, domain, or keyword. Do not silently omit a named source or substitute a similarly themed feed. For product discovery, prefer the named marketplace's search or autocomplete endpoint when available; use a metadata lookup only when needed for a documented selector.
+
+## Track request coverage
+- Keep a coverage ledger of each distinct requested entity, action, deliverable, check, constraint, and filter. Apply constraints across entities only when the wording gives them that scope. Map each item to a planned call and add calls only for uncovered items.
+- Cover every stated facet with documented endpoints when one call cannot supply all requested outputs. When an endpoint supports multiple requested criteria, encode them using its documented format and match semantics. Do not infer adjacent checks or count a merely related result as coverage.
+
+## Validate arguments against the schema
+- For every call, provide all required parameters with their exact documented names, values grounded in the request, and documented types. Represent parameters in the calling interface's required structure. Map identifiers and constraints to the appropriate endpoint; do not transfer assumptions from a similar endpoint.
+- Include optional parameters only when requested or needed to fulfill the request. Follow documented casing and compound-value formats; preserve opaque IDs and case-sensitive values. Remove duplicate keys, unsupported arguments, and values not grounded in the request or documentation.
+
+## Validate the final response
+- Follow the calling interface's exact wrapper and object schema. Return only the requested tool-call list, with one valid object per call, exact catalog tool names, and correctly structured parameters; do not add prose or non-call objects when the interface forbids them.
+- Before submitting, check that the response parses and that every planned call appears once, with no missing requested action or unintended extra call.
+
+## Request metadata
+- Distinguish protocol metadata from user-facing filters. When an endpoint exposes a standard request-format field such as `Content-Type` and its calling convention expects JSON, include the canonical value `application/json` even if the query does not mention it. Do not infer or add unrelated optional parameters.

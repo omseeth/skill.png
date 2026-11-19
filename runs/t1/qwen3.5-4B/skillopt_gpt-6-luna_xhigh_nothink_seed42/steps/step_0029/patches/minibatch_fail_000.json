@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_domain_execution_and_date_handling",
+      "count": 3,
+      "description": "Agents blocked ready searches, invented missing hotel dates, or failed to use travel dates and route context already supplied."
+    },
+    {
+      "failure_type": "location_field_misclassification",
+      "count": 2,
+      "description": "Agents treated a state abbreviation as a city or added an inferred city to a state-level attraction search."
+    },
+    {
+      "failure_type": "result_persistence_omission",
+      "count": 2,
+      "description": "Attraction search results were neither assigned nor saved to cache."
+    },
+    {
+      "failure_type": "cached_refinement_missed",
+      "count": 1,
+      "description": "The agent repeated a nearest-results operation instead of applying the newly supplied neighborhood filter to cached hotel results."
+    },
+    {
+      "failure_type": "controlled_choice_casing",
+      "count": 1,
+      "description": "A title-cased flight-class value caused a runtime error where the tool expected the schema's accepted spelling."
+    },
+    {
+      "failure_type": "runtime_tool_namespace_violation",
+      "count": 1,
+      "description": "The agent imported a tool from a nonexistent module instead of calling the injected function directly."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures violate rules the skill already states, so the patch avoids repeating broad missing-input, persistence, and runtime instructions. It clarifies the contextual date-range case that establishes a return leg, makes state-only location mapping harder to misread, distinguishes updating a component result from repeating a completed nearest search, and makes exact schema casing explicit for controlled choices.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Treat a stated route as one flight leg unless the user explicitly requests return travel or provides additional legs.",
+        "content": "Treat a stated route as one flight leg unless the user explicitly requests return travel or the conversation establishes it. When an already requested destination trip is followed by a direct question for travel dates and the user provides a start-to-end date interval, bind the first date to the outbound departure and the second to the reversed return leg's departure; this context establishes return travel. Do not infer a return flight from a date interval alone when no such trip or flight context exists."
+      },
+      {
+        "op": "replace",
+        "target": "Map location values by kind: put a named district or neighborhood in a supported `neighborhood` field while retaining its containing city in `city`, and put state names or standard postal abbreviations in `state`, not `city`.",
+        "content": "Map location values by kind: put a named district or neighborhood in a supported `neighborhood` field while retaining its containing city in `city`; put state names and postal abbreviations only in `state`, never in `city`. Do not expand a state abbreviation into an inferred city or add a city when only a state is supplied."
+      },
+      {
+        "op": "insert_after",
+        "target": "If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result.",
+        "content": "When a new criterion targets one component of a previously joined or nearest result, update and save that component's compatible domain result; do not repeat the nearest operation using unfiltered inputs. Recompute the joined result only when the user requests an updated proximity result or that operation remains uncompleted."
+      },
+      {
+        "op": "replace",
+        "target": "For controlled-choice fields, use a choice and spelling or casing accepted by the schema, while preserving the user's casing for free-form entity values.",
+        "content": "For controlled-choice fields, use a value exactly as listed in the tool schema, including its casing; do not title-case or otherwise normalize it (for example, if flight-class choices are listed as `business`, `economy`, and `first`, pass `[\"business\"]` for business class). Preserve the user's casing for free-form entity values."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

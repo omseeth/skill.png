@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_operation_incomplete_or_misapplied",
+      "count": 6,
+      "description": "Cached follow-ups were replaced with new searches, retrievals were nested, or operation outputs were not correctly assigned and saved."
+    },
+    {
+      "failure_type": "unsupported_or_unrequested_criteria",
+      "count": 4,
+      "description": "Agents inferred unrelated preferences or domains, or missed a directly stated constraint when mapping it to tool fields."
+    },
+    {
+      "failure_type": "neighborhood_misread_as_proximity",
+      "count": 1,
+      "description": "A question about an assistant-suggested area was handled with search_nearest instead of filtering attractions by neighborhood."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent failures involve incomplete cache call sequences, so a compact call-pair check makes the required result variable and saved object explicit. The other edits clarify two semantic branches that were mishandled: direct mapping of nonstop requests and exploring an assistant-suggested area. They also discourage using unrelated tool flags to represent unsupported context.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation.",
+        "content": "\n\n**Call-pair check:** Write each result-producing operation as `result = tool(...)` followed by `save_to_cache(key=\"fresh_key\", value=result)`. For a cached update, first assign `base = get_results_from_cache(key=\"exact_key\")` on its own line, pass `base` to the filter, and save the filter's output—not the base. Never nest cache retrieval inside another call."
+      },
+      {
+        "op": "replace",
+        "target": "Do not map vague amenity wording to a narrower tool flag without clear equivalence.",
+        "content": "Map user wording to a tool field only when its meaning directly and unambiguously matches that field. If a qualitative or occasion-related request has no supported parameter, do not approximate it with an unrelated cuisine, dietary, amenity, or other flag; use only explicit supported criteria."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Search round-trip flights as separate legs:**",
+        "content": "When a flight is explicitly requested as nonstop or non-stop, pass `num_layovers=[0]` on each applicable requested leg."
+      },
+      {
+        "op": "replace",
+        "target": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion. Retrieve the latest suitable cached result and apply the corresponding same-domain filter when needed. Use `search_nearest` only if the user requests proximity.",
+        "content": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion. Retrieve the latest suitable cached result and apply the corresponding same-domain filter when needed. When the referent is a suggested area or neighborhood, treat “what’s there?” as a location-filter request on the relevant results (for attractions, filter by `neighborhood`), not as proximity. Use `search_nearest` only if the user requests proximity."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

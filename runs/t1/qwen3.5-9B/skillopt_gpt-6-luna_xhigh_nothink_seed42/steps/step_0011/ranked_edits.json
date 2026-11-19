@@ -1,0 +1,37 @@
+{
+  "reasoning": "Combined the overlapping tool-output rules into one operational audit covering complete result preservation, fresh cache keys, assigned cache retrievals, and avoiding duplicate operations. Kept the composite-location clarification because it adds detail not present in the current rule. Updated accepted-offer handling to require a match on the offered criteria, and strengthened the separate no-planning condition so cache presence alone cannot count as completion.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Assign every result-producing call—search, filter, sort, or `search_nearest`—to a variable and save that exact result with `save_to_cache` under a fresh, descriptive key. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save.",
+      "content": "Write every result-producing search, filter, sort, or `search_nearest` call in two steps: assign its returned result to a variable, then save that exact, complete result object with `save_to_cache` under a fresh, descriptive key. Do not extract `.search_results`, rebuild, or merge tool output before saving. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Retrieve cached results by assigning `get_results_from_cache(...)` to a variable before passing them to another tool; do not nest the retrieval call. Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value.",
+      "content": "For a location combining a neighborhood or district with its city (for example, Midtown Atlanta or Downtown St. Louis), use the city in `city` and the full provided area phrase in `neighborhood`. When only a state or region is given, including an abbreviation, use `state`, not `city`.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- **Retrieve accepted pending offers from cache:** Treat an affirmative reply that accepts an earlier offer to provide recommendations or results as a request to deliver them. Retrieve the relevant latest cached result, even if no new search or filter is needed; use the no-planning response only when there is no pending deliverable.",
+      "content": "- **Resolve accepted offers against cache criteria:** Treat an affirmative reply accepting an earlier offer as a request to complete that specific deliverable. A cached result satisfies the offer only if it matches the requested location, category, and other criteria; a same-domain result for a different attraction, cuisine, or filter is not sufficient. If a suitable result is cached, retrieve the latest one even when no search or filter is needed. Otherwise, use a suitable cached base with the needed same-domain filter, or search if no suitable base exists and required inputs are available. Ask for missing required inputs, and do not repeat completed work or redo an unrelated domain whose result already reflects current constraints.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Return no-planning only when every requested or pending deliverable is already satisfied and the latest turn introduces no new request or constraint.",
+      "content": "Never return no-planning merely because a cache entry exists. Compare the cache summary with the current conversation and follow the cache-update, search, or missing-input rules above for any unmet request or pending deliverable. Return no-planning only when every requested or pending deliverable reflects all current constraints and the latest turn adds no request, accepted offer, or new constraint.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

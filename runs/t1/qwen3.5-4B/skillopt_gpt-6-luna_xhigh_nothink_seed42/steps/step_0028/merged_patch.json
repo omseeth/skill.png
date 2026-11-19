@@ -1,0 +1,75 @@
+{
+  "reasoning": "Failure-driven edits take priority and are preserved, including the cache compatibility and superseded-preference guidance. The success-driven edit adds a distinct detail not explicitly covered by the failure edits: bind each cache-read result to a variable. It is placed after the revised cache guidance. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+      "content": " For flight time fields, use `h:mm AM/PM` strings, not 24-hour `HH:MM:SS`. Treat “at” a stated time as exact and encode it as `[time, time]`; treat “by” or “no later than” a stated time as an upper bound beginning at `12:00 AM`. If a compatible cached flight result already covers the requested route and date, retrieve it and use `filter_flights` for newly supplied time constraints, then save the filtered result under a distinct key instead of repeating `search_flights`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Map location values by kind: put a named district or neighborhood in a supported `neighborhood` field while retaining its containing city in `city`, and put state names or standard postal abbreviations in `state`, not `city`.",
+      "content": "When the user gives a full neighborhood expression that includes its city (for example, “Downtown Lexington”), preserve the complete expression as the `neighborhood` value and pass the city separately; do not shorten the neighborhood to just “Downtown.”",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Associate dates with explicitly stated itinerary legs in the order and context given, and do not ask again for dates already supplied.",
+      "content": "For a single-destination flight-and-hotel itinerary, when a date is supplied in direct answer to a question about departure or trip dates, use it for outbound `departure_date` and hotel `checkin_date` unless the conversation specifies distinct lodging dates. Use the flight destination as the hotel city only when no separate lodging location is given and it is the one clear destination. When a start-to-end range clearly describes the trip interval, use its start for outbound departure and hotel check-in, and its end for hotel checkout; use the end as a return-flight departure only if return travel is requested or established by context, since a date range alone does not establish return travel. For sequential multi-city legs paired with multiple ranges, bind each range's start to the corresponding stated leg; do not create extra flight legs from range endpoints unless return travel is requested or established by context.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name.",
+      "content": "When a schema field is a plain string or list of strings and declares no controlled vocabulary or canonical mapping, preserve the user's criterion wording exactly; do not normalize it to a similar category label.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+      "content": "- On each turn, compare the full conversation with compatible cache summaries. If several results match, retrieve the most specific one whose summary includes the earlier requested criteria; do not fall back to a broader base result. When the user adds criteria, retrieve the closest compatible result and apply only criteria not already represented in its summary. Treat correction or replacement cues such as “actually,” “instead,” or “only” as superseding conflicting earlier preferences. A result that reflects a superseded criterion is not compatible: do not filter it as if the criterion were additive; search using the current explicit criteria unless another compatible result is available. Do not filter unrelated results; search when no compatible cached result covers the requested entity or category. Assign each search or transformation result to a variable and save that exact output under the established base key or a distinct descriptive key for a filtered result. Use “No planning needed” only when cached results already satisfy every current request.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "When the user adds criteria, retrieve the closest compatible result and apply only criteria not already represented in its summary.",
+      "content": " Assign each `get_results_from_cache` return value to a variable and use that variable for subsequent processing; do not leave cache reads as bare calls.",
+      "support_count": 7,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "For controlled-choice fields, use a choice and spelling or casing accepted by the schema, while preserving the user's casing for free-form entity values.",
+      "content": "For controlled-choice fields, use a choice in the exact canonical spelling and casing listed by the tool schema (for example, use lowercase when the schema lists lowercase choices); do not capitalize a choice merely to mirror conversational prose. Preserve the user's casing for free-form entity values.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "For flights, pass an explicitly provided airport code in the corresponding `start_airport_code` or `end_airport_code` field; do not substitute it for a city or airport-name value.",
+      "content": "For flights, pass an explicitly provided airport code in the corresponding `start_airport_code` or `end_airport_code` field. If the route’s city or airport name is also established, pass that value in its own supported field as well; the code supplements rather than replaces the route endpoint. When a short uppercase token could be an airline code or time shorthand, use the immediate question and context to disambiguate: treat it as a named airline choice when supplied in response to an airline-preference question, and map only an expressed time-of-day preference to a time range.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+      "content": "A brief affirmation authorizes only the action in that immediately preceding proposal or question; do not reopen or repeat unrelated domains or completed itinerary legs unless the user separately asks.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+      "content": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Interpret “recommend X near Y” as organizing around Y unless the user explicitly requests another base: set `groupBy` to Y’s domain (for example, restaurants near a hotel means `groupBy=\"hotel\"`), not automatically to the recommendation domain.",
+      "support_count": 1,
+      "source_type": "failure"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache lifecycle and follow-up handling",
+      "count": 5,
+      "description": "Agents omitted saves or failed to retrieve and update the appropriate cached results or complete other requested work."
+    },
+    {
+      "failure_type": "incomplete or miscomposed domain searches",
+      "count": 5,
+      "description": "Agents duplicated searches, split criteria that could be searched together, or omitted a requested domain."
+    },
+    {
+      "failure_type": "entity and category mapping",
+      "count": 2,
+      "description": "Agents mapped a state abbreviation to the city field or changed the user's attraction category."
+    },
+    {
+      "failure_type": "contextual follow-up resolution",
+      "count": 1,
+      "description": "An agent retrieved broad attraction results but missed the neighborhood focus implied by the user's response to the assistant's suggestion."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already directly covers cache persistence, incremental updates, domain-specific fields, and preserving user values, so those rules are not repeated. The additions address two uncovered interpretation gaps: taking up a specific option raised by the assistant in an elliptical follow-up, and combining already-known same-domain criteria in a fresh search while recognizing an explicit party size such as a solo traveler.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n- **Resolve context-dependent follow-ups:** When a user asks what is available immediately after the assistant names a specific area or option, treat that referent as the requested focus for the relevant domain and filter the latest suitable cached result. Apply this only when the user's response clearly takes up the suggestion."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. A clearly stated party size such as “solo” is an explicit count; pass `num_people=1` for a hotel search. Do not infer unspoken counts."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

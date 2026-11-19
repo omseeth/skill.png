@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reconciliation",
+      "count": 4,
+      "description": "Agents ignored or incompletely applied new criteria to matching cached results, or searched again instead of filtering."
+    },
+    {
+      "failure_type": "tool_namespace_violation",
+      "count": 4,
+      "description": "Agents imported a nonexistent tools module despite the skill's instruction to call injected tools directly."
+    },
+    {
+      "failure_type": "affirmation_not_actioned",
+      "count": 1,
+      "description": "An affirmative reply to a proposed attraction search was treated as requiring no further planning."
+    },
+    {
+      "failure_type": "missing_nearby_search",
+      "count": 1,
+      "description": "An agent filtered restaurant results but omitted the requested search_nearest call."
+    },
+    {
+      "failure_type": "schema_and_cache_compliance",
+      "count": 1,
+      "description": "An agent put a state abbreviation in the city field and did not save the attraction search result."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make cache reconciliation more operational so every active criterion is checked and applied across all matching results, clarify that an affirmative proposal triggers its planning action, and make nearby-search sequencing and focus unambiguous. Expand schema guidance for location fields and soft preferences. The existing direct-call rule already forbids importing tools, so no duplicate edit is warranted.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied in a search. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- On each turn, assemble the active request from the full conversation, including all explicitly stated criteria and criteria confirmed by an affirmative reply. For each requested result, compare every active criterion with the matching cached result summary. If a matching result exists but lacks a criterion, retrieve it and filter for all applicable criteria not already applied; when multiple cached results represent distinct legs or items in the request, update each one. Save each transformed result under a unique cache key. If the cache does not cover a requested entity or category, search for that missing result rather than filtering unrelated results. Use “No planning needed” only when every requested result already satisfies every active criterion."
+      },
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal. When the proposal names a search, filter, category, or feature, treat the affirmation as confirmation and perform the corresponding planning action using the relevant conversation context. If the user asks for an additional or different entity or category, search for it when existing results do not cover it; do not treat another result in the same domain as satisfying that request."
+      },
+      {
+        "op": "replace",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- For every request for one result type near another, ensure compatible results for both types are available, apply any requested filters first, then call `search_nearest` and save its result. Set `groupBy` to the type the user wants recommended or organized—the requested “X near Y” focuses on X, not merely the reference location Y. For example, group by restaurant when recommending restaurants near a hotel, and by hotel when recommending hotels near attractions."
+      },
+      {
+        "op": "replace",
+        "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "- Match every argument to the tool schema’s expected field, type, and cardinality. Route a city to `city` and a state or region (including its abbreviation) to `state`; do not put a state value in a city field or normalize user-provided values. For range fields, encode a requested exact value as both endpoints (for example, `[n, n]`); encode lower-bound preferences using the valid upper bound supported by the schema. Treat soft preferences as actionable: pass an approximate budget using the stated amount in the scalar budget field, map a desired amenity expressed as “would be nice” to its corresponding boolean `True`, and translate standard time-of-day preferences without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,24 @@
+{
+  "reasoning": "Used the consolidated failure-driven rules as the base because they have higher priority and already cover caching, minimal tool use, and faithful value handling. Omitted overlapping success guidance. Preserved the distinct success-driven requirement to stop and ask for missing required search information before searching any domain, along with the uncovered schema-specific date-list and no-planning details.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+      "content": "## Learned rules\n\n- **Use cached results incrementally:** On follow-up turns, compare the latest request with the conversation and cache summaries. Retrieve the most relevant existing result, preferring one that already reflects earlier constraints, and apply only new criteria to the relevant domain. Preserve still-applicable constraints and traveler details. If cached results already satisfy the request, retrieve them without redundant searches, filters, or saves. Do not repeat completed work, re-filter unrelated domains, or add unrequested sorting.\n- **Carry context and values forward faithfully:** Use explicit details from the full conversation when relevant, and do not invent unspecified values. Preserve user-provided spelling, capitalization, and date representation unless a tool explicitly requires another accepted format. Map details to matching fields (for example, state or region to `state`, city to `city`, and hotel area to `neighborhood`). Use accepted enum forms; for range fields, represent a single requested value as a closed range. For vague time periods, use an appropriate supported interval and accepted format rather than guessing.\n- **Map constraints to the right tool fields:** Supply only stated preferences and clear quantities; do not invent amenities or substitute proxies for requested criteria. When starting a hotel search, include known required dates and known room or traveler counts. For flights, use stated leg dates as departure dates and add an arrival-date constraint only when explicitly specified.\n- **Handle round-trip flights as separate legs:** Search outbound from origin to destination using the outbound date, and return from destination to origin using the return date. Do not use the return date as the outbound search's `arrival_date`. Apply explicit flight preferences to each applicable leg.\n- **Handle hotels and attractions by requested domain:** Search or reuse results for each requested domain. Use `search_nearest` to connect hotels and attractions only when nearby access or proximity is requested; do not use it when proximity is unnecessary. Keep attraction names and types as attraction-search criteria, not hotel criteria.\n- **Keep tool code minimal and executable:** Call only tools needed for the request, directly with keyword arguments. Tools and input models are provided by the runtime; do not import, redefine, or wrap them. Avoid unrelated calculations, searches, output formatting, diagnostic prints, and other unnecessary code.\n- **Maintain the cache lifecycle:** Assign each newly produced search, filter, sort, or nearest result to a variable and save it with `save_to_cache` under a fresh, relevant key. For multi-leg trips, handle and cache each leg separately. Only perform operations such as sorting when requested or necessary.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "append",
+      "content": "\n- Before calling a search tool, check that each requested search has its required arguments. If required information is missing, call only `seek_information` to ask for it; do not make partial searches, including for other requested domains in the same response. Ask for missing required dates for each requested domain, such as hotel check-in and check-out dates or a flight departure date. Never infer dates from other trip details or copy them from tool examples.",
+      "support_count": 2,
+      "source_type": "success"
+    },
+    {
+      "op": "append",
+      "content": "\n- When a tool schema requires dates as a list, pass them in that form without changing their underlying values, and do not infer unspecified optional parameters. Use the no-planning response only when no new result needs to be generated.",
+      "support_count": 1,
+      "source_type": "success"
+    }
+  ]
+}

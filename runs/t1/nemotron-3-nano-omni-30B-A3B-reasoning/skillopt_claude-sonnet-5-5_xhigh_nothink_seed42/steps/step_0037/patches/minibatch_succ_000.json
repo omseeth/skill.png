@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Refinement turns (restaurant budget 'around 125', hotel 'meeting rooms and a large dining area', 'At least 3 stars') were three straight-line statements: load the right domain's most refined key, filter with only the kwargs from the last user message, save under a new key. Earlier-turn constraints (gluten-free, 2 rooms, budget $350, budget $30) were not re-passed.",
+    "Descriptors with no tool parameter ('a large dining area') were dropped and only the mappable amenity (has_meeting_rooms) was kept.",
+    "First turns on an empty CACHE with a missing mandatory arg (flight date or origin, hotel dates, restaurant city) have a seek-only gold. The one clean success (flight opener with 'business trip' and '2 people') used a single seek_information call.",
+    "Four other first-turn answers reached cache_em 1.0 only because the search crashed. They used '<date>' or '<city>' placeholders, invented num_people or stars, or left a stray </parameter> tag. SEARCH GATE says a search is allowed whenever the domain has no key, which pushes the agent into searching on an empty CACHE."
+  ],
+  "patch": {
+    "reasoning": "The seek-only failures in the batch share one cause. SEARCH GATE, the first rule the agent reads, allows a search whenever the domain has no key, and with an empty CACHE that is always true, so the agent skips the later date/city rules and writes placeholders. The fix is a small in-place edit that ties search permission to literally stated mandatory args, not a new gate. Rule 2's clause 'plus earlier-stated constraints the summary does not list' contradicts the slow block ('every kwarg from the last message') and encourages re-passing old constraints. The successful refinements all passed only the last-turn kwargs, so the clause is removed. One short extension of the existing 'vague style words' bullet covers parameterless descriptors ('large dining area', 'family with kids'): drop them and do not derive num_people or amenities from them. This follows the meta-skill: de-conflict and shrink, no new sections or examples.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "A search_* call is allowed only for a domain with NO key.",
+        "content": "A search_* call is allowed only for a domain with NO key AND every mandatory arg literally stated in the conversation (hotel: city + check-in + check-out; flight: origin + departure date; restaurant: city). Otherwise write seek_information for the missing item and no search. A placeholder such as '<date>' or '<city>' is never an argument, and amenities, ratings, 'family', 'business trip' or a party size never fill a missing date or city."
+      },
+      {
+        "op": "replace",
+        "target": ", plus any earlier-stated constraint that the CACHE summary text (\"Additionally filtering for ...\" / search description) does not show as applied.",
+        "content": ". Earlier turns are already inside the cached entry; never re-pass them."
+      },
+      {
+        "op": "replace",
+        "target": "'Formal with a good Italian menu' -> cuisine=[\"Italian\"] only.",
+        "content": "'Formal with a good Italian menu' -> cuisine=[\"Italian\"] only. Descriptors with no tool parameter ('a large dining area', 'suitable for a family with kids', 'great view') are dropped: keep only the part that maps (e.g. 'meeting rooms and a large dining area' -> has_meeting_rooms=True only) and never derive num_people, has_kids_club or other amenities from them."
+      }
+    ]
+  },
+  "source_type": "success"
+}

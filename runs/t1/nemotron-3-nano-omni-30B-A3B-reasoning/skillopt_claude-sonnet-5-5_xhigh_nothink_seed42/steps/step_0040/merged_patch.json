@@ -1,0 +1,77 @@
+{
+  "reasoning": "Three patches overlapped heavily, so I merged them into 9 non-overlapping edits. Per the meta-skill, none adds a new gate section. Each edits an existing sentence or inserts one short clause. Merges: (1) The SEARCH GATE opener appeared in P1 and P2, so I combined them into one sentence. It names the domain of the last message, ignores keys of other domains, and sends a keyless domain to a first search carrying all stated constraints. (2) The -2 DATE ANSWER heading appeared in P1 and P2. I merged P2's 'only when a literal date exists' precondition with P1's check-out-only and cached-cuisine handling, as one replace. (3) The 'Use only kwargs' bullet appeared in P2 and P3. I merged the no return_flights/return_date kwarg rule, the just-the-return-flight case and the dietary-flag mapping, and dropped the state-code sentence because the original text right after it already says it. (4) P3's two-search flight template inside -2 targets a different sentence from the heading, so it stays a separate edit. I rewrote its hotel part without angle-bracket placeholders to avoid leakage. (5) P1's 'no tool call inside another call' is kept as a one-sentence extension. (6) P2's num_people-only-from-a-number edit, P1's rating-vs-stars/business-facilities edit and P3's flight-time-format edit are each kept in compact form. (7) P3's two exceptions to the single-triple rule go in the SEARCH GATE, because the agent obeys that text; they are shortened. All edits target distinct text regions, and none touches the SLOW_UPDATE block.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- SEARCH GATE (do this first): read the CACHE dict.",
+      "content": "- SEARCH GATE (do this first): name the domain of the LAST user message's words (check-in/check-out dates, stars, per-night budget, hotel amenities, neighborhood, party size on a hotel request -> hotels; cuisine/dietary -> restaurants; attraction type/name -> attractions; class/airline/flight time -> flights), then read the CACHE dict for that domain. A cached key of a DIFFERENT domain is irrelevant to this reply: never filter or re-save it as a stand-in, and never re-apply an earlier class or budget to cached flights. A named domain with NO key whose mandatory args are known anywhere in the conversation gets its FIRST search now (e.g. a hotel was requested earlier, CACHE holds only 'restaurants' or only flight keys, and the reply gives dates, stars or a neighborhood -> `search_hotels(...)` saved as 'hotels'), carrying every constraint stated in any turn (party size, per-night budget, stars, amenities, neighborhood). Use seek_information only if a mandatory arg is truly missing.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "A search_* call is allowed only for a domain with NO key.",
+      "content": " Two replies are NOT a single filter triple: (a) a flight class / airline / time / price-cap reply gets one load-filter-save triple for EVERY flight key in CACHE, with identical kwargs; (b) a 'Yes' to an offer of hotels near/close to the cached attractions, with hotels and attractions keys both in CACHE, is `h = get_results_from_cache(key=<most refined hotels key>)`, `a = get_results_from_cache(key=<most refined attractions key>)`, `n = search_nearest(hotels=h, attractions=a, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=n)`, with no filter and no re-save of the attractions entry.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Never repeat a search call, and never nest a search inside save_to_cache.",
+      "content": "Never repeat a search call, and never nest a search inside save_to_cache. Never put one tool call inside another call's arguments (e.g. `return_flights=search_flights(...)` inside search_flights).",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Use only kwargs listed in TOOL CONFIG. search_flights has NO return_date: a round trip is two search_flights calls.",
+      "content": "- Use only kwargs listed in TOOL CONFIG. search_flights has NO return_date and NO return_flights kwarg: a round trip or any date pair ('X to Y', 'around X ... returning Y') is two separate assigned+saved search_flights calls (see item -2). Never write `return_flights=...`, `return_date=...` or an undefined variable (e.g. a bare `departure_date`) as an argument value. If the user wants 'just the return flight', make only the cities-swapped search with the return date. A date pair still gives hotel check-in/check-out when a hotel was requested. Never use a TOOL CONFIG example city (Dallas, Boston...) the user did not say. Restaurant dietary words are boolean flags, never cuisines: halal -> `has_halal_options=True`, kosher -> `has_kosher_options=True`, vegan -> `has_vegan_options=True`, vegetarian -> `has_vegetarian_options=True`, gluten-free -> `has_gluten_free_options=True`, nut / dairy allergy -> `has_nut_allergy_options=True` / `has_dairy_allergy_options=True`; `cuisine=` only for a real cuisine name ('Persian').",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Pass only values the user literally stated. Never invent an airline from words like 'kid-friendly'.",
+      "content": "- Pass only values the user literally stated. num_people only from a number the user wrote ('for 3', '4 of us') or 'solo'/'just me' = 1; 'family', 'kid-friendly', 'group' or 'vacation' give no num_people and no amenity kwarg. Never invent an airline from words like 'kid-friendly'.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "-2. DATE ANSWER = SEARCH NOW (beats every seek_information rule below, including the 'vague timing' paragraph of Rule 6).",
+      "content": "-2. DATE ANSWER = SEARCH NOW. Applies ONLY when the user's last message literally contains a date or an 'X to Y' range. A message with no date (e.g. a first turn asking for a hotel and restaurants) never uses this rule: search the searchable domain (restaurants) and seek_information for the hotel dates. When it applies, it beats every seek_information rule below, including the 'vague timing' paragraph of Rule 6, whatever other keys sit in CACHE. A reply giving only a check-out date also counts: hotel requested, no hotels key, check-in known from a flight's departure date or an earlier turn -> `search_hotels` with that check-in, the new check-out and every hotel constraint from any turn. Anything else the same reply adds for a cached domain (e.g. a cuisine for a cached restaurants key) is a separate load/filter/save block for that domain. Never re-filter flights for a hotel-date reply.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Flight requested: outbound `departure_date=[\"<X>\"]` saved as \"flights\" and return `departure_date=[\"<Y>\"]` with the cities swapped saved as \"return_flights\" (each assigned and saved).",
+      "content": "Flight requested and the user gave two dates ('X to Y', 'depart X and return Y', also inside a first or compound turn with a hotel): write exactly TWO searches, `departure_flights = search_flights(start_airport_city=\"<origin>\", end_airport_city=\"<dest>\", departure_date=[\"<X>\"])`, `save_to_cache(key=\"departure_flights\", value=departure_flights)`, `return_flights = search_flights(start_airport_city=\"<dest>\", end_airport_city=\"<origin>\", departure_date=[\"<Y>\"])`, `save_to_cache(key=\"return_flights\", value=return_flights)`. If a hotel is also requested, the same block continues with `hotels = search_hotels(city=\"<dest>\", checkin_date=[\"<X>\"], checkout_date=[\"<Y>\"], ...)` + `save_to_cache(key=\"hotels\", value=hotels)`, adding num_rooms only if a room count was stated, num_people only if a headcount was stated, amenity kwargs via the Rule 27 table, and any stated neighborhood, stars or budget.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Conversely, when the last message is about hotels or restaurants, write no flight line.",
+      "content": " Flight times are always 12-hour 'HH:MM AM/PM' strings ('before <time>' -> `departure_time=[\"12:00 AM\", \"<that time>\"]`, 'afternoon' -> `[\"12:00 PM\", \"5:00 PM\"]`); the '00:00:00' style raises 'Unrecognized time format'.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "'at least / minimum 3.5' -> rating=[3.5, 5]. Never pass a one-element list.",
+      "content": "'at least / minimum 3.5' -> rating=[3.5, 5]. Never pass a one-element list. 'Customer rating', 'guest rating' and 'rating of at least X' map to rating only; stars only when the user says 'star' or 'stars'. Trip-purpose words ('business trip', 'family trip') add no parameter. 'Business facilities' -> has_business_center=True.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle",
+      "count": 3,
+      "description": "Search or refinement results were not assigned to local variables and saved under new cache keys."
+    },
+    {
+      "failure_type": "constraint_omission",
+      "count": 1,
+      "description": "The newly provided restaurant neighborhood was omitted from the filter call."
+    },
+    {
+      "failure_type": "time_format_and_range",
+      "count": 1,
+      "description": "Flight time bounds were converted to an invalid format and did not represent the requested exact departure and latest-arrival limits."
+    },
+    {
+      "failure_type": "missing_mandatory_information",
+      "count": 1,
+      "description": "Hotel dates were invented instead of requested, and the independently actionable restaurant search was skipped."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify the tool-call lifecycle in a way that directly rules out bare calls, and make cache refinement require the new criterion rather than a no-op filter. Add explicit semantics and formatting for time-range requests. The missing-date trajectory already conflicts with the existing prohibition on inventing mandatory values, so avoid repeating the previously rejected missing-information edit.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- For every search, filter, sort, and nearest-results call, assign the exact return value to a local variable and then call `save_to_cache` with that variable under a unique, descriptive key; use a new key for refinements. Never leave one of these planning calls as a bare expression or nest it only as another call’s argument. Do not substitute hand-built dictionaries or redefined models for tool result objects."
+      },
+      {
+        "op": "replace",
+        "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+        "content": "- When refining a cached result, pass it as `prior_results` and include every newly introduced, schema-supported criterion in the filter call; do not resend criteria already represented in the result. A call that passes only `prior_results` is not a refinement."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- For flight time ranges, use the time format accepted by the tool (for example, `08:23 PM`), not 24-hour strings with seconds. An exact time (“at 8:23 PM”) uses that time for both range endpoints; “by” or “no later than” a time uses the start of the day through that time, and “after” or “no earlier than” uses that time through the end of the day."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

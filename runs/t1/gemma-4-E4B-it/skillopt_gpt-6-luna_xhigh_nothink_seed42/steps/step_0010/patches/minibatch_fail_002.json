@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_scope_selection",
+      "count": 3,
+      "description": "Follow-ups reran hotel searches or used proximity instead of filtering the relevant cached results."
+    },
+    {
+      "failure_type": "tool_result_persistence_or_variable_handling",
+      "count": 4,
+      "description": "Several trajectories failed to save tool results or referenced undefined result variables."
+    },
+    {
+      "failure_type": "conversation_state_and_constraint_mapping",
+      "count": 2,
+      "description": "Earlier cuisine preferences were lost or criteria and locations were mapped incorrectly or invented."
+    },
+    {
+      "failure_type": "round_trip_leg_handling",
+      "count": 2,
+      "description": "Round trips were represented as one outbound search with an arrival date rather than two directional searches."
+    },
+    {
+      "failure_type": "missing_required_information",
+      "count": 1,
+      "description": "A hotel search missing required stay dates did not prompt for them while proceeding with the complete restaurant request."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed errors are already covered by explicit cache, tool-persistence, field-mapping, flight-leg, and required-input rules, so repeating those rules would not patch a gap. The remaining gap is making clear that active user constraints must carry forward when a request becomes searchable on a later turn, including when no cached result exists.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Accepting an offer to search a new domain, category, or entity creates that search using established trip context.",
+        "content": "Maintain active supported constraints for each domain across the full conversation. When making a new search, include all still-active criteria the user has already supplied, even if the latest turn only supplies a location or another missing detail. When filtering, account for active criteria not already embodied in the cached result as well as newly supplied criteria. Drop or replace a constraint only when the user withdraws or changes it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

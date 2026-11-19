@@ -1,0 +1,25 @@
+{
+  "batch_size": 5,
+  "success_patterns": [
+    "Every clause in the query got exactly one call from the tool whose name literally matched its facet. Four regions or entities got four calls, and distinct email checks (existence, MX, deliverability) got distinct tools.",
+    "Tool names were copied whole as `Provider: Endpoint`. One object per line, with `[]` for empty lists and no helper or padding calls.",
+    "Narrow qualifiers were mapped to optional parameters with schema-native values (page=1, pageSize=20, country=US, language=en, bedrooms, maxGuestCapacity).",
+    "Near-misses on optionals came from value form. 'top 10' went into a `range` param as the words `top 10` instead of `1-10`. An Airbnb city went into `admin2` instead of the deepest level `admin3`. A hierarchy was left half-filled."
+  ],
+  "patch": {
+    "reasoning": "Structure, naming and call coverage are already well covered, and the successes confirm them. The remaining lost points in these successes are small optional-value misses, and the rules that fix them are derivable from the query and schema. I add three compact rules: one-call-per-region endpoints for comparison queries, a `range` value form for 'top N', and admin-hierarchy depth placement for place names.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+        "content": "- COMPARE ACROSS REGIONS = ONE CALL PER REGION ENDPOINT. When a provider has one endpoint per region and the query names several regions, call each region's own endpoint. 'Compare current gasoline prices across Europe, the United States, and Canada' -> `Gas Price: europeanCountries` + `Gas Price: allUsaPrice` + `Gas Price: canada`, each with `[]` required and `[]` optional because none has params. For the US, take the country-level aggregate (`allUsaPrice`), not a city list. Do not merge regions into one call and do not add a region the query did not name."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Parameters",
+        "content": "- RANK AND RANGE VALUES. When a clause says 'top N' or 'first N' and the tool has a `range` param (description like 'returns all results if range is not specified'), pass the position span `1-N` (`Billboard_v2: Greatest of All Time Songs of the Summer`: 'top 10' -> `range`=`1-10`), not the words 'top 10'. Pass a plain count to `limit`, `count` or `pageSize` instead. Email-style, ID and free-text inputs stay verbatim. Lowercase free-text search terms only when the schema or the sibling examples show lowercase (e.g. an author-name filter such as `kjoller: Get songs by author` takes `thorbjørn egner`).\n- ADMIN HIERARCHY DEPTH. For a place hierarchy (Airbnb admin fields), fill levels top-down and put the CITY in the deepest matching level, not a higher one. 'Rome (Roma), Italy, 1 bedroom, up to 2 guests' -> `state`=`IT`, `admin1`=`Lazio`, `admin2`=`Citta metropolitana di Roma Capitale`, `admin3`=`Roma`, `bedrooms`=`1`, `maxGuestCapacity`=`2`. BAD: city in `admin2` with `admin1` skipped, because the tool requires parents to be filled for each child level."
+      }
+    ]
+  },
+  "source_type": "success"
+}

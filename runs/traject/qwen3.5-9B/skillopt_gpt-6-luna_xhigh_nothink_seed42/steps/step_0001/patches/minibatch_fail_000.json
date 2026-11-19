@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_selection",
+      "count": 4,
+      "description": "Several trajectories chose a broad or mismatched endpoint instead of matching each requested operation to the tool whose capabilities best fit it."
+    },
+    {
+      "failure_type": "call_decomposition_and_serialization",
+      "count": 3,
+      "description": "Some responses bundled independent calls or repeated values into one call, or failed to use the exact provider-and-endpoint name."
+    },
+    {
+      "failure_type": "parameter_schema_and_value_mapping",
+      "count": 4,
+      "description": "Arguments were sometimes placed in the wrong required/optional fields, omitted despite an explicit request, or formatted inconsistently with the endpoint schema."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch shows recurring errors in distinguishing similar endpoints, representing independent operations, and translating query details into endpoint-specific arguments. These checks add a lightweight planning and validation process without hardcoding particular tools or values.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Planning and Validation\n\n### Decompose requests and select tools\n- Break the query into atomic requested operations before selecting tools. For each operation, match the requested action and result to the specific endpoint's description and parameter schema; do not assume one broadly relevant endpoint fits every item in a list.\n- Make a separate call for each independent item unless the endpoint explicitly documents batch or list input. Do not encode multiple calls as repeated values in one scalar parameter.\n- Before answering, check that every requested operation has a call and that no call serves an unrequested operation.\n\n### Map and check arguments\n- Map each query detail to the exact parameter name and required/optional category in the chosen endpoint's schema. Preserve the query's values, using formats or encodings indicated by the schema and its examples; do not add unsupported prefixes or infer unrelated values.\n- Include an optional setting when the user explicitly requests it, including a documented value for a requested default behavior. Do not add other optional settings merely because they have plausible defaults.\n- If a required value is not stated, use only a documented default or a value unambiguously derivable from the query; do not invent identifiers.\n\n### Validate the final call list\n- Verify that each call is a distinct object with the exact provider-and-endpoint name and correctly formed parameter entries. Check the calls against the decomposed request checklist so that bundling or formatting mistakes do not hide missing operations.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

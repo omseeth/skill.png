@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "invalid_param_name_or_format",
+      "count": 4,
+      "description": "Wrong kwarg name or type: end_airport_code passed as a list instead of end_airport string, room_service instead of has_room_service, a state abbreviation passed as city, and a 24h time format that raises a validation error. The airline code 'AM' was also read as morning."
+    },
+    {
+      "failure_type": "search_call_not_assigned_or_duplicated",
+      "count": 2,
+      "description": "A bare search_* call was written, then the same search was repeated nested inside save_to_cache(value=search_*(...)). The result was never assigned to a variable."
+    },
+    {
+      "failure_type": "over_specified_refinement",
+      "count": 2,
+      "description": "On a refinement the agent re-passed constraints the CACHE summary already lists (cuisine, arrival_time) and invented params from context (has_vegetarian_options from a big party, made-up time windows)."
+    },
+    {
+      "failure_type": "missed_search_nearest_or_missing_domain",
+      "count": 2,
+      "description": "'Near PK2' (a hotel name) and 'stay in Downtown with access to Cultural attractions' needed hotel/attraction searches plus search_nearest. The agent did a plain restaurant search or a hotel-only search and loaded unrelated flight keys."
+    },
+    {
+      "failure_type": "retrieval_resaved_over_existing_key",
+      "count": 1,
+      "description": "A pure-retrieval turn ('Okay, that sounds good') loaded the filtered key and then saved it over the raw 'attractions' key. The gold output is a single get_results_from_cache call with no save."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures are syntax and parameter-hygiene errors that existing long rules already forbid but the agent ignores, so a short checklist is added at the very top where it will be read first. It covers: assign each call once, no nested searches inside save_to_cache, pass only literal new constraints, and pure retrieval has no save. A parameter-name and format rule covers the validation errors (airport strings, airline codes, has_* amenity names, state=, 12-hour times). A narrow 'near X / access to' rule covers the search_nearest misses without bundling other changes, which is what sank the earlier rejected batch. Rule 8's retrieval bullet is tightened so a retrieval is never re-saved.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## TOP CHECKLIST (read before writing code)\n1. Write every search_*, filter_* and search_nearest call ONCE, assigned to a variable, then save it: `attractions = search_attractions(type=[\"Art\"], state=\"CO\")` followed by `save_to_cache(key=\"attractions\", value=attractions)`. Never write a bare search call. Never nest a search or filter inside save_to_cache(...), because that runs it twice.\n2. Pass only values the user literally said in the LAST turn, plus earlier constraints the CACHE summary does not already list. Never add a param because the context hints at it. A big group or a birthday is not has_vegetarian_options. Never invent time windows. Do not re-pass cuisine, city, dates or times that the summary already shows. Example: CACHE 'cuisine(s): [Croatian]' and last turn 'around 30 per person' -> `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, budget=30)`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`.\n3. Check every kwarg name and type against TOOL CONFIG and Rule 27 before writing it.\n4. If the user wants something 'near' a named place or hotel, or 'access to' attractions, follow Rule 28."
+      },
+      {
+        "op": "replace",
+        "target": "No save is needed for a pure retrieval.",
+        "content": "A pure retrieval is exactly ONE statement, e.g. `x = get_results_from_cache(key=\"filtered_attractions\")`, using the most refined key for that domain (a filtered_* or nearest_* key beats the raw key). Do NOT call save_to_cache after it, and never save the loaded result under another key (that overwrites the raw key). This applies, for example, when the CACHE summary of the filtered key already lists the neighborhood the assistant proposed and the user just says 'Okay, that sounds good'."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 27: Exact parameter names and formats (these cause validation errors)\n- Airports: a named airport code ('ANC is our preferred choice') goes in `end_airport=\"ANC\"` for the destination or `start_airport=\"XXX\"` for the origin. It is a plain string, never a list. Do not use end_airport_code=[...].\n- Airline codes: in a flight-preference reply a short uppercase token such as 'AM', 'AA' or 'AE' is an AIRLINE, not a time of day. 'We prefer AM and economy class' -> `filter_flights(prior_results=x, airline=[\"AM\"], flight_class=[\"economy\"])` on each cached flight leg. Do not invent departure_time or arrival_time. Do not re-pass an arrival_time that the CACHE summary already lists.\n- Time strings use 12-hour style such as \"2:48 PM\" or \"12:00 PM\". \"14:48:00\" and \"06:00:00\" raise 'Unrecognized time format'.\n- A US state name or abbreviation always goes in `state=\"CO\"`, never `city=\"CO\"`. 'Art attractions in CO' -> `search_attractions(type=[\"Art\"], state=\"CO\")`.\n- Hotel amenity kwargs. Only gym_present, pool_present, breakfast_included, smoking_allowed, air_conditioning_present, heating_present, free_wifi_included, airport_shuttle_present and is_pet_friendly lack the `has_` prefix. Use these names: room service -> has_room_service; fitness center or fitness classes -> has_fitness_class; spa -> has_spa_services; kids club -> has_kids_club; laundry -> has_laundry_service; business center -> has_business_center; beach -> has_beach_access; valet -> has_valet_parking; balcony -> has_balcony; rooftop bar -> has_rooftop_bar; in-room kitchen -> has_inroom_kitchen; hot tub -> has_hot_tub; sauna -> has_sauna; free parking -> has_free_parking; EV charging -> has_electric_vehicle_charging; ocean view -> has_ocean_view_rooms_present; city view -> has_city_view_rooms_present; meeting rooms -> has_meeting_rooms; wheelchair -> is_wheelchair_accessible. `room_service=True` raises 'Extra inputs are not permitted'.\n\n## Rule 28: 'Near X' and 'access to attractions' use search_nearest\n- Hotel plus attractions: when a hotel is requested with a neighborhood and 'access to / close to Cultural attractions' (or any attraction type), and the hotel dates are known, run all three, each assigned and saved:\n  `hotels = search_hotels(city=\"Portland\", neighborhood=[\"Downtown Portland\"], checkin_date=[\"May 14, 2025\"], checkout_date=[\"May 17, 2025\"])`, `save_to_cache(key=\"hotels\", value=hotels)`\n  `attractions = search_attractions(city=\"Portland\", type=[\"Cultural\"])`, `save_to_cache(key=\"attractions\", value=attractions)`\n  `nearest_hotels = search_nearest(hotels=hotels, attractions=attractions, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`\n  Do not load or filter flight keys on this turn. Do not stop after the hotel search.\n- Restaurants or attractions 'near <name>' where <name> is a hotel (e.g. 'find me something near PK2', and the CACHE has hotels but no key for that name): search that hotel by name using the established city and dates, search the requested domain, then call search_nearest. Example for restaurants:\n  `hotels1 = search_hotels(city=\"St. Louis\", checkin_date=[\"May 21, 2025\"], checkout_date=[\"May 30, 2025\"], hotel_name=[\"PK2\"])`, `save_to_cache(key=\"hotels1\", value=hotels1)`\n  `restaurants = search_restaurants(city=\"St. Louis\")`\n  `filtered_restaurants = search_nearest(hotels=hotels1, restaurants=restaurants, groupBy=\"restaurant\")`, `save_to_cache(key=\"filtered_restaurants\", value=filtered_restaurants)`\n  Add only constraints the user stated (cuisine, budget, ...) to the restaurant search. A plain `search_restaurants(city=...)` alone ignores the 'near' request."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

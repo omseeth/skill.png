@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "schema_or_constraint_mapping",
+      "count": 8,
+      "description": "Calls repeatedly misplaced parameters, omitted or guessed constraints, used unsupported placeholders, or mapped values to the wrong schema fields."
+    },
+    {
+      "failure_type": "incomplete_or_unmatched_call_set",
+      "count": 5,
+      "description": "Some trajectories omitted requested outcomes or added calls that did not serve a requested outcome."
+    },
+    {
+      "failure_type": "endpoint_selection_mismatch",
+      "count": 1,
+      "description": "A generic news search was chosen over an available endpoint dedicated to the requested content class."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most argument and call-set errors are already covered by the skill's schema and outcome audits, so repeating those rules would not patch a gap. These edits sharpen endpoint choice when a specialized operation competes with a generic search and clarify that an explicit request for general item details remains distinct from requests for specialized attributes.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Treat endpoint eligibility as a gate: confirm the endpoint's own operation and schema support the requested result kind and granularity, and can represent every compatible explicit qualifier. A topical neighbor or broader operation is not sufficient. A named provider or source is a hard constraint for that outcome; do not fulfill or supplement it with another provider when a fitting named-source endpoint exists.",
+        "content": "\n- When both a task-specific endpoint and a generic search could return relevant items, prefer the task-specific endpoint if its documented operation matches the requested result class and constraints (for example, a movie-news search for movie news). Use the generic endpoint only when the specialized one cannot fulfill the outcome."
+      },
+      {
+        "op": "insert_after",
+        "target": "- When several requested checks concern the same subject, first look for a single endpoint whose documented operation explicitly returns all the requested properties, and prefer it over multiple narrower calls when it fully covers the outcomes. Do not infer endpoint functionality from a provider-wide description or add a secondary validator whose result is already covered; split the checks only when no endpoint genuinely covers them together.",
+        "content": "\n- Treat an explicit request for general or comprehensive item details as an outcome in its own right, even when the user also names specialized details such as financing or recommendations. A specialized endpoint covers that general-detail outcome only if its documented operation explicitly returns it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

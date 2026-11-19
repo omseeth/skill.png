@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Archive hits in 'CATEGORY | clue | answer' form (e.g. 'DALLAS | ... | Bobby Ewing', 'WOMEN AUTHORS | ... | Colleen McCullough') were solved by taking the last segment after the clue. The category header (DALLAS) was not used as the answer.",
+    "For 'this city / this man / this woman / this purple flower' clues, the agent answered with the entity of that type (Richmond, Rome, Alan Shepard, Peggy Guggenheim, violet), not the anchors in the clue (St. John's Church, Freedom 7, Art of this Century).",
+    "For a terse 'YEAR: Starring PERSON' fragment, the agent answered with the work (Funny Girl) that the passages tie to both the year and the person, not the person named. This worked even when the crossword-style passage showed no answer.",
+    "People were answered in the common first+last form (Alan Shepard, not 'Alan B. Shepard, Jr.'; Peggy Guggenheim; Colleen McCullough). Answers were bare, with no descriptors or explanation.",
+    "Answers were confirmed by one entity recurring across many independent passages together with the clue's specific details (a quoted sonnet line, a date, a place)."
+  ],
+  "patch": {
+    "reasoning": "The skill already covers the main behaviours seen here: verbatim archive hits, answering the referent, and the bare-answer format. Three small gaps remain that these successes handled well. (1) The category header in 'CATEGORY | clue | answer' lines should not be mistaken for the answer. (2) 'YEAR: Starring X' style fragments should resolve to the work, not the named person. (3) Person-name form should drop middle initials and suffixes. Each is short and generalizes, so each should be encoded without a large rewrite.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Archive lines may also be formatted 'CATEGORY | clue text | answer'. Take the answer that follows the clue, even if the whole context is one short passage.",
+        "content": "- Archive lines may also be formatted 'CATEGORY | clue text | answer' (e.g. 'DALLAS | In 1985 he was run down... | Bobby Ewing. right: ...'). The first segment is only the category header (it is never the answer, even if it matches a clue word). Take the text that follows the clue, even if the whole context is one short passage."
+      },
+      {
+        "op": "insert_after",
+        "target": "- If the clue is a fragment, work out what single thing connects it to the context.",
+        "content": "\n- Terse 'YEAR: Starring/By/Written by PERSON' fragments (e.g. '1968:Starring Barbra Streisand') ask for the work (film, book, song, album) tied to BOTH the year and the person. Answer with the title that recurs across the passages with those two details, never the person named in the clue. This holds even if a crossword-style page hides its answer."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use the shortest standard form that names the entity, as a trivia answer key would.",
+        "content": "\n- For people without a verbatim archive answer, use the common first + last name (e.g. 'Alan Shepard', not 'Alan B. Shepard, Jr.'). Drop middle initials, suffixes (Jr., III), honorifics and job titles, unless a single name is the standard form ('Madonna') or the passages' answer line uses a longer form."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,41 @@
+{
+  "reasoning": "Preserved all four failure-driven edits, including the rule for follow-ups about assistant-suggested options. The success-driven replacement overlaps with the existing accepted-offer rule and the failure-driven follow-up guidance, so that repeated content is omitted. Its distinct insight—clarifying what help is wanted when the user provides trip context without requesting a service—is retained as a separate success edit. [optimizer-ranked: selected 4/5 edits]",
+  "edits": [
+    {
+      "op": "append",
+      "content": "- **Clarify trip context without a planning request:** If the user provides trip context without clearly requesting a planning service, ask what assistance they want.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Assign every result-producing call—search, filter, sort, or `search_nearest`—to a variable and save that exact result with `save_to_cache` under a fresh, descriptive key. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+      "content": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. A clearly stated party size such as “solo” is an explicit count; pass `num_people=1` for a hotel search. Do not infer unspoken counts.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Retrieve accepted pending offers from cache:** Treat an affirmative reply that accepts an earlier offer to provide recommendations or results as a request to deliver them. Retrieve the relevant latest cached result, even if no new search or filter is needed; use the no-planning response only when there is no pending deliverable.",
+      "content": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion. Retrieve the latest suitable cached result and apply the corresponding same-domain filter when needed. Use `search_nearest` only if the user requests proximity.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Check required city inputs and distinguish event dates from travel dates:** `search_hotels` and `search_restaurants` require `city`. When lodging is requested for an explicitly planned trip and both trip dates are known, use the trip start and end dates as hotel check-in and check-out. When an explicit trip start date and number of hotel nights are known, use the start date as check-in and call `adjust_date` with the night count to compute checkout. For a hotel added to an ongoing itinerary, reuse a clearly established trip date as check-in when applicable; do not guess check-in by subtracting a day from checkout. If a required hotel date cannot be established from user-provided itinerary details, seek it. Preserve user-provided date strings unless conversion is required, and use `adjust_date` rather than importing date libraries or doing date arithmetic in Python. A date given only for an event, such as a wedding or reunion, is not a flight departure date or hotel stay date unless the user explicitly identifies it as travel timing.",
+      "content": "- **Map multi-city lodging to intended overnight stops:** When a user requests hotels in cities on a multi-leg route, search the explicitly intended lodging destinations or overnight stops; do not automatically include a departure-only origin as a hotel city. Do not infer per-city stay lengths or dates from flight legs. Use only established trip dates, and seek information if a required hotel input cannot be determined.",
+      "support_count": 1,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 4 addresses a broadly recurring ambiguity about whether trip context is a request for planning. Edit 0 improves initial searches across domains and clarifies how to handle an explicitly stated party size. Edit 3 fills a follow-up gap for assistant-suggested options. Edit 1 adds useful guidance for multi-city lodging; edit 2 is largely redundant with existing cache, date, and result-saving rules.",
+    "selected_indices": [
+      4,
+      0,
+      3,
+      1
+    ]
+  }
+}

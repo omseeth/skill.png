@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "runtime_tool_namespace_violation",
+      "count": 3,
+      "description": "Agents imported tools from a nonexistent module instead of calling the injected functions directly."
+    },
+    {
+      "failure_type": "cache_persistence",
+      "count": 4,
+      "description": "New search or filter results were not assigned and saved to the cache."
+    },
+    {
+      "failure_type": "incremental_update_or_tool_selection",
+      "count": 4,
+      "description": "Agents failed to retrieve and transform the relevant cached result, or invoked an unrelated operation for the new request."
+    },
+    {
+      "failure_type": "location_field_mapping",
+      "count": 2,
+      "description": "State abbreviations for attraction searches were incorrectly passed as city values."
+    },
+    {
+      "failure_type": "required_input_validation",
+      "count": 1,
+      "description": "A hotel search was called without required check-in and checkout dates instead of requesting them."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already describes these requirements, but failures show that agents still miss them in generated code. These edits make the runtime and per-domain preflight checks more explicit, provide a concrete cache update sequence, and clarify state-abbreviation routing for attractions.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Runtime contract:** Tool functions are injected directly into the execution namespace; there is no `tools` module. Generated code must contain no `import` statements. Call provided tools directly by name without importing, redefining, or wrapping them; before returning code, scan for and remove any imports. Use keyword arguments except for `seek_information`, and return code in the required format.",
+        "content": "- **Runtime contract:** Tool functions are injected directly into the execution namespace. Emit calls to the provided function names only: never write an `import` statement (including `from tools import ...`), use module-qualified tool names, or redefine or wrap tools. Before returning code, scan for imports and delete them rather than trying another import path. Use keyword arguments except for `seek_information`, and return code in the required format."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Reliable travel planning and tool use",
+        "content": "- **Per-domain preflight:** Before writing tool calls, check each requested domain independently against the full conversation, cache, and schema. Do not call a search or filter if any of its required inputs are missing. Make one `seek_information(...)` call for all missing required values, while still executing every independent domain whose inputs are complete."
+      },
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- **Search, update, and cache sequence:** For a new search, assign its result and save it immediately under the established base key for that domain. For a later-turn update, retrieve the closest compatible result with `get_results_from_cache(key=\"...\")`, pass it to the matching filter, apply only new criteria, assign the filtered result, and save it under a distinct key. Never refer to an earlier turn’s in-memory variables. Do not repeat searches or already-applied filters, and do not call `search_nearest` merely because results from two domains are available; use it only when a nearest/nearby recommendation is still requested, passing only supported lodging, restaurant, or attraction results. Use “No planning needed” only when cached results satisfy every current request."
+      },
+      {
+        "op": "replace",
+        "target": "For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+        "content": "For attraction searches, pass a provided city in `city` and a provided state name or postal abbreviation in `state`—never put a state abbreviation in `city`. Use both fields when both are provided. A state alone is usable when the tool supports state-level search; do not ask for a city when it does."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

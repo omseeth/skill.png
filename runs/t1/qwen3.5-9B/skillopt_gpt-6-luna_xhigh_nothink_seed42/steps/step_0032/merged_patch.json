@@ -1,0 +1,60 @@
+{
+  "reasoning": "Prioritized the failure-driven edits, retaining the operational cache-update template and result assignment-and-save audit, plus the targeted clarification, occupancy, hotel-date, and rating corrections. Included the success-driven minimal-code guidance because it addresses a separate source of unnecessary work. No edit targets content inside the protected section; existing schema and proximity guidance is left unchanged.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Write every result-producing search, filter, sort, or `search_nearest` call in two steps: assign its returned result to a variable, then save that exact, complete result object with `save_to_cache` under a fresh, descriptive key. Do not extract `.search_results`, rebuild, or merge tool output before saving. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Retrieve cached results by assigning `get_results_from_cache(...)` to a variable before passing them to another tool; do not nest the retrieval call. Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation.",
+      "content": "For each intended result-producing search, filter, sort, or `search_nearest`, make exactly one call, assign its returned result to a variable, then save that exact, complete object in a separate `save_to_cache` call under a fresh, descriptive key. Never make a bare exploratory call and repeat it to capture the output; do not extract `.search_results` or save a transformed or merged reconstruction. Use distinct keys for domains, itinerary legs, and updates. Assign `get_results_from_cache(...)` to a variable before passing it to another tool; never nest retrieval. Before output, audit that each intended operation occurs once and its result is saved.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Handle follow-ups incrementally through the cache:**",
+      "content": "\n**Follow-up call template:** For each unmet deliverable—including one arising from a short reply, accepted offer, or new constraint—retrieve the latest suitable same-domain cache entry by its exact key into a variable. If it lacks a new same-domain constraint, pass that variable to one matching filter call with only the new constraint(s), assign the result, and save that exact result under a fresh key. If no suitable base exists and required inputs are complete, make one search with all known same-domain criteria, assign its result, and save it. Cache presence alone is not completion.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "content": "- Do not infer unspoken counts or pass traveler counts to flight tools; labels such as “family,” “kids,” or “group” do not specify a numeric `num_people` unless the user gives a count.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Resolve follow-ups about assistant-suggested places or options:**",
+      "content": "\nA reply to a different clarification question is not acceptance of an earlier assistant offer. Treat an offer as accepted only when the reply clearly takes up that specific option; otherwise, do not add its domain or criteria.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion.",
+      "content": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. A clarification answer fills the requested slot; it does not replace earlier explicit criteria for that domain. Retain concrete values embedded in the assistant’s question when the user answers without correcting them—for example, if asked about rooms for 4 people and the user gives a room count, carry forward `num_people=4` as well as the supplied `num_rooms`. Capture all supplied criteria and combine them in one search or follow-up filter call where supported.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Check required city inputs and distinguish event dates from travel dates:**",
+      "content": "\nA flight departure date or flight result alone does not establish a hotel stay length or checkout date. Use explicitly supplied stay boundaries or an explicit hotel start date and stated number of nights; seek any missing required hotel date.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+      "content": "For ratings, a bare numeric score or “exactly x” means exact `[x, x]`; wording such as “with an x-star rating” or “at least x” means a minimum `[x, 5]`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "append",
+      "content": "\n- **Keep generated code minimal:** Emit only the tool and cache calls needed for requested or pending deliverables. Do not add unrelated cache reads, repeated date work, `print` statements, or status-output code.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ]
+}

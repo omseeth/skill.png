@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "The agent returned a form the skill already forbids. It gave 'Studio 60 on the Sunset Strip' despite the 'Studio 60' example, 'Chester A. Arthur' when the clue already stated 'Chester', and 'Hydropower' where the key was the passages' own term 'hydroelectric'."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 3,
+      "description": "Clue shapes the skill does not cover: a bare city name (the answer is its country), a lone quoted catchphrase (the answer is the show), and a bare 'Title (year)' film clue (the answer is the director, not a star)."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "An acronym in the clue ('PIP ... this feature') wants the spelled-out expansion. The agent picked a stray forum phrase instead."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "Factual slip on a superlative: 'smallest in size' was answered with the lowest-value coin instead of the physically smallest one."
+    }
+  ],
+  "patch": {
+    "reasoning": "Earlier generic 'Step 0' reasoning-line edits were all rejected, so these edits are short and target distinct clue shapes seen in this batch. The new shapes are a bare place, a lone catchphrase, a bare film title with year, an acronym expansion, and the dimension of a superlative. The remaining edit is a person-name rule for when the clue already states the first name. All are placed outside the SLOW_UPDATE block and none touches Rule 3 (verbatim archive match), so stable passes should be unaffected. The Studio 60 and hydroelectric failures are not patched. The Studio 60 rule already exists and was ignored, and the hydroelectric miss is a single-task synonym mismatch.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "If the list is of real people, answer with the team, state or other entity they share.",
+        "content": "\n- A lone quoted catchphrase or exclamation ('Yabba Dabba Do!') asks for the character, show or franchise it is famous from ('The Flintstones'), not an episode, film or product whose title merely contains the quoted words.\n- A bare single place name with no verb or qualifier ('Hamburg', 'Dijon') asks for the country (or U.S. state) that contains it. Never repeat the place itself.\n- A bare '\"Title\" (year)' fragment for a film or play asks for the one person the passages credit with making it, usually the director ('directed by ...'), not a cast member."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "\n- ACRONYM in the clue ('If your TV has PIP, it has this feature'): when the clue contains an abbreviation and asks for 'this feature / term / thing', the answer is usually the spelled-out expansion ('Picture in Picture'). Take it from a passage that prints 'Picture-in-Picture (PIP)'. Do not take a stray phrase from a forum question or side remark.\n- SUPERLATIVES: name the dimension being measured. 'Smallest in size' (physical dimensions) is not 'lowest value', 'lightest' or 'oldest'. Check the candidate against your own knowledge of the real measurements. Do not choose the lowest-denomination or best-known item when another item is physically smaller."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 4: Exact-match formatting of the final answer",
+        "content": "- PERSON CLUES THAT ALREADY STATE PART OF THE NAME: when the clue gives a first name, title or nickname ('the only president named Chester'), answer with only the missing part, normally the surname ('Arthur', not 'Chester A. Arthur'). Never prepend the stated first name or add middle initials."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

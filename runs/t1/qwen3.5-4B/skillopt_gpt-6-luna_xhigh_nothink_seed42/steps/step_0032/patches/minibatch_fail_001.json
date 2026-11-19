@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_result_lifecycle",
+      "count": 6,
+      "description": "Searches or follow-up updates were not fully completed because results were not consistently assigned and saved, or a cache read replaced the requested update."
+    },
+    {
+      "failure_type": "conversation_context_not_executed",
+      "count": 3,
+      "description": "The latest turn was not mapped to the action established by prior context, including a return leg, a requested location filter, or already-provided flight dates."
+    },
+    {
+      "failure_type": "redundant_or_default_parameters",
+      "count": 2,
+      "description": "Calls repeated criteria already applied or explicitly supplied optional tool defaults that the user had not requested."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains broad cache and itinerary guidance, but several agents stopped after retrieval or omitted saving completed results. A concise execution sequence makes the required search/filter/save steps explicit while limiting work to the current action and its new criteria. Clarifying when a flight-date interval establishes return intent also addresses the route-and-dates context seen in the batch without inferring flights from unrelated date ranges.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- For each turn, map the latest request against the full conversation and cache, then execute only the resulting requested action(s). For every required search, filter, sort, or `search_nearest` call, assign its output to a variable and save it under a unique cache key. For a follow-up criterion or location, retrieve the latest compatible result for the same domain and subject into a variable, apply the matching filter with only the newly stated criterion(s), assign the filtered output, and save it under a unique follow-up key; retrieval alone does not complete the update. Do not repeat criteria already present in the source results, pass tool-default optional values as user preferences, or retrieve results not needed for the current action. Use “No planning needed” only when cached results already satisfy every current request."
+      },
+      {
+        "op": "insert_after",
+        "target": "Treat a stated route as one flight leg unless the user explicitly requests return travel or provides additional legs.",
+        "content": "In flight context, if the user answers a request for dates for a known route with a start-to-end trip interval, treat that interval as establishing round-trip intent unless they specify one-way: search the known route on the start date and the reversed route on the end date. This does not make unrelated event or hotel date ranges a return flight."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

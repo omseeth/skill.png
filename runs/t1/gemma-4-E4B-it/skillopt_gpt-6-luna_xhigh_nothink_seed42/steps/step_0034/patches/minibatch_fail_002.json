@@ -1,0 +1,41 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_selection",
+      "count": 4,
+      "description": "Re-searched compatible cached results instead of retrieving and filtering them for cuisine, rating, location, budget, or party-size updates."
+    },
+    {
+      "failure_type": "flight_leg_and_required_input_handling",
+      "count": 2,
+      "description": "Guessed a flight origin when it was missing or represented a round trip as one outbound search with an arrival date."
+    },
+    {
+      "failure_type": "semantic_field_mapping",
+      "count": 1,
+      "description": "Mapped a hotel fitness-center request to fitness classes instead of the gym amenity field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent failures involve cache selection despite existing reuse instructions. A short precedence gate clarifies when broader cached candidate sets can cover narrower location or preference requests and when to filter composite results. A flight-direction guard addresses the missing-origin and return-leg errors, while an explicit amenity distinction closes the remaining schema-mapping gap.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Cache-aware tool workflow",
+        "content": "**Per-turn cache precedence:** Resolve the latest reply against the full conversation and preceding assistant question or offer, then identify only the changed active scopes. Before any base search, check whether a cached candidate set covers the request: a broader compatible scope may be narrowed with a supported filter (for example, state-wide attractions filtered to a city, or city-wide restaurants filtered by cuisine). Retrieve the most constrained compatible result by its exact key, apply the new constraint, and save the filtered result. This also applies to valid cached composite results, such as filtering nearest-hotel results for a party-size change. A narrower result cannot cover a broader request; base-search only when no compatible candidate set can cover the changed scope. Leave unaffected scopes untouched."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Flight itinerary legs",
+        "content": "**Direction check:** A known destination is not evidence of the flight origin. If a requested leg lacks its origin, do not swap in the destination or call the flight tool with missing values or explicit `None`; seek only the missing mandatory origin while proceeding with any independent complete requests. For a round trip with a known route, make separate outbound and reverse-direction return searches, using each leg's date as its `departure_date`."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not add unrelated preferences.",
+        "content": "For hotel amenities, map a request for a gym or fitness center to `gym_present=True`. Use `has_fitness_class=True` only when the user requests exercise or fitness classes."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

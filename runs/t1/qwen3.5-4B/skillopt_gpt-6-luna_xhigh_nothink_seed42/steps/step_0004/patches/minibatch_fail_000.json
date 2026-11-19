@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_invocation_contract_violation",
+      "count": 3,
+      "description": "Agents imported tools despite the runtime injecting functions directly, preventing otherwise relevant calls from executing."
+    },
+    {
+      "failure_type": "cache_workflow_failure",
+      "count": 5,
+      "description": "Agents omitted result caching or incorrectly returned “No planning needed” when a newly stated criterion still required filtering or searching."
+    },
+    {
+      "failure_type": "independent_domain_gating",
+      "count": 1,
+      "description": "A missing hotel date prevented an available attraction search from being performed in the same turn."
+    },
+    {
+      "failure_type": "date_and_parameter_mapping",
+      "count": 3,
+      "description": "Agents normalized supplied date strings, missed party size, or inferred guest count from stay length instead of deriving checkout."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the direct-call contract easier to verify, clarify that complete domains can proceed while another domain requests missing inputs, and make cache updates and criterion checks operational. Clarify date preservation, explicit stay-length calculation, and hotel party-size mapping to address the remaining recurring mistakes.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Tool functions are injected directly into the execution namespace; there is no `tools` module. Call provided tools by name without importing, redefining, or wrapping them. Use keyword arguments except for `seek_information`, and return code in the required format.",
+        "content": "- Tool functions are injected directly into the execution namespace; there is no `tools` module. Call provided tools by name without importing, redefining, or wrapping them. Treat this as a code-generation invariant: emitted code must contain no import statements, including `from tools import ...`. Before returning, verify that no imports, wrappers, or redefinitions appear. Use keyword arguments except for `seek_information`, and return code in the required format."
+      },
+      {
+        "op": "replace",
+        "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available.",
+        "content": "- Check mandatory inputs against the full conversation and relevant cache for each requested domain. Flight searches require a departure date; hotel searches require check-in and checkout dates. If a check-in date and an explicit stay length are given but checkout is missing, derive checkout with `adjust_date` using the stated number of nights; never infer an unstated stay length. If any requested domain still lacks required inputs, make exactly one `seek_information(...)` call listing only those missing values. In the same turn, proceed with independent searches for requested domains whose inputs are complete; defer only the incomplete domain, and do not partially search it. Do not guess values or ask for optional preferences as if they were required."
+      },
+      {
+        "op": "replace",
+        "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, search each leg separately, reverse the outbound route for the return, and use the return leg’s departure date. Ask for an unknown endpoint rather than assuming a route.\n- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "- Preserve user-provided dates exactly, including their written format; do not normalize a natural-language date into another format. Preserve entity values and casing. For a round trip, search each leg separately, reverse the outbound route for the return, and use the return leg’s departure date. Ask for an unknown endpoint rather than assuming a route.\n- Match arguments to the tool schema’s expected type and cardinality. For hotels, map an explicitly stated traveler count to `num_people` and room count to `num_rooms`; do not infer either from the other or from a stay length. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`)."
+      },
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied in a search. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. Check each current criterion against the compatible result summary: if a newly stated criterion is not shown as satisfied, retrieve the closest compatible result, apply that criterion with the matching filter, and save the updated result. Do not return “No planning needed” while any current criterion remains unsatisfied or unverified. Do not filter unrelated results; search for a requested entity or category that the cache does not cover, and avoid repeating constraints already applied in a search. For every needed search, filter, sort, or nearest call, assign its return value and save it under a unique cache key; do not leave generated results unsaved."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

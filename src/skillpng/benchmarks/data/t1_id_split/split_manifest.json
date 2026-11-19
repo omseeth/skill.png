@@ -1,0 +1,131 @@
+{
+  "benchmark": "T1",
+  "manifest_type": "id_split",
+  "source_repo": "capitalone/T1",
+  "source_repo_type": "dataset",
+  "source_url": "https://huggingface.co/datasets/capitalone/T1",
+  "source_revision": "7a3e58355959426e3daeecc410c2b87139295140",
+  "source_license": "CC-BY-4.0",
+  "vendored_code": "https://github.com/CapitalOne-Research/T1",
+  "vendored_commit": "22a16b7570a5c20b1dc05f22f78a82ab94488a00",
+  "seed": 42,
+  "counts": {
+    "train": 400,
+    "val": 200,
+    "test": 1400
+  },
+  "split_sources": {
+    "train": "train",
+    "val": "validation",
+    "test": "test"
+  },
+  "id_format": "{domain}:{hf_split}:{file_index}:{ID}:{turn}",
+  "replay_semantics": "session: one locals dict per dialogue, a fresh copy of process_model_output.py's globals per exec, the cache reset per dialogue",
+  "eligibility": [
+    "1. The user turn has a gold Filled_Plan (a whitespace-only plan counts).",
+    "2. Under session replay no gold plan of its dialogue raises, up to and including this turn, on user and assistant rows alike.",
+    "3. Session replay and upstream's file-wide replay (one locals dict per file, dialogues in groupby('ID') order, i.e. Python <= 3.12) give identical pre-turn summaries, post-turn summaries and errors on every row of the dialogue up to and including this turn. Summaries compare as str() of the dict, key order included."
+  ],
+  "selection": [
+    "1. Domain quotas: total // 9 each; the total % 9 domains with the lowest _unit_hash('42:quota:{split}:{domain}') get one more.",
+    "2. Template allocation: the templates of the domain's T1 split with at least one eligible turn get quota // n_templates each; the quota % n_templates with the lowest _unit_hash('42:alloc:{split}:{domain}:{ID}') get one more.",
+    "3. Items: a template's eligible turns ranked by _unit_hash('42:item:{id}'), taken in order, skipping any turn whose dialogue already has an item, until the allocation is met.",
+    "Order: items.json is sorted by _unit_hash('42:order:{id}').",
+    "Hash keys use this repo's split name (train, val, test) and unpadded integers; _unit_hash is skillpng.benchmarks.base._unit_hash."
+  ],
+  "dropped_templates": [
+    "flighthotelrestaurant:test:26"
+  ],
+  "per_domain": {
+    "train": {
+      "flight": 44,
+      "hotel": 45,
+      "restaurant": 45,
+      "attraction": 45,
+      "flighthotel": 44,
+      "hotelrestaurant": 44,
+      "hotelattraction": 45,
+      "flighthotelrestaurant": 44,
+      "flighthotelattraction": 44
+    },
+    "val": {
+      "flight": 22,
+      "hotel": 23,
+      "restaurant": 22,
+      "attraction": 22,
+      "flighthotel": 22,
+      "hotelrestaurant": 22,
+      "hotelattraction": 22,
+      "flighthotelrestaurant": 22,
+      "flighthotelattraction": 23
+    },
+    "test": {
+      "flight": 156,
+      "hotel": 156,
+      "restaurant": 156,
+      "attraction": 156,
+      "flighthotel": 156,
+      "hotelrestaurant": 155,
+      "hotelattraction": 155,
+      "flighthotelrestaurant": 155,
+      "flighthotelattraction": 155
+    }
+  },
+  "digests": {
+    "train": "36801cec4695bd2b",
+    "val": "95837288aa261ea2",
+    "test": "5a35dbd6e99156bf"
+  },
+  "digest_rule": "sha256 of the sorted ids joined by newlines, first 16 hex characters",
+  "gold_kinds": {
+    "train": {
+      "cache_read_only": 14,
+      "seek_only": 85,
+      "seek_plus_tools": 18,
+      "tools": 283
+    },
+    "val": {
+      "cache_read_only": 6,
+      "seek_only": 38,
+      "seek_plus_tools": 4,
+      "tools": 152
+    },
+    "test": {
+      "cache_read_only": 56,
+      "seek_only": 289,
+      "seek_plus_tools": 66,
+      "tools": 989
+    }
+  },
+  "prompt_file": "t1_prompt.txt",
+  "prompt_sha256": "15cec72b0f1b6edd606aa934cc04598c7df7b9cf3d99e5a2213ea7588c0e83bb",
+  "item_fields": [
+    "id",
+    "domain",
+    "hf_split",
+    "file_index",
+    "template_id",
+    "turn",
+    "gold_kind",
+    "plan_digest",
+    "cache_digest"
+  ],
+  "notes": [
+    "This is a split manifest, not the T1 payload. Materialize the items from ",
+    "the dialogue CSVs of capitalone/T1 at source_revision; an item is one",
+    "user turn of one dialogue, keyed (domain, T1 split, file, ID, turn), ",
+    "where ID is a template id repeated once per file and turn counts the ",
+    "dialogue's non-empty user rows from 0. Train, val and test are drawn ",
+    "from T1's train, validation and test splits respectively, which are ",
+    "template- and city-disjoint, so nothing crosses a T1 boundary. Every ",
+    "item comes from a different dialogue. plan_digest is the sha256 of the ",
+    " gold Filled_Plan and cache_digest the sha256 of the pre-turn cache ",
+    "summary string, both cut to 16 hex characters; the adapter refuses an ",
+    "item whose data or replay no longer gives them. Test template 26 of ",
+    "flighthotelrestaurant has no eligible turn: its second user turn calls ",
+    "search_nearest(hotels=hotels) before hotels exists, which only runs",
+    "upstream because a same-named variable leaks in from another dialogue ",
+    "the file. Three train items (flight template 47, turn 2) have a of ",
+    "whitespace-only gold plan: their target is an empty <CODE> block."
+  ]
+}

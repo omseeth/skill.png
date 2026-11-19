@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "output_format",
+      "count": 4,
+      "description": "Several answers broke the required serialization contract through malformed JSON, extra reasoning, or parameter entries in the wrong shape."
+    },
+    {
+      "failure_type": "schema_mapping",
+      "count": 6,
+      "description": "Calls misrouted arguments between required and optional fields or used incorrect values, types, or encodings."
+    },
+    {
+      "failure_type": "call_scope",
+      "count": 6,
+      "description": "Some answers duplicated or added unrelated calls, chose an endpoint that did not fit a requested result, or omitted a named action."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers general schema mapping and call reconciliation, so the edits clarify two recurring gaps: interpreting requests for multiple tools without exhaustive or overlapping calls, and treating the active output contract as an exact serialization schema.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Choose an endpoint by its documented operation, output, target, and support for the requested qualifiers—not merely by a shared topic or entity name. Prefer the most specific endpoint that fits the request; use separate endpoints when distinct deliverables require them.",
+        "content": "- If the user asks to use multiple tools or methods, identify the distinct checks or evidence requested and choose a best-fit endpoint for each; do not interpret this as calling every related endpoint or repeating a call. If one endpoint's documented output covers multiple requested aspects, do not add an overlapping call unless the user explicitly asks for independent sources or checks."
+      },
+      {
+        "op": "replace",
+        "target": "- Before submitting, reconcile the calls against the requested actions and qualifiers, then verify that the output is valid JSON when JSON is required, with no stray fields, nested call objects, or extra prose that violates the contract.",
+        "content": "- Before submitting, reconcile the calls against the requested actions and qualifiers, then serialize strictly to the active contract: produce one complete JSON value in the specified wrapper, use the exact call-object keys and parameter-entry shapes (for example, `{ \"name\": ..., \"value\": ... }` where required), and put arguments in the declared required or optional collection. Check balanced delimiters and valid JSON; include no explanation, metadata, or trailing content unless explicitly allowed."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

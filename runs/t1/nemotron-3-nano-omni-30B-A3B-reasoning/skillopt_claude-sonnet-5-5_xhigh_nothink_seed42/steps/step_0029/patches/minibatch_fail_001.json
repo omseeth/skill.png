@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "flight_filter_scope_error",
+      "count": 3,
+      "description": "Flight keys were filtered on hotel or attraction turns (hotel reply in T4; a stale budget re-filter in T5, which also dropped the new hotel and attraction searches). In T1 a class reply filtered only one of two flight legs and saved it under a wrong key name."
+    },
+    {
+      "failure_type": "fabricated_dates_from_skill_example",
+      "count": 2,
+      "description": "With no user dates and CACHE {}, the agent searched with 'May 16, 2025' / 'May 18, 2025'. These are the dates from the skill's own St. Louis example, so they were copied (T3, T7). T3 also passed has_dairy_allergy_options=False for 'I don't eat dairy'."
+    },
+    {
+      "failure_type": "round_trip_class_dropped",
+      "count": 1,
+      "description": "A date range 'X to Y' after a first-class request produced one outbound search with no flight_class and no return leg (T6). Rule 9 says 'add no other params', which conflicts with the class-stated rule."
+    },
+    {
+      "failure_type": "output_form_violation",
+      "count": 1,
+      "description": "A first-turn restaurant search was emitted as a bare call with no assignment and no save_to_cache (T2)."
+    },
+    {
+      "failure_type": "invented_param_from_vague_words",
+      "count": 1,
+      "description": "'Formal ... good Italian menu' became rating=[4.0, 5.0] (T8). The skill's own example already says cuisine only."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains the right rules and even the exact cases that failed (Summerlin, 2 rooms, Persian halal, formal Italian). The agent still violated them, which points to attention dilution in a very long skill and to contamination from the skill's literal example dates. The fixes are therefore short and placed at the top where they are most visible. First, a compact checklist for the most-missed behaviours: assign-and-save form, dates traceable to user turns, flight filters only on flight messages and on both legs, searches for newly requested domains, round trips carrying the stated class, and no invented values. Second, two replaces swap the concrete example dates (May 16/18, 2025) that the agent copied into T3 and T7 for placeholders. Third, a replace resolves the Rule 9 'no flight_class' conflict that blocks the T6 behaviour. Edits are kept small and merge into existing text rather than piling on examples.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Travel Planning Skill",
+        "content": "\n\n## PRE-OUTPUT CHECKLIST (the most-missed rules; answer each before writing code)\n1. FORM: every search_*, filter_* and search_nearest line is `name = tool(...)` and the very next line is `save_to_cache(key=\"...\", value=name)`. A bare `search_restaurants(...)` with no `name =` and no save is always wrong, even on a one-line first turn.\n2. DATES: every date string in code must appear in a user turn. Rewrite ISO dates from CACHE summaries the way the user typed them (2025-05-14 -> \"May 14, 2025\"). Dates written inside this skill ('May 16, 2025', 'May 18, 2025', ...) are illustrations, never data. A requested flight or hotel with no user date gets seek_information naming only what is missing. Other requested domains whose args are complete (e.g. restaurants with a known city) are still searched first. Party size, room count, 'weekend' and 'birthday' are not dates.\n3. FLIGHT LINES: write filter_flights only when the last message is about class, airline, flight time or ticket price. Then write one load-filter-save block for EVERY flight key in CACHE (flights AND return_flights), each saved as filtered_<loaded key> (filtered_flights, filtered_return_flights). A hotel, restaurant or attraction message (stars, 'stay in X', neighborhood, amenities, a budget after a hotel question) never touches a flight key, even if a class or budget appears in earlier turns.\n4. NEW DOMAINS: a domain the last message asks for that has no CACHE key gets a first search now, using the trip city and the flight dates as hotel dates. 'Stay in <area> with access to <type> attractions' = `search_hotels(..., neighborhood=[\"<area>\"])` + `search_attractions(city=..., type=[\"<type>\"])` + `search_nearest(hotels=..., attractions=..., groupBy=\"hotel\")`, each saved.\n5. ROUND TRIPS: 'X to Y' dates = two search_flights calls (outbound X; return Y with the cities swapped). A flight_class or airline stated in ANY turn goes into both calls.\n6. VALUES: pass only what the user said. 'good', 'formal', 'nice', 'family' never become rating, stars, airline or num_people. 'I don't eat dairy' -> has_dairy_allergy_options=True (never False). A place name after 'in' or 'near' on a hotel -> neighborhood=[\"<place>\"]."
+      },
+      {
+        "op": "replace",
+        "target": "(depart May 16, 2025, return May 18, 2025, trip to St. Louis) and the turn says 'A 4 star hotel in Downtown St. Louis with business facilities and a gym. And I'm interested in Touristy attractions' -> `hotels = search_hotels(city=\"St. Louis\", checkin_date=[\"May 16, 2025\"], checkout_date=[\"May 18, 2025\"]",
+        "content": "(flight summaries show an outbound date <D1> and a return date <D2>, trip to St. Louis) and the turn says 'A 4 star hotel in Downtown St. Louis with business facilities and a gym. And I'm interested in Touristy attractions' -> `hotels = search_hotels(city=\"St. Louis\", checkin_date=[\"<D1 as the user typed it>\"], checkout_date=[\"<D2 as the user typed it>\"]"
+      },
+      {
+        "op": "replace",
+        "target": "departure_date=[\"May 16, 2025\"]",
+        "content": "departure_date=[\"<date exactly as the user wrote it>\"]"
+      },
+      {
+        "op": "replace",
+        "target": "Take origin and destination from earlier turns. Add no other params: no airline, flight_class, budget, times or num_people.",
+        "content": "Take origin and destination from earlier turns. Put every flight_class, airline or budget the user stated in ANY turn into BOTH searches (e.g. 'a first flight from Anchorage' in turn 1 -> flight_class=[\"first\"] on the outbound and the return call). Add nothing else: no times, num_layovers or num_people."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,25 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_or_overcalling",
+      "count": 4,
+      "description": "Selected a merely related endpoint, a less suitable variant, or an extra sibling call after a fitting operation already covered the request."
+    },
+    {
+      "failure_type": "schema_argument_mapping",
+      "count": 4,
+      "description": "Some calls used unsupported or wrongly structured parameters, incorrect required/optional placement, or a field that did not match the selected endpoint’s schema."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most actionable recurring issue is treating each requested noun as requiring a separate endpoint, even when one operation explicitly covers multiple requested content types or a fully scoped endpoint already satisfies the outcome. The added stop condition addresses those extra and mismatched calls. Existing skill guidance already covers endpoint-local schemas and argument serialization, so duplicating it would not add a useful repair.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n### Resolve overlapping endpoint coverage\nFor each requested outcome, count it as covered once a selected endpoint’s own operation and schema explicitly return it with the requested scope. If one endpoint explicitly returns multiple requested content types, use that single call for all of them; do not call sibling endpoints by matching each requested noun to a separate endpoint. Do not add a generic or alternate-provider call that drops an explicit qualifier when a fully constrained call already covers the outcome. Add another call only for a distinct outcome or a requested property the selected operation demonstrably does not provide."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

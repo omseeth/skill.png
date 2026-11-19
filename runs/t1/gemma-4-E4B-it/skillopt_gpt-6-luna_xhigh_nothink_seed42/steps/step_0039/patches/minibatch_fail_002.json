@@ -1,0 +1,39 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_failure",
+      "count": 4,
+      "description": "Filter-only follow-ups re-ran searches instead of retrieving compatible cached results and filtering only the new constraints."
+    },
+    {
+      "failure_type": "mandatory_input_and_date_inference",
+      "count": 2,
+      "description": "Hotel actions inferred a stay or checkout when the dates were absent or ambiguous instead of seeking clarification."
+    },
+    {
+      "failure_type": "tool_schema_and_result_persistence",
+      "count": 2,
+      "description": "Tool calls used an incorrect location field or failed to assign and save the exact result returned."
+    }
+  ],
+  "patch": {
+    "reasoning": "A concise, prioritized turn classifier makes the correct cache-versus-search action salient, especially for repeated budget, amenity, and flight-class follow-ups. It also puts required-input validation, schema mapping, and assign-and-save discipline at the point of tool selection. Removing the overlapping reminders reduces repetition without weakening the detailed rules elsewhere.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "**Turn triage (before tool selection):** Resolve the latest turn against the full conversation, preceding assistant question or offer, and cache summary; identify only the changed domains or legs.\n1. If a compatible cached result covers the same domain, location, dates or leg, and entity scope, retrieve the most constrained compatible result by its literal key. For a new or changed filterable constraint, apply the matching filter and save it, passing the new constraint plus any active criteria not already embodied in that result. Do not base-search, repeat an already-embodied filter, or regenerate unaffected scopes. If the user only accepts an offer to present already-covered recommendations, retrieve them for use without filtering or duplicate saving.\n2. An accepted offer activates its stated scope; use a compatible cache entry if it covers that scope, otherwise search only the genuinely new or uncovered scope with all active supported criteria. An accepted proximity offer uses compatible cached inputs with `search_nearest`, not a substitute search. An affirmative means proximity only when the preceding offer or request was explicitly about proximity.\n3. Validate mandatory inputs before each domain or leg action. If any are missing, do not guess; seek only the missing required details while continuing independent complete requests. Derive hotel checkout only from an explicit stay length; clarify an absent or ambiguous checkout rather than assuming one.\n4. Verify arguments against the declared tool schema (for example, map a state abbreviation to `state`, not `city`). Assign each search, filter, sort, or nearest result once to a named local variable and immediately save that exact value under a unique key."
+      },
+      {
+        "op": "delete",
+        "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested."
+      },
+      {
+        "op": "delete",
+        "target": "- If an affirmative accepts only an offer to present recommendations from an already covered scope, retrieve the relevant cached result for use; do not repeat its search or an already-applied filter, or save a duplicate filtered result. Apply a filter only if the reply adds a new constraint."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

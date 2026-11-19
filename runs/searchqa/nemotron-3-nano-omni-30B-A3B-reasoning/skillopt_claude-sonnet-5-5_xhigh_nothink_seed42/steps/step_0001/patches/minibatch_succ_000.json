@@ -1,0 +1,27 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "All questions are Jeopardy-style clues (often with 'this X' as the blank) answered from noisy web-search snippets. The agent answered with exactly the entity that fills the blank, matching the type the clue asks for (country, settlement, person, pie, movie).",
+    "Several contexts contained a near-verbatim copy of the clue on a trivia or flashcard site, with the answer right after it (e.g. 'CLUE | answer', 'CLUE, ANSWER'). The agent found that line and used it.",
+    "When no verbatim clue match existed, the agent found the entity that recurs across many snippets alongside the clue's key facts (dates, numbers, definitions) and ignored irrelevant documents.",
+    "Answers were short canonical names or headwords with no explanation. Definition clues got the base word ('fume'), and a category label in the snippet resolved a wordplay clue ('WEATHER WORDS' → 'high pressure')."
+  ],
+  "patch": {
+    "reasoning": "Every success was a short trivia-style clue answered from a pile of noisy search snippets, and the skill has no guidance for that format. These rules encode the reading strategy the agents used: find the blank, look for a verbatim clue echo, corroborate across snippets, and answer concisely in the right form.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "## Reading Trivia-Style Clues\n- Questions are often Jeopardy-style statements where 'this/these + noun' (e.g. 'this country', 'this settlement', 'this Disney Channel movie') is the blank. Work out what type of thing is asked for and answer with exactly that entity, not a related fact.\n- Clues can be definitions ('It can mean X or Y'): answer with the single headword that fits all the given senses."
+      },
+      {
+        "op": "append",
+        "content": "## Finding the Answer in Noisy Snippets\n- The context is a pile of web-search snippets, many irrelevant. First scan for a snippet that repeats the clue almost verbatim (trivia, flashcard or Jeopardy-archive sites). The answer usually follows it, e.g. 'CLUE | answer' or 'CLUE, ANSWER'. Category labels there (e.g. 'WEATHER WORDS') can also tell you how to read wordplay.\n- If there is no verbatim match, pick the entity that recurs across several snippets together with the clue's key facts (dates, numbers, descriptions). Corroboration across 2+ snippets is strong evidence, and a single stray mention is not.\n- Ignore off-topic documents, such as other people with similar words or unrelated domains that share a keyword."
+      },
+      {
+        "op": "append",
+        "content": "## Answer Form\n- Give the canonical short name or phrase only (e.g. 'Panama', 'Joseph Lister', 'Grasshopper Pie'). Do not add explanations, dates, or qualifiers inside the answer tags.\n- Match the specificity the clue asks for: a country when it asks for a country, a title when it asks for a work, a person's name when it asks for a person.\n- Use the form the sources use. Do not invent paraphrases, and do not answer with the clue's own wording."
+      }
+    ]
+  },
+  "source_type": "success"
+}

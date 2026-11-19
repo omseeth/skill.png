@@ -1,0 +1,34 @@
+{
+  "reasoning": "Failure-driven edits (Group 1) were kept as the base. Several edits from the two groups hit the same anchor lines, so I combined them into single edits to avoid conflicting targets. (a) The 'Do not invent parameters' bullet was targeted by a Group 2 replace and a Group 1 insert_after. These became one replace that carries Group 2's json/fragment exception plus all Group 1 parameter bullets. Group 2's 'Required parameters: none' and verbatim-value bullets were folded into it, with its storeId/sellerId/point examples added to the none bullet. (b) The 'Do not add helper/random/list' bullet was targeted by a Group 2 replace and a Group 1 insert_after. These became one replace with Group 2's rule for clauses that name a no-input call, followed by Group 1's compound-clause, vague-query and spreading rules. Group 2's narrative-query sentence was dropped because Group 1's checklist edit already covers it. (c) Group 2's 'current plus forecast = two calls' insert split a bullet that Group 1 also extends, so it moved into Group 1's schema-fit insert as its own bullet. (d) Group 2's duplicate-optional-parameters warning was dropped because Group 1's self-check bullet already covers it. (e) Group 2's non-overlapping insights (en-GB/GB and active-alert qualifiers, speaker slug and amount/count field names) were kept as separate insert_after edits. No edits touch the protected SLOW_UPDATE section. [optimizer-ranked: selected 3/9 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+      "content": "\n- Long or narrative queries ('First..., Then..., Finally...', 'searched X, then Y... They also investigated other platforms: ...') are checklists with one or more calls per sentence. Write the checklist out first and count it: an 8-clause query that yields 2 calls has stopped early. Every named platform, ASIN, SKU, ID or endpoint (e.g. 'Bybit's Public Trading Records', 'Alpha Vantage's DIGITAL_CURRENCY_DAILY') and every action ('checking countries', 'browsing categories', 'searching for X', 'reading reviews', 'mark price movements ... klines') gets its own call, including sentences after 'also', 'then' or a colon, and the opening verb ('searched for chairs on Wayfair' -> the Wayfair search call even when a SKU follows). If a clause names a provider and an action, use that provider's closest endpoint even when the match is loose (e.g. 'searching for iPhone cases' on Asos -> its search/auto-complete endpoint). Map noun phrases: 'categories and country availability' -> categories list + countries list; 'regional settings' -> the region-parameters endpoint; 'a specific store (ID, seller ID)' -> the store endpoint with both ids.\n- Hedged, trailing or final requests are real requests ('I also checked which countries Asos sells to, though this seems less relevant'; 'finally retrieve a chess puzzle with a 1500 rating'). Always make the call, and re-check the last sentence of the query last, because that is where calls are most often dropped. Only closing commentary about purpose ('this allowed me to examine...', 'likely comparing...') asks for no call.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+      "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely. Build the name mechanically: it is exactly the text after `### ` in that tool's block (e.g. `Lost Ark: get classes`, `Zappos Realtime Data: Zappos product detail by Product ID`, `BestBuy Product Data: BestBuyProductData`). NEVER use the text of the `Provider:` line (the long tagline after a dash, e.g. `Rocket League — Ranks, stats, news & more…`) and never put ` — ` in a tool name. If the query quotes a name such as 'Dice Roll Simulator: Regular dice', copy it verbatim. When one provider has several endpoints (Lost Ark, Rocket League, Wayfair, fast Email verifier, Dice Roll Simulator), each call needs its own full `Provider: API` name. Copy names character for character, including lowercase initials (`fast Email verifier: FreeDomain`, not `Fast Email verifier: ...`).",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not close the list early or leave stray brackets.",
+      "content": "\n- Keep the answer short: one call per distinct request in the query (usually 3-12 calls). Never repeat an identical call unless the query asks for that action twice. Never loop over numbers or re-list the same tool again and again. 'Run code to calculate orbital periods for Mercury, Venus, Earth and Mars' is ONE call to the code tool, with the whole program in its single `code` value. Once the last clause is covered, close with `}]</answer>` immediately. An answer that never closes scores zero.\n- Separate calls only with `}, {` inside the single outer `[ ]`. Never write `], [` or `}],` between calls. Every call, even to the same tool or in the same sentence, is its own `{...}`.\n- Self-check every object: `{\"tool name\": ..., \"required parameters\": [...], \"optional parameters\": [...]}`. The string `\"optional parameters\"` appears exactly once per object. Never append a second `\"optional parameters\": []` after a filled list, and never put a second `\"tool name\"` or second parameter set inside one object.\n- `required parameters` and `optional parameters` contain only `{\"name\": \"x\", \"value\": \"y\"}` objects, never bare names like `[\"page_id\"]`. If the query only says 'main page' or 'default', still give the value from its wording (page_id `main`, sort `0`).",
+      "support_count": 3,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 6 addresses the most systematic failure (dropped calls in long/hedged queries, especially the last clause) and is general. Edit 0 fixes tool-name construction, where errors score zero and the current skill's guidance is thin. Edit 1 prevents format failures that also score zero (unclosed answers, runaway repetition, malformed separators, duplicate keys, bare parameter names). Edit 5 is broad but contains a risky validator-spreading rule that conflicts with existing guidance. Edit 2 is valuable but largely tied to specific tools. Edits 3, 4, 7 and 8 are narrower, overlap existing content, or have low support.",
+    "selected_indices": [
+      6,
+      0,
+      1
+    ]
+  }
+}

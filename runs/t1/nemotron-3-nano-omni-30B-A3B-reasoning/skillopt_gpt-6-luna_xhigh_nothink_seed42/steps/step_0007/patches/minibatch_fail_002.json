@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle",
+      "count": 4,
+      "description": "Searches or refinements were left unassigned and/or not saved to cache."
+    },
+    {
+      "failure_type": "incremental_update_and_cache_scope",
+      "count": 5,
+      "description": "Agents missed newly supplied constraints, repeated already-covered work, or added unnecessary calls while processing an update."
+    },
+    {
+      "failure_type": "contextual_argument_mapping",
+      "count": 3,
+      "description": "Agents misread short replies or substituted values, and one placed a state abbreviation in the city field."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the required result lifecycle explicit as a call-and-save sequence, strengthen the refinement audit so every new criterion is actually passed without repeating covered criteria, and clarify how to map contextual replies and literal user values to schema fields.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- For every required search, filter, sort, or nearest-results call, emit an explicit assignment such as `result = tool(...)`, immediately followed by `save_to_cache(key=\"<unique descriptive key>\", value=result)`. Do this for every call, including each distinct leg or refinement; never leave a result-producing call bare, omit its save, or save a hand-built substitute. Do not print `No planning needed` after performing tool work."
+      },
+      {
+        "op": "replace",
+        "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+        "content": "- When refining a cached result, retrieve a compatible base result and pass it as `prior_results`. Include every newly introduced, schema-supported criterion in the matching filter keyword argument, but do not resend criteria already represented in the base. Passing only `prior_results` is not refinement. If no compatible base exists, search when mandatory inputs are available. Do not redo satisfied domains or add sorting or other post-processing unless requested."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- Resolve terse or elliptical replies using the immediately preceding assistant prompt before assigning values to tool fields; do not reinterpret a reply to a question about one field as a different preference. Preserve user-supplied names, abbreviations, and codes verbatim rather than expanding or substituting them. When only a state or region is supplied, including an abbreviation, use `state`, not `city`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,96 @@
+{
+  "reasoning": "All nine failure-driven edits are kept. They trim redundant bad-string examples (the meta-guidance says to show the duplicate-key pattern once), fix the Goverlytics example the agent was copying, and add the bare-keyword, comprehensive-email, entity-audit and value-case rules, each with a stated boundary. None touches the SLOW_UPDATE block. From the success group I kept all four edits (value format, regular dice, Airbnb lat/lng reverse case, and the 'clause asks what exists' boundary). Each covers a pattern the failure edits do not address, and none contradicts a failure edit. The 'regular dice' edit replaces an existing line, so it adds no length. One anchor conflict: failure edit 9 and success edit 'VALUE FORMAT' both targeted 'Copy values verbatim from the query.'. I moved the success edit to a different anchor, the end of the 'Do not invent parameters' bullet, so the two never compete for one insertion point and the order of application does not matter. The failure insertion keeps its original anchor. No other edits overlap in target text.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "'current active federal politicians' -> `Goverlytics: politicians` with `active`=`true`, `level_of_government`=`Federal`.",
+      "content": "'current active federal politicians' -> `Goverlytics: politicians` with `active`=`true`, `level_of_government`=`federal` (lowercase, as the query words it), plus `limit` when a count like '10 politicians' is stated.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Parameters",
+      "content": "\n- BARE KEYWORD VALUES. A `tag`, `q`, `keyword` or `searchterm` value is the entity or topic itself, without the query's filler words ('related', 'news', 'articles', 'latest'): 'Apple-related news articles using India Today's tag search' -> `India Today Unofficial: Tag Search` with `tag`=`Apple` (BAD `Apple-related`). A phrase the query quotes is copied verbatim into `q`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "BAD `Lost Ark — get engravings`, `Wayfair — This API helps to query...`, `BestBuy Product Data`. GOOD",
+      "content": "Type the name character for character from the `### ` line, so a colon always sits between provider and endpoint (a heading shown as `Provider — endpoint` is written `Provider: endpoint`). BAD (missing endpoint) `BestBuy Product Data`. GOOD",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "`\"optional parameters\": [{\"name\": \"wordLength\", \"value\": \"6\"}], \"optional parameters\": []` (the second key erased the first list)",
+      "content": "a second `optional parameters` key written after a filled list (the empty one erased the filled one)",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Stray trailing key after a one-param list: `\"optional parameters\": [{\"name\": \"value\", \"value\": \"A\"}], \"optional parameters\": []`. The empty list erased `value`=`A`.",
+      "content": "- The `]` that closes a filled optional list is followed directly by `}`. Nothing else is typed after it.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "3. Keys: BAD `\"optional parameters\": [{...}], \"optional parameters\": []` (the second key erases the first list), and BAD an object with no `\"optional parameters\"` key. GOOD exactly one each of `tool name`, `required parameters`, `optional parameters` per object, using `[]` when empty.",
+      "content": "3. Keys: every object has exactly one each of `tool name`, `required parameters`, `optional parameters`, in that order, using `[]` when empty. An object with no `optional parameters` key is also wrong.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "'Comprehensive checks on an email and its domain' = an email-level validator with the full address plus domain-level tools with the bare domain (`MailCheck: Domain`, `fast Email verifier: Role Account`, `fast Email verifier: disposable Domain and Suggest Domain`).",
+      "content": "'Comprehensive / thorough checks on an email and its domain' = every email-level validator covering valid/disposable (`Easy Email Validation: Validate Email`, `Email Validation_v3: Validate_Email`) with the full address PLUS every domain-level tool with the bare domain, one call each (`MailCheck: Domain`, `fast Email verifier: Role Account`, `fast Email verifier: disposable Domain and Suggest Domain`). That is about 5 calls, plus `Email API: Get Fake Email Address` if a fake-email clause exists. BOUNDARY: a plain 'valid AND disposable' on one address (no 'comprehensive') is ONE call to a tool whose description names both (`Alpha Email Verification: Email Checker`, `Email Validation_v3: Validate_Email`). Do not add `Email Existence Validator: Check for Disposable emails` on that address.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).",
+      "content": "A named group or entity search -> the matching `by` field, even when it has a default: 'K-pop girl group Twice' -> `K-POP: girl-groups` with required `q`=`Twice` AND optional `by`=`Group Name`. ENTITY AUDIT: every name, code and date in the clause must land in a field, and codes in parentheses are values too. 'United Airlines (UA) flight 556 from San Francisco (SFO) to Seattle (SEA) on May 25, 2024' on `Flight Info API: schedules` -> optional CarrierCode=`UA`, FlightNumber=`556`, DepartureAirport=`SFO`, ArrivalAirport=`SEA`, DepartureDateTime=`2024-05-25` (five fields, none dropped).",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Copy values verbatim from the query.",
+      "content": "\n- VALUE CASE (exception to 'verbatim'). Category-like values on music tools are lowercase: `MusicData API: /youtube/24h/{type}` 'English-language' -> `type`=`english`; `Spotify _v2: New releases` 'in the UK' -> `country`=`uk`. Artist and group names keep their case (`Twice`), airport and airline codes stay uppercase (`SFO`, `UA`), and a US state clause on `Gas Price: stateUsaPrice` takes the postal code ('Washington state' -> `WA`).",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Never emit a parameter with an empty value.",
+      "content": "\n- VALUE FORMAT FOLLOWS THE PARAM DESCRIPTION. When the schema text shows a format, convert the query's wording to it: 'Germany' with `country` described as 'E.g, ES, DE, US' -> `DE`; 'June 21st' -> `month`=`6`, `day`=`21`; 'American Airlines (AA)' -> `ident`=`AA`; an enum word in the clause fills a required enum ('seasonal challenges' -> `type`=`seasonal`).",
+      "support_count": 3,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "Several dice -> `Custom dice`, one die -> `Custom die`.",
+      "content": "'Regular dice' with no side count -> `Dice Roll Simulator: Regular dice` (`dice`=`5`); several dice with a stated side count -> `Custom dice`, one die -> `Custom die`.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "not a lat/lng tool with guessed coordinates.",
+      "content": "not a lat/lng tool with guessed coordinates. The reverse also holds: when the query itself gives coordinates and a range ('near (4.1755, 73.5093) within 2000 meters, 2 bedrooms, 4 guests'), use the lat/lng count tool (`Airbnb listings: Count listings by lat lng`: required `lat`=`4.1755`, `lng`=`73.5093`, `range`=`2000`; optional `bedrooms`=`2`, `maxGuestCapacity`=`4`), not the market or admin-division tools.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+      "content": "\n- Boundary: a clause that itself asks what exists ('what geographic regions are available for AI-generated news') names its deliverable, so call the endpoint whose heading is that noun (`AI News - Global: Available Regions`, no params). Only list calls that NO clause asks for are padding.",
+      "support_count": 1,
+      "source_type": "success"
+    }
+  ]
+}

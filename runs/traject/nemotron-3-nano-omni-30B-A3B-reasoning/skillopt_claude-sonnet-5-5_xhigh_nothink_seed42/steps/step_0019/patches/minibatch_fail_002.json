@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missed_optional_qualifier",
+      "count": 3,
+      "description": "Entity codes and selector fields were left out of the optional list: CarrierCode=UA from 'United Airlines (UA)', `by`=Group Name for K-POP, and pageSize in the news task."
+    },
+    {
+      "failure_type": "value_form_case",
+      "count": 4,
+      "description": "Values were emitted in the wrong case or form. Gold used lowercase `english`, `bellman`, `uk` and `in`, and the postal code `WA` for 'Washington state'."
+    },
+    {
+      "failure_type": "dropped_or_stacked_email_calls",
+      "count": 3,
+      "description": "Email clauses were dropped or mis-stacked. In email:130 the 'techvision.com classified as disposable' clause lost its MailCheck: Domain call while a redundant disposable-email call was added. In email:98 'comprehensive checks on email and domain' got 3 of 6 calls. In email:7 the valid/deliverability clauses were routed to the wrong verifiers."
+    },
+    {
+      "failure_type": "wrong_sibling_tool",
+      "count": 1,
+      "description": "'Search for travel locations in London' was routed to Priceline 'Search flights locations' instead of 'Search hotels locations', whose description says 'travel locations'."
+    },
+    {
+      "failure_type": "gold_artifact_unfixable",
+      "count": 1,
+      "description": "news:101 gold contains unrelated tools (Arabic news, German police, dev-to), so it is not chased."
+    }
+  ],
+  "patch": {
+    "reasoning": "All 8 trajectories parsed cleanly, so the format section stays untouched; edits to it caused the earlier rejects. The remaining losses are content-level: missing optionals for codes and selector fields, value case or form, under-calling or mis-stacking email clauses, and one sibling mismatch. The four edits each merge into or sit beside an existing rule instead of adding a new section. One edit gives a count-style rule for email 'comprehensive' versus 'valid AND disposable' with an explicit boundary. One turns the `by` bullet into an every-code-needs-a-field audit with a flight example. One adds a wording-match example for generic 'travel locations'. One adds a value-case exception for music and state tools.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "'Comprehensive checks on an email and its domain' = an email-level validator with the full address plus domain-level tools with the bare domain (`MailCheck: Domain`, `fast Email verifier: Role Account`, `fast Email verifier: disposable Domain and Suggest Domain`).",
+        "content": "'Comprehensive / thorough checks on an email and its domain' (or 'run checks on both the email and the domain') = every email-level validator that covers valid/disposable (`Easy Email Validation: Validate Email`, `Email Validation_v3: Validate_Email`) with the full address PLUS every domain-level tool in the list with the bare domain, one call each (`MailCheck: Domain`, `fast Email verifier: Role Account`, `fast Email verifier: disposable Domain and Suggest Domain`). That is about 5 calls, plus 1 for a fake-email clause (`Email API: Get Fake Email Address`). BOUNDARY: a plain 'valid AND disposable' on one address (no 'comprehensive') is ONE call to a tool whose description names both (`Alpha Email Verification: Email Checker`, `Email Validation_v3: Validate_Email`). Never add `Email Existence Validator: Check for Disposable emails` on that same address. A separate clause 'is domain X classified as disposable' still gets its own `MailCheck: Domain` call even if X already appeared in an availability clause (X -> `fast Email verifier: FreeDomain` AND `MailCheck: Domain`)."
+      },
+      {
+        "op": "replace",
+        "target": "A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).",
+        "content": "A named group or entity search -> the matching `by` field, even when it has a default: 'K-pop girl group Twice' -> `K-POP: girl-groups` with required `q`=`Twice` AND optional `by`=`Group Name`. ENTITY AUDIT: every name, code and date in the clause must land in a field, and codes in parentheses are values too. 'United Airlines (UA) flight 556 from San Francisco (SFO) to Seattle (SEA) on May 25, 2024' on `Flight Info API: schedules` -> optional CarrierCode=`UA`, FlightNumber=`556`, DepartureAirport=`SFO`, ArrivalAirport=`SEA`, DepartureDateTime=`2024-05-25` (five fields, none dropped)."
+      },
+      {
+        "op": "insert_after",
+        "target": "When a sibling's name merely contains yours, re-read both descriptions.",
+        "content": "\n- GENERIC CLAUSE -> THE SIBLING WHOSE DESCRIPTION REPEATS ITS WORDS. When a provider has per-vertical siblings (hotels / flights / cars) and the clause says only 'travel locations' or 'destinations', take the one whose Description says that (`Priceline com Provider: Search hotels locations`: 'Searches for travel locations by name'), with `name`=`London` and the required type selector `search_type`=`ALL`. The flights sibling ('Searches airports and locations') is only for airport or flight clauses, and the cars sibling only for car rental."
+      },
+      {
+        "op": "insert_after",
+        "target": "Copy values verbatim from the query.",
+        "content": "\n- VALUE CASE AND FORM (exception to 'verbatim'). On music tools, category-like values are lowercase: `MusicData API: /youtube/24h/{type}` 'English-language' -> `type`=`english`; `Spotify _v2: New releases` 'in the UK' -> `country`=`uk`; `kjoller: Get songs by composer` 'composed by Bellman' -> `composer`=`bellman`. Artist and group names keep their case (`Twice`, `Halsey`). Airport and airline codes stay uppercase (`SFO`, `UA`). A US state clause on a state-level tool takes the postal code: `Gas Price: stateUsaPrice` 'Washington state' -> `state`=`WA`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

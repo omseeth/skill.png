@@ -1,0 +1,48 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "malformed_json_output",
+      "count": 2,
+      "description": "Answer did not parse (parse_success=0, score zero). Stray `]`/`[` between call objects, a call list closed early, and the key `optional parameters` repeated in one call. A third trajectory also repeated the key but still parsed."
+    },
+    {
+      "failure_type": "parameter_placement_and_omission",
+      "count": 3,
+      "description": "Optional parameters such as q, postalCode, loc, star and page were put under required. Optional values the query states or implies (storeId, sellerId, page, sortby, sort_order, country, lang, region) were left out. Some values were wrongly formatted (domain 'US' instead of 'com', 'DE' instead of 'de')."
+    },
+    {
+      "failure_type": "incomplete_coverage",
+      "count": 2,
+      "description": "Narrated clauses were dropped. The opening Wayfair product search and Asos categories/list were both missed, although 'checking Asos categories and country availability' names two calls."
+    },
+    {
+      "failure_type": "wrong_value_or_tool_variant",
+      "count": 2,
+      "description": "page_id was invented as '1' instead of the query's 'main'. The numbered sibling endpoint (Item Search 3) was chosen instead of the plain Item Search."
+    }
+  ],
+  "patch": {
+    "reasoning": "Two of five trajectories scored zero only because the JSON was malformed, so a short strict output-syntax rule is the highest-value fix. The other failures were optional params placed under required, optional values from the query omitted, and dropped narrative clauses. Earlier rejected patches were very long and sometimes lowered the score, probably because they added conflicting 'do not add' guidance and pushed over-calling or long checklists. These four edits are short, make non-overlapping points, and avoid blanket 'don't add optionals' wording.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Rule 1: The answer must be valid JSON (an unparsable answer scores zero)\n- Output ONE flat list of call objects: `[{...}, {...}, {...}]`. Between objects put only a comma. Never put `]` or `[` between objects, and never close the list early.\n- Each call object has exactly three keys, each appearing ONCE: `\"tool name\"`, `\"required parameters\"`, `\"optional parameters\"`. Put all optional parameters of a call in the single `optional parameters` list. Never write that key twice in one call. Write `[]` for an empty list.\n- Parameters are objects `{\"name\": \"x\", \"value\": \"y\"}` inside those lists, and every value is a quoted string.\n- Wrong: `[{...}], {...}]` or `\"optional parameters\": [..], \"optional parameters\": [..]`. Right: `[{...}, {...}]`.\n- Before finishing, check that the text ends with `}]</answer>` and that the brackets balance."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 2: Parameter placement and values\n- Copy placement from the chosen tool's schema. A name listed under 'Optional parameters' goes in `optional parameters`, even when it carries the query's main input (`q`, `postalCode`, `storeId`, `sellerId`, `country`, `page`, `star`, `composer`). A name under 'Required parameters' goes in `required parameters`. Use only the names the tool lists.\n- Include every optional parameter whose value the query states or clearly implies. Examples: a postal code, store ID or seller ID given in the query; 'first page' -> page `1`; '20 results' -> itemsperpage `20`; 'default sorting' -> sortby `0`; 'most relevant' -> sort_order `RELEVANCE`; 'US customers / US market' -> region or country `US`, currency `USD`, and lang `en-US` where the tool has those fields. Do not invent optionals with no basis in the query.\n- Copy values from the query's own wording and never replace them with a guess. 'BizToc's main page' -> page_id `main`, not `1`. IDs, SKUs, ASINs, ZIPs and names are copied exactly.\n- Use the format the parameter expects. A marketplace `domain` takes the lowercase site suffix (US -> `com`, German -> `de`, UK -> `co.uk`). Follow any listed enum or code format."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 3: Cover every action in the query\n- Treat every narrated or listed action as one call, including the FIRST sentence ('searched for X on Wayfair' is a product-search call) and past-tense steps ('checking categories', 'explored regional settings', 'looked up details').\n- One phrase can name several calls. 'Asos categories and country availability' = categories/list AND countries/list. 'Financing options, images, and home services' = three endpoints. 'Specific store (ID, seller ID)' = the store endpoint with both IDs filled in.\n- N entities (ASINs, SKUs, emails, domains) for a one-value tool = N calls. A repeated action on different entities is repeated, not merged.\n- Before answering, tick off each clause against your list of calls. Add no call that no clause asks for."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 4: Choosing among similar tools\n- Pick the endpoint whose name and description mirror the query's verb and object: a dedicated list, detail, images, warranty or reviews endpoint beats a generic search. Match the provider named in the query (Wayfair, Asos, Aliexpress, Amazon) and keep each sub-task on that provider's own endpoint.\n- When a provider has near-identical numbered variants ('Item Search' vs 'Item Search 3'), use the plain base endpoint unless the query clearly asks for several different searches.\n- A search with filters (keywords, region, currency) belongs in the search endpoint's own `q`, `region` and `currency` fields. Keep topic words like '16GB RAM' inside the search text."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

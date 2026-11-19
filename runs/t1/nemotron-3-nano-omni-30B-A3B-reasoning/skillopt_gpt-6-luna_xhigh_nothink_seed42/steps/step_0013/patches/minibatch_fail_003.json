@@ -1,0 +1,41 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 4,
+      "description": "Search or filter results were not consistently bound and saved to cache."
+    },
+    {
+      "failure_type": "argument_or_constraint_mapping",
+      "count": 2,
+      "description": "Calls used an unsupported amenity name or omitted/malformed an explicitly requested hotel constraint."
+    },
+    {
+      "failure_type": "round_trip_leg_handling",
+      "count": 1,
+      "description": "A round trip was represented as one outbound search with an arrival date instead of separate reversed legs."
+    },
+    {
+      "failure_type": "missing_mandatory_information_and_domain_coverage",
+      "count": 1,
+      "description": "The plan invented hotel dates and skipped a restaurant search whose required city was available."
+    },
+    {
+      "failure_type": "stale_cache_false_noop",
+      "count": 1,
+      "description": "The plan treated cached results for an earlier cuisine preference as satisfying a corrected request."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures already contradict explicit skill rules on persistence, schemas, round trips, and missing inputs, so repeating those rules would not patch a content gap. Clarify how explicit corrections affect cache compatibility to prevent stale refinements from suppressing a newly requested action.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.",
+        "content": "- Treat explicit correction or replacement language (for example, “actually,” “instead,” or “only”) as superseding the conflicting earlier criterion while retaining nonconflicting context. Recheck cache coverage against the revised criterion: a refinement based on the superseded value is incompatible and cannot justify “No planning needed.” Use a compatible earlier base result for refinement only when it covers the remaining criteria; otherwise search with the revised criteria."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

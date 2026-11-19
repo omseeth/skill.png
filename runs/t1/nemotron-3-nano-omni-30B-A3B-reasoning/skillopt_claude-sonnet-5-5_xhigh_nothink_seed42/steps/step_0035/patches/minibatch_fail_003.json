@@ -1,0 +1,36 @@
+{
+  "batch_size": 3,
+  "failure_summary": [
+    {
+      "failure_type": "placeholder_for_missing_mandatory_arg",
+      "count": 1,
+      "description": "Restaurant request with no city ('find a restaurant for my birthday', reply 'don't know' to a cuisine question). The agent wrote search_restaurants(city=\"<city>\") instead of seek_information for the city. The existing city rule only covers 'dietary needs but no city', and the placeholder ban sits only in the DATE GATE."
+    },
+    {
+      "failure_type": "invented_optional_params_on_first_search",
+      "count": 1,
+      "description": "Hotel first search with dates given. 'Family vacation ... kid-friendly hotel' became num_people=4 and has_kids_club=True, neither of which the user stated. Gold has only city and dates."
+    },
+    {
+      "failure_type": "dropped_domain_and_unsaved_search",
+      "count": 1,
+      "description": "'A hotel in Lexington with a good restaurant nearby that serves Mediterranean' (CACHE {}, no hotel dates). The agent wrote a bare, unassigned, unsaved search_restaurants and omitted the closing seek_information for hotel dates. Rule 4b, Rule 21 and the hygiene rules already cover this, but the agent did not apply them."
+    }
+  ],
+  "patch": {
+    "reasoning": "All three failures are first-turn (CACHE {}) code-gen slips, not routing errors. The agent put a placeholder where a mandatory arg was missing, invented optional kwargs from vague words, and dropped a closing seek_information while leaving a call unsaved. Earlier attempts to rewrite the refinement rules (Rules 2/17, flight block) were rejected as regressions, so this patch avoids them. Instead it adds one compact first-search check at the very top of the skill, where attention is highest, with a worked slot-style example for each failure. It also widens the existing DATE GATE placeholder ban to cover any argument, such as a missing city. It adds no new gate paragraphs and touches no refinement or flight rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n\n- FIRST-SEARCH ARG CHECK (a requested domain with NO CACHE key). (a) Every mandatory arg must be a literal value from the conversation: search_restaurants needs a stated city; search_hotels needs city + check-in + check-out; search_flights needs origin + departure date. If one is missing, that domain gets `seek_information(...)` naming only the missing item, and never a placeholder. Example: 'find a restaurant for my birthday' + 'don't know' (a cuisine answer) has no city -> the WHOLE output is `seek_information(\"We need the city for the restaurant.\")`. Occasion words ('birthday') and 'don't know' supply nothing. (b) Hotel kwargs come only from words that name a hotel parameter. 'kid-friendly', 'family vacation', 'good', 'nice' map to NO kwarg, and never to num_people or has_kids_club; num_people only from a stated number ('solo' = 1); has_kids_club only from 'kids club'. Example: 'family vacation in <city>, need a kid-friendly hotel' + 'check-in <date A> and check-out <date B>' -> `hotels = search_hotels(city=\"<city>\", checkin_date=[\"<date A>\"], checkout_date=[\"<date B>\"])` + `save_to_cache(key=\"hotels\", value=hotels)` and nothing else. (c) Hotel + restaurant in one request with no hotel dates ('a hotel in <city> with a good restaurant nearby that serves <cuisine>'): `restaurants = search_restaurants(city=\"<city>\", cuisine=[\"<cuisine>\"])`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then ONE `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. No search_nearest yet (no hotels key), no rating kwarg for 'good', and never a bare unassigned, unsaved search_*. Dropping the seek_information or the save is wrong."
+      },
+      {
+        "op": "replace",
+        "target": "Never write a placeholder such as '<date>' or '<X>' as an argument.",
+        "content": "Never write a placeholder such as '<date>', '<city>' or '<X>' as an argument to ANY tool (a missing city, date or origin means seek_information, not a search)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,30 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_scope",
+      "count": 4,
+      "description": "Repeated searches or regenerated unaffected results instead of retrieving compatible cached results and filtering only the changed request."
+    },
+    {
+      "failure_type": "flight_leg_modeling",
+      "count": 2,
+      "description": "Represented a return date as an arrival date on the outbound search or omitted the separate return-leg search."
+    },
+    {
+      "failure_type": "unsupported_value_mapping",
+      "count": 1,
+      "description": "Mapped a qualitative preference to a categorical field whose values do not express that preference."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache and flight-leg errors already conflict with explicit skill instructions, so repeating those rules would not patch a content gap. Clarify that a supported parameter must also semantically fit the user's value, addressing the unsupported airline mapping.",
+    "edits": [
+      {
+        "insert_after": "- Pass only criteria supported by the conversation and map each value to the field that expresses it. Preserve the user's entity text and supported category or filter values exactly; do not normalize or substitute a near synonym, including for an attraction `type`. For example, put a state abbreviation in `state`, not `city`. For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; do not treat a request to stay in a named district as a proximity search. Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed. For flight `departure_time` and `arrival_time`, use 12-hour strings with an AM/PM suffix (for example, `[\"12:00 AM\", \"04:33 AM\"]`); represent midnight as `12:00 AM`, not `00:00:00`, and do not pass 24-hour `HH:MM:SS` strings to flight tools. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+        "content": "\nA field being available does not make every phrase a valid value for it: confirm that the user's preference semantically matches the field's supported options. Do not put qualitative descriptors into categorical fields unless they name a valid option (for example, do not pass “kid-friendly” as an airline). If no supported field captures an optional preference, omit that preference and proceed with the supported request without inventing a substitute or asking for unsupported details."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

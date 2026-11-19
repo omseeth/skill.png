@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_name_format",
+      "count": 2,
+      "description": "The tool name was copied as 'Provider — tagline…' or the provider line instead of the exact '### Provider: API' heading, so tool matching failed (T1, T5)."
+    },
+    {
+      "failure_type": "parameter_value_format",
+      "count": 3,
+      "description": "The Amazon marketplace `domain` was given as 'amazon.de' or 'DE' instead of the lowercase country suffix 'de' (T1, T5, T7). The search keyword also carried a generic word the tool already implies (T4)."
+    },
+    {
+      "failure_type": "malformed_output",
+      "count": 3,
+      "description": "T6 had broken brackets and parsed to zero calls. T3 listed bare parameter names with no values. T2 and T6 dropped the `optional parameters` or `required parameters` key."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 1,
+      "description": "'Search for these items' was answered with the same auto-complete tool for two unrelated product types. A matching search endpoint for the second retailer category was ignored (T8)."
+    },
+    {
+      "failure_type": "optional_param_gap",
+      "count": 3,
+      "description": "Gold optional parameters such as limit, pageSize, accept_all and timeout were not included (T2, T3, T4). No reliable rule could be derived for these."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three systematic errors cost points in most trajectories: wrong tool-name strings, wrong value normalisation for the Amazon domain, and malformed or incomplete JSON. Each gets a short explicit rule with a template or concrete example. One further rule makes the agent pick a real search endpoint that matches the product category, instead of reusing an auto-complete tool for unrelated items.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Output format (errors here score zero)",
+        "content": "\n- `tool name` is ONLY the text after `### ` in the heading, e.g. `Amazon Pricing and Product Info: Main Endpoint` or `Wayfair: products/get-financing-offers`. Never build it from the `Provider:` line, never include the provider tagline after a dash (`Provider — long description`), and never use a bare provider name. A tool name containing ` — ` is always wrong."
+      },
+      {
+        "op": "insert_after",
+        "target": "- The answer is one flat, bracket-balanced list `[{...}, {...}]` inside `<answer>` tags. Do not close the list early or leave stray brackets.",
+        "content": "\n- Write every call in exactly this shape, comma-separated, with the single closing `]` only after the last object: `[{\"tool name\": \"A: b\", \"required parameters\": [{\"name\": \"x\", \"value\": \"1\"}], \"optional parameters\": []}, {\"tool name\": \"C: d\", \"required parameters\": [], \"optional parameters\": [{\"name\": \"q\", \"value\": \"v\"}]}]`. Never write `}],` or `}]}` between calls. Never list bare parameter names (`[\"category\", \"country\"]`); every entry is a `{\"name\", \"value\"}` object with a real value from the query. Never omit `required parameters` or `optional parameters`, even when empty. After writing, re-read the list and check brackets, braces and commas."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+        "content": "\n- Value normalisation: for a marketplace `domain` parameter (e.g. Amazon `domain`), pass the lowercase country suffix only (`de` for 'German marketplace (amazon.de)', `com`, `co.uk`, `fr`), not the host name (`amazon.de`) and not uppercase (`DE`). Country-style values from the query ('English sports news from India') map to the matching optional params (category `sports`, country `in`, language `en`). For a search term, keep the product or entity words and descriptive adjectives. Drop only generic words that the chosen tool already implies (a movie-news search for 'Superman movies' -> `Superman`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n- 'Search for / look for / find items' means a search endpoint (`products/search`, `Search Items`, `search product`), not auto-complete, which only suggests terms. Use auto-complete only when the query asks for suggestions or when that retailer has no search endpoint in the list. When a query has several different product types (clothing vs furniture/lamps), pick the retailer or tool that fits each category separately. Do not reuse one tool for both items when another listed tool is a better fit for the second item."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,37 @@
+{
+  "reasoning": "Kept the four distinct corrections: clarify the accepted flight-time format, carry active constraints across turns, handle questions about assistant-suggested scopes without assuming proximity, and avoid no-op responses when a request is actionable or independently searchable. Existing cache and required-input rules remain intact; each edit appears in one source patch.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed; do not mix 12-hour suffixes with 24-hour values (for example, represent midnight as `00:00:00`, not `00:00 PM`).",
+      "content": "Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed. For flight `departure_time` and `arrival_time`, use 12-hour strings with an AM/PM suffix (for example, `[\"12:00 AM\", \"04:33 AM\"]`); represent midnight as `12:00 AM`, not `00:00:00`, and do not pass 24-hour `HH:MM:SS` strings to flight tools.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Accepting an offer to search a new domain, category, or entity creates that search using established trip context.",
+      "content": " Maintain active supported constraints for each domain across the full conversation. When making a new search, include all still-active criteria the user has already supplied, even if the latest turn only supplies a location or another missing detail. When filtering, account for active criteria not already embodied in the cached result as well as newly supplied criteria. Drop or replace a constraint only when the user withdraws or changes it.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Cache-aware tool workflow",
+      "content": "- When the user asks about a place, category, or entity the assistant just suggested (for example, “What's there?”), treat it as a request to inspect that scope: retrieve a compatible cached result and filter it to that scope, or search if no compatible result can cover it. An assistant's proximity suggestion alone does not authorize `search_nearest`; use it only when the user explicitly requests or accepts proximity.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not infer a stay length; ask when a required date cannot be obtained or derived from explicit information.",
+      "content": "\n\nA no-op response is appropriate only when the latest turn adds no actionable request and compatible cached results already cover all active requests. If required information is missing for one domain or itinerary leg, ask for it while still searching and caching any independent requested domain or leg whose mandatory inputs are complete.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

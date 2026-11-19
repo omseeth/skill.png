@@ -1,0 +1,68 @@
+{
+  "step": 7,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 30,
+  "failure_patterns": [
+    {
+      "pattern": "incomplete_followup_scope: Agents missed follow-up work, including an accepted activity request, a new flight request, a flight preference, or a return leg.",
+      "count": 30,
+      "task_ids": [
+        "flighthotelattraction:train:19:26:3",
+        "flighthotelrestaurant:train:17:39:3",
+        "attraction:train:8:59:0",
+        "flighthotel:train:18:2:3",
+        "restaurant:train:20:47:3",
+        "hotelrestaurant:train:22:31:1",
+        "flight:train:20:12:3",
+        "hotel:train:12:44:1",
+        "flight:train:7:30:4",
+        "flight:train:2:18:3",
+        "flighthotel:train:10:57:4",
+        "attraction:train:18:42:0",
+        "hotelattraction:train:14:7:5",
+        "restaurant:train:20:4:4",
+        "hotelrestaurant:train:13:12:1",
+        "hotel:train:8:33:2",
+        "hotel:train:8:28:1",
+        "hotel:train:9:25:3",
+        "flighthotelrestaurant:train:15:42:2",
+        "flighthotelattraction:train:7:36:4",
+        "flighthotelrestaurant:train:6:30:1",
+        "attraction:train:22:10:0",
+        "flighthotelattraction:train:19:16:3",
+        "flighthotelrestaurant:train:17:4:1",
+        "attraction:train:13:56:0",
+        "flight:train:23:57:2",
+        "hotel:train:16:25:4",
+        "flighthotel:train:4:50:2",
+        "restaurant:train:4:17:2",
+        "flighthotelattraction:train:9:27:1"
+      ]
+    }
+  ],
+  "score_before": 0.235,
+  "score_after": 0.22,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "## Validate tool arguments and preserve user intent\n- Check each specific function’s schema for supported argument names, required fields, declared types, and cardinality; search and filter variants may support different fields. Use the exact field that matches the user’s meaning and do not invent aliases. Filters require a real, compatible `prior_results` object. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`. Do not pass a single airport value as a list unless the field is list-valued, and distinguish city-level requests from requests for a specific airport. Preserve explicit neighborhood labels in `neighborhood`. Encode an exact N-star hotel request as `stars=[N, N]` when the field represents a minimum/maximum pair.\n- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.\n- Resolve terse or elliptical replies using the immediately preceding assistant prompt and full conversation before assigning values to tool fields; do not reinterpret a reply to a question about one field as a different preference. Preserve user-supplied names, abbreviations, and codes verbatim rather than expanding or substituting them. When only a state or region is supplied, including an abbreviation, use `state`, not `city`.\n- Format time-window values exactly as the relevant tool schema and examples require. A cache summary may serialize a time differently from the tool’s accepted input format; convert explicit user times to the accepted format while preserving their meaning, and do not resend a time constraint already represented in the selected cached result.\n- Map an allergy to a schema-supported allergy-option field only when the allergen is directly represented by that option; for example, a nightshade allergy can map to `has_tomato_allergy_options=True` because tomato is a nightshade. Do not substitute an unrelated allergen field or imply that a narrower option guarantees accommodation for the full allergy.\n- When refining a cached result, retrieve the most refined compatible base that preserves all earlier active criteria and pass it as `prior_results`. Include every newly introduced, schema-supported criterion in the matching filter argument, but do not resend criteria already represented in the base. Retrieval alone is not refinement, and passing only `prior_results` is not sufficient. If no compatible base exists, search when mandatory inputs are available.",
+      "target": "## Validate tool arguments and preserve user intent\n- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.\n- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.\n- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter."
+    },
+    {
+      "op": "replace",
+      "content": "## Missing mandatory information\nCheck required inputs separately for each requested action and domain against explicit values in the full conversation; related context does not automatically satisfy a required field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults, except for the explicit hotel-date rule below. If any action lacks mandatory information, make one `seek_information` call asking only for those missing inputs. Do not search an incomplete action, but still execute and cache other requested actions whose own mandatory inputs are complete. Optional preferences are not mandatory inputs.\n\nIf a hotel stay is clearly at the single destination of an explicitly dated round trip and no separate hotel dates were given, use the outbound date as check-in and the return date as check-out. If the destination or date relationship is ambiguous, ask instead of inferring.",
+      "target": "## Missing mandatory information\nBefore searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs."
+    },
+    {
+      "op": "replace",
+      "content": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, emit `print(\"No planning needed\")` only when valid cached results already satisfy every requested action and constraint and no search, filter, sort, nearest-results call, or other planning operation was performed. Use only operations needed to satisfy the request; do not add sorting or other post-processing unless requested or necessary to fulfill a stated preference.",
+      "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results."
+    },
+    {
+      "op": "replace",
+      "content": "- Call the provided tools directly as functions; do not import the tools, modify module paths, or define or redefine tool functions or their models. For every required search, filter, sort, or nearest-results call, assign the exact return value to a variable and immediately save it with `save_to_cache` under a unique, descriptive key. Do this for every call, including each distinct leg or refinement; never leave a result-producing call bare or omit its save. Save refined results under a new key, and do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects."
+    }
+  ]
+}

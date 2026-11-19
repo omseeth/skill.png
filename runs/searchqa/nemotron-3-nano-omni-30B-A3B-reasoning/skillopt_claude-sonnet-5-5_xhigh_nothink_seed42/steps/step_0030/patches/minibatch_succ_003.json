@@ -1,0 +1,25 @@
+{
+  "batch_size": 5,
+  "success_patterns": [
+    "Every trajectory kept to a bare answer of the slot type the clue named (nation, city, substance, phrase, man). The answer was the entity that co-occurred with the clue's most distinctive detail (the 1.7 density figure, the phoenix and motto, 'Freedom 7' with the date) across many passages.",
+    "The agent used a size hint inside the clue text ('this 3-word actors' phrase') to confirm the candidate and return the full standard phrase ('Break a leg') instead of one key word. The skill only covers a trailing parenthetical letter count, not inline word or letter counts.",
+    "On a media-style clue with no caption ('The dipper seen here is to be used with this sticky substance'), the agent ignored the missing picture. It took the item noun from the clue, found the compound the passages pair with it ('honey dipper'), and answered with the missing half ('honey').",
+    "When passages used formal or long forms ('Alan B. Shepard, Jr.', 'City and County of San Francisco'), the agent gave the short common name that the running text repeats. This is already covered by the existing name-length rule."
+  ],
+  "patch": {
+    "reasoning": "Most successes are already covered by existing rules (type-check, anchor on the unique detail, short common form), so I add nothing for those. Two generalizable behaviors are not in the skill: (1) inline 'N-word' / 'N-letter' hints in the clue body, a close cousin of the trailing-number letter-count rule, which verify the candidate and guard against truncating a multi-word phrase; (2) caption-less 'seen here' clues, where the existing caption rule gives no guidance. Both are short, conditional on a visible clue feature, and do not conflict with existing rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "If a bare number appears in parentheses, treat it only as this hint, not as part of the question.",
+        "content": "\n- Inline size hints inside the clue text ('this 3-word actors' phrase', 'this 5-letter word', 'this two-word term') are length constraints too. Count the words or letters in your candidate and reject any that do not fit. For a phrase or idiom clue, give the full standard phrase, not a single key word ('Break a leg' fits '3-word'; 'leg' does not)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- A word in quotation marks inside the clue (a 'drag', a nickname) is usually a pun or hint tied to the answer. Look for passages where that word appears next to a candidate and answer with that candidate.",
+        "content": "\n- 'Seen here' / 'heard here' clues with no caption or parenthetical: the picture or audio is missing, but the text still names the item type and its relation ('The dipper seen here is used with this sticky substance'). Search the passages for the compound that pairs the item noun with a candidate of the asked type ('honey dipper') and answer with the missing half only ('honey'). Do not describe the picture or answer with the item already named in the clue."
+      }
+    ]
+  },
+  "source_type": "success"
+}

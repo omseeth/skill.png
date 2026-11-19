@@ -1,0 +1,41 @@
+{
+  "batch_size": 3,
+  "failure_summary": [
+    {
+      "failure_type": "constraint_mapping_and_preference_fidelity",
+      "count": 2,
+      "description": "Explicit flight-class and cuisine preferences were omitted, while an unrelated vegetarian preference was invented."
+    },
+    {
+      "failure_type": "location_vs_proximity_tool_selection",
+      "count": 1,
+      "description": "A named neighborhood was treated as a proximity anchor, triggering an invalid nearest-search call instead of a neighborhood filter."
+    },
+    {
+      "failure_type": "round_trip_date_handling",
+      "count": 1,
+      "description": "The return date was misused as an arrival-date constraint and dates were unnecessarily converted using an imported library."
+    },
+    {
+      "failure_type": "cache_persistence",
+      "count": 1,
+      "description": "A restaurant search result was not saved to cache."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add focused guidance for retaining and mapping explicit preferences, including flight cabin choices and avoiding unrelated proxies, and clarify that named neighborhoods are location constraints rather than nearest-search anchors. The existing skill already covers preserving dates, separate round-trip legs, avoiding imports, and saving results, so those rules need no duplication.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+        "content": "\n- **Preserve and map stated preferences:** Carry explicit domain preferences across clarification turns, even when a later reply only supplies another value such as location. A stated preference remains active when the user says they are open to suggestions; do not replace it with an unrelated supported criterion when the request has no matching tool field. Map choices to the corresponding schema field and use list-valued fields for accepted alternatives. For flight cabin preferences, use `flight_class` with all explicitly accepted supported classes on each applicable outbound and return leg."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results. Do not pass the attraction name as a `neighborhood` value or approximate proximity with a neighborhood filter. If a later constraint changes an underlying domain result, such as filtering the hotel set, recompute and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call.",
+        "content": "\n- A named district or neighborhood, including one phrased as “near [area],” is a location constraint: use its complete name in the supported `neighborhood` field on the relevant search or filter. Do not use `search_nearest` for an area; reserve it for proximity to a named attraction or landmark."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

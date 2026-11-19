@@ -1,0 +1,56 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "result_binding_and_cache_persistence",
+      "count": 5,
+      "description": "Result-producing calls were not bound and saved, affecting both initial searches and refinements."
+    },
+    {
+      "failure_type": "cache_selection_and_unrequested_criteria",
+      "count": 1,
+      "description": "A compatible restaurant cache was ignored for a new budget constraint, and an unrequested dietary filter was added."
+    },
+    {
+      "failure_type": "location_schema_mapping",
+      "count": 1,
+      "description": "A US state abbreviation was passed as a city rather than as a state."
+    },
+    {
+      "failure_type": "party_size_mapping",
+      "count": 1,
+      "description": "An explicit solo trip was not mapped to the supported hotel traveler-count field."
+    },
+    {
+      "failure_type": "unsafe_generated_code",
+      "count": 2,
+      "description": "Generated code caused runtime errors by importing pre-provisioned tools or assuming undocumented result fields."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent issue is incomplete result handling, so make the required bind-and-save sequence an explicit completion check for searches and refinements. Clarify direct tool use and two schema mappings that failed despite broad existing guidance. Cache-based refinement is also made explicit in the lifecycle instruction. Avoid duplicating the protected guidance against guessed result fields.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- Complete every result-producing call with an explicit two-step lifecycle: assign the exact tool return value to a local variable and immediately save that object with `save_to_cache` under a unique descriptive key. This applies to initial searches and every filter, sort, or nearest-results call; a bare call is incomplete. For refinement, retrieve the exact compatible listed cache key into a local variable, filter only the newly added criteria from it, and save that refined return value under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- The execution environment already defines the listed tools. Call them directly by their documented names; do not import tools or their models, or redefine them."
+      },
+      {
+        "op": "replace",
+        "target": "For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`.",
+        "content": "For example, hotel star requirements use `stars`, a region or US state name/postal abbreviation belongs in `state`, a city in `city`, and a named attraction in `attraction_name`."
+      },
+      {
+        "op": "replace",
+        "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+        "content": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” For a hotel search or filter, map an explicit “solo” or “alone” to `num_people=1` when that field is supported; do not infer `num_rooms=1`. A traveler count is not a flight-search parameter unless the schema provides one."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,35 @@
+{
+  "batch_size": 3,
+  "success_patterns": [
+    "Each sentence or clause of a long or narrative query became its own call, including no-input endpoints ('latest news', 'Helioviewer news feed', 'Lost Ark stats') with empty parameter lists and no invented optionals like `callback`.",
+    "Compound clauses naming two objects ('abyssal dungeons and game statistics', 'a practice question ... and details about drill', 'math facts about 1729 and trivia about 42') were split into one call per object, each using the same provider's sibling endpoint whose name matches that object.",
+    "Qualifiers were mapped to the matching optional fields: '5 letters long' -> wordLength (not min/max), '10 words' -> count, '5 dice once' -> dice and rolls, 'containing X in name' -> name, 'limiting to 25' -> limit, '(page 1, limit 10)' -> page and limit, 'first page ... 10 per page' -> page and per_page.",
+    "Tool names were copied verbatim from the `###` heading, including odd characters such as `/game/hall-of-fame/{year}` and `Study list (AP exam)`, and the single-number path value (`2022`) went in required parameters."
+  ],
+  "patch": {
+    "reasoning": "All three successes enumerated one call per clause, split compound clauses across sibling endpoints, copied headings verbatim, and mapped count and filter words to the correct schema fields. The skill covers some of this loosely. These short, additive edits make the compound-clause splitting, no-input calls, exact-vs-bounded values and verbatim heading rules explicit without the long rewrites that were rejected earlier.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+        "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely. Copy the heading character for character, including slashes, braces, parentheses and lowercase initials (e.g. `OpenCritic API: /game/hall-of-fame/{year}`, `Learn to read and write Japanese kanji: Study list (AP exam)`). Never use the long tagline from the `Provider:` line."
+      },
+      {
+        "op": "insert_after",
+        "target": "when the schema offers one (e.g. `Group Name`).",
+        "content": "\n  - Exact vs bounded values: '5 letters long' -> wordLength `5`, not minLength/maxLength (use min/max only for 'at least'/'at most'). '10 random words' -> the required `count` `10`. 'rolled 5 dice once' -> dice `5`, rolls `1`. 'games containing Majora in their name, limit 25' -> name `Majora`, limit `25`. '(page 1, limit 10)' -> page `1`, limit `10`. A year such as 'for 2022' goes in the tool's year field."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "\n- A clause naming two objects ('abyssal dungeons and game statistics', 'a practice question and details about a drill', 'math facts about 1729 and trivia about 42') needs two calls. Use the provider's sibling endpoint whose name matches each noun (get abyssal dungeons + get stats; Retrieve practice question + Retrieve drill details; Get math fact + Get trivia fact). Never merge them into one call or drop one."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+        "content": "\n- First-person or narrative queries ('I rolled..., I looked up..., I checked the latest news..., Finally I retrieved...') are checklists: one call per sentence, in order. Endpoints that need no input ('latest news', 'news feed', 'list of stats') still get a call with `[]` for both parameter lists. Do not add optional fields such as `callback` unless the query states a value for them."
+      }
+    ]
+  },
+  "source_type": "success"
+}

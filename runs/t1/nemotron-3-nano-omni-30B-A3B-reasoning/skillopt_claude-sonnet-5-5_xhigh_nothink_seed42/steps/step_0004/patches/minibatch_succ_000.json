@@ -1,0 +1,27 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Flight requests with origin and destination but no date (including 'solo trip' or 'specific arrival time' context) are answered with one short seek_information naming only the departure date.",
+    "Multi-domain first turns (round-trip flight + hotel, no dates) get ONE combined seek_information listing the missing flight and hotel dates.",
+    "A restaurant request with no city gets seek_information for the city only; the 'birthday' context is ignored.",
+    "Refinement turns (restaurant neighborhood, hotel rooms + loose budget) follow the load -> filter -> save pattern, passing only the new constraints (neighborhood in the user's wording, budget=1125, num_rooms=2).",
+    "A bare 'Okay, that sounds good' after the assistant proposed a neighborhood, where the CACHE already has a filtered_* key showing that neighborhood applied, is handled by a pure get_results_from_cache of the most refined key. It is not re-filtered, re-searched or printed as 'No planning needed'.",
+    "The one run that did not execute (hotel in San Jose with kids club, beach access and rating, but no dates) invented check-in/check-out dates, num_people and a non-existent kwarg, when the right output was a date-only seek_information."
+  ],
+  "patch": {
+    "reasoning": "Most successes are already covered by Rules 6, 7, 8, 13 and 17. Two gaps remain. First, Rule 10 says an affirmative reply is a new constraint, while Rule 8 says to retrieve on 'okay'. The skill does not say what to do when the cache already shows the accepted proposal applied, so a short disambiguation is needed. Second, the 'context is not a date' guard is written only for flights. The one hotel case in this batch fabricated dates, num_people and a bad kwarg because the user gave amenities, rating and a 'family vacation' purpose but no dates. Extending the guard to hotels and restaurants should prevent this.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Only a refusal or 'no preference' ('Not really', 'Anything is fine') with an existing cache entry means pure retrieval.",
+        "content": "\n  - Exception: if the CACHE summary of a `filtered_*` key already shows the proposal from the assistant's last message as applied (e.g. 'Additionally filtering for neighborhood(s): [Downtown Anchorage]') and the user just agrees ('Okay, that sounds good', 'Sure'), nothing new needs filtering. Output only `x = get_results_from_cache(key=\"<that most refined filtered key>\")`. Do not re-filter, re-search or print(\"No planning needed\")."
+      },
+      {
+        "op": "insert_after",
+        "target": "- A round-trip request still needs the departure date. Ask for it; do not assume a return date.",
+        "content": "- The same guard applies to hotels and restaurants. A first hotel request that gives a city plus amenities ('kids club', 'beach access'), rating, stars, a purpose ('family vacation') or a party size, but no check-in/check-out dates, is still missing the dates. Output only `seek_information(\"We need to ask for the check-in and check-out dates.\")`. Never call search_hotels with invented or example dates (including the same date as check-in and check-out), and never infer num_people, num_rooms or other args from context. A restaurant request with no city ('find a restaurant for my birthday') gets `seek_information(\"We need the city for the restaurant.\")` only."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "over_asking_or_wrong_tool_after_date_reply",
+      "count": 3,
+      "description": "The user answered the date question (a single date, a date range, or a hotel stay window), but the agent called seek_information again or called get_results_from_cache on the non-existent key 'seek_information' instead of running the first search with every earlier constraint."
+    },
+    {
+      "failure_type": "fabricated_mandatory_params",
+      "count": 2,
+      "description": "The agent invented a restaurant city ('Fresno') or hotel dates and a party size, copying them from skill examples. It also wrote bare calls or a search nested inside save_to_cache, where it should have searched the complete domain and asked only for the missing item."
+    },
+    {
+      "failure_type": "wrong_domain_scope_on_refinement",
+      "count": 3,
+      "description": "The agent refined the wrong or extra domain: it filtered restaurants for a hotel-service reply, re-filtered cached flights during a hotel refinement, and filtered flights for a party-size reply that needed no tool call."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the eight failures follow a date reply: the agent asked again or loaded a bogus key when it should have searched. Two invent mandatory values copied from skill examples. Three touch the wrong domain on a refinement. The existing rules cover these cases, but they are buried deep in the document and the agent ignores them. The edits put short, example-driven rules where the agent reads first (HARD OUTPUT RULES and CACHE GATE) and remove the Rule 6 wording that pushes the agent to over-ask.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- REPLY TO A QUESTION: after the assistant asked for dates and the user answers, the mandatory args are complete, so SEARCH. Never seek_information again. Never get_results_from_cache a key that is not in CACHE ('seek_information' is a tool, not a cache key). With CACHE {} the code is only a first search or a seek_information. Examples: (a) Atlanta to Portland known, 'As soon as possible, ideally May 19, 2025' -> `flights = search_flights(start_airport_city=\"Atlanta\", end_airport_city=\"Portland\", departure_date=[\"May 19, 2025\"])` + save 'flights'. (b) Atlanta to Lexington known ('kid-friendly airline' is not an airline), 'May 23, 2026 to June 6, 2026' -> two assigned and saved searches: departure_flights (May 23, 2026) and return_flights (Lexington to Atlanta, June 6, 2026). (c) Turn 1 'hotel in San Jose for a solo trip, gym and air conditioning', reply 'August 30, 2025 to September 4, 2025, flexible on location' -> `hotels = search_hotels(city=\"San Jose\", checkin_date=[\"August 30, 2025\"], checkout_date=[\"September 4, 2025\"], num_people=1, gym_present=True, air_conditioning_present=True)` + save 'hotels'. The first hotel search carries every constraint stated in earlier turns. An explicit 'solo' means num_people=1. 'Flexible' adds no neighborhood.\n- NEVER invent a city or a date. Cities and dates in this skill and in TOOL CONFIG examples (Fresno, Tucson, May 15, 2025 ...) are illustrations only. A city or date goes into a call only if the user wrote it in this conversation. Restaurant request with no city anywhere ('I'm gluten-free and looking for a restaurant') -> ONLY `seek_information(\"We need the city for the restaurant.\")`. 'Family vacation to Memphis, need a hotel and restaurant recommendation' (no dates) -> `restaurants = search_restaurants(city=\"Memphis\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. No search_hotels, no num_people, and no search nested inside save_to_cache."
+      },
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\n0. ONE DOMAIN PER REPLY. Decide which domain the LAST user message (and the assistant question it answers) is about, and write code for that domain only.\n   - Hotel service or amenity words ('room service and shuttle service', wifi, gym) answer a hotel question. Load the most refined hotels key (e.g. hotels3), call `filter_hotels(prior_results=h, has_room_service=True, airport_shuttle_present=True)`, and save under a new key (e.g. final_hotels). Never filter restaurants or flights for it, even if restaurant rating or cuisine came up earlier (the CACHE summary already lists them).\n   - A hotel refinement in a flight + hotel conversation touches ONLY hotels. Do not reload or re-filter the flight keys, because their class or time is already in the CACHE summary. Example: CACHE flights/return_flights (class first) + hotels, last turn 'A 3 star hotel in Summerlin with business facilities' -> `h = get_results_from_cache(key=\"hotels\")`, `h2 = filter_hotels(prior_results=h, neighborhood=[\"Summerlin\"], stars=[3, 3])`, `save_to_cache(key=\"filtered_hotels\", value=h2)` and nothing else. 'Business facilities' is a vague phrase, not an exact amenity name, so omit it.\n   - A party-size reply ('There are 5 of us') when no hotel was requested adds nothing for flights or restaurants, because those tools have no party-size parameter. Write no search and no filter. At most `x = get_results_from_cache(key=\"<flight key>\")` for each cached flight key."
+      },
+      {
+        "op": "replace",
+        "target": "Never invent, guess, or default values, even for 'last-minute', 'this weekend', or 'business trip' requests with no concrete date.",
+        "content": "Never invent, guess, or default values, even for 'last-minute', 'this weekend', or 'business trip' requests with no concrete date. Once the user DOES state a concrete date anywhere (even hedged: 'as soon as possible, ideally May 19, 2025', 'around May 22', or a date range), the date is known: run the search and do not seek_information again."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,54 @@
+{
+  "reasoning": "Failure patches take priority and are kept: the SEARCH GATE replace, the Rule 2 clause replace (the meta-skill names that clause as the cause of re-passed halal, neighborhood and amenity flags, and it conflicts with the slow block), the first-search hygiene line, the flight-time format line, and the number-plus-amenity / has_fitness_class line. I tightened the SEARCH GATE text for length and kept its substance: a requested domain with no key gets a first search or a closing seek_information, never another domain's key. Decline replies are pure retrieval, which matches the slow block. Both success edits cover patterns the failure edits do not, so they are kept, and I condensed the first to avoid adding bulk. The Rule 26 insert adds the hotels-plus-attractions-cached case where the user answers with hotel constraints (filter hotels, then search_nearest). The 4b-example insert tightens the seek_information-only case so the attractions key is not loaded or re-saved. No edit touches the SLOW_UPDATE block, and all targets are distinct, so they do not overlap.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- SEARCH GATE (do this first): read the CACHE dict. If a domain's key is present",
+      "content": "- SEARCH GATE (do this first): list every domain requested anywhere in the conversation and read the CACHE dict. A requested domain with NO key is never filtered, and another domain's key never stands in for it. Search it now if its mandatory args are literally in the conversation (restaurants asked, city known, CACHE holds only flight keys -> `search_restaurants(city=..., <stated cuisine / rating / dietary flag>)` + save; flight keys untouched). If args are missing, write ONE closing seek_information for the missing items after the searches of every searchable domain (never a placeholder such as '<date>'). A reply that only declines or has no preference ('Not really, just something fun', 'No preference', 'Anything is fine') adds no constraint: write only `x = get_results_from_cache(key=\"<most refined key of that domain>\")`, with no filter, search or save. If a domain's key is present",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": ", plus any earlier-stated constraint that the CACHE summary text (\"Additionally filtering for ...\" / search description) does not show as applied.",
+      "content": ". Earlier turns are already inside the cached entry: never re-pass an earlier cuisine, dietary flag, stars, neighborhood, amenity, budget, class or party size. Party size (num_people) exists only on hotel tools, never on restaurant or flight calls.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Example: `attractions = search_attractions(state=\"CA\", type=[\"Culinary\"])` then `save_to_cache(key=\"attractions\", value=attractions)`.",
+      "content": "Example: `attractions = search_attractions(state=\"CA\", type=[\"Culinary\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. This holds for a one-line first turn too: '<Type> attractions in <City>' is exactly `attractions = search_attractions(city=\"<City>\", type=[\"<Type>\"])` + `save_to_cache(key=\"attractions\", value=attractions)`, and a first restaurant request is `restaurants = search_restaurants(city=\"<City>\", <stated cuisine / flags>)` + `save_to_cache(key=\"restaurants\", value=restaurants)`. The last line of the answer is a save call.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "'at least X' rating -> rating=[X, 5].",
+      "content": "\n- Flight times: always 12-hour 'hh:mm AM/PM' strings (never '07:26:00'), and never the same value twice in the list. 'arrive by T' -> `arrival_time=[\"12:00 AM\", \"T\"]`; 'arrive after T' -> `[\"T\", \"11:59 PM\"]`; departure_time has the same shape. An arrival deadline tied to an event date the user stated adds `arrival_date=[\"<event date as the user wrote it>\"]` on the outbound search only.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Hotel amenity wording -> parameter: 'laundry facilities' or 'laundry' -> has_laundry_service=True.",
+      "content": "- A reply holding a number AND an amenity ('around <n> per night, and <amenity> would be great') is ONE filter call with both: budget=<n> plus the amenity kwarg. Dropping either one fails.\n- Hotel amenity wording -> parameter: 'fitness center' / 'fitness class(es)' -> has_fitness_class=True (gym_present only when the user or the assistant's question says 'gym'). 'laundry facilities' or 'laundry' -> has_laundry_service=True.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Without a hotels key, 'near the hotel' needs no search_nearest. Just run the normal first search.",
+      "content": "\n- Hotels AND attractions keys both cached, the assistant just offered hotels near that attraction, and the user answers with hotel constraints (amenities, stars, budget): load the most refined hotels key, `filter_hotels(prior_results=h, <only the last message's kwargs>)`, save it, then `search_nearest(hotels=<filtered result>, attractions=<loaded attractions key>, groupBy=\"hotel\")` saved as nearest_hotels. No new attraction search, and do not re-save the attractions key.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "Never apply a hotel reply to the attractions key.",
+      "content": " Do not load or re-save the attractions key either: the output is the single seek_information line, with no get_results_from_cache and no save_to_cache.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ]
+}

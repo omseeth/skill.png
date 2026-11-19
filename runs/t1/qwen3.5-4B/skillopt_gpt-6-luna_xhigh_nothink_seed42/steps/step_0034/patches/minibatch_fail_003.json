@@ -1,0 +1,31 @@
+{
+  "batch_size": 3,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_multi-domain_execution",
+      "count": 1,
+      "description": "The agent missed the explicitly requested return flight and cache saves, while repeating a restaurant search already satisfied by cache."
+    },
+    {
+      "failure_type": "follow_up_update_omission",
+      "count": 1,
+      "description": "The agent treated a newly stated restaurant rating criterion as a no-op instead of filtering compatible cached results."
+    },
+    {
+      "failure_type": "unsupported_flight_route_inference",
+      "count": 1,
+      "description": "The agent inferred a same-city flight route from a hotel destination instead of asking for the unknown departure city."
+    }
+  ],
+  "patch": {
+    "reasoning": "The first two failures are already addressed directly by the skill’s round-trip, cache, and follow-up guidance, so repeating those rules is unlikely to help. One cross-domain gap remains: when flights are added to a trip whose destination is established by its lodging request, the lodging city can identify the flight destination, but not the origin.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Ask for an unknown endpoint rather than assuming a route.",
+        "content": "\n- If the user adds a flight request to a trip whose destination is clearly established by a lodging request, use the lodging city as the flight destination. Do not infer the departure city from the lodging location; ask for any flight endpoint that remains unknown."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

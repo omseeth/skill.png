@@ -1,0 +1,45 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 5,
+      "description": "Search or filter results were left bare, not assigned and saved, or used a nested cache retrieval."
+    },
+    {
+      "failure_type": "scope_overreach",
+      "count": 3,
+      "description": "Agents added unrelated cache reads, domains, imports, sorting, calculations, or output code instead of limiting work to pending requests."
+    },
+    {
+      "failure_type": "cache_follow_up_or_constraint_omission",
+      "count": 2,
+      "description": "Agents failed to apply a new same-domain constraint to a suitable cached result or omitted a stated constraint."
+    },
+    {
+      "failure_type": "location_field_mapping",
+      "count": 2,
+      "description": "A state abbreviation was put in city, or a combined neighborhood-and-city phrase was truncated."
+    },
+    {
+      "failure_type": "explicit_flight_class_omission",
+      "count": 1,
+      "description": "An explicitly requested first-class preference was not passed to the flight search."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the correct cache, location, and scope rules, so those are not repeated. A compact call-shape reminder makes the required assign/retrieve/filter/save sequence more concrete and reinforces limiting code to pending work. Explicit cabin-class field mapping addresses the uncovered flight-class omission.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Learned rules",
+        "content": "\n**Call shape and scope audit:** For each necessary result-producing call, assign its result and save that unchanged object under a fresh relevant key. For a cache update, use separate statements to retrieve the exact cached base into a variable, filter that base, assign the filtered result, and save it; never nest retrieval. Emit only operations for currently pending requested deliverables—no unrelated cache reads, duplicate work, imports, print/report loops, or speculative date calculations.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n- **Map explicit flight cabin classes:** For a clearly stated economy-, business-, or first-class preference, use the corresponding lowercase `flight_class` value (`[\"economy\"]`, `[\"business\"]`, or `[\"first\"]`) on the relevant flight search or same-domain filter. Do not omit an explicit class preference or map it to hotel `stars`.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

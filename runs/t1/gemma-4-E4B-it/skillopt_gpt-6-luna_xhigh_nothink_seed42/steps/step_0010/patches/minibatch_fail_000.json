@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_scope_control",
+      "count": 5,
+      "description": "Several turns repeated or added searches instead of reusing compatible cached results and acting only on the user's changed scope."
+    },
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 3,
+      "description": "Results were not consistently saved from the exact assigned variable, causing undefined-variable errors or missing cache entries."
+    },
+    {
+      "failure_type": "conversation_and_criteria_mapping",
+      "count": 2,
+      "description": "Some requests were mapped to the wrong scope or field, including treating a state abbreviation as a city and misrepresenting a return leg."
+    },
+    {
+      "failure_type": "partial_request_handling",
+      "count": 1,
+      "description": "The agent abandoned a request with missing travel dates instead of asking for them while handling the independently actionable restaurant request."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers cache reuse, saving assigned results, and supported field mapping, so those rules should not be duplicated. These additions clarify two remaining ambiguities: how to handle user questions about assistant-suggested scopes versus unaccepted proximity suggestions, and when a no-op is valid in a partially actionable request.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Cache-aware tool workflow",
+        "content": "- If the user asks about a place, category, or entity the assistant just suggested (for example, “What's there?”), treat the question as a request to inspect that scope: retrieve a compatible cached result and filter it to the suggested scope. An assistant's proximity suggestion alone does not authorize `search_nearest`; use it only when the user explicitly requests or accepts proximity."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Required-argument checks",
+        "content": "\nA no-op response is appropriate only when the latest turn adds no actionable request and compatible cached results already cover all active requests. If required information is missing for one domain or leg, ask for it while still searching and caching any independent requested domain whose mandatory inputs are complete."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

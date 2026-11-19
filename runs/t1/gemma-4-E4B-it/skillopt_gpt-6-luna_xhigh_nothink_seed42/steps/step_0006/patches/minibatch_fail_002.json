@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_result_binding_and_persistence",
+      "count": 7,
+      "description": "Results were not consistently assigned, saved, or passed onward as the exact returned object."
+    },
+    {
+      "failure_type": "cache_reuse_and_turn_scope",
+      "count": 6,
+      "description": "Agents searched again, chose a less-refined cache entry, or reprocessed domains unaffected by the latest turn."
+    },
+    {
+      "failure_type": "conversation_context_for_required_inputs",
+      "count": 1,
+      "description": "The hotel search omitted dates already established for the same trip."
+    },
+    {
+      "failure_type": "proximity_grouping_intent",
+      "count": 1,
+      "description": "The nearest-results grouping prioritized the hotel rather than the requested restaurant recommendations."
+    },
+    {
+      "failure_type": "entity_to_field_mapping",
+      "count": 1,
+      "description": "A state abbreviation was passed as a city instead of as the state field."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify how to resolve terse follow-ups and choose among multiple compatible cached results, carry explicit trip dates into a related hotel request, and disambiguate which entity groupBy should prioritize. Result-binding failures are common, but the skill already explicitly requires saving the exact assigned result and forbids inline or function-name saves, so duplicating that instruction is unwarranted.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- At each turn, inspect cache summaries and identify which domains or itinerary legs the latest turn changes. For each changed request, retrieve by exact key a compatible cached result for the same domain, location, dates, and leg whenever its candidate set can be narrowed to the request. It need not already include newly supplied filterable criteria such as cuisine, budget, rating, or amenities. Apply the matching `filter_*` tool to that result with the new constraints, retaining constraints already embodied in the cached result. Do not repeat a base search just to add filterable criteria. Search only when no compatible cached result exists or the request's scope has changed; leave unaffected domains and legs alone.",
+        "content": "- At each turn, interpret even a short reply in the context of the immediately preceding assistant question and the full conversation, then identify only the domains or itinerary legs whose requests changed. For each changed request, inspect cache summaries and retrieve by exact key a compatible result for the same domain, location, dates, and leg. If multiple compatible results exist, prefer the one that already includes the most still-active constraints (such as a filtered result rather than its unfiltered base). Apply the matching `filter_*` tool with the new supported criteria, retaining constraints already embodied in that result. Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no compatible result can cover the request or its scope has changed."
+      },
+      {
+        "op": "replace",
+        "target": "Before calling a travel tool, validate its mandatory parameters separately for each requested domain and itinerary leg using the full conversation and available context. If any are missing, do not call that incomplete tool or run a partial search; use one `seek_information` request listing only the missing mandatory details across incomplete requests. Continue with fully specified independent domains or legs, and save their results. Never invent values, pass `None`, or ask for optional preferences. For hotels, when the check-in date and an explicit stay length in nights are known but checkout is not, use `adjust_date` to calculate checkout. Do not infer a stay length; ask when a required date cannot be obtained or derived from explicit information.",
+        "content": "Before calling a travel tool, validate its mandatory parameters separately for each requested domain and itinerary leg using the full conversation and available context. If any are missing, do not call that incomplete tool or run a partial search; use one `seek_information` request listing only the missing mandatory details across incomplete requests. Continue with fully specified independent domains or legs, and save their results. Never invent values, pass `None`, or ask for optional preferences. For hotels, reuse explicit dates already established for the same trip as the hotel check-in and checkout dates when they identify the stay and the user has not supplied separate hotel dates. When check-in and an explicit stay length in nights are known but checkout is not, use `adjust_date` to calculate checkout. Do not infer a stay length; ask when a required date cannot be obtained or derived from explicit information."
+      },
+      {
+        "op": "insert_after",
+        "target": "- When the user requests proximity, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "\n  Interpret `groupBy` as the type of entity the user wants recommendations grouped around, not merely the location anchor: for example, for restaurants near a hotel, use `groupBy=\"restaurant\"`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

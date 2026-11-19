@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_scope_selection",
+      "count": 3,
+      "description": "Re-searched or used a less-constrained cache entry for filterable follow-ups, and sometimes regenerated unaffected domains."
+    },
+    {
+      "failure_type": "tool_result_assignment_and_caching",
+      "count": 2,
+      "description": "Omitted saving a search result or saved an undefined variable instead of the assigned result."
+    },
+    {
+      "failure_type": "argument_field_mapping",
+      "count": 2,
+      "description": "Mapped a state abbreviation to the attraction city field rather than the state field."
+    },
+    {
+      "failure_type": "required_argument_handling",
+      "count": 2,
+      "description": "Searched an incomplete hotel request or failed to seek missing dates while proceeding with an independent complete request."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most repeated failures involved cache follow-ups. The skill already covers cache reuse broadly, but making explicit that a broader cached candidate set can cover a narrower supported location filter—and that an already-filtered entry should be preferred for further updates—targets the ambiguity behind these re-searches. Other failures are directly addressed by existing instructions, so duplicating them is unwarranted.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "**Follow-up decision boundary:** Resolve the latest turn against the full conversation and cache summary, and act only on changed scopes. When a cached candidate set covers the requested domain and containing location, use it for any narrower location or other constraint that a supported `filter_*` tool can express—for example, filter citywide restaurant results to a requested neighborhood rather than starting a new search. Retrieve the most-constrained compatible entry, preferring one that already embodies active constraints; apply only constraints not already embodied in that entry, then save the filtered result. Do not regenerate unaffected scopes. Base-search only when the requested domain, entity, location, date, or leg cannot be covered by filtering a compatible cached candidate set.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, neighborhood=[\"<requested neighborhood>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 6,
+      "description": "Searches or filters were left unsaved, or cache retrieval was nested inside another tool call."
+    },
+    {
+      "failure_type": "unrequested_extra_operations",
+      "count": 2,
+      "description": "Agents repeated completed work or added unrelated sorting, filtering, or proximity operations."
+    },
+    {
+      "failure_type": "schema_mapping",
+      "count": 2,
+      "description": "A region was passed as a city, and a flight-class value used unsupported capitalization."
+    },
+    {
+      "failure_type": "pending_deliverable_omission",
+      "count": 1,
+      "description": "The agent omitted the return flight and hotel searches for a trip that explicitly requested both."
+    },
+    {
+      "failure_type": "proximity_refresh_overreach",
+      "count": 1,
+      "description": "A hotel-only update triggered an unnecessary refresh of an already-completed proximity result."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures already have direct guidance in the skill, so repeating that guidance is unlikely to help. The proximity rule, however, currently directs automatic refreshes after an input-domain change, conflicting with the rule to update only the targeted domain and prompting unnecessary work. Clarifying when a refresh is allowed addresses that conflict.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "If a later constraint changes an underlying domain result used by a proximity result, refresh and save `search_nearest` using the updated result and the latest suitable cached result for the other domain.",
+        "content": "A later domain-only constraint updates only the explicitly targeted domain; it does not by itself trigger a refresh of a cached proximity result or a filter of the other domain. Rerun and save `search_nearest` only when the user explicitly requests updated proximity results, using the updated result for the changed domain and the latest suitable cached result for the other domain."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

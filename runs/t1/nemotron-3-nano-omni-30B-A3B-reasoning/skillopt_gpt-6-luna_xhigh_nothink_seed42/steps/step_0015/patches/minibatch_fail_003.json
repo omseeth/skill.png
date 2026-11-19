@@ -1,0 +1,41 @@
+{
+  "batch_size": 3,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_update_not_executed",
+      "count": 3,
+      "description": "Each trajectory failed to perform the latest requested action: an accepted new domain was skipped, or a new neighborhood constraint was not applied to cached results."
+    },
+    {
+      "failure_type": "result_persistence_omitted",
+      "count": 3,
+      "description": "The generated code did not bind and save the result of the action it attempted."
+    },
+    {
+      "failure_type": "context_grounding_and_dietary_mapping",
+      "count": 1,
+      "description": "A restaurant request accepted in the context of a trip was missed, including its destination city and dairy-avoidance criterion."
+    },
+    {
+      "failure_type": "missing_mandatory_information",
+      "count": 1,
+      "description": "Flight and hotel dates were absent, but the agent invented flight dates instead of requesting the missing mandatory information."
+    }
+  ],
+  "patch": {
+    "reasoning": "Cache refinement, result persistence, and missing-information rules are already explicit in the skill, so repeating them would not address a documented gap. The uncovered ambiguity is how to handle an accepted offer for a new local domain and how to map an explicit dietary exclusion to the available restaurant field.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. A direct answer can introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.",
+        "content": "\n- If the assistant offers an additional travel domain and the user accepts, treat that acceptance as a request for the new domain even if the user supplies only preferences. For local recommendations tied to an active trip, use the explicitly stated itinerary destination as the location unless the user specifies another one; do not substitute work on an earlier domain for this new request."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- Map explicit dietary exclusions to the corresponding supported restaurant options field. For example, “I don't eat dairy” maps to `has_dairy_allergy_options=True`; also include any stated cuisine, and do not infer unrelated dietary restrictions."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

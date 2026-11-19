@@ -1,0 +1,25 @@
+{
+  "batch_size": 4,
+  "success_patterns": [
+    "Restaurant and hotel first searches carry only what the user literally said (city, cuisine, dietary flag, dates) and are saved under the plain domain key ('restaurants', 'hotels'). Context words such as 'suitable for a family with kids' add no kwarg.",
+    "When the date reply arrives in a later turn, the city comes from the earlier turn and the first search is just city plus check-in and check-out dates.",
+    "A neighborhood reply to the assistant's proposal on a cached restaurants key becomes load, then filter_restaurants(neighborhood=[user's wording]) alone, then save under a new 'filtered_restaurants' key. The cuisine and dietary flags already in the CACHE summary are not repeated.",
+    "A failure that still scored in this batch: a business-trip hotel request with no dates got a fabricated date pair and an invented kwarg (has_business_facilities). That kwarg is a ValidationError, and the correct output was a single seek_information for the dates."
+  ],
+  "patch": {
+    "reasoning": "The skill already covers cache-gated refinements, first searches and missing-date handling. Two gaps showed up in this batch. First, 'business facilities' (a natural phrasing) has no mapping, and the agent invented a nonexistent kwarg that caused a ValidationError. Second, audience or context words ('family with kids', 'business trip') are not stated explicitly as adding no params, and the example 'kid-friendly pool' in Rule 2 could be read the wrong way. Two small, targeted edits address these without restructuring the document.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "'business center' -> has_business_center=True.",
+        "content": "'business center', 'business facilities' or 'business services' -> has_business_center=True (there is no has_business_facilities). 'meeting room' (singular) -> has_meeting_rooms=True. If a requested feature has no matching parameter in TOOL CONFIG, omit it. Never invent a kwarg."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 14: Straight-line first search once mandatory args become complete (supplements Rule 11)",
+        "content": "- Audience or context words ('suitable for a family with kids', 'for a business trip', 'for my birthday') add no kwarg unless an amenity is literally named. When the dates arrive in a later turn, the first hotel search uses the city from the earlier turn plus the two dates, and nothing else: `hotels = search_hotels(city=\"Memphis\", checkin_date=[\"January 16, 2026\"], checkout_date=[\"January 25, 2026\"])` then `save_to_cache(key=\"hotels\", value=hotels)`. Add rating, stars, budget or named amenities only if the user stated them. A business-trip hotel request with no dates yet gets only the seek_information for the dates, never made-up dates."
+      }
+    ]
+  },
+  "source_type": "success"
+}

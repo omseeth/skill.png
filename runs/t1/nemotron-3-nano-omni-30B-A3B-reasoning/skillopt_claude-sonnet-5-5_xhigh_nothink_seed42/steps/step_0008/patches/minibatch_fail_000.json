@@ -1,0 +1,53 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_not_reused_or_stale_key_on_refinement",
+      "count": 3,
+      "description": "A single-answer follow-up was handled with a fresh or bare search_*, a full re-search of every domain, or the raw key plus a repeated filter, instead of load -> filter -> save on the most refined key. Examples: 'Finnish' with 'restaurants' cached, 'Around 125' with hotels cached, a flight time answer with filtered_departure_flights cached. A 'before 04:39 AM' answer was also given in 24h format."
+    },
+    {
+      "failure_type": "wrong_param_mapping_on_first_search",
+      "count": 2,
+      "description": "'Non-stop' was dropped from the flight search. 'City view' went into neighborhood. A neighborhood was shortened to 'Downtown'. num_people was missed after a party size was stated. The round-trip keys were named outbound_flights instead of departure_flights."
+    },
+    {
+      "failure_type": "missing_derived_checkout_and_domain",
+      "count": 1,
+      "description": "The user gave a check-in date and '3 nights' and 4 travelers. The agent ran only the flight search (with the search nested inside save_to_cache) and dropped the hotel instead of using adjust_date for checkout."
+    },
+    {
+      "failure_type": "missing_search_nearest",
+      "count": 1,
+      "description": "The user wanted a hotel near an attraction that was already cached. The agent searched hotels but did not call search_nearest."
+    },
+    {
+      "failure_type": "unnecessary_cache_rewrite",
+      "count": 1,
+      "description": "The last turn gave only a party size for flights, which no flight tool parameter can hold. The agent re-loaded and re-saved all cached flight keys under new names instead of emitting no tool calls."
+    }
+  ],
+  "patch": {
+    "reasoning": "Rules 2, 10, 13 and 17 already say to filter when a cache key exists, but the agent still re-searched or reused stale keys. A short gate placed at the very top, with concrete examples from these failures, should be seen first. The remaining edits fill gaps that are not covered: non-stop and view-to-parameter mapping, exact neighborhood wording, num_people from a confirmed party size, 'N nights' via adjust_date, search_nearest for hotels near a cached attraction, and a no-op output for turns that carry no tool parameter. Each edit is a single compact rule so it can be tested without disturbing existing rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "\n## Rule 27: Cache-first gate (check BEFORE writing any search_*)\n- Read the CACHE keys first. If ANY key exists for the domain the last turn is about (flights, hotels, restaurants, attractions), the answer is `x = get_results_from_cache(key=...)`, `y = filter_*(prior_results=x, <new constraint only>)`, `save_to_cache(key=<new key>, value=y)`. It is never a search_* for that domain. A bare `search_*(...)` with no assignment is wrong, and so is a search nested inside save_to_cache(...).\n- Pick the domain from the assistant's LAST question, not from the domain searched most recently. After 'what's your budget per night?' the reply 'Around 125.' is a hotel budget. Output `hotels = get_results_from_cache(key=\"hotels\")`, `filtered_hotels = filter_hotels(prior_results=hotels, budget=125)`, `save_to_cache(key=\"filtered_hotels\", value=filtered_hotels)`. Do NOT re-run the flight or hotel searches, and do not invent num_people or repeat the neighborhood.\n- With CACHE 'restaurants' = 'Restaurant search results in Tucson. has_halal_options' and the reply 'Yes, I'm looking for Finnish.', output only `filter_restaurants(prior_results=r, cuisine=[\"Finnish\"])`, loaded from 'restaurants' and saved as 'filtered_restaurants'. Do not re-pass halal or the city, and do not search again.\n- Flight time answers: load the MOST REFINED key of the leg (filtered_departure_flights, not departure_flights). Pass only the time, because the class is already in the summary. Save under a key not yet in the CACHE (e.g. filtered_departure_flights1). Use 12-hour strings: 'anytime before 04:39 AM' -> departure_time=[\"12:00 AM\", \"04:39 AM\"]; 'after 5 PM' -> [\"5:00 PM\", \"11:59 PM\"]. Never use \"00:00\" or \"04:39\"."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 28: First-search parameter mapping (flights and hotels)\n- 'non-stop' or 'direct' flight -> `num_layovers=[0]` on every flight search, including both legs of a round trip.\n- Round-trip first-search keys are exactly \"departure_flights\" and \"return_flights\". Never use outbound_flights, first_flights or similar names.\n- Hotel neighborhood: copy the user's wording including the city. 'a hotel in Downtown Memphis' -> neighborhood=[\"Downtown Memphis\"], never [\"Downtown\"]. Never put view or amenity words in neighborhood. 'city view' -> has_city_view_rooms_present=True. 'ocean view' -> has_ocean_view_rooms_present=True. 'rooftop bar' -> has_rooftop_bar=True. Words like 'luxurious' or 'anniversary' add no parameter.\n- Party size or room count that the user states or confirms anywhere in the conversation maps to num_people / num_rooms on search_hotels. This includes a number the assistant asked about and the user answered ('how many rooms for 4 people?' + 'we'll need 4 room' -> num_rooms=4, num_people=4; 'there are 4 of us' + a hotel request -> num_people=4). Pass only stated numbers. Never default num_people=1."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 29: 'N nights' gives the checkout date; flight + hotel in the same turn\n- Check-in (or the flight departure date) is known and the user says 'for 3 nights'. This is a reference date plus an offset, so derive the checkout with adjust_date. It overrides the 'do not derive a date' and 'seek checkout' bullets of Rule 6:\n  `checkout_date = adjust_date(date=\"May 19, 2025\", delta_days=3)`\n  `hotels = search_hotels(city=\"Tucson\", checkin_date=[\"May 19, 2025\"], checkout_date=[checkout_date], num_people=4)`\n  `save_to_cache(key=\"hotels\", value=hotels)`\n- If both a flight and a hotel were requested and this turn completes both, emit BOTH searches. Each is `x = search_*(...)` followed by save_to_cache: flights saved as \"flights\" (one-way) and hotels as \"hotels\". Never drop the hotel because the last turn mentions a flight date. Never nest a search call inside save_to_cache."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 30: Hotel near a cached attraction; turns with nothing to run\n- The user asked for a hotel near a named attraction and the CACHE already holds 'attractions' for it. When the hotel dates arrive, run the hotel search, then load the attractions and call search_nearest:\n  `hotels = search_hotels(city=\"San Antonio\", checkin_date=[...], checkout_date=[...])`\n  `save_to_cache(key=\"hotels\", value=hotels)`\n  `attractions = get_results_from_cache(key=\"attractions\")`\n  `nearest_hotels = search_nearest(hotels=hotels, attractions=attractions, groupBy=\"hotel\")`\n  `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`\n  Do not search the attraction again. Later hotel refinements chain from 'nearest_hotels'.\n- If the last turn only supplies information that no tool parameter can hold, output exactly `print(\"No planning needed\")`. Example: a party size for flights, restaurants or attractions ('There are 4 of us.' with flights1/flights2/flights3 already cached). Do not reload, rename or re-save cached keys. This is the one exception to the retrieval bullet of Rule 8."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

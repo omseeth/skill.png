@@ -1,0 +1,51 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "Form error: answered 'vitamin C' although Rule 4 already says 'vitamin C' -> 'C' and the clue says 'this vitamin'."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "Slot-type error: the clue asks for 'this U.S. territory' but the agent answered 'University of Guam', the owned item named in the clue plus the passages' wording."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "Fragment clue '...on my mind' asks for the missing completing word, but the agent answered the singer of the top-ranked passage (Ellie Goulding)."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "Distractor chosen: 'Agua de Valencia', a single side mention, beat 'Sangria', which appears in most passage titles and in the clue's definition."
+    }
+  ],
+  "patch": {
+    "reasoning": "All four failures are cases where a rule already in the skill was not applied. The agent emits the first plausible passage entity without checking the slot type or stripping clue and type words. The existing rules are buried mid-skill, so the patch adds one short mandatory pre-answer step at the very top. That step merges the type-check, the strip-type-words check and the multi-passage support check. Three targeted edits tighten the weakest spots: a fragment clue with '...' wants the missing word and not the artist, 'the X of this Y' wants Y and not X, and a single stray mention loses to an entity that recurs across passages. Nothing existing is weakened (Rule 3 verbatim copying is untouched) and no task-specific gold answers are added.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Question Answering Skill",
+        "content": "\n## Step 0 (mandatory, one line before the answer tags)\nWrite: `TYPE = <what the clue's 'this/these/who/it's the' noun asks for>; CANDIDATE = <answer>`. Then check: (1) the candidate is of that type and is not a phrase already in the clue; (2) strip the type word and any clue words so only the bare entity remains ('vitamin C' -> 'C'; 'University of X' -> 'X' when the clue asks for 'this territory'; 'Sangria drink' -> 'Sangria'); (3) the candidate is the entity that recurs across several passages and matches the clue's own definition, not a one-off side mention. The slot noun, not the topic of the passages, decides the answer type.\n"
+      },
+      {
+        "op": "replace",
+        "target": "a phrase with '...' -> the missing word;",
+        "content": "a quoted phrase with '...' (leading or trailing) -> the MISSING WORD(S) that complete the best-known phrase, title or lyric, never the singer, author or work that contains it. If passages show several completions, pick the most iconic, canonical one a trivia key would use;"
+      },
+      {
+        "op": "replace",
+        "target": "a clue about a region 'in this country' wants the country, not the region.",
+        "content": "a clue about a region 'in this country' wants the country, not the region. 'The <university / capital / airport / president / team> of this <territory / country / city>' wants the owner (the territory, country or city), never the owned item the clue already names ('University of Guam' is wrong where the clue asks for 'this territory')."
+      },
+      {
+        "op": "insert_after",
+        "target": "- If the context offers several candidates (a different player in the same article, a film and its song), pick the one that satisfies ALL distinctive details: exact numbers, team, years, place. Do not choose one that fits only some.",
+        "content": "- Distractor test: an entity mentioned once as a side note ('also known as', 'compare with', a different drink or work in a list) loses to the entity that appears in many passage titles and repeats the clue's defining details. This holds even when the archive copy of the clue is cut off before its answer: count which entity recurs and commit to it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

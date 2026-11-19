@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Agents anchored on the clue's unique figure or phrase and chose the entity the passages tie to it. Examples: '1.7 per square kilometre' with Central Asia gave Mongolia, 'I Like Ike' gave Eisenhower, and 'Barber of' gave Seville.",
+    "When a Jeopardy archive line held the clue followed by the answer ('... | Oscar Wilde. right: Ted.'), the agent copied the text between '|' and 'right:'.",
+    "For a clue offering numeric options ('Of 2, 5 or 10'), the agent combined the context's component counts (2 compound + 3 simple eyes = 5) and answered with one listed option.",
+    "For a name-change clue ('His name, pre-Muhammad Ali'), the agent gave the commonly repeated earlier name ('Cassius Clay'), not the full legal name or a transitional name ('Cassius X').",
+    "The agents answered with the bare slot noun, a person, place or position ('Seville', 'center', 'Lenin'). They did not repeat clue words or add descriptors."
+  ],
+  "patch": {
+    "reasoning": "Most of the batch's success is already covered by Rules 1-4. Three small reinforcements remain: numeric option clues (add up the parts the context lists), matching a unique number or statistic in the clue to the passage that states it, and name-change clues (use the earlier name in its most frequent short form). These are broadly reusable in Jeopardy-style tasks and do not duplicate existing text.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Clue lists its own options ('Of North Park, East Park, West Park or South Park, it's where...'): the answer is exactly one of the listed options, copied verbatim. Use the context to pick which.",
+        "content": "\n- Numeric option lists ('Of 2, 5 or 10, the number of eyes on a bee'): find the passage that states the count for the exact subject. Add up the parts it lists (2 compound + 3 simple eyes = 5) and answer with the listed option equal to that total. Pick a single option and do not explain."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "\n- If the clue contains a unique number, statistic, year or superlative ('1.7 people per square kilometer', 'banned in Boston in 1927'), search the passages for that same figure and take the entity stated next to it. Check it against the clue's other descriptors ('Central Asian' -> Mongolia). Passages are often noisy search results, so ignore off-topic ones and trust the few that repeat the clue's specifics."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For nickname clues about a person ('known as \"Uncle Walter\"'), answer with the real name as it appears in the context (Walter Cronkite), not the nickname. Still apply the person-name rule above.",
+        "content": "\n- Name-change clues ('His name, pre-Muhammad Ali', 'formerly known as', 'born as'): give the earlier name in the short form that recurs most in the passages ('Cassius Clay'). Do not give the full legal name with middle names or suffixes ('Cassius Marcellus Clay Jr.'), and do not give a brief transitional name ('Cassius X')."
+      }
+    ]
+  },
+  "source_type": "success"
+}

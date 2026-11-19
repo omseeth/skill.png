@@ -1,0 +1,31 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "dropped_last_turn_constraint",
+      "count": 1,
+      "description": "The user answered a two-part question ('2 rooms and around 1125'). The agent treated it as a bare budget reply and passed only budget=1125, omitting num_rooms=2, which the CACHE summary does not list as applied. The over-broad 'budget only' and 'minimal filter' rules suppressed a value stated in the last turn."
+    }
+  ],
+  "patch": {
+    "reasoning": "Routing, cache keys and the budget value were all correct. The only miss was num_rooms. The skill's 'bare number = budget only' and 'pass only the new constraint' rules were stretched to cover a reply that carried two constraints. The edits pair the prohibition with a positive trigger. Every distinct value in the last reply, including a room count or headcount on a hotel, is a parameter. The 'budget only' rule applies only when the reply is just a number. The conflicting party-size bullet is also clarified for the case where a hotel is cached. The protected strategic section is not touched, and the new top-level rule states that minimality only drops earlier-turn values.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "- Before writing any filter_* or search_*, split the user's LAST reply into its separate values and give each its own parameter. A reply that answers a two-part question ('How many rooms and what's your budget per night?' -> '2 rooms and around 1125') yields two params in ONE call: `filter_hotels(prior_results=h, num_rooms=2, budget=1125)`. On hotel tools, 'N rooms' -> num_rooms=N and a stated headcount ('4 of us', '5 people') -> num_people=N. Hotel summaries list only city and dates, so rooms and headcount are not yet applied. 'Minimal filters' means dropping values from EARLIER turns that are already in the cache. It never means dropping a value stated in the last turn. 'Budget only' applies solely when the reply is nothing but a number."
+      },
+      {
+        "op": "replace",
+        "target": "when NO hotel has been requested adds no constraint",
+        "content": "when NO hotel has been requested or cached adds no constraint (with a hotel cached, 'N of us' -> num_people=N and 'N rooms' -> num_rooms=N in filter_hotels; with no hotel key and dates known, put them in the first search_hotels)"
+      },
+      {
+        "op": "replace",
+        "target": "A bare numeric reply to the assistant's last question ('Around 105.', 'under 1100', 'about 85') is a budget on the domain that question was about",
+        "content": "A bare numeric reply (the reply is ONLY a number; e.g. 'Around 105.', 'under 1100', 'about 85') to the assistant's last question is a budget on the domain that question was about. If the reply also states another value ('2 rooms and around 1125'), pass every stated value in the same filter call"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

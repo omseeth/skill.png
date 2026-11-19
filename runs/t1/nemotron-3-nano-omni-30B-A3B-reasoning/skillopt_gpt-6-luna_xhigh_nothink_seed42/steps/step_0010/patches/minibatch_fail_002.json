@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_persistence_omission",
+      "count": 6,
+      "description": "Searches or refinements were left unsaved, despite the skill requiring each result to be cached."
+    },
+    {
+      "failure_type": "followup_scope_or_delta_miss",
+      "count": 3,
+      "description": "Agents omitted a newly supplied neighborhood or amenity constraint, or missed a follow-up request implied by context."
+    },
+    {
+      "failure_type": "unsupported_or_redundant_arguments",
+      "count": 3,
+      "description": "Agents added inferred preferences, resent criteria already covered by cache, or sent a criterion to an incompatible domain tool."
+    },
+    {
+      "failure_type": "incorrect_no_op_termination",
+      "count": 1,
+      "description": "An agent printed the no-planning message after performing a refinement."
+    }
+  ],
+  "patch": {
+    "reasoning": "The omitted saves, missed constraints, and invalid arguments already violate explicit skill rules, so adding more of the same would be duplicative. Clarify the remaining ambiguity: a completed tool call cannot retroactively make the plan a no-op.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results and no planning operation is required. Never append it after executing a search, filter, sort, nearest-results call, or other planning operation."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

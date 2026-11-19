@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_update_and_scope_failure",
+      "count": 6,
+      "description": "Agents repeated searches or processed unchanged domains instead of updating only the affected request from compatible cached results."
+    },
+    {
+      "failure_type": "flight_leg_scope_or_direction",
+      "count": 3,
+      "description": "Agents mishandled a return-only request or represented a round trip with arrival_date instead of separate directional legs."
+    },
+    {
+      "failure_type": "result_binding_and_cache_persistence",
+      "count": 2,
+      "description": "Agents omitted required result saving or saved an undefined result variable."
+    },
+    {
+      "failure_type": "rating_interpretation",
+      "count": 1,
+      "description": "A bare request for a specific restaurant rating was treated as a minimum rather than an exact rating."
+    },
+    {
+      "failure_type": "nearest_grouping",
+      "count": 1,
+      "description": "For restaurants requested near a hotel, the agent grouped by the reference hotel rather than the requested restaurants."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers saving returned results and separate round-trip searches, so those existing instructions need no duplicate patch. These edits make the cache decision rule more operational, cover the missing return-only case, and clarify two ambiguous mappings that led to incorrect tool arguments.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no cached result can cover the changed scope.",
+        "content": "When a changed request has a compatible cached candidate set and the new requirement is filterable, retrieve the best compatible result by its exact key, apply the relevant filter, and save it; do not repeat its base search. Do not rerun or re-filter domains or legs that the latest turn did not change. If the latest turn supplies missing required information for a previously pending request, make that request actionable while leaving already satisfied domains untouched. Search only when no compatible cached result can cover the request or a new request has no cached results."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not combine distinct legs by repeating keyword arguments in one call.",
+        "content": "\nIf the user explicitly requests only the return flight, search only the reverse of the established route on the return date; do not search the outbound leg or encode the return date as `arrival_date` on an outbound search."
+      },
+      {
+        "op": "replace",
+        "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+        "content": "For restaurant ratings and hotel guest ratings, phrases such as “at least N,” “N or higher,” or “minimum N” mean a threshold; use the inclusive range `[N, 5]` in `rating`. A bare request for “a N rating” or “rating N” means an exact rating; use `[N, N]` unless the user indicates a threshold."
+      },
+      {
+        "op": "replace",
+        "target": "Set `groupBy` to the domain the user wants prioritized.",
+        "content": "Set `groupBy` to the domain being located, not the reference domain. For example, for “restaurants near the hotel,” use `groupBy=\"restaurant\"`; for “hotels near attractions,” use `groupBy=\"hotel\"`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

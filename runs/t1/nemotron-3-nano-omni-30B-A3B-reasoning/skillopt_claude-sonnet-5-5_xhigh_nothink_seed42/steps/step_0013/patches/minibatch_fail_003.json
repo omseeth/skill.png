@@ -1,0 +1,35 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "affirmative_reply_misread",
+      "count": 1,
+      "description": "The user said 'That sounds amazing, yes' to the assistant's balcony proposal. The agent re-applied beach access and pool, which the CACHE summary already lists, instead of has_balcony=True from the assistant's last message."
+    },
+    {
+      "failure_type": "conflicting_rules_wrong_flow",
+      "count": 1,
+      "description": "The user said 'Yes, we want to visit Georgia Aquarium' with hotels and attractions cached. The agent followed Rule 10's 'search attractions, save as attractions, don't touch hotels' bullet. It added type=['Cultural'], overwrote the 'attractions' key and skipped the hotels load plus search_nearest from the Rule 25 exception."
+    }
+  ],
+  "patch": {
+    "reasoning": "Both failures are about acting on the assistant's last proposal. In one, the agent never extracted what was proposed (balcony) and refiltered already-applied constraints. In the other, Rule 10's named-attraction bullet contradicts Rule 25's hotels-cached exception, and the agent followed the wrong one. The edits: (1) resolve the contradiction in Rule 10; (2) tighten the Rule 25 nearest-hotels flow (name only, new key, no type); (3) add an explicit procedure for short affirmatives that identifies the proposed item and passes only that item.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Do not touch the hotel cache for that turn. If a named attraction arrives in the same turn as hotel amenities, do BOTH: filter hotels and search attractions.",
+        "content": "This bullet applies ONLY when no hotels key exists in CACHE. If a hotels key DOES exist in CACHE and the user says they want to visit or stay near the named attraction (including 'Yes, we want to visit X' after the assistant asked 'near any specific attraction like X?'), do NOT use this bullet. Follow the Rule 25 exception instead: load the hotels key, search the attraction by name under a NEW key such as 'attractions1', run search_nearest(groupBy=\"hotel\"), and save it as 'nearest_hotels'. If a named attraction arrives in the same turn as hotel amenities and no hotel/attraction pairing is wanted, do BOTH: filter hotels and search attractions."
+      },
+      {
+        "op": "replace",
+        "target": "Do not re-filter hotels and do not re-search the attraction type.",
+        "content": "Do not re-filter hotels and do not re-search the attraction type.\n  - Pass ONLY `city` and `attraction_name` to this search_attractions call. Do NOT add `type=[...]` carried over from earlier turns, even if the CACHE 'attractions' summary shows a type (e.g. 'Cultural').\n  - Never save the new search under 'attractions', because that overwrites the earlier type search. Use 'attractions1' (or the next unused number).\n  - A proposal in the assistant's last message ('Are you looking for a hotel near a specific attraction like Georgia Aquarium?') answered with 'Yes, we want to visit Georgia Aquarium' triggers exactly these four statements: `hotels = get_results_from_cache(key=\"hotels\")` (or the most refined hotels key in CACHE), `attractions1 = search_attractions(city=\"Atlanta\", attraction_name=[\"Georgia Aquarium\"])`, `save_to_cache(key=\"attractions1\", value=attractions1)`, `nearest_hotels = search_nearest(hotels=hotels, attractions=attractions1, groupBy=\"hotel\")`, then `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`. Both saves are required."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 26: Short affirmative ('yes', 'sounds amazing', 'sure') = apply what the ASSISTANT'S LAST MESSAGE proposed, and only that\n- Step 1: quote the assistant's last message and name the single item it proposed (an amenity, neighborhood, class, attraction, ...). Step 2: map that item to its exact parameter. Step 3: read the CACHE summary of the key you will load. Anything it already lists (e.g. 'Additionally filtering for pool_present, has_beach_access', budget, rooms) is ALREADY applied. Step 4: pass only the proposed item.\n- Never fall back on the user's older amenity requests when the reply is a bare 'yes'. Re-passing constraints that CACHE already lists is a failure, and so is dropping the proposed item.\n- Example: the assistant asked 'Would you prefer a hotel with a balcony?', the user said 'That sounds amazing, yes.', and CACHE 'filtered_hotels2' lists 'pool_present, has_beach_access'. Output `x = get_results_from_cache(key=\"filtered_hotels2\")`, `y = filter_hotels(prior_results=x, has_balcony=True)`, `save_to_cache(key=\"filtered_hotels3\", value=y)`. Do not pass has_beach_access or pool_present again.\n- Proposal wording to parameter: 'balcony' -> has_balcony; 'rooftop bar' -> has_rooftop_bar; 'spa' -> has_spa_services; 'kids club' -> has_kids_club; 'free parking' -> has_free_parking; 'room service' -> has_room_service; 'laundry' -> has_laundry_service. Use the load -> filter -> save pattern on the most refined key, saving under a new unused key.\n- If the proposal was a specific attraction to stay near and hotels are cached, follow the Rule 25 nearest-hotels flow instead of a filter."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

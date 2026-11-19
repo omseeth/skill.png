@@ -1,0 +1,51 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_mismanagement",
+      "count": 4,
+      "description": "Repeated base searches for filter-only hotel and flight updates, or re-supplied constraints already embodied in cached restaurant results."
+    },
+    {
+      "failure_type": "required_argument_validation",
+      "count": 1,
+      "description": "Searched for a hotel and attempted proximity work despite missing mandatory stay dates, including passing None."
+    },
+    {
+      "failure_type": "flight_constraint_interpretation",
+      "count": 1,
+      "description": "Inferred business class from a business-meeting context and omitted the explicitly requested arrival date."
+    },
+    {
+      "failure_type": "accepted_scope_handling",
+      "count": 1,
+      "description": "Changed the exact attraction category offered by the assistant and retrieved unrelated cached flight legs."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent error is mishandling compatible cached results, so add concrete hotel and per-leg flight filter patterns that prohibit repeating embodied constraints or touching unaffected scopes. Clarify how to preserve arrival limits on a flight and how to interpret business-travel context and accepted category labels. The incomplete-hotel behavior is already explicitly covered by the required-argument checks, so it does not need duplicative guidance.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "\n\n**Constraint-only follow-ups:** When the cache summary confirms the same domain, location, dates or leg, and original scope, a new filterable preference is an update—not a reason to repeat the base search. Retrieve the exact compatible key, filter using only newly supplied criteria not already embodied in that result, and save under a new key. Do not re-pass existing location, cuisine, amenity, class, or other constraints merely because they remain active. Repeat for each affected leg, but do not retrieve unaffected domains or legs.\n```python\nprior_hotels = get_results_from_cache(key=\"<exact compatible hotel key>\")\nfiltered_hotels = filter_hotels(prior_results=prior_hotels, budget=<requested budget>, has_room_service=True)\nsave_to_cache(key=\"<new filtered hotel key>\", value=filtered_hotels)\n\nprior_outbound = get_results_from_cache(key=\"<exact outbound-flight key>\")\nfiltered_outbound = filter_flights(prior_results=prior_outbound, flight_class=[\"<requested class>\"])\nsave_to_cache(key=\"<new filtered outbound key>\", value=filtered_outbound)\nprior_return = get_results_from_cache(key=\"<exact return-flight key>\")\nfiltered_return = filter_flights(prior_results=prior_return, flight_class=[\"<requested class>\"])\nsave_to_cache(key=\"<new filtered return key>\", value=filtered_return)\n```"
+      },
+      {
+        "op": "insert_after",
+        "target": "Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date.",
+        "content": " For a flight leg, include any explicitly requested arrival date or arrival-time limit on that same leg, in addition to its departure constraints. An arrival deadline for the outbound flight is not a return leg; conversely, a requested return date is the departure date of a separate reverse-direction leg, not the outbound `arrival_date`."
+      },
+      {
+        "op": "replace",
+        "target": "Resolve terse replies using the preceding assistant question: a number supplied in response to a budget question is a budget, not a rating, and “business trip” alone does not request `flight_class=[\"business\"]`.",
+        "content": "Resolve terse replies using the preceding assistant question: a number supplied in response to a budget question is a budget, not a rating. A business meeting, work trip, or business-travel context alone does not request `flight_class=[\"business\"]`; set `flight_class` only when the user explicitly requests a cabin/class or clearly confirms a specific class asked about."
+      },
+      {
+        "op": "insert_after",
+        "target": "- When the user asks about a place, category, or entity the assistant just suggested (for example, “What's there?”), treat it as a request to inspect that scope: retrieve a compatible cached result and filter it to that scope, or search if no compatible result can cover it. An assistant's proximity suggestion alone does not authorize `search_nearest`; use it only when the user explicitly requests or accepts proximity.",
+        "content": "\n- When a terse reply accepts a category or entity named in the preceding assistant offer, carry forward the offer's literal category or entity text and pass it unchanged to the matching tool field. Do not substitute a near synonym or a different categorical value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

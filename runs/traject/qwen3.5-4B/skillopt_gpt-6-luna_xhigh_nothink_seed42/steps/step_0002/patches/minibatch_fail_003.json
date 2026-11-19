@@ -1,0 +1,42 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_coverage",
+      "count": 8,
+      "description": "Calls were misrouted to superficially related endpoints, omitted requested outcomes, or added redundant searches instead of matching each outcome to its specific operation."
+    },
+    {
+      "failure_type": "request_to_schema_mapping",
+      "count": 8,
+      "description": "Arguments lost or altered constraints, used incorrect enum or filter values, leaked modifiers between outcomes, or were placed in the wrong parameter bucket."
+    },
+    {
+      "failure_type": "tool_name_format",
+      "count": 2,
+      "description": "Tool names were emitted as provider descriptions or with duplicated provider prefixes rather than copied from the listed tool label."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already gives broad coverage and schema-matching guidance, but the trajectories show that it needs more operational tie-breakers: match product searches to the relevant catalog without broadcasting, preserve and translate modifiers precisely, treat explicit code execution as an outcome, and verify tool labels against the listing.",
+    "edits": [
+      {
+        "insert_after": "- Turn the query into a checklist of distinct requested outcomes, including each subject, action, and explicit constraint. Keep modifiers attached to the result they qualify. Match each outcome to an available endpoint by its actual operation and schema, not just a shared keyword; distinguish similar operations and prefer an explicitly named endpoint when available.",
+        "content": "- For general product searches with no marketplace specified, choose the single best-fit catalog for each item based on its product domain; do not broadcast the search across unrelated marketplaces. Use multiple platforms when the user names them or requests cross-platform results. For product identifiers, use an endpoint that explicitly accepts that identifier on the relevant provider."
+      },
+      {
+        "insert_after": "- Translate stated market constraints into API-native values according to the tool schema.",
+        "content": "- Keep each constraint scoped to its own requested outcome. Preserve both bounds of a stated range using the corresponding minimum and maximum fields when available; do not collapse a range to one representative value. Map semantic filters and sorting requests to documented API flags or enum values, and use the endpoint's accepted locale form. Do not guess undocumented values or add unrequested settings."
+      },
+      {
+        "insert_after": "- When calls are independent, issue them together rather than treating narrative order as a dependency.",
+        "content": "- Treat an explicit request to run, test, or execute code as a distinct outcome. Use an available code-execution endpoint and its code parameter; if the task describes the computation but supplies no code, provide code that performs that requested computation rather than omitting the outcome."
+      },
+      {
+        "replace": "- Check that every requested outcome is covered, each call uses the exact listed tool name, and each call object follows the active answer format exactly. Use the required keys, parameter buckets, types, and wrappers; include empty arrays when required. Do not merge calls, duplicate keys, or add explanatory text outside the required format.",
+        "content": "- Before responding, compare each call with its tool entry: copy the exact listed `Provider: endpoint` name verbatim, not the provider description, and do not repeat the provider prefix. Verify that every argument is in its declared required or optional bucket and has the schema's type. Then check that every requested outcome is covered and each call follows the active answer format, including required keys, wrappers, and empty arrays. Do not merge calls, duplicate keys, or add text outside the required format."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

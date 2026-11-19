@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "conversation_scope_and_delta",
+      "count": 8,
+      "description": "Agents missed new follow-up constraints or dropped earlier requested actions, including suggested neighborhoods, trip legs, lodging, and dining."
+    },
+    {
+      "failure_type": "cache_refinement_and_result_lifecycle",
+      "count": 7,
+      "description": "Agents skipped required refinements, repeated already-satisfied work, used unavailable cached results, or failed to save results."
+    },
+    {
+      "failure_type": "missing_input_handling",
+      "count": 3,
+      "description": "Agents invented hotel details or tried to filter results without a valid base instead of seeking missing information or completing other eligible domains."
+    },
+    {
+      "failure_type": "proximity_domain_selection",
+      "count": 2,
+      "description": "Agents selected the wrong primary domain for nearest results or supplied mismatched attraction results."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits make agents inventory the full conversation and each requested item before acting, handle missing inputs per domain without blocking complete work, enforce valid incremental refinements, and clarify which domain search_nearest should organize.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "- First build an action checklist from the full conversation, not just the latest user turn. Keep every still-active requested item and domain, including each flight leg and each requested hotel destination. Resolve short replies and questions such as “What’s there?” against the immediately preceding assistant question or suggestion, and map each supplied constraint to its intended item and domain. When multiple attraction criteria are stated, such as an attraction type and a named attraction, preserve both in the appropriate supported fields. Check cache coverage separately for each action and constraint. For affected actions, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only newly introduced constraints; search when a needed result is unavailable. Do not omit uncovered actions, redo unaffected domains, or rely on variables from earlier executions."
+      },
+      {
+        "op": "replace",
+        "target": "## Missing mandatory information\nBefore searching, check the full conversation for all mandatory inputs required by each requested tool. If any are missing, do not invent values, use defaults, or run a partial search. Make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+        "content": "## Missing mandatory information\nCheck mandatory inputs separately for each requested action and domain. If inputs are missing, make one `seek_information` call asking only for those missing mandatory inputs; do not search an incomplete domain, but still execute and cache other requested actions whose mandatory inputs are complete. Never invent values or use defaults. For a hotel stay clearly tied to a dated round trip to one destination, use the explicitly given trip dates for check-in and check-out when no separate hotel dates were supplied; if the stay dates cannot be determined unambiguously, ask for them. If an exact check-in date and explicit stay length in nights are supplied, use `adjust_date` to derive check-out."
+      },
+      {
+        "op": "replace",
+        "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+        "content": "- For every newly introduced, schema-supported constraint not already satisfied by a cached result, retrieve a valid relevant base result and apply the constraint with the matching filter, passing it as `prior_results`. Do not treat retrieval alone as refinement or filter using a missing, guessed, or `None` result; when no suitable base result is available, search if its mandatory inputs are complete."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Hotel proximity to attractions",
+        "content": "- When the user explicitly asks for hotels near restaurants or attractions, organize nearest results by the domain they want recommended: use `groupBy=\"hotel\"` for hotels near other places. Conversely, use the restaurant or attraction domain when that is the requested primary domain. Do not choose `groupBy` based on the nearby companion domain."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "runtime_namespace_violation",
+      "count": 3,
+      "description": "Agents imported tools from a nonexistent module instead of calling injected functions directly."
+    },
+    {
+      "failure_type": "conversation_state_and_request_scope",
+      "count": 5,
+      "description": "Agents missed available itinerary context, omitted a needed clarification, or asked for information for an unrequested domain."
+    },
+    {
+      "failure_type": "cached_result_update_failure",
+      "count": 2,
+      "description": "Agents re-searched or stopped instead of applying a new criterion to compatible cached results."
+    },
+    {
+      "failure_type": "nearby_recommendation_workflow",
+      "count": 1,
+      "description": "The agent omitted the nearest-result step for a restaurant requested near a hotel."
+    },
+    {
+      "failure_type": "schema_and_domain_mismatch",
+      "count": 1,
+      "description": "The agent used an unsupported hotel-filter argument and incorrect casing for a controlled flight-class value."
+    },
+    {
+      "failure_type": "range_interpretation",
+      "count": 1,
+      "description": "A plain numeric restaurant rating was treated as a minimum rather than an exact rating."
+    }
+  ],
+  "patch": {
+    "reasoning": "The injected-namespace prohibition and general cache, clarification, and nearest-result workflows are already stated in the skill, so repeating them would not patch a content gap. These edits clarify the recurring operational ambiguities: update every applicable itinerary leg, distinguish a nearby target from its location anchor, interpret an unqualified numeric rating as exact, and keep controlled choices and filters within their proper schema and domain.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`.",
+        "content": "For numeric range fields such as `rating`, treat an unqualified stated number (for example, “rating 3.5”) as exact and encode it as `[n, n]`; only wording such as “at least,” “minimum,” or “or better” calls for `[n, schema_max]`. Apply the same endpoint logic to other range-shaped fields."
+      },
+      {
+        "op": "replace",
+        "target": "For controlled-choice fields, use a choice and spelling or casing accepted by the schema, while preserving the user's casing for free-form entity values.",
+        "content": "For controlled-choice fields, use a choice and spelling or casing accepted by the schema (for example, use `flight_class=[\"economy\"]` when that is the accepted value), while preserving the user's casing for free-form entity values. Keep each criterion within its matching domain and tool; for example, do not pass `flight_class` to a hotel filter."
+      },
+      {
+        "op": "insert_after",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "\n- When a new criterion applies to multiple still-relevant cached results, update each independently—for example, apply a flight preference to both outbound and return results. Retrieve and filter each result using only the new criterion, then save each transformed result under its own distinct key; do not repeat the base searches or update only one leg."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "\n- Interpret a request for a target domain “near” an entity in another domain as a `search_nearest` request, not as a target-domain neighborhood or name filter. Use compatible results for both target and anchor. Set `groupBy` to the requested recommendation/organizing domain—normally the target being requested, such as `restaurant` for restaurants near a hotel—not merely the location anchor."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

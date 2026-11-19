@@ -1,0 +1,56 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "Wrong slot: the agent echoed an anchor from the clue instead of the owner or container. It gave the quoted Norwegian play title for 'his 1882 drama' (the dramatist was wanted) and the named wine region for 'this country's finest wines' (the country was wanted). Both rules already exist but are buried."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "A verbatim archive line ('A: the atmosphere' and 'THE ATMOSPHERE') was present. The agent instead copied a forum reply ('Friction') from a discussion thread."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "'these mountains' answered as 'Adirondack Mountains'. The key is the short plural name, and the head-noun exception probably pushed the agent to keep the type word."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "The agent copied a scrape artifact ('ragaE') from a passage instead of the clean word 'rag'."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "Full name 'Jean-Honore Fragonard' given where the key was the bare surname. No reliable visible clue feature predicts this, so no edit is proposed."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four compact edits, each tied to a visible clue feature. (1) In Rule 1, where the quoted-title example already sits, state the owner/container rule: a quoted title means the creator, and 'this country's ... <named place>' means the containing country. This covers two of the six failures. (2) Add a source ranking so archive Q/A lines beat forum replies; the Rule 3 override exists but forum replies were not explicitly named. (3) Add a narrow form rule for plural geographic groups ('these mountains') that overrides the head-noun exception, which likely caused 'Adirondack Mountains'. (4) Tell the agent not to copy scrape junk fused to a word, and that a missing-last-word quote wants one clean word. I skipped a surname-vs-full-name rule because stable passes use both forms and no clue feature separates them. I did not add a top-of-skill reasoning-line step, since earlier attempts at that were rejected.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "'his/her/this [work]' -> the person who created it.",
+        "content": "'his/her/this [work]' -> the person who created it. A quoted title in the clue, including a foreign-language or original-language title ('\"Le X\" is the French title of her 1950 novel'), is an anchor and never the answer; answer the novelist, dramatist or composer. Likewise 'this country's / state's / city's <product, team, landmark>' plus a named region, town or site -> the country, state or city that CONTAINS the named place ('this country's finest cheeses come from the Emmental valley' -> Switzerland). The named place is an anchor, never the answer."
+      },
+      {
+        "op": "insert_after",
+        "target": "Before the answer tags, briefly quote the matched line.",
+        "content": "\n- SOURCE RANKING when passages disagree: (a) an archive or flashcard line ('Q: ... A: answer', 'CLUE | answer', ALL-CAPS 'CLUE, ANSWER') is final, even when a quoted contestant gave a wrong response in the same line; take what follows 'A:' or the comma. (b) News pages quoting the Q/A come next. (c) Forum or discussion-thread replies (Topix, Reddit, Yahoo Answers) that merely follow a posted clue are guesses and never beat (a). If any passage has (a), answer from it before using your own knowledge or a plausible-sounding synonym."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For titles, give the standard title without quotation marks and keep internal punctuation as written in the context ('M*A*S*H', not 'MASH film').",
+        "content": "\n- PLURAL GEOGRAPHIC GROUPS ('these mountains', 'these islands', 'this mountain range'): the clue's own type word is already stated, so apply the delete-clue-words test and give the short plural name people use ('the Appalachians', 'the Andes'), not '<Name> Mountains' or '<Name> Islands'. The head-noun exception above does not apply to these."
+      },
+      {
+        "op": "insert_after",
+        "target": "Brief reasoning belongs before the tags.",
+        "content": "\n- CLEAN THE STRING before tagging: passages are scraped, so a word may carry fused junk (stray capitals or letters, digits, markup, e.g. 'wordE', 'word2'). Never copy the junk. Take the clean form from another passage that quotes the same text, or from your own knowledge of the quote. When the clue quotes a line and leaves off the last word ('... with salt and' this), the answer is the single next word of the real line and nothing more."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,36 @@
+{
+  "batch_size": 3,
+  "success_patterns": [
+    "Every named outlet, platform, place or action got its own call from the endpoint that names it. Three Arabic outlets became three outlet-specific tools, and Bangkok, Lisbon and Medellin became three Auto Suggest calls. Egypt and the US became two GetStats calls. No generic search tool was substituted.",
+    "In narrative queries ('I retrieved... Then I accessed... Finally I searched...'), each described action became one call. The closing recap sentence ('This combined approach gave me a broad overview...') produced no extra call.",
+    "Siblings were separated by the query's time or scope qualifier: 'categories' -> the categories tool (not sources list), 'most recent/latest' -> the latest-articles tool, 'this month' -> the month's-top-articles tool, 'past events' -> GetPastEvents.",
+    "Values followed the schema's own format and were stripped of framing words. Country names became codes ('Egypt' -> EG, 'United States' -> US), 'English-language' became language `en`, and the keyword was just the topic phrase ('Middle East politics'). Quoted search phrases and counts were copied directly ('political documentary election', limit 15).",
+    "Tool names with unusual characters (non-Latin script, hyphens, spaces, colons inside the provider name) were copied verbatim from the `###` heading."
+  ],
+  "patch": {
+    "reasoning": "All three trajectories were solved by mechanical, clause-by-clause mapping. The skill does not yet say: (a) closing recap or purpose sentences in narrative queries ask for no call; (b) recency or scope words choose among sibling endpoints; (c) place and language names must be converted to the code format the schema shows, with the keyword stripped to the topic phrase. These are broad rules that apply to many tasks. The edits are short to avoid the over-long rewrites that were rejected earlier.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+        "content": "\n- Narrative or first-person queries ('I retrieved X. Then I accessed Y. Finally I searched Z...') are checklists with one call per described action, in order. A closing recap or purpose sentence ('This combined approach gave me a broad overview...', 'possibly for analysis') names no new action and gets no call. Endpoints that need no input still get a call with `[]` for both lists.\n- When the query lists several named outlets, platforms or places, give each its own call. Use each outlet's own endpoint (Aljazeera, CNN Arabic and Youm7 are three tools), not one generic search or headlines tool. Use one call per place for a one-value tool (a city-search or auto-suggest tool called once per city)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Never pick a tool just because a parameter value fits (e.g. a country code).",
+        "content": " Let the query's scope and time words choose among sibling endpoints: 'list of categories' -> the categories tool, not the sources list; 'most recent / latest' -> the latest-items tool; 'this month' -> the month's-top tool; 'past events' -> the past-events tool; 'for a specific country' -> the tool that takes a location."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+        "content": "\n- Write each value in the format the schema describes. Convert names to codes when the description gives a code scheme ('Egypt' -> `EG`, 'United States' -> `US` for an ISO 3166 location; 'English-language' -> `en`; an enum such as 'ar: arabic ... en: english' -> the code, not the word). Keep a search keyword to the topic phrase only, dropping framing words ('English-language news articles about Middle East politics' -> keyword `Middle East politics`, language `en`). Copy quoted phrases verbatim ('political documentary election') and counts exactly ('up to 15 results' -> limit `15`)."
+      },
+      {
+        "op": "replace",
+        "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+        "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely. Copy the heading character for character, including non-Latin script, hyphens, spaces and extra colons (e.g. `Arabic news API: Youm7 - اليوم السابع`, `Kubric: The Comprehensive Movie News API: Basic Search`, `dev-to-api: Get the month's top articles`). Use the `### ` heading text, never the long `Provider:` description line."
+      }
+    ]
+  },
+  "source_type": "success"
+}

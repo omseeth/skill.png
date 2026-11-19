@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Clues phrased 'this <generic noun>' or 'these <plural noun>' were answered with the bare category noun the passages repeat next to the clue's key facts ('Owls', 'Moors', 'shilling', 'boomerang'), not a sub-type or dynasty. The existing Rule 2 and Rule 4 type and strip rules already cover most of this.",
+    "Sentence-with-blank clues ('ancient Europeans believed this plant held magic powers...') were solved by finding the near-verbatim sentence repeated across many passages and taking the slot word ('mistletoe'). Already covered by Rule 3.",
+    "Where the passages only echoed the clue (quiz-spam pages) or were noise, the agent completed a well-known proverb or idiom from its own knowledge ('Necessity is the mother of invention' -> 'Invention'; 'hasty pudding' / 'tapioca pudding' -> 'pudding'). A stray forum guess matching that knowledge confirmed the answer. The idiom side is partly covered, but proverb completion is not stated.",
+    "Clues with a leading 'Before we kissed under it' or a wordplay category header such as 'DOUBLE \"D\"s' were answered from the factual core, with the header acting as a hint. The category-header constraint is not yet in the skill.",
+    "Missing-part answers dropped words the clue already states ('pudding', 'Terabithia'). Already covered by the DELETE-CLUE-WORDS test."
+  ],
+  "patch": {
+    "reasoning": "Most successes came from rules already in the skill (verbatim sentence slots, stripping clue words, plural for 'these'). Three gaps remain that appear in this batch: (1) proverb or saying completion where the pronoun ('Its mother is necessity') stands for the missing noun, and where passages only echo the clue; (2) archive category headers acting as wordplay constraints, and echo-only pages not counting as archive hits; (3) choosing the level of generality that matches the clue's generic descriptor ('north African group' -> the broad label the passages repeat). Each edit is short and conditional on a visible clue feature, and none conflicts with Rule 3 or the form rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "answer with the common English name (Conch).",
+        "content": "\n- Proverb, saying or quotation clues ('According to a centuries-old proverb, \"Its mother is necessity\"', 'a stitch in time...') ask for the missing word of the saying. A pronoun or 'this' in the clue stands for that word. Recall the full saying ('Necessity is the mother of invention') and answer with the single missing noun ('Invention'). If the passages only repeat the clue, use your own knowledge of the saying. A forum or comment guess that matches the saying can confirm it."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Archive lines may also be formatted 'CATEGORY | clue text | answer'. Take the answer that follows the clue, even if the whole context is one short passage.",
+        "content": "\n- When an archive passage shows the clue under a category header and no answer, the header is a hint. A wordplay category ('DOUBLE \"D\"s', 'rhymes with...', 'starts with a body part') constrains the answer's spelling or sound, so test your candidate against it ('hasty' + dessert -> 'pudding' has the double D). A page that only repeats the clue (quiz-spam titles, solver listings) is not an archive hit. Fall back to passages that paraphrase the clue's facts, or to your own knowledge."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Honor qualifiers when the context offers several names for the same thing: 'Greek god of erotic love' -> 'Eros' (not Roman 'Cupid').",
+        "content": "\n- Level of generality: when passages name both a broad label and narrower members (a people and its dynasties, a bird family and its species, a coin and its variants), answer at the level of the clue's own descriptor. 'This north African group' that beat the Visigoths -> 'Moors', not a particular dynasty. 'These birds' with ear tufts -> 'Owls'. Prefer the term repeated across most passages beside the clue's key facts."
+      }
+    ]
+  },
+  "source_type": "success"
+}

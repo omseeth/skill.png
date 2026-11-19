@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "flight_preference_applied_to_one_leg_only",
+      "count": 3,
+      "description": "A class, airline, time or price reply was filtered on only the outbound flight key. Gold filters every leg (T1, T2, T6)."
+    },
+    {
+      "failure_type": "cross_domain_leakage_or_stale_constraints",
+      "count": 2,
+      "description": "A hotel-only reply filtered flights and re-passed pool/kids club already in the summary (T3). A hotel reply with only attractions cached filtered attractions instead of seek_information (T4)."
+    },
+    {
+      "failure_type": "output_form_violation",
+      "count": 3,
+      "description": "A search nested as a kwarg of another search_flights call with no saves (T5). A bare search_attractions with a state code in city= (T7). A load re-saved unchanged on an 'Okay, sounds good' turn (T8)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the eight failures are one-leg flight filtering. The cause is the skill's own wording: the SEARCH GATE says 'Write exactly' three lines, and Rule 13 says 'exactly three straight-line statements'. That overrides the per-leg block rule in CACHE GATE -1. Edits 1 and 2 add an explicit per-leg exception and fix the Rule 13 wording. Edit 3 is a short pre-send scan with positive replacements for the three output-form errors (nested search kwarg, state code in city=, load-then-save with no filter). Edit 4 is a key-to-tool match rule. It covers the hotel reply with only attractions cached (T4) and the hotel-amenity reply that wrongly touched flights and re-passed summary items (T3). All edits are short and merge into existing rules, since earlier long inserts regressed.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "A search_* call is allowed only for a domain with NO key.",
+        "content": " FLIGHT EXCEPTION to the three-line pattern: when the last message is about flight class, airline, time or price, count the flight LEGS in CACHE (outbound, return, each extra city leg), take each leg's most refined key (a filtered_* key beats the raw key), and write one load/filter/save block per leg with the same new kwarg(s) in every block. Two legs means two filter_flights calls. Stopping after the outbound leg is always wrong."
+      },
+      {
+        "op": "replace",
+        "target": "A refinement on a cached domain is exactly three straight-line statements:",
+        "content": "A refinement on a cached domain is one three-statement block per key (two flight legs means two blocks, one per leg):"
+      },
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- PRE-SEND SCAN (check every line before answering): (a) every search_*/filter_*/search_nearest line is `name = tool(...)` with `save_to_cache(key=..., value=name)` on the next line. A call is never an argument of another call, so a round trip is two separate assigned and saved search_flights statements (outbound, then cities swapped for the return). `return_flights=` and `return_date=` never appear inside search_flights. (b) `city=` holds a city only. A state name or two-letter code goes in `state=` and city is omitted. (c) A load is never followed by saving the same object. When the user only accepts a proposal that the loaded summary already lists ('Okay, that sounds good'), the whole output is the single load line `x = get_results_from_cache(key=...)`, with no filter and no save_to_cache."
+      },
+      {
+        "op": "insert_after",
+        "target": "1. Copy the CACHE keys of each domain the LAST user turn touches (flights / hotels / restaurants / attractions, including filtered_*, nearest_*, hotels2, final_* names).",
+        "content": "\n   - KEY-TOOL MATCH: filter_hotels loads only a hotels key, filter_flights only a flight key, filter_restaurants only a restaurants key, filter_attractions only an attractions key. If the last turn is about hotel words (stars, amenity, per-night budget) and CACHE has no hotels key, either run the first search (when check-in and check-out dates are known) or make the whole output one seek_information for the hotel dates. Never use filter_attractions, filter_restaurants or filter_flights as a stand-in, and never overwrite an existing key. If a hotels key exists and the reply names only hotel amenities, write one block on that hotels key with only the amenities named in the last message. Items already in its summary (stars, neighborhood, pool_present, has_kids_club) are already applied and are not re-passed. Flight keys are not loaded, even if the conversation also contains flights."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

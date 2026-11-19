@@ -1,0 +1,45 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "strength_mismatch",
+      "count": 4,
+      "description": "Agent chose a bare, hedged, or downgraded option (negative tail such as 'does not follow', 'non-uniform', 'probability 0', or the bare statement without the natural structural refinement or explicit constant dependence) over the plain positive source statement or its derivable refinement (T4, T5, T6, T7)."
+    },
+    {
+      "failure_type": "option_confusion",
+      "count": 2,
+      "description": "Agent picked an option equivalent to the key under the stated range ('m=2' vs 'm≡2 mod n') or differing only in constant dependence ('some C>0' vs 'C=C(p,q,n)'), instead of the source-native form shared by the sibling options (T1, T8)."
+    },
+    {
+      "failure_type": "condition_miss",
+      "count": 2,
+      "description": "Agent ignored stem hypotheses that signal the intended conclusion (a compatibility condition gives smoothness up to t=0), or invented extra structure (a larger-than-Killing kernel, an explicit second-order coefficient) that no count or derivation supports (T2, T3, T4)."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains most of the relevant heuristics, but they are buried in a long document, and every failure was a one-step commit that ignored them. Three patterns recur. (1) The agent picks options with negative or limiting tails ('only', 'does not follow', 'non-uniform', 'probability 0') or invented extra structure instead of the plain positive theorem. (2) In some cases the correct option is the bare statement (T3), and in others it is the bare statement plus a qualitative structural clause (T7, T5), and the agent has no test to tell them apart. (3) The agent cannot break ties between range-equivalent options or between options that differ only in constant dependence. The patch adds a short top-priority triage block that eliminates negative tails and self-hollowing options and uses stem hypotheses as clues. It replaces the vague step 6 with an explicit bare-vs-rider test that separates numeric/coefficient riders from qualitative structural riders. It also adds a sibling-form tie-breaker for equivalent options and for options differing only in constants.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Mathematical Multiple-Choice Skill",
+        "content": "\n## Triage first (these filters override the 'safe' feeling; apply before the full workflow)\n1. Strike options whose distinguishing clause is a limitation or negative: 'only ...', 'does not follow', 'need not / cannot', 'non-uniform', 'not FPT / only XP', 'the most one can conclude is ...', 'however ... has probability 0', 'once entered it can never leave', 'strictly larger kernel / extra non-obvious modes'. Source theorems are positive, so such tails are corruptions unless you can PROVE the negative. A stem hypothesis that is evidently there to enable a positive conclusion (a compatibility condition gives smoothness up to t=0; accessibility, step-size or dimension restrictions give global or full convergence) refutes an option saying that conclusion fails.\n2. Self-consistency: an option's riders must not hollow out its own main claim. 'The process converges to one of several limits' plus 'all but one of them has probability 0' makes the 'one of' statement vacuous. The consistent version says each listed possibility genuinely occurs (positive probability).\n3. Before choosing, label every option in one word: truth / truncation (bare) / numeric inflation / negative hedge / paraphrase of another option. Choose the truth. A truncation loses to the truth whenever the extra clause is qualitative and derivable (see the bare-vs-rider test in step 6).\n4. Existence/solvability stems with 'strongest': the plain positive theorem (existence, uniqueness, full regularity on the stated domain) beats any option that downgrades it to local-in-time, interior-only regularity, or 'not ensured'."
+      },
+      {
+        "op": "replace",
+        "target": "6. Do not default to the bare, minimal, or hedged option because it feels safe.",
+        "content": "6. Do not default to the bare, minimal, or hedged option because it feels safe. Bare-vs-rider test: when option X = option Y + an extra clause, classify the clause. (a) Numeric or specific riders (an explicit coefficient or second-order term, a sign claim such as V>V0, a rate, asymptotic closeness or boundedness for large t, a 'moreover' about specific values) are default-reject unless you derive them in a few lines. (b) Qualitative structural riders that are the natural content of the theorem and consistent with its mechanism (uniqueness for a well-posed problem, strict inequalities only off a plateau, positive probability for each possible limit, explicit constant dependence on the stem's parameters) are default-accept unless you find a counterexample. Never choose the bare option merely because you cannot verify the extra clause, and never choose the rider option merely because it is longer."
+      },
+      {
+        "op": "insert_after",
+        "target": "- If two options look equivalent under the stated ranges (e.g. 'm=2' vs 'm≡2 mod n' when 0≤m<n), re-read for a subtle difference. If they are truly equivalent, prefer the one in the problem's native modular or structural language.",
+        "content": "- Sibling-form tie-breaker: if several options share a syntactic form (all use congruences mod something, all use 'C=C(p,q,n)') and exactly one option uses a different but range-equivalent form ('=2' instead of '≡2 mod n'; 'some C>0' instead of 'C=C(p,q,n)'), that option is the odd one out. Do NOT pick it just because you proved it equivalent. Pick the sibling-form option that matches the source statement. For options identical except for constant dependence, the explicit dependence list on the stem's own parameters is the source formulation, and the bare 'some C>0' is the weakened version."
+      },
+      {
+        "op": "append",
+        "content": "\n## Classification and rigidity stems: do not invent extra structure\n- If the stem asks for 'the complete classification' of Jacobi fields, kernels, deformations, or modes, and one option says 'exactly the obvious/symmetry-generated ones' while another says the space is strictly larger (with 'non-obvious' elements arising from some decomposition), treat the larger claim as an unsupported inflation unless a dimension or eigenvalue count is given and you can check it. A larger kernel needs a computation. 'Only the geometric (Killing/symmetry) ones' is the usual rigidity statement. Equally, an option that says 'every Killing field is a Jacobi field' alone is a truncation of the full classification."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

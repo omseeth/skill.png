@@ -1,0 +1,55 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "flight_filter_single_leg",
+      "count": 2,
+      "description": "Flight class or budget reply filtered only the first flight key (departure_flights) and skipped return_flights, even though both keys were cached."
+    },
+    {
+      "failure_type": "flight_time_mapping_error",
+      "count": 3,
+      "description": "Flight time words mapped wrongly. The airline code 'AM' became a departure_time window, 'depart at X and arrive by Y' was merged into one departure_time range, and a stated departure time (12:22 PM) was dropped from the first search."
+    },
+    {
+      "failure_type": "first_search_flight_params_dropped",
+      "count": 2,
+      "description": "First flight search omitted user-stated preferences: 'okay with either business or economy' was not passed as flight_class, and an 'X to Y' date reply was searched as a single one-way flight."
+    },
+    {
+      "failure_type": "multi_city_domain_not_per_city",
+      "count": 1,
+      "description": "A multi-city trip (first_/second_ flight and hotel keys) got an attraction search for only the first destination city."
+    },
+    {
+      "failure_type": "stale_constraints_repassed",
+      "count": 1,
+      "description": "Restaurant budget reply re-passed gluten-free and vegan flags that were already in the cache summary. Existing rules already cover this, so no new edit."
+    }
+  ],
+  "patch": {
+    "reasoning": "Two flight patterns appear repeatedly and are not yet mechanical enough. First, filtering only one leg when two flight keys exist. A literal load-all, filter-all, save-all template at the top should fix it. Second, flight time and class wording. A concrete mapping table (depart at T, arrive by T, bare airline code vs. clock suffix) fixes three tasks, and a rule that stated class, time and 'X to Y' dates always go into the first search, with a round trip as two searches, fixes two more. A short multi-city rule covers the attraction-per-city gap. These are compact, positive-trigger rules at the top of the skill rather than sibling examples. T3 (stale constraints) is already covered verbatim in three places, so no further text is added for it.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- FLIGHT PREFERENCE REPLY = EVERY FLIGHT KEY IN CACHE (class, airline, time or ticket price answered in the last message): list every CACHE key that holds flight results (departure_flights + return_flights, flights + return_flights, first_flights + second_flights, ...) and take each one's most refined name. Write all loads, then one filter per key, then one save per key, with the same new kwargs on each. Two-key template: `f1 = get_results_from_cache(key=\"<key 1>\")`, `f2 = get_results_from_cache(key=\"<key 2>\")`, `g1 = filter_flights(prior_results=f1, <kwargs>)`, `g2 = filter_flights(prior_results=f2, <same kwargs>)`, `save_to_cache(key=\"filtered_<key 1>\", value=g1)`, `save_to_cache(key=\"filtered_<key 2>\", value=g2)`. A reply that loads, filters or saves only the first flight key is wrong, as is one that touches hotels or restaurants. Kwargs come only from the last message ('I prefer business' -> flight_class=[\"business\"]; 'keep it under 1100' -> budget=1100)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- FLIGHT TIME AND AIRLINE WORDS (search_flights and filter_flights; keep the user's 12-hour wording such as \"08:23 PM\", never '20:23:00'): 'depart / leave / fly out at T' -> `departure_time=[\"T\", \"T\"]`. 'arrive by T' -> `arrival_time=[\"12:00 AM\", \"T\"]`. One message with both ('depart at 08:23 PM and arrive by 09:24 PM') -> ONE call with `departure_time=[\"08:23 PM\", \"08:23 PM\"], arrival_time=[\"12:00 AM\", \"09:24 PM\"]`. Never put the arrival time inside departure_time. A bare two-letter capital code with no digits ('AM', 'AG') answering an airline or class question is an airline code (`airline=[\"AM\"]`), never a morning window or a time. A time the user stated in ANY turn ('a specific departure time 12:22 PM') goes into the first search_flights call of the leg it describes (outbound for a departure time) unless the CACHE summary already lists it."
+      },
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- FIRST FLIGHT SEARCH CARRIES EVERY STATED PREFERENCE, AND 'X to Y' MEANS TWO SEARCHES: class wording such as 'okay with either business or economy' or 'business or first is fine' -> `flight_class=[\"business\", \"economy\"]` (every listed class) in BOTH legs. Airline and budget go in both legs. Departure/arrival time words go in the leg they describe. Any flight request whose dates are 'X to Y', 'out on X and back on Y' or 'round trip' is two search_flights calls: outbound with departure_date X, return with the cities swapped and departure_date Y. This holds even when a hotel is also requested and its dates use both X and Y. One flight search plus a hotel is wrong. Search_hotels then follows in the same block."
+      },
+      {
+        "op": "append",
+        "content": "\n## Multi-city trips: one search per destination city\nWhen the CACHE holds paired per-city keys (first_flights/second_flights, first_hotels/second_hotels, or flights/flights2, hotels/hotels2), a newly requested or accepted attraction or restaurant type is searched once for EACH destination city, in the same block. Name the keys with the same convention (first_attractions and second_attractions, or attractions and attractions2). Example: 'Yes' to Sporting attractions with hotels cached for Tucson and Anchorage -> `first_attractions = search_attractions(city=\"Tucson\", type=[\"Sporting\"])` + save, then `second_attractions = search_attractions(city=\"Anchorage\", type=[\"Sporting\"])` + save. Searching only the first city is wrong."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

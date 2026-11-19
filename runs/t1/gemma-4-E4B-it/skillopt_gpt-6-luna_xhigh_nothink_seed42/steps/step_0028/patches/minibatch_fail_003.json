@@ -1,0 +1,36 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_mismanagement",
+      "count": 3,
+      "description": "Agents repeated searches or failed to filter/retrieve compatible cached results for a flight preference update, an unchanged domain, or a declined refinement."
+    },
+    {
+      "failure_type": "argument_mapping",
+      "count": 2,
+      "description": "Agents omitted or misassigned geographic fields and normalized an attraction category instead of preserving the user's value."
+    },
+    {
+      "failure_type": "result_binding_error",
+      "count": 1,
+      "description": "An agent saved the search function rather than the result returned by the search call."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers geographic-field mapping, literal category values, and saving assigned results, so repeating those rules would be redundant. The edits clarify two less-explicit conversational cases behind the cache failures: mapping airline designators and cabin classes from a prompted flight follow-up, and handling a user's decline of an offered refinement as a read of the existing cached scope.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "\nFor a flight follow-up answering a question about airline or class, map a supplied airline name or designator to `airline` and a cabin preference to `flight_class`, preserving the supplied values. Do not reinterpret an airline designator as a time-of-day preference when it answers an airline question. If compatible flight results are cached, retrieve and filter them rather than repeating the base search; do this separately for each affected leg:\n```python\nprior_flights = get_results_from_cache(key=\"<exact compatible flight cache key>\")\nfiltered_flights = filter_flights(prior_results=prior_flights, airline=[\"<user-provided airline name or code>\"], flight_class=[\"<requested class>\"])\nsave_to_cache(key=\"<descriptive filtered-flight key>\", value=filtered_flights)\n```"
+      },
+      {
+        "op": "insert_after",
+        "target": "A no-op response is appropriate only when the latest turn adds no actionable request and compatible cached results already cover all active requests.",
+        "content": "\nIf the assistant asks whether the user wants to narrow or add preferences to an already searched scope and the user declines or says they have no specific preference, retrieve that scope's exact compatible cache result once and return it unchanged. Do not repeat the search, filter it, or save an unchanged result; leave unrelated scopes untouched."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

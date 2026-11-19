@@ -1,0 +1,52 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_or_hallucinated_constraints",
+      "count": 4,
+      "description": "The last turn's new constraint was applied to the wrong domain or replaced with invented values. Examples: hotel filters on an attraction request, filtered_hotels loaded for a restaurant cuisine/rating request, 26 unmentioned amenities set to True/False, and the named attraction ignored."
+    },
+    {
+      "failure_type": "false_seek_information",
+      "count": 1,
+      "description": "Agent asked for the city although it was already in the conversation and the cache summary, instead of filtering the cached restaurants by cuisine."
+    },
+    {
+      "failure_type": "output_hygiene_redefined_tools_or_overthinking",
+      "count": 3,
+      "description": "Agent redefined tools/classes (NameError on 'Field'), wrote a huge reasoning monologue in comments that never produced a complete call, or printed and iterated over result dicts with invented keys (KeyError 'name')."
+    },
+    {
+      "failure_type": "round_trip_flights_mishandled",
+      "count": 1,
+      "description": "A 'from X to Y' date pair was put into a single departure_date list, with no separate return-leg search and no cache saves."
+    },
+    {
+      "failure_type": "search_nearest_misuse",
+      "count": 1,
+      "description": "Wrong groupBy for 'restaurant near the hotel', and an already-filtered restaurant cache was needlessly re-filtered."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures come from the agent not mapping the last user turn to the right domain and tool. It filters hotels when the user named an attraction, uses the hotel cache for a restaurant cuisine request, or pads calls with unmentioned parameters. A second group is output hygiene: redefining tools, endless comment reasoning, and printing results. The remaining cases are a false seek_information when the city was already known, and round-trip and search_nearest conventions. The edits add a domain-routing and only-stated-params rule, a mandatory-arg recognition rule, an output hygiene rule, and flight and search_nearest conventions. None of these duplicate the existing Rules 2, 6, 7 or 8.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Rule 9: Route the LAST turn's constraints to the right domain, and pass ONLY what the user said\n- Before writing code, list each new constraint in the last user turn and assign it to a domain: cuisine, restaurant rating, dietary options and restaurant budget -> restaurants; amenities, stars, hotel budget, rooms and neighborhood -> hotels; attraction names or types -> attractions; airline, class, times -> flights.\n- For each affected domain, load THAT domain's most refined cache key (e.g. 'restaurants' / 'filtered_restaurants' for a cuisine or rating request) and call that domain's filter_* tool. Never load or filter another domain's key. Example: `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, cuisine=[\"Indonesian\"], rating=[4.5, 5])`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`.\n- Pass only values the user literally stated in the last turn (plus unapplied earlier constraints per Rule 2). NEVER pass False or True for features that were not mentioned, never enumerate every amenity parameter, and never invent filters such as pool/breakfast that nobody asked for. 'Wifi, a gym, and a rooftop bar' -> free_wifi_included=True, gym_present=True, has_rooftop_bar=True and nothing else. A vague word with no matching parameter (e.g. 'formal') is simply ignored.\n- A rating floor like 'at least 4.5' -> rating=[4.5, 5]. A stated cuisine -> cuisine=[\"<as stated>\"].\n- If the user names a specific attraction (and/or its type) that is not yet cached, call `search_attractions(city=<established city>, attraction_name=[\"<exact name>\"], type=[\"<type if stated>\"])` and save it under 'attractions'. Do not touch the hotel cache for that turn. If a named attraction arrives in the same turn as hotel amenities, do BOTH: filter hotels and search attractions.\n- Do not load unrelated cache keys that the turn does not need (e.g. flights when the turn is about hotel amenities)."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 10: Recognise mandatory args that are already known\n- A city counts as provided if it appears anywhere in the conversation OR in the CACHE summary text (e.g. 'Restaurant search results in Tucson'). Never call seek_information for a city that is already known. When a domain is already cached and the user adds a preference, filter the cache (Rules 2 and 9) instead of asking.\n- 'Downtown Tucson' or 'Midtown Atlanta' -> city=\"Tucson\" / \"Atlanta\" (the city named in the conversation) plus the neighborhood as the user wrote it, e.g. neighborhood=[\"Downtown Tucson\"]. Neighborhood is optional and never a reason to ask or hesitate.\n- Dates already given in a 'Month D, YYYY' format are valid as-is; wrap each in a list, e.g. checkin_date=[\"August 5, 2025\"]. If every mandatory arg is present, emit the search call immediately without further deliberation."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 11: Output hygiene\n- Output only short, direct tool calls inside <CODE></CODE>. NEVER write `import`, `class`, `def`, or any re-definition of tools or models (this causes NameError). The tools are already defined.\n- Do not write long reasoning in code comments. Decide quickly and write at most a one-line comment per step. A response that ends mid-comment without finishing the calls is a failure.\n- Do not print results or loop over `.search_results`, and never access result fields like hotel['name'] or ['rating']. Only call tools and save_to_cache, since the result schema is unknown and key errors break the run.\n- Save every search, filter and search_nearest result with its own unique key. For a pure retrieval no save is needed."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 12: Round-trip flights and search_nearest conventions\n- A user giving a date pair for a flight ('from May 15 to May 19', 'leaving X, coming back Y') means TWO searches, never both dates in one departure_date list: `departure_flights = search_flights(start_airport_city=A, end_airport_city=B, departure_date=[\"<first date>\"])` and `return_flights = search_flights(start_airport_city=B, end_airport_city=A, departure_date=[\"<second date>\"])`. Save each (keys 'departure_flights' and 'return_flights'). If the user names an airport code or airport (e.g. 'I normally fly from SJC'), add start_airport=\"SJC\" on the outbound leg and end_airport=\"SJC\" on the return leg.\n- For 'a restaurant/attraction near the hotel', call search_nearest with the most refined cached/just-filtered hotels and the most refined cached restaurants (load the cache key; do not re-filter results that the cache summary already shows as filtered), using groupBy=\"hotel\" when the hotel is the anchor. Save the result under a new 'nearest_*' key."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

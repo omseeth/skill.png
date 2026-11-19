@@ -1,0 +1,60 @@
+{
+  "step": 7,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 22,
+  "failure_patterns": [
+    {
+      "pattern": "tool and cache lifecycle: Some trajectories imported or redefined runtime components, omitted required cache saves, or made redundant uncached calls despite existing skill rules.",
+      "count": 22,
+      "task_ids": [
+        "flighthotelattraction:train:19:26:3",
+        "attraction:train:8:59:0",
+        "flighthotel:train:18:2:3",
+        "restaurant:train:20:47:3",
+        "flight:train:20:12:3",
+        "flight:train:7:30:4",
+        "flight:train:2:18:3",
+        "flighthotel:train:10:57:4",
+        "hotelattraction:train:14:7:5",
+        "hotelrestaurant:train:13:12:1",
+        "hotel:train:8:28:1",
+        "hotel:train:9:25:3",
+        "flighthotelrestaurant:train:15:42:2",
+        "flighthotelrestaurant:train:6:30:1",
+        "attraction:train:22:10:0",
+        "flighthotelattraction:train:19:16:3",
+        "attraction:train:13:56:0",
+        "flight:train:23:57:2",
+        "hotel:train:16:25:4",
+        "flighthotel:train:4:50:2",
+        "restaurant:train:4:17:2",
+        "flighthotelattraction:train:9:27:1"
+      ]
+    }
+  ],
+  "score_before": 0.415,
+  "score_after": 0.355,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Treat every result-producing call—search, filter, sort, or `search_nearest`—as a paired operation: assign its result to a variable and save that exact result with `save_to_cache` under a fresh, descriptive key. Use distinct keys for separate domains, itinerary legs, and updated results. Before finalizing, verify that every produced result has been saved. Do not add result printing, summaries, or diagnostic output unless requested, and avoid unrelated cache reads. Tool outputs are typed result models, not dictionaries: pass them directly to subsequent tools and cache functions; do not subscript them. If inspection is genuinely needed, use declared model attributes. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+      "target": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Assign every result-producing call—search, filter, sort, or `search_nearest`—to a variable and save that exact result with `save_to_cache` under a fresh, descriptive key. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- **Disambiguate flight preferences and require an origin:** When replying to a question about airline or class, interpret a short uppercase code-like token as an airline (for example, `airline=[\"AM\"]`), not a morning time preference; interpret it as a time only when context clearly refers to time of day. Use the lowercase flight-class values `economy`, `business`, or `first`. A flight search requires both a departure date and an origin in a supported origin field. A known hotel city or destination does not establish the origin; ask for any missing required origin rather than inventing a route.",
+      "target": "- **Format flight time ranges as required:** For `departure_time` and `arrival_time`, use the validator's accepted 12-hour format with AM/PM (for example, `12:00 PM`), not `HH:MM:SS`. Choose a supported interval for vague time periods."
+    },
+    {
+      "op": "replace",
+      "content": "For numeric `rating` requests, a bare single value is exact `[x, x]` unless the user says “at least” or otherwise clearly requests a threshold, which is `[x, 5]`. Phrases such as “an x-star rating” or “rated x stars” without “exactly” mean a minimum `[x, 5]`; “exactly x” means `[x, x]`. Preserve explicit ranges.",
+      "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`."
+    },
+    {
+      "op": "insert_after",
+      "content": " When multiple requested domains are blocked by missing required inputs, ask for all those missing values in one clarification, while proceeding with any other requested domains whose required inputs are available.",
+      "target": "Do not infer or substitute sample dates; ask only for missing required values, not optional counts or dates."
+    }
+  ]
+}

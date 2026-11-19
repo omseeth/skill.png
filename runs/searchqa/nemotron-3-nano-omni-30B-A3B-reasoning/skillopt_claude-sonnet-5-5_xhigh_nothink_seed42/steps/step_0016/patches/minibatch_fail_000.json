@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 4,
+      "description": "Answer kept words the clue already supplies or extra qualifiers instead of the bare head. 'Sirius Satellite Radio' for 'this satellite radio company', 'third Dalai Lama' for 'this title', 'Egg White Denver Omelet' for 'the Denver type of this'. 'Warren Gamaliel Harding' should be the standard 'Warren G. Harding'."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "Pronoun clue ('he wrote an explanation...') asks for the person, but the agent answered the poem or work named in the passages."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "Acronym/letter clue ('second S in LSUS stands for this city'): the agent answered the city of the first part (LSU, Baton Rouge) instead of expanding the acronym (LSU Shreveport)."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "Wrong candidate under noisy evidence. A nickname clue was answered from sports and fan pages (Iowa State Cyclones) instead of nickname-list pages (Kansas). A lone side mention (Agua de Valencia) beat the entity in most passage titles (Sangria)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Half the failures are over-long answers that the skill already forbids but the agent still gives, because the rules are scattered across a very long document. A short pre-answer checklist at the very end, next to where the agent writes its answer, restates the most-violated points compactly: strip clue words and ordinals, drop industry nouns from company names, use the standard middle-initial name form. The other failures are slot-type and evidence-weighting errors: a pronoun clue wants the person, an acronym-letter clue needs expanding, and reference lists or title-level consensus should beat team pages or a lone side mention. Each edit is generic and avoids duplicating existing text.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- Pronoun-subject clues ('On June 16, 1881 he wrote an explanation of why he would kill Garfield', 'She painted...', 'His middle name was Gamaliel') ask for the PERSON. The poem, letter, book or deed mentioned in the passages is only evidence about him, never the answer. Answer with the person's name as the passages most often write it. For a clue about a middle name or initial, use the 'First M. Last' form ('Warren G. Harding'), not the spelled-out middle name."
+      },
+      {
+        "op": "insert_after",
+        "target": "answer with the common English name (Conch).",
+        "content": "\n- Acronym / initial-letter clues ('The second \"S\" in LSUS stands for this city', 'the \"M\" in NASA'): first EXPAND the acronym by finding a passage title or phrase that spells it out (the 'LSU Shreveport' pages -> LSU + Shreveport). Then take the word that sits at the asked position (second S -> Shreveport). Do not answer with the place tied to the first part (LSU -> Baton Rouge) or with the most famous entity in the passages."
+      },
+      {
+        "op": "insert_after",
+        "target": "- If the context offers several candidates (a different player in the same article, a film and its song), pick the one that satisfies ALL distinctive details: exact numbers, team, years, place. Do not choose one that fits only some.",
+        "content": "\n- Weigh the evidence, not the volume of passages. (a) Nickname or label clues ('The \"Cyclone State\"'): trust reference passages that LIST or define the nickname next to an entity (state-nickname lists, almanac pages, 'the state is known as the \"Cyclone State\"') over sports-team, fan, social-media or product pages that merely reuse the word (Iowa State Cyclones). The listed entity (Kansas) is the answer. (b) When the context is noisy or the archived clue is cut off, the answer is the entity that appears in many passage titles or headlines and in the page that quotes the clue ('Sangria' pages for 'Spanish name for a party drink of red wine & fruit juices'). It is not a different item that shows up once as a side mention ('Agua de Valencia')."
+      },
+      {
+        "op": "append",
+        "content": "\n## Final check before writing <answer> (apply every time)\n1. Strike every word the clue already states, including ordinals and type words, and keep only the remaining head. 'the Denver type of this' -> 'Omelet' (not 'Egg White Denver Omelet'). 'first to bear this title' -> 'Dalai Lama' (not 'third Dalai Lama').\n2. Company or brand clues: give the brand name alone and drop the industry or legal words the clue supplies ('this satellite radio company' -> 'Sirius', not 'Sirius Satellite Radio'; no 'Inc.', 'Company', 'Corporation').\n3. Slot check: does the answer have the type the clue asks for (person for 'he/she', city for 'this city', state for a state nickname)? If it is the work, place or team that the clue merely mentions, switch to the right entity.\n4. Output only the bare answer, with no reasoning inside the tags."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every success anchored on the clue's rarest or most distinctive token (a number like '113-mile', 'Tick-Licker', 'lambi', a quoted lyric, 'before behind') and picked the single entity that recurred across many passages with it. Crossword-solver listings that only repeat the clue were ignored in favour of topical passages.",
+    "The agent named the slot type from the clue's own noun and answered that type. 'hit' gave the song title, not the band (R.E.M. appears everywhere). 'this country' gave China. 'frontiersman' gave a person. 'adjective from the Latin for...' gave the English word, not the Latin one.",
+    "When the clue quotes a fragment of a title ('this \"Express\"'), the agent answered with the complete title including 'The' (The Polar Express). It did not strip the quoted word, so the head-noun exception beat a mechanical delete-clue-words pass.",
+    "Etymology or definition clues were solved by finding the dictionary entries whose gloss matches the quoted translation ('literally before-behind') and answering with the English headword.",
+    "When the passages gave no direct archive hit (the burrito clue), the agent answered from well-known knowledge with a bare common noun and no modifiers."
+  ],
+  "patch": {
+    "reasoning": "All eight successes were short, bare, correctly typed answers. Most behaviours are already covered by the skill. Three patterns are only weakly covered or sit in tension with existing rules. (1) The quoted-title-fragment case ('this \"Express\"' -> The Polar Express) seems to conflict with the delete-clue-words test, so a one-line tie-breaker removes the ambiguity. (2) Etymology clues ('comes from the Latin for X') are not mentioned, and the agent could wrongly answer with the Latin word or a paraphrase. (3) 'Hit/song that contains the lines' clues need a type rule: song title, not artist or album. Each edit is one short bullet attached to an existing rule so the skill does not grow much.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "answer with the common English name (Conch).",
+        "content": "\n- Etymology clues ('this adjective comes from the Latin for \"before behind\"') ask for the ENGLISH word whose dictionary or etymology passages repeat the quoted gloss and the stated part of speech. Do not answer with the Latin source word or a paraphrase."
+      },
+      {
+        "op": "insert_after",
+        "target": "Other named entities in the clue are anchors, never the answer.",
+        "content": "\n- A '<year> hit / song that contains the lines \"...\"' clue asks for the SONG TITLE, not the artist or album. Take the title that lyric and songfacts passages print beside the quoted line, and ignore the artist name even if it dominates the passages."
+      },
+      {
+        "op": "insert_after",
+        "target": "The 'do not repeat clue words' rule is for a separate modifier already stated in the clue ('hasty' + pudding).",
+        "content": "\n- Quoted title fragment: when the clue gives only one quoted word of a title with 'this' ('his book about this \"Express\"'), that word is part of the title, so answer with the FULL title as the passages print it, including its leading 'The' ('The Polar Express'). Test: if the remainder after deleting the quoted word ('Polar') would not be a recognizable title on its own, keep the whole title. Apply the delete-clue-words test only to separate descriptors outside the title."
+      }
+    ]
+  },
+  "source_type": "success"
+}

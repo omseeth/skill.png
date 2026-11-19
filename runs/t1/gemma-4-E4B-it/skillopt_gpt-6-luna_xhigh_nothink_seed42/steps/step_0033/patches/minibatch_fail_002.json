@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_follow-up handling",
+      "count": 6,
+      "description": "Agents repeated searches, skipped filters, reprocessed unchanged scopes, or used results without applying the latest constraint."
+    },
+    {
+      "failure_type": "independent-domain and missing-input handling",
+      "count": 2,
+      "description": "Agents failed to search a fully specified domain while asking only for missing details in another, or asked again for information already supplied."
+    },
+    {
+      "failure_type": "itinerary context resolution",
+      "count": 1,
+      "description": "An agent asked for hotel check-in despite an explicitly linked trip start and hotel checkout date establishing the stay."
+    },
+    {
+      "failure_type": "qualitative ranking intent",
+      "count": 1,
+      "description": "An agent did not rank restaurant results when the user requested a “good” recommendation."
+    },
+    {
+      "failure_type": "tool-result variable correctness",
+      "count": 1,
+      "description": "An agent saved an undefined variable instead of the result returned by its search."
+    }
+  ],
+  "patch": {
+    "reasoning": "Cache reuse errors dominate the batch. Replace the current opening boundary with a concise per-turn action order that makes scope selection and independent mandatory-input checks the first decisions, rather than adding another lower-level cache reminder. The remaining edits clarify the demonstrated mixed-domain case, itinerary-linked hotel dates, and how to operationalize qualitative requests for a good recommendation. The existing assign-and-save rule already covers the undefined-variable failure, so no duplicate is needed.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "**Per-turn action order (apply before writing code):** Read the full conversation, preceding assistant question or offer, and cache summary; resolve the latest reply in context and identify only the scopes it changes. For each changed domain or leg, first select the most constrained compatible cached result and retrieve it by its exact key. If it covers the request, apply and save only newly added or changed supported constraints; do not repeat its base search, reapply constraints it already embodies, or regenerate unaffected scopes. Base-search only for a genuinely new or uncovered scope, including all active supported criteria. Validate required inputs independently for each scope: execute and save fully specified requests while seeking only missing mandatory details for incomplete ones. An accepted proximity offer uses compatible cached datasets with `search_nearest`, not a new category search. If nothing actionable changed and cache covers all active requests, use the no-op path."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs.",
+        "content": "\n- In a multi-domain request, validate and act on each domain independently. For example, when a destination is known and a restaurant is requested there, search and save the restaurant results even if hotel dates are missing; ask only for the missing hotel dates, not for the restaurant city."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not guess travel dates or duration; ask for any required date that remains missing or unclear.",
+        "content": " When a hotel is explicitly part of the same trip and the conversation clearly establishes that the stay begins upon arrival at the destination, use the established trip-start or arrival date as check-in and any explicit trip-end date as checkout. Otherwise, keep genuinely unclear hotel dates pending and ask only for the missing dates."
+      },
+      {
+        "op": "insert_after",
+        "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+        "content": "\n- When the user asks for a “good,” “best,” or highest-rated recommendation without specifying a rating threshold, rank the relevant results with `sort_results` in descending order using the supported rating column (for example, `rating_restaurants` or `rating_hotels`); do not invent a numeric rating filter."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,25 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Agent copied the answer from a verbatim archive or flashcard hit (Bob Mackie, 'HAND DRYER') and kept it short, without descriptors. Rule 3 already covers this.",
+    "For 'this state / this country / this film / this man' clues, agent answered the category member that recurs across many passages next to the clue's anchors (Tennessee, Zimbabwe, Il Postino, Strom Thurmond), not an anchor from the clue. Rule 2 already covers this.",
+    "For a bare one-word proper-noun clue ('Timonium'), agent inferred the obvious containing entity (Maryland) from passages that all link the place to it, instead of refusing or describing it. Rule 1 only hints at this for fragments.",
+    "For person answers, agent gave the full first and last name as repeated in the passages (Marilyn Monroe, Strom Thurmond, Bob Mackie), not a first name or nickname alone."
+  ],
+  "patch": {
+    "reasoning": "Most successes were already handled by existing rules. One uncovered pattern is a bare single-word or place-name clue with no sentence around it, where the agent correctly answered with the containing state or country. Making this explicit protects against the 'Not answerable' failure seen earlier. A short reinforcement on using the full person name as it appears repeatedly in the passages matches several successes and helps exact-match scoring.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- If the clue is a fragment, work out what single thing connects it to the context.",
+        "content": "- A clue that is just one bare proper noun (e.g. 'Timonium', a town, landmark or region) is a category-style clue. Answer with the larger entity that all the passages tie it to: a town or landmark -> its state or country, a region -> its country, a person -> the field or work they are known for only if the passages stress it. Never reply that the clue is incomplete."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use the shortest standard form that names the entity, as a trivia answer key would.",
+        "content": "- For a person with no verbatim archive answer, give the full first and last name as it recurs in the passages ('Marilyn Monroe', 'Strom Thurmond', 'Bob Mackie'), not a first name, a title plus surname, or a descriptor."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,43 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "call_coverage",
+      "count": 2,
+      "description": "Some requested actions were omitted, especially in long, multi-stage queries."
+    },
+    {
+      "failure_type": "endpoint_selection",
+      "count": 4,
+      "description": "Agents chose a related but semantically different endpoint, such as a general validation tool instead of a disposable-email check."
+    },
+    {
+      "failure_type": "argument_and_serialization_mapping",
+      "count": 5,
+      "description": "Arguments were omitted, mapped imprecisely, or serialized contrary to the endpoint schema and requested constraints."
+    },
+    {
+      "failure_type": "redundant_calls",
+      "count": 1,
+      "description": "Multiple overlapping tools were called for a requested result, adding unrequested checks."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch shows missed actions in narrated multi-step requests, confusion among endpoints with similar subject matter, and incomplete or malformed argument mapping. These targeted procedures address those errors while avoiding hardcoded tools or values.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "## Track every requested action\nBefore choosing tools, turn each clause into an action with its requested operation and object, then account for every action in the final calls. In these one-turn tasks, narrated sequences such as “first,” “then,” and “finally” describe requested actions, not actions already completed. Reconcile the calls against the full action list before answering; do not omit an action or add duplicate calls for the same result."
+      },
+      {
+        "op": "append",
+        "content": "## Disambiguate similar endpoints\nSelect the endpoint that returns the specific kind of information requested, using its operation and target object—not merely its broad topic. Distinguish, for example, a game list from a character list, or email validity from disposable-domain detection. Prefer the single most specific endpoint for each requested result; do not call alternative or overlapping tools unless the user asks for separate checks. Use the exact tool name from the tool list."
+      },
+      {
+        "op": "append",
+        "content": "## Map and serialize arguments\nMap each explicit constraint to the matching schema field, including required enum values implied by the request. Follow the schema’s value types and documented encoding for multi-value filters; do not assume repeated fields or invent unsupported values. When the user asks for a first page or default sorting, use the corresponding documented value. Keep the final JSON structurally valid, with each required key present exactly once."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

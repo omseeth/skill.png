@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "Tool selection and request coverage",
+      "count": 4,
+      "description": "Selected a neighboring endpoint, made redundant or unrelated calls, or missed a requested subtask."
+    },
+    {
+      "failure_type": "Argument and schema mapping",
+      "count": 6,
+      "description": "Omitted or altered requested values and filters, confused parameter meanings or required/optional status, or used noncanonical values."
+    },
+    {
+      "failure_type": "Answer serialization and tool-name compliance",
+      "count": 3,
+      "description": "Returned malformed call objects or JSON, or failed to use the exact provider-and-endpoint tool name."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch shows repeated gaps in mapping every request to the most relevant endpoint, carrying user constraints into the endpoint schema, and checking the final payload. A concise workflow addresses these patterns without adding task-specific assumptions.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Reliable tool-call workflow\n- Break the query into a checklist of independent requested outcomes, including incidental or side requests. Match each to the narrowest endpoint whose documented function fits; avoid redundant alternatives for the same outcome and unrelated calls. Repeat a call only when distinct requested items require it and the endpoint cannot handle them together.\n- Map each requested identifier, constraint, and filter to the exact parameter documented for the selected endpoint. Distinguish similar fields by their meaning (for example, item count versus number of repetitions), respect required/optional classifications and documented value types, and use documented enum or code formats. Do not invent unspecified choices, credentials, or placeholders; use an optional default only when it is needed to fulfill the request and is documented.\n- Before responding, check that every checklist item is covered and no unrequested call was added. Validate that the result is one valid JSON array, each call has exactly the required keys, each tool name is the exact `Provider: endpoint` name, and parameter lists contain `{ \"name\": ..., \"value\": ... }` objects with no duplicate keys. Sort calls by tool name."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

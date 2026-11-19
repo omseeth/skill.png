@@ -1,0 +1,53 @@
+{
+  "reasoning": "All five failure-driven edits are kept as written, because structure, tool-name form, missing calls and value form are the highest-cost buckets and the failure group is authoritative. Both success edits cover patterns the failure edits do not (per-region endpoints, `range` for 'top N', admin-hierarchy depth), so they are kept. I trimmed one sentence from the success 'RANK AND RANGE' edit: the lowercase author-name rule is a gold-artifact risk and conflicts with Section E ('keep other free-text as written'). Success edits are placed so they do not duplicate failure edits. The two inserts after `## Parameters` (failure schema-copy and success rank/range plus admin depth) are complementary, not overlapping. Nothing targets the protected SLOW_UPDATE block. The failure `append` lands after the end marker, outside the protected content.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "## Output format (errors here score zero)",
+      "content": "\n- LINE TEMPLATE (fill the slots, never improvise). Every call is one line: `{\"tool name\": \"NAME\", \"required parameters\": [R], \"optional parameters\": [O]},` where R and O are comma-joined `{\"name\": \"x\", \"value\": \"y\"}` items, or nothing. All three keys appear on EVERY line, even for a no-param call. Decide the full optional list first, then write `\"optional parameters\"` once. The last line ends `]}`, then `]</answer>` on its own line. Always write the closing `</answer>`. Recent bad lines: `..., \"optional parameters\": [{\"name\": \"by\", \"value\": \"Stage Name\"}]}], {\"tool name\"...` (stray `]` after call 1, so NO calls parsed); `{\"tool name\": \"...\", \"required parameters\": [{\"name\": \"artist\", \"value\": \"Halsey\"}]},` (no `\"optional parameters\"` key); `..., \"optional parameters\": [{\"name\": \"language\", \"value\": \"en\"}, {\"name\": \"country\", \"value\": \"IN\"}], \"optional parameters\": []},` (the second key erased language and country). Rewrite any such line from the template.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Parameters",
+      "content": "\n- SCHEMA COPY STEP (per call, before writing JSON). In your checklist, copy the chosen tool's `Required parameters:` and `Optional parameters:` name lists verbatim from ITS OWN block (e.g. `Wayfair: auto-complete: Required [query]; Optional []`). Fill every name under Required in `required parameters`, even enum-like ones such as `language`. Put only names under Optional in `optional parameters`. BAD: `News Network: Search News` with `keyword` required and `language`=`en` optional (the schema lists both as required). GOOD: `\"required parameters\": [{\"name\": \"keyword\", \"value\": \"Middle East politics\"}, {\"name\": \"language\", \"value\": \"en\"}], \"optional parameters\": []`.\n- Sibling tools share ideas but not param names. Wayfair auto-complete takes `query` (`q` is Asos's). `Aliexpress DataHub: Aliexpress - Item Search` has only optional `q`, `startPrice`, `endPrice`, `region`, `page` (`minPrice`/`maxPrice` belong to `Ali Express Data Service: Search Items`, and `loc` is not `region`). '$200-$500 in the US region' -> optional startPrice=`200`, endPrice=`500`, region=`US`, nothing in required. Then tick each adjective of the clause against the Optional names: 'English sports news from India' on `News API_v2: Top Headlines` -> language=`en` AND category=`sports` AND the country.\n- DO NOT LEAK QUALIFIERS ACROSS CLAUSES. 'Page 1' in the election clause belongs only to the election call. Add `page`, `limit` or any other optional to a call only when that call's own clause states or implies it.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Parameters",
+      "content": "\n- RANK AND RANGE VALUES. When a clause says 'top N' or 'first N' and the tool has a `range` param (description like 'returns all results if range is not specified'), pass the position span `1-N` (`Billboard_v2: Greatest of All Time Songs of the Summer`: 'top 10' -> `range`=`1-10`), not the words 'top 10'. Pass a plain count to `limit`, `count` or `pageSize` instead. Email-style, ID and free-text inputs stay verbatim.\n- ADMIN HIERARCHY DEPTH. For a place hierarchy (Airbnb admin fields), fill levels top-down and put the CITY in the deepest matching level, not a higher one. 'Rome (Roma), Italy, 1 bedroom, up to 2 guests' -> `state`=`IT`, `admin1`=`Lazio`, `admin2`=`Citta metropolitana di Roma Capitale`, `admin3`=`Roma`, `bedrooms`=`1`, `maxGuestCapacity`=`2`. BAD: city in `admin2` with `admin1` skipped, because the tool requires parents to be filled for each child level.",
+      "support_count": 5,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Tool selection",
+      "content": "\n- NOUN PICKS THE ENDPOINT; NO LOOK-ALIKE SUBSTITUTES. 'Republican figures' / 'people' / 'influencers' with a topic and page -> `Election2020 Smartable: GetPeopleByTopic` (`page`=`1`, `topic`=`republican-voice`), not `GetFutureEventsByTopic`. 'Events' -> an Events endpoint, 'FAQs' -> a FAQs endpoint. Never swap in a different outlet's endpoint.\n- OUTLET WITHOUT ITS OWN ENDPOINT -> THE BY-SOURCE SELECTOR, NOT KEYWORD SEARCH. If no per-outlet endpoint exists in the list for the named outlet, take the tool whose param literally selects a source, with the outlet as a lowercase slug: 'latest news from CNN' -> `Moka News: By Source (New)` (`source`=`cnn`); BBC -> `BizToc: News / Source` (`source_id`=`bbc`). BAD: `Newscatcher: /v1/search_free` with q=`CNN` (keyword search is for topics). Per-outlet endpoints (`Arabic news API: Aljazeera`) still win when they exist.\n- 'Blog posts and news' about one game is ONE call when a single endpoint's Description already names both nouns (`Rocket League: Blog` says 'blog posts and news content'). Do not add `Rocket League: News`. Read the first candidate's Description before adding a call for the second noun.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Which calls to make",
+      "content": "\n- TWO VALUES FOR ONE PARAM = TWO CALLS. If a clause names several places, countries, IDs or emails ('COVID stats for both Egypt and the United States') and the tool's param takes one value, write one object per value. BAD: one `Coronavirus Smartable: GetStats` object with `location`=`EG` and `location`=`US` in the same list. GOOD: two objects, one with `location`=`EG` and one with `location`=`US`. Never repeat a param name inside one list, and never join values with commas or 'and'.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+      "content": "\n- COMPARE ACROSS REGIONS = ONE CALL PER REGION ENDPOINT. When a provider has one endpoint per region and the query names several regions, call each region's own endpoint. 'Compare current gasoline prices across Europe, the United States, and Canada' -> `Gas Price: europeanCountries` + `Gas Price: allUsaPrice` + `Gas Price: canada`, each with `[]` required and `[]` optional because none has params. For the US, take the country-level aggregate (`allUsaPrice`), not a city list. Do not merge regions into one call and do not add a region the query did not name.",
+      "support_count": 5,
+      "source_type": "success"
+    },
+    {
+      "op": "append",
+      "content": "\n## Value-form addenda (recent misses)\n- Region/country codes taken from the query's place name are lowercase slugs for these tools: `Spotify _v2: New releases` 'UK' -> country=`uk`; `AI News - Global: Get News` 'US region, version v1' -> region=`us`, version=`v1`. Locale defaults (Asos `US`/`en-US`) and Epic Games codes keep the case given in Section E.\n",
+      "support_count": 1,
+      "source_type": "failure"
+    }
+  ]
+}

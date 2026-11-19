@@ -1,0 +1,49 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_sibling_tool_param_mismatch",
+      "count": 3,
+      "description": "Agent picked a tool whose schema cannot express the clause's qualifiers (Tomorrow.io instead of Foreca Daily, with the out-of-schema `windunit`; News Search with an invented q instead of Top Headlines; Custom dice rolls instead of Custom dice)."
+    },
+    {
+      "failure_type": "duplicate_optional_key",
+      "count": 1,
+      "description": "Dice call wrote a filled `optional parameters` list and then an empty one, erasing dice/sides. This bug has persisted across several epochs."
+    },
+    {
+      "failure_type": "required_optional_or_value_misplacement",
+      "count": 2,
+      "description": "DEI GetSamples `page` put in optional although the schema lists it as required. BizToc `page_id` given `1` instead of `main` from 'main page'."
+    },
+    {
+      "failure_type": "gold_diversification_or_artifact",
+      "count": 3,
+      "description": "Gold spreads emails across several validators, or includes unrelated tools or unrequested Numbers optionals (Rocket League, email:188, email:181). The query does not determine these choices, so they are not patched."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most repeated fixable failures are wrong-sibling selection and param-name mismatch, the duplicate optional key, and required-slot placement or values. The existing skill already states the sibling rules in prose and the agent skips them, so the first edit adds a mechanical gate with concrete contrasts. The duplicate-key bug survived repeated warnings and the two-pass skeleton, which has the agent write `\"optional parameters\": []` first and then append to it. So the second edit removes the skeleton pass and gives a canonical object with both lists filled, and the third deletes one redundant bad-string bullet, following the guidance to show the bad pattern once. The fourth appends per-tool required-slot facts for DEI and BizToc, which are schema facts rather than a general rule. Email and gaming gold artifacts are left alone.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Build the answer in two passes. Pass 1: write an empty skeleton for every checklist call, `{\"tool name\": \"<### heading>\", \"required parameters\": [], \"optional parameters\": []}`. Pass 2: put the parameter objects INSIDE those two existing brackets (decide all optionals first; never add a third list or a second key).",
+        "content": "Write each object ONCE, left to right, with its parameters already decided: tool name, then the complete required list, then the complete optional list, then `}`. Do not write an empty skeleton first, and write nothing after the optional list except `}`. Copy this shape when both lists are filled: `{\"tool name\": \"Random Words: Get multiple random words\", \"required parameters\": [{\"name\": \"count\", \"value\": \"10\"}], \"optional parameters\": [{\"name\": \"minLength\", \"value\": \"5\"}, {\"name\": \"maxLength\", \"value\": \"8\"}]},`. A `\"optional parameters\"` key after a filled optional list is always wrong."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n- PARAM-NAME GATE (mechanical, run per call). Every parameter name you write must appear in that tool's own Required/Optional list. If a clause qualifier (unit, country, category, day count) would need a name the tool does not list, discard the tool and take the sibling that lists it. '3-day forecast for location ID 102643743 in Fahrenheit and MPH' -> `Foreca Weather: Daily` (required `location`; optional `periods`=`3`, `tempunit`=`F`, `windunit`=`MPH`), NOT `Tomorrow.io: Weather Forecast` (it only has `location`, `timesteps`, `units`). 'US technology headlines' -> `News API_v2: Top Headlines` (`category`=`technology`, `country`=`us`, `language`=`en`), NOT `News API_v2: Search` with an invented `q`=`technology`; use Search only when the query gives a keyword to search. Dice: 'five 20-sided dice once' -> `Dice Roll Simulator: Custom dice` (`dice`=`5`, `sides`=`20`); 'three regular dice twice' -> `Dice Roll Simulator: Regular dice rolls` (`dice`=`3`, `rolls`=`2`). Prefer these over `Custom dice rolls` when they are listed."
+      },
+      {
+        "op": "delete",
+        "target": "- Stray trailing key after a one-param list: `\"optional parameters\": [{\"name\": \"value\", \"value\": \"A\"}], \"optional parameters\": []`. The empty list erased `value`=`A`."
+      },
+      {
+        "op": "append",
+        "content": "## Required-slot facts (per-tool schema)\n- `DEI: GetSamples`: `page` is REQUIRED, so write `\"required parameters\": [{\"name\": \"page\", \"value\": \"1\"}], \"optional parameters\": []`. This holds for any tool whose block lists `page` under Required.\n- `BizToc: News / Latest / Page`: required `page_id` takes the query's own word. 'BizToc's main page' -> `page_id`=`main`, not `1`. When a required slot is given as a word in the query, copy that word verbatim and do not substitute a number."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,63 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_search_nearest",
+      "count": 3,
+      "description": "User asked for proximity ('hotel with restaurants nearby', 'restaurant near the hotel') or hotel plus attractions were searched together, but the agent never called search_nearest. The skill has no rule for it. In one case the dietary/allergy answer was also not applied as a restaurant filter."
+    },
+    {
+      "failure_type": "proposal_question_not_treated_as_constraint",
+      "count": 2,
+      "description": "The assistant proposed a neighborhood and the user asked 'No, I haven't. What's there?'. The agent only retrieved the cache, or re-filtered with a type already applied, instead of filtering by neighborhood."
+    },
+    {
+      "failure_type": "range_param_single_value",
+      "count": 2,
+      "description": "stars=[2] and rating=[3.5] were passed as one-element lists. This raised IndexError / ValidationError. The user-stated value must be [N, N]."
+    },
+    {
+      "failure_type": "partial_domain_search_skipped",
+      "count": 1,
+      "description": "Hotel dates were missing but the restaurant city was known. The agent output only seek_information instead of searching restaurants and then seeking the hotel dates. Rule 6 contradicts the Quick decision order here."
+    },
+    {
+      "failure_type": "re_search_instead_of_filter_flights",
+      "count": 1,
+      "description": "'We'd like first class' with departure_flights and return_flights already cached. The agent re-ran search_flights on both legs instead of load, filter, save per leg."
+    },
+    {
+      "failure_type": "no_op_turn_acted_on",
+      "count": 1,
+      "description": "Party size was given for a flight-only multi-city request with flights already cached. Flights have no traveler parameter, but the agent reloaded and re-saved the cached keys."
+    },
+    {
+      "failure_type": "named_attraction_dropped",
+      "count": 1,
+      "description": "'Culinary attractions and visiting City Museum' was searched with type only. attraction_name=[\"City Museum\"] was omitted."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most common new gaps are: (a) search_nearest is never mentioned as a trigger, which cost three trajectories; (b) 'What's there?' replies to a proposed neighborhood are treated as pure retrieval; (c) stars and rating are not documented as two-element lists, which caused hard runtime errors; (d) Rule 6's 'output ONLY seek_information' contradicts the multi-domain partial-search behaviour the gold code shows; (e) flight class answers and flight party size still trigger re-searches or re-saves. Four edits target these: one search_nearest and dietary rule, one proposal-question rule, one replacement of the Rule 6 seek-only line, and one format and no-op guardrail rule.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- If any mandatory arg is missing, output ONLY a seek_information(...) call that names what is missing. Do not also emit a search call with placeholders.",
+        "content": "- Check mandatory args PER DOMAIN. If every requested domain is missing something (or the only requested domain is incomplete), output ONLY a seek_information(...) call naming what is missing, with no search call and no placeholders. If SEVERAL domains were requested and some already have all their mandatory args (e.g. 'hotel in Colorado Springs plus restaurant recommendations in the city' gives the restaurant city but no hotel dates), first run `x = search_*(...)` + `save_to_cache(key=\"<domain>\", value=x)` for each complete domain, then add ONE seek_information(...) at the end naming only the incomplete domain's missing items. Example: `restaurants = search_restaurants(city=\"Colorado Springs\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. Never call search_hotels / search_flights with guessed values to fill the gap."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 21: search_nearest for proximity requests, and dietary answers are restaurant filters\n- Use `search_nearest(hotels=<hotel results>, restaurants=<restaurant results>, attractions=<attraction results>, groupBy=\"hotel\"|\"restaurant\"|\"attraction\")` whenever the last turn contains a proximity request ('near the hotel', 'nearby', 'close to', 'walking distance', 'a hotel with good restaurants nearby') and both domains exist in the CACHE or are searched in the same block. Required order: (1) load -> filter -> save each domain that has a NEW constraint in the last turn, (2) load the most refined key of the other domain, (3) call search_nearest with the variables from this block, (4) `save_to_cache(key=\"nearest_hotels\" / \"nearest_restaurants\" / \"nearest_attractions\", value=...)`. Never skip this step and just retrieve the cache.\n- groupBy is the domain the user wants recommended: 'a hotel with good restaurants nearby' -> groupBy=\"hotel\"; 'a restaurant near the hotel' -> groupBy=\"restaurant\"; 'attractions near the hotel' -> groupBy=\"attraction\".\n- Example (CACHE has 'filtered_hotels' and 'filtered_restaurants'; last turn 'Yes, I have a dairy allergy. Can you recommend a hotel with good restaurants nearby?'): `r = get_results_from_cache(key=\"filtered_restaurants\")`, `r2 = filter_restaurants(prior_results=r, has_dairy_allergy_options=True)`, `save_to_cache(key=\"final_restaurants\", value=r2)`, `h = get_results_from_cache(key=\"filtered_hotels\")`, `n = search_nearest(hotels=h, restaurants=r2, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=n)`.\n- Example (CACHE has 'restaurants' and 'hotels2'; last turn 'Persian sounds great, and a restaurant with 3.5 rating near the hotel'): load 'restaurants' and 'hotels2', `filter_restaurants(prior_results=r, cuisine=[\"Persian\"], rating=[3.5, 3.5])`, save it, then `search_nearest(hotels=h2, restaurants=<filtered>, groupBy=\"restaurant\")` and save as 'nearest_restaurants'.\n- When ONE code block newly searches both hotels and attractions (or hotels and restaurants), for example the turn that gives hotel stars/amenities plus attraction type/name with the dates already known, also add `search_nearest(hotels=hotels, attractions=attractions, groupBy=\"hotel\")` and save it as 'nearest_hotels'.\n- A dietary or allergy statement ('I have a dairy allergy', 'gluten free', 'vegan', 'halal'), even inside a reply that starts with 'Yes', is a NEW restaurant constraint. Map it to has_dairy_allergy_options / has_nut_allergy_options / has_shell_fish_allergy_options / has_tomato_allergy_options / has_gluten_free_options / has_vegan_options / has_vegetarian_options / has_kosher_options / has_halal_options = True and filter the most refined restaurant key. Do not just retrieve.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 22: A question about the assistant's proposed neighborhood is an acceptance (filter by neighborhood)\n- Read the assistant's LAST message. If it proposed an area ('Have you considered Buckhead?', 'How about Downtown St. Louis?') and the user replies 'No, I haven't. What's there?', 'Actually, I haven't', 'Tell me more' or 'Sure', the user wants that neighborhood. 'No, I haven't' answers 'have you considered' and is NOT a refusal. Filter the domain under discussion with `neighborhood=[\"<area exactly as the assistant said it, including the city word if present>\"]`. Never reply with only get_results_from_cache.\n- Attractions: `a = get_results_from_cache(key=\"attractions\")`, `b = filter_attractions(prior_results=a, neighborhood=[\"Downtown St. Louis\"])`, `save_to_cache(key=\"filtered_attractions\", value=b)`. Do NOT re-pass the type shown in the CACHE summary (e.g. type=[\"Art\"]); it is already applied and is not the new constraint.\n- Hotels and restaurants follow the same pattern with that domain's most refined key and filter_hotels / filter_restaurants.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 23: Range-format and no-op guardrails\n- `stars` and `rating` always take exactly two values, otherwise search_*/filter_* raises an error. '2 star' -> stars=[2, 2]; 'a 3.5 rating' -> rating=[3.5, 3.5]; 'at least 4' -> rating=[4, 5]. Never pass [2] or [3.5].\n- When the user names both an attraction type and a specific attraction in a first attractions search, pass both: `search_attractions(city=\"St. Louis\", type=[\"Culinary\"], attraction_name=[\"City Museum\"])`. Do not drop the named attraction. Do not load unrelated cached flight keys in that block.\n- If the CACHE already has flight keys (departure_flights/return_flights, flights, flights1/flights2/..., filtered_*), a class, airline, time or price answer ('We'd like first class') must NEVER call search_flights. Rule 9 applies only when no flight key exists. For each leg: `x = get_results_from_cache(key=\"<most refined key of that leg>\")`, `y = filter_flights(prior_results=x, flight_class=[\"first\"])`, `save_to_cache(key=\"filtered_<leg key>\", value=y)`. Do this for every leg.\n- search_flights and filter_flights have NO traveler-count parameter. If the conversation is flight-only and the last turn only gives party size ('There are 5 of us') while the flights are already cached, output exactly `print(\"No planning needed\")` (this overrides Rule 8). Never reload cached results and save them again under new keys. If a hotel is also requested, party size goes to the hotel search/filter as num_people.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

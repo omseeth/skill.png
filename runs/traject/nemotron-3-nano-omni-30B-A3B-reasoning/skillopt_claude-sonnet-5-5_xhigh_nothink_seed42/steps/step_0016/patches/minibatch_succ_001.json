@@ -1,0 +1,26 @@
+{
+  "batch_size": 4,
+  "success_patterns": [
+    "Each clause was mapped to the one tool whose param names literally carry its qualifiers: `News Network: Get News` with category=business and region=us, a named provider's own endpoint for the email clauses, and the grade-level kanji tool with `grade`=3.",
+    "Tools with no params got `[]` for both lists. Clauses with a stated qualifier mapped it to the schema's optional name (`wordLength`=5, `page`=1, `sort-by`=value). Param names were copied verbatim, including the hyphen in `sort-by`.",
+    "N distinct emails produced N calls to the same tool, and a separate named-provider clause (disposable check, fake email) got its own call. Nothing was padded and no clause was dropped.",
+    "Every answer used the one-object-per-line layout with a single `]` at the end. All four parsed with no bracket or duplicate-key bugs.",
+    "The only partial loss was a count inside a clause ('one Hearthstone card from page 1'). The agent emitted `page` but dropped `pageSize`=1, even though the skill states this rule in prose."
+  ],
+  "patch": {
+    "reasoning": "The batch mostly confirms existing rules (param-fit tool choice, N entities -> N calls, qualifier -> optional, one object per line), so those need no new text. The one concrete loss was dropping `pageSize`=`1` for 'one card from page 1', although the rule is already in the skill as prose. The meta-guidance says prose rules are ineffective and a literal output line to imitate works better, so I replace the Hearthstone sentence with the exact JSON line. I also extend the existing 'sorted by' example with the GamerPower case, because the sort criterion word and the hyphenated param name `sort-by` had to be copied exactly. Both edits replace existing text, so the skill does not grow in rule count.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "'One Hearthstone card from page 1' -> ONE call with `page`=`1`, `pageSize`=`1`.",
+        "content": "'One Hearthstone card from page 1' -> ONE call where 'one' is also a parameter (page AND pageSize), copy this shape: `{\"tool name\": \"Hearthstone: Get Cards\", \"required parameters\": [], \"optional parameters\": [{\"name\": \"page\", \"value\": \"1\"}, {\"name\": \"pageSize\", \"value\": \"1\"}]}`. Emitting only `page` loses the optional-param score."
+      },
+      {
+        "op": "replace",
+        "target": "'sorted by date' -> the sort field.",
+        "content": "'sorted by date' -> the sort field; 'sort all giveaways by their value, highest to lowest' -> `GamerPower: Sort live giveaways` with optional `sort-by`=`value` (the criterion word comes from the query, and the hyphenated param name is copied exactly)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

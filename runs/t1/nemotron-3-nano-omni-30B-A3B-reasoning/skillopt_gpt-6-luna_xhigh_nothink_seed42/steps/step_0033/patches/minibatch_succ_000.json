@@ -1,0 +1,18 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Check every requested search against its mandatory schema fields before making any tool call; missing flight dates, hotel stay dates, or restaurant city require clarification rather than guessed values.",
+    "When multiple requested domains are blocked, ask for all missing mandatory inputs in one information-seeking call, while proceeding only with any independently ready actions."
+  ],
+  "patch": {
+    "reasoning": "All eight trajectories fail to seek missing mandatory information: they invent dates, assume a restaurant city, or treat an incomplete request as needing no planning. The skill already states the general rule, so sharpen it into an explicit per-domain decision gate with concrete examples and a clear prohibition on no-op responses for blocked requests.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "## Missing mandatory information\nBefore searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness independently for each requested domain and, where applicable, each city or leg: proceed with searches or refinements for domains whose required inputs are available even if another is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across blocked domains. Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood. Optional preferences are not mandatory inputs.",
+        "content": "## Missing mandatory information\nBefore any search or refinement, gate each requested action on its non-optional schema fields and verify that every required value is explicit in the full conversation. Flight searches require a departure date; a route, event, or trip purpose does not supply one. Hotel searches require explicit check-in and check-out dates; phrases such as “last-minute” or “weekend getaway” do not provide them. Restaurant searches require a city; cuisine, budget, and an occasion such as a birthday do not provide it. Never invent missing values or use defaults.\n\nAssess readiness independently for each domain, city, and flight leg. Do not call a blocked search or refinement; if a valid compatible cached result already fulfills that action, retrieve and use it, otherwise include its missing mandatory inputs in one `seek_information` call across all blocked actions. Proceed with any independently ready actions. Do not use `print(\"No planning needed\")` to avoid asking about an unresolved request, and do not ask for optional preferences."
+      }
+    ]
+  },
+  "source_type": "success"
+}

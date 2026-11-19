@@ -1,0 +1,59 @@
+{
+  "step": 1,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 26,
+  "failure_patterns": [
+    {
+      "pattern": "tool misuse / runtime error: Agents imported libraries or redefined result models despite tools being pre-provided; six trajectories consequently failed with a Field NameError.",
+      "count": 26,
+      "task_ids": [
+        "hotelattraction:train:19:30:5",
+        "hotelrestaurant:train:2:51:2",
+        "hotelrestaurant:train:7:37:4",
+        "flighthotelattraction:train:21:24:3",
+        "hotelrestaurant:train:16:31:3",
+        "hotelrestaurant:train:3:51:1",
+        "hotelattraction:train:5:8:4",
+        "hotel:train:5:44:1",
+        "hotel:train:15:3:1",
+        "hotelattraction:train:21:43:2",
+        "hotel:train:4:33:2",
+        "flighthotel:train:3:7:2",
+        "flighthotelattraction:train:8:9:1",
+        "flighthotelattraction:train:12:26:3",
+        "flighthotelattraction:train:11:27:2",
+        "hotelrestaurant:train:23:41:2",
+        "attraction:train:23:10:0",
+        "hotelattraction:train:25:8:3",
+        "flighthotelattraction:train:3:19:2",
+        "flight:train:6:50:1",
+        "flight:train:20:8:2",
+        "hotelattraction:train:3:52:2",
+        "attraction:train:13:53:1",
+        "flighthotelattraction:train:6:36:1",
+        "hotelrestaurant:train:25:60:1",
+        "flighthotel:train:15:13:3"
+      ]
+    }
+  ],
+  "score_before": 0.26,
+  "score_after": 0.215,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "## Learned rules\n\n- **Use cached results incrementally:** On follow-up turns, compare the latest request with the conversation and cache summaries. Retrieve the most relevant existing result, preferring one that already reflects earlier constraints, and apply only new criteria to the relevant domain. Preserve still-applicable constraints and traveler details. If cached results already satisfy the request, retrieve them without redundant searches, filters, or saves. Do not repeat completed work, re-filter unrelated domains, or add unrequested sorting.\n- **Carry context and values forward faithfully:** Use explicit details from the full conversation when relevant, and do not invent unspecified values. Preserve user-provided spelling, capitalization, and date representation unless a tool explicitly requires another accepted format. Map details to matching fields (for example, state or region to `state`, city to `city`, and hotel area to `neighborhood`). Use accepted enum forms; for range fields, represent a single requested value as a closed range. For vague time periods, use an appropriate supported interval and accepted format rather than guessing.\n- **Map constraints to the right tool fields:** Supply only stated preferences and clear quantities; do not invent amenities or substitute proxies for requested criteria. When starting a hotel search, include known required dates and known room or traveler counts. For flights, use stated leg dates as departure dates and add an arrival-date constraint only when explicitly specified.\n- **Handle round-trip flights as separate legs:** Search outbound from origin to destination using the outbound date, and return from destination to origin using the return date. Do not use the return date as the outbound search's `arrival_date`. Apply explicit flight preferences to each applicable leg.\n- **Handle hotels and attractions by requested domain:** Search or reuse results for each requested domain. Use `search_nearest` to connect hotels and attractions only when nearby access or proximity is requested; do not use it when proximity is unnecessary. Keep attraction names and types as attraction-search criteria, not hotel criteria.\n- **Keep tool code minimal and executable:** Call only tools needed for the request, directly with keyword arguments. Tools and input models are provided by the runtime; do not import, redefine, or wrap them. Avoid unrelated calculations, searches, output formatting, diagnostic prints, and other unnecessary code.\n- **Maintain the cache lifecycle:** Assign each newly produced search, filter, sort, or nearest result to a variable and save it with `save_to_cache` under a fresh, relevant key. For multi-leg trips, handle and cache each leg separately. Only perform operations such as sorting when requested or necessary.",
+      "target": "(No learned rules yet. Rules will be added through the reflection process.)"
+    },
+    {
+      "op": "append",
+      "content": "\n- Before calling a search tool, check that each requested search has its required arguments. If required information is missing, call only `seek_information` to ask for it; do not make partial searches, including for other requested domains in the same response. Ask for missing required dates for each requested domain, such as hotel check-in and check-out dates or a flight departure date. Never infer dates from other trip details or copy them from tool examples.",
+      "target": ""
+    },
+    {
+      "op": "append",
+      "content": "\n- When a tool schema requires dates as a list, pass them in that form without changing their underlying values, and do not infer unspecified optional parameters. Use the no-planning response only when no new result needs to be generated.",
+      "target": ""
+    }
+  ]
+}

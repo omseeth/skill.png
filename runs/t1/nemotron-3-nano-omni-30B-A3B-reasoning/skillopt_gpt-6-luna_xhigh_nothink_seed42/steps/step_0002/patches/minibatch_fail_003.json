@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle",
+      "count": 8,
+      "description": "Tool calls were left unbound or results were not saved, or a cached result was treated as completing work it did not satisfy."
+    },
+    {
+      "failure_type": "round_trip_leg_modeling",
+      "count": 3,
+      "description": "Round-trip dates were combined into one search instead of searching each direction as a separate leg."
+    },
+    {
+      "failure_type": "incremental_scope_and_constraint_tracking",
+      "count": 4,
+      "description": "New or previously stated constraints were omitted, or unaffected cached domains were unnecessarily processed."
+    },
+    {
+      "failure_type": "unsupported_or_inferred_preferences",
+      "count": 2,
+      "description": "The agent passed inferred defaults or mapped a qualitative preference to an unrelated tool field."
+    },
+    {
+      "failure_type": "invalid_range_encoding",
+      "count": 1,
+      "description": "A one-sided minimum rating was passed as a single value instead of the required two-bound range."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the right principles, but the trajectories show repeated omissions in executable code. These edits turn cache and incremental-planning guidance into explicit per-request steps and code patterns, make round-trip date mapping harder to misread, and clarify how to handle unsupported preferences and range-valued fields.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "- Treat the latest user turn as a delta to the full conversation. For each requested action, identify its domain and check whether the relevant cache result satisfies the exact constraints now requested. If a new constraint is missing, refine the relevant cached result; search only when a suitable base result is unavailable. Do not skip a requested constraint merely because that domain has cached results, and do not redo unaffected domains. Use `print(\"No planning needed\")` only if every requested action and constraint is already satisfied."
+      },
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- For every search, filter, sort, or nearest-results call, assign the exact returned object to a variable and save it with `save_to_cache` under a unique, descriptive key. Never emit a bare tool call. For example: `base = get_results_from_cache(key=\"...\")`; `refined = filter_...(prior_results=base, <new constraint>)`; `save_to_cache(key=\"...\", value=refined)`. For a new search, assign and save its result the same way. Save each distinct leg or refined result separately; never replace tool results with hand-built objects."
+      },
+      {
+        "op": "replace",
+        "target": "## Represent flight legs separately\n- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip, search outbound and return separately, reversing the route for the return; do not use an unsupported `return_date` argument or treat the return date as another outbound date. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "## Represent flight legs separately\n- Treat each flight segment as a separate search, with one leg’s origin, destination, and departure date per call. When the user gives a trip start date and a later return date, search outbound on the first date and return on the second, reversing origin and destination. Do not put both dates in one `departure_date` list or use an unsupported `return_date` argument. Bind and save each leg’s result separately. Apply an explicitly requested flight class to both directions; if directional results are cached, retrieve and filter each direction.\n- For multi-city trips, preserve the stated destination sequence and pair each date with its corresponding leg. Do not combine dates or invent arrival dates."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- Pass an optional parameter only when the user explicitly supplied that preference; do not add a tool's default values as if the user requested them. If a qualitative preference has no supported matching field, do not force it into an unrelated field or invent a value. For range-valued fields such as ratings, provide both bounds; for a one-sided minimum, use the scale's maximum as the other bound (for example, on a 1–5 scale, a minimum of 4.5 is `[4.5, 5]`)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

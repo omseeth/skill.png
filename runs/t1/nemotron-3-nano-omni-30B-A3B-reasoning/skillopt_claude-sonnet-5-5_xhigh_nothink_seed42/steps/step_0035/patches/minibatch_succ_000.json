@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Refinement on a cached domain was written as load the most refined key, filter with only kwargs traceable to the last message, then save under a new key. Examples: 'fitness center and room service' became has_fitness_class and has_room_service on filtered_hotels. 'Italian menu' became cuisine only, with 'formal' dropped. 'Downtown Memphis' became neighborhood only, with Livonian and vegetarian not re-passed (T6, T7, T8).",
+    "First searches carried only the stated values, assigned and saved under the simple domain key. Examples: search_attractions(city, type) and search_attractions(city, attraction_name) (T3, T4).",
+    "A hotel request with only party size or room count and no dates produced a lone seek_information naming the dates, with no search (T1).",
+    "A named attraction mentioned as the answer to 'what attractions are you interested in?' with hotels already cached produced only search_attractions(city, attraction_name) saved as 'attractions'. No search_nearest was written and the hotel cache was left alone (T3).",
+    "Near-miss in T2: 'Okay, that sounds good' with filtered_attractions already holding the proposed neighborhood. The agent re-filtered the raw key and overwrote the cached filtered key. It passed cache_em only because the final cache contents were identical, but the intended behavior is pure retrieval."
+  ],
+  "patch": {
+    "reasoning": "Most successes already follow existing rules, so only two small clarifications are proposed. (1) T3 passed by writing only the attraction search, while Rules 25/26 and the protected strategic section could push a hotels-cached 'visit <named attraction>' reply toward search_nearest. A one-line trigger distinction removes that ambiguity without adding a gate. (2) T2 shows the Rule 10 'already applied, just retrieve' exception being missed and passing by luck. A one-line reinforcement says to retrieve the filtered key itself and never overwrite it.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not re-filter hotels and do not re-search the attraction type.",
+        "content": "\n- Trigger check for the bullet above: search_nearest fires only when the user says near/close/stay near the attraction, or answers 'Yes' to the assistant's offer of hotels near attractions, or when hotels and that attraction are searched in the same turn. A named attraction given as the plain answer to 'what attractions are you interested in?' with hotels already cached is only `attractions = search_attractions(city=\"<city>\", attraction_name=[\"<exact name>\"])` + `save_to_cache(key=\"attractions\", value=attractions)`. Do not load or filter the hotels key for that reply."
+      },
+      {
+        "op": "insert_after",
+        "target": "with no search, no filter and no print('No planning needed').",
+        "content": " Load the filtered key that already shows the proposal (e.g. `filtered_attractions`), not the raw key, and never re-filter or save over an existing key."
+      }
+    ]
+  },
+  "source_type": "success"
+}

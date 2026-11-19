@@ -1,0 +1,51 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "tool_name_format",
+      "count": 1,
+      "description": "Wrote tool names as 'Wayfair — products/get-images' (em-dash or tagline style) instead of the exact '### Provider: API' heading, so no call could match."
+    },
+    {
+      "failure_type": "answer_format_syntax",
+      "count": 1,
+      "description": "Closed the list early with `}],{` and wrote `[]]`, so the answer parsed to zero calls (n_pred=0 of 9 gold)."
+    },
+    {
+      "failure_type": "missing_or_wrong_call",
+      "count": 2,
+      "description": "Dropped the 'general global news' item (Moka News: Recent 50), and mapped 'check if Asos carries similar products' to categories/list instead of the product search/auto-complete endpoint."
+    },
+    {
+      "failure_type": "wrong_parameter_value",
+      "count": 2,
+      "description": "Invented language `en-US` (the schema lists `en`) and omitted the country for 'US technology headlines'; missed sort_order HELPFUL for 'helpful reviews'."
+    }
+  ],
+  "patch": {
+    "reasoning": "Earlier long, bundled edits were rejected, so these four are short and aimed at the failures seen here. (1) and (2) are fatal parse or matching errors that zero out the whole answer. (3) stops the model from inventing a locale value that the 'US English' example in the skill currently encourages, and makes it use qualifier words as optionals. (4) fixes under-enumeration of list-style queries and the mapping of vague 'carries similar products' and 'general news' clauses to the right endpoints.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+        "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely. Join provider and endpoint with a colon and space exactly as the heading does. Never use ` — `, ` - ` or the Provider description line (wrong: `Wayfair — products/get-images`; right: `Wayfair: products/get-images`)."
+      },
+      {
+        "op": "replace",
+        "target": "Do not close the list early or leave stray brackets.",
+        "content": "Do not close the list early or leave stray brackets. Calls are separated only by `}, {`. Never write `}],{`, `], [` or `]]` between or after calls. A single `]` follows the last object, immediately before `</answer>`. This holds for long answers of 9 or more calls too."
+      },
+      {
+        "op": "replace",
+        "target": "'US English' -> `en-US`.",
+        "content": "'US English' -> `en-US` only when the schema lists `en-US` (otherwise `en`). Use only values the schema lists; never invent a locale such as `en-US` when the list shows `en`. A nationality or place word ('US technology headlines') -> category `technology`, country `us`, language `en` when the tool has those fields. 'Helpful reviews' -> sort_order `HELPFUL`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "\n- A list of items ('US tech headlines, general global news, Arabic news from BBC, anime updates') means one call per item, each with its own endpoint. Do not let one headlines tool absorb two items. 'General/global/latest news' -> the broad recent-news endpoint (e.g. `Moka News: Recent 50`), separate from the topic-specific headlines call. 'Check if Asos carries similar products' -> Asos's product search/auto-complete endpoint with q set to the product (e.g. `modern sectional sofa`), not `categories/list`. Each named retailer in a comparison gets its own call."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

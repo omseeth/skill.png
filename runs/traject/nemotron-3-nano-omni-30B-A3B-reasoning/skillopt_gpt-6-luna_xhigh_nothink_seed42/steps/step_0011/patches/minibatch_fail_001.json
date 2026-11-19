@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "schema and qualifier mapping",
+      "count": 8,
+      "description": "Calls omitted or misplaced supported fields, or used noncanonical values, types, or defaults."
+    },
+    {
+      "failure_type": "call granularity and quantity handling",
+      "count": 3,
+      "description": "A single requested action was split into calls, duplicated, or routed to an endpoint that could not handle the requested quantity."
+    },
+    {
+      "failure_type": "endpoint identity or selection",
+      "count": 3,
+      "description": "Some calls used an incomplete tool name or a less suitable endpoint for the requested operation."
+    },
+    {
+      "failure_type": "answer-format and serialization",
+      "count": 2,
+      "description": "One response had duplicate object keys and another was malformed JSON."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers endpoint selection, schema mapping, and valid JSON, so the edits target two recurring ambiguities: combining qualifiers for one action instead of splitting or duplicating calls, and explicitly passing a documented default when the user asks for that behavior.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Account for every requested deliverable in the calls. Use separate calls for distinct operations or targets unless an endpoint explicitly supports handling them together. Do not infer calls from incidental context or a name match, or add duplicate or alternative calls unless the user requests separate results.",
+        "content": "\n- For one requested operation on one target, put all compatible qualifiers in one invocation. A requested result count is a parameter, not a reason to duplicate calls: use a batch-capable endpoint and its quantity field when available; repeat calls only for separately requested results or independent trials."
+      },
+      {
+        "op": "replace",
+        "target": "- Distinguish parameters that can be confused, such as quantities versus repetitions or operation-specific values versus ordinary search terms. Include supported optional parameters needed to express explicit constraints; do not silently relax a constrained request. Use documented defaults only when they fit the request, and do not invent unsupported arguments, identifiers, credentials, or values.",
+        "content": "- Distinguish parameters that can be confused, such as quantities versus repetitions or operation-specific values versus ordinary search terms. Include supported optional parameters needed to express explicit constraints; do not silently relax a constrained request. If the user explicitly asks for a documented default behavior and the endpoint exposes its parameter, pass the canonical default value rather than assuming omission represents the requested setting. Use documented defaults only when they fit the request, and do not invent unsupported arguments, identifiers, credentials, or values."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

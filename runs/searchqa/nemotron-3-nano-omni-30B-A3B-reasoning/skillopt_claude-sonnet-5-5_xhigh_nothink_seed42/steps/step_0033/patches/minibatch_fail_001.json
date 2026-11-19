@@ -1,0 +1,41 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Answer echoed or restated the clue instead of the slot's referent: the region (Coonawarra) instead of 'this country', 'Rainbow Serpent' where the clue already says 'giant snake' and an archive line gives the bare answer 'Rainbow', and an organisation's proper name instead of the plural member noun for 'alliance of these Chinese businesses'."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 1,
+      "description": "Rule 4 says to use 'the name form most natural for the clue', which invites the nickname 'Patty Hearst'. The protected block says to use the formal given name ('Patricia Hearst')."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the four failures have one shared cause: the candidate repeats or restates something the clue already names, or is the wrong kind of thing for the slot. The fourth is a real conflict inside the skill. Earlier whole-prompt templates were rejected, so these edits are small and sit in the existing rules. (1) Rule 3 gets a bullet for run-on archive hits where the answer follows the clue with no separator. This would have exposed the bare answer 'Rainbow'. (2) The first Rule 2 bullet becomes an anchor gate. It now covers a region, town or landmark in the clue paired with 'this country/state/city', and words that only restate a clue word. (3) A new bullet says that 'the alliance/league/union of these <adj> <businesses/people>' asks for the plural member noun, not the organisation's proper name. (4) The older Rule 4 sentence that conflicts with the formal-name rule is edited to match it.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Archive lines may also be formatted 'CATEGORY | clue text | answer'. Take the answer that follows the clue, even if the whole context is one short passage.",
+        "content": "- Archive and forum dumps are often run-on with no separator: '...<clue text> Rainbow This \"platinum-dome\" character...' or 'Clue text <ANSWER> Next clue text'. When a passage repeats the clue's exact wording, the word(s) immediately after the clue's last word are the archived answer, up to where the next clue begins. If that archived answer is shorter than the longer name in other passages, copy the SHORT archived form."
+      },
+      {
+        "op": "replace",
+        "target": "- When the clue says 'this country / this vitamin / this man / one of these ...', the answer is the thing that phrase stands for. Do not copy a proper noun or phrase already in the clue.",
+        "content": "- When the clue says 'this country / this vitamin / this man / one of these ...', the answer is the thing that phrase stands for. ANCHOR GATE: any region, town, river, product or person named in the clue is an anchor. If your candidate is a word from the clue, reject it. A place named in the clue next to 'this country/state/city' means the answer is the larger country/state/city that contains or owns it (a wine region + 'this country' -> the country, not the region). Also strike words that only restate a clue word (a clue that says 'giant snake' makes 'Serpent' redundant). Keep the distinguishing word that fills the blank."
+      },
+      {
+        "op": "insert_after",
+        "target": "- 'One of these <role/title>' ('the 14th one of these spiritual leaders') asks for the title or category noun itself (Dalai Lama), not the individual named in the clue.",
+        "content": "- 'The alliance / league / union / guild / chain of these <adjective> <businesses/people/groups>' asks for the generic PLURAL MEMBER noun (the kind of business or person that forms the group), not the organisation's own proper name from the passages. 'The league of these French bakeries' -> 'bakeries', never 'French Bakers League'. A passage naming the organisation is only the anchor. Take the common noun inside that name (the 'Hand Laundry' in 'Hand Laundry Alliance') and put it in the plural."
+      },
+      {
+        "op": "replace",
+        "target": "For people, prefer the form used in a verbatim answer from the context (Rule 3); otherwise use the name form most natural for the clue.",
+        "content": "For people, prefer the form used in a verbatim answer from the context (Rule 3). Otherwise give first name + last name with no middle initial, and use the formal given name when any passage shows it ('Patricia', not the nickname 'Patty'), even if most passages use the diminutive. Keep a nickname only when it is the person's professional name."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

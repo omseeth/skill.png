@@ -1,0 +1,48 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_update_mismanagement",
+      "count": 3,
+      "description": "Budget-only follow-ups triggered fresh searches instead of retrieving compatible cached restaurant or per-leg flight results and filtering them."
+    },
+    {
+      "failure_type": "tool_transaction_integrity",
+      "count": 4,
+      "description": "Search or nearest calls were left unassigned, not saved, or later saved using guessed undefined variable names."
+    },
+    {
+      "failure_type": "schema_value_mapping",
+      "count": 2,
+      "description": "A state abbreviation was passed as a city and a qualitative descriptor was passed as an airline."
+    },
+    {
+      "failure_type": "proximity_grouping",
+      "count": 1,
+      "description": "The nearest-results grouping prioritized the hotel rather than the requested restaurants, and the cached hotel result was not reused."
+    },
+    {
+      "failure_type": "incomplete_multi_domain_request",
+      "count": 1,
+      "description": "A requested hotel domain was omitted instead of seeking its missing mandatory stay dates while handling the specified flights."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the general cache, argument-mapping, and required-input rules, so those are not repeated. The edits make the recurring budget-only cache workflow executable, guard against unbound variables in repeated same-domain searches, and clarify how to reuse the unchanged side of an explicit proximity request and choose its grouping domain.",
+    "edits": [
+      {
+        "insert_after": "```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "\n\nFor a budget-only follow-up, retrieve and filter the compatible result rather than rerunning its base search. If cached results cover multiple flight legs, repeat this separately for each affected leg:\n```python\nprior_restaurants = get_results_from_cache(key=\"<exact compatible restaurant key>\")\nfiltered_restaurants = filter_restaurants(prior_results=prior_restaurants, budget=<requested budget>)\nsave_to_cache(key=\"<new filtered restaurant key>\", value=filtered_restaurants)\n\noutbound = get_results_from_cache(key=\"<exact outbound-flight key>\")\nfiltered_outbound = filter_flights(prior_results=outbound, budget=<requested budget>)\nsave_to_cache(key=\"<new filtered outbound key>\", value=filtered_outbound)\nreturn_leg = get_results_from_cache(key=\"<exact return-flight key>\")\nfiltered_return = filter_flights(prior_results=return_leg, budget=<requested budget>)\nsave_to_cache(key=\"<new filtered return key>\", value=filtered_return)\n```"
+      },
+      {
+        "insert_after": "## Tool results and constraints",
+        "content": "\n\n**Repeated-call check:** When making multiple searches in one response, assign each result in the search statement itself and immediately save that same variable before the next search. Never make a bare search call and later save a guessed name such as `city_attractions`:\n```python\nfirst = search_attractions(city=\"<first requested city>\", type=[\"<requested type>\"])\nsave_to_cache(key=\"<first descriptive key>\", value=first)\nsecond = search_attractions(city=\"<second requested city>\", type=[\"<requested type>\"])\nsave_to_cache(key=\"<second descriptive key>\", value=second)\n```"
+      },
+      {
+        "insert_after": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "\n  If one side of an explicit proximity request is unchanged and already cached, retrieve its exact compatible cache key and reuse it rather than searching again. Prioritize the domain whose items the user asks to find near the anchor: for example, “restaurants near the hotel” uses `groupBy=\"restaurant\"`, while “hotels near restaurants” uses `groupBy=\"hotel\"`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

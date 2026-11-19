@@ -1,0 +1,54 @@
+{
+  "reasoning": "Prioritized the failure-driven edits, including the consolidated tool-call audit and the distinct domain, proximity, cabin-class, and suggested-area guidance. Added the two success-driven edits because they address separate flight-input and declined-specificity cases not covered by the failure patches. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Write every result-producing search, filter, sort, or `search_nearest` call in two steps: assign its returned result to a variable, then save that exact, complete result object with `save_to_cache` under a fresh, descriptive key. Do not extract `.search_results`, rebuild, or merge tool output before saving. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Retrieve cached results by assigning `get_results_from_cache(...)` to a variable before passing them to another tool; do not nest the retrieval call. Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+      "content": "- **Tool-call audit (before output):** Use runtime-provided tools, cache functions, and schemas only; do not import libraries, redefine models or schemas, or add helper code. Use supported arguments and required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. For each necessary result-producing search, filter, sort, or `search_nearest` call, assign its returned result to a variable and immediately save that exact, complete object with `save_to_cache` under a fresh descriptive key, distinct for domains, itinerary legs, and updates. Never leave a result-producing call bare or extract, rebuild, or merge its output before saving. Retrieve cached results by exact key into a variable before passing them to another tool; never nest retrieval calls or rely on variables from earlier turns. Emit only operations needed for currently pending requested deliverables. Before output, audit that each intended operation is assigned and saved, and omit duplicate or unrelated calls, unsupported parameters such as traveler counts to flight tools, and invented optional criteria.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Honor the user's request and values:** Use only explicitly requested domains; do not infer extra searches, preferences, amenities, or substitute similar categories.",
+      "content": " Let the requested domain noun determine the tool domain; treat category-like modifiers as criteria within that domain. For example, “culinary attractions” requests attractions with the Culinary type, not restaurant searches. Search restaurants when restaurants are requested or the user accepts a specific restaurant offer.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Use proximity tools only for proximity requests:**",
+      "content": "\n\n`search_nearest` requires exactly two domain result inputs from among `hotels`, `restaurants`, and `attractions`. Supply the two relevant result sets; do not call it with only one or all three.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+      "content": "\n- **Map explicit flight cabin classes:** For an explicitly requested economy-, business-, or first-class preference, pass the corresponding supported lowercase `flight_class` list (`[\"economy\"]`, `[\"business\"]`, or `[\"first\"]`) to `search_flights` or `filter_flights`. Do not omit the class constraint or title-case its value.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Resolve follow-ups about assistant-suggested places or options:**",
+      "content": " When the user asks what is available in an assistant-suggested neighborhood or area, use `neighborhood` with the full area phrase in the corresponding same-domain filter; this is not by itself a request for `search_nearest`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "`search_flights` requires `departure_date`; `arrival_date` is optional, even for a round trip.",
+      "content": " A flight search also requires at least one origin identifier: `start_airport_city`, `start_airport`, or `start_airport_code`; if none is established, seek it rather than searching. When flights are clearly added to an itinerary with explicit trip dates, reuse its established destination and first date for the outbound destination and departure date. Use a return date only when the itinerary establishes one under the round-trip rule above, and ask only for genuinely missing required flight inputs.",
+      "support_count": 5,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "Treat a short answer to an assistant's clarification question as an explicit user-provided value or preference; an affirmative answer accepting an offered domain or option is a request to proceed.",
+      "content": " If the assistant asks whether the user wants further specificity and the user declines, keep the earlier requested deliverable active: when a matching cached result already satisfies it, retrieve that result into a variable rather than returning no-planning. Do not retrieve or redo unrelated completed domains.",
+      "support_count": 5,
+      "source_type": "success"
+    }
+  ]
+}

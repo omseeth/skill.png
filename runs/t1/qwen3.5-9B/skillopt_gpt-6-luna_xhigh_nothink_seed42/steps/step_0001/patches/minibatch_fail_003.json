@@ -1,0 +1,30 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "overgeneration",
+      "count": 2,
+      "description": "Both trajectories added unnecessary code beyond the needed tool calls; one also redefined tool-related models and failed at runtime."
+    },
+    {
+      "failure_type": "cache-aware filtering",
+      "count": 1,
+      "description": "One trajectory repeated dates and party size as filter arguments even though those constraints were already reflected in cached results."
+    },
+    {
+      "failure_type": "value normalization",
+      "count": 1,
+      "description": "One trajectory changed the capitalization of a user-provided flight-class value."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill is empty, and the batch shows that follow-up planning should use existing cached results with only newly added constraints, while generated code should remain minimal and runnable. Preserving user-provided value spelling also prevents avoidable parameter mismatches.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Learned rules\n- For follow-up requests, use relevant cached results and apply only newly stated constraints. Do not repeat itinerary details already reflected in those results or recalculate their dates; perform a new search only when the cache is missing or no longer applicable.\n- Keep generated code to the necessary tool calls and cache operations. Tool functions and models are already provided: do not import or redefine them, add unrelated calculations or output formatting, or claim no planning is needed when a new constraint must be applied.\n- Preserve the spelling and capitalization of values taken from the conversation when passing them to tools; do not title-case or otherwise normalize them."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "first_search_hygiene",
+      "count": 2,
+      "description": "A first single-domain search was written as a bare search_*() with no assignment or save, one with a stray </parameter> tag (restaurant and attraction first turns)."
+    },
+    {
+      "failure_type": "dropped_requested_domain",
+      "count": 1,
+      "description": "Flight and hotel were both requested, with '6 nights' stated. When the flight date arrived, only the flight was searched and the hotel (adjust_date plus search_hotels) was dropped."
+    },
+    {
+      "failure_type": "stale_key_or_repassed_constraints",
+      "count": 2,
+      "description": "The raw 'hotels' key was loaded although filtered_hotels existed, and the already-applied budget was re-passed. In another task, cuisine, dietary flags and neighborhood were re-passed on a restaurant budget reply."
+    },
+    {
+      "failure_type": "no_preference_reply_filtered",
+      "count": 1,
+      "description": "'Not really, just something fun' should be pure retrieval, but the SEARCH GATE's 'write exactly load/filter/save' forced a filter that re-passed type=Guided."
+    },
+    {
+      "failure_type": "flight_time_format_and_roundtrip",
+      "count": 1,
+      "description": "arrival_time was given as ['07:26:00','07:26:00'], which raises a ValidationError. A 'from X until Y' date range was also searched as one leg instead of two."
+    },
+    {
+      "failure_type": "multi_city_extra_legs",
+      "count": 1,
+      "description": "A multi-city request got four flight searches (return legs added) where the gold has one search per named leg."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four targeted edits for the recurring, deterministic failures. (1) The top-level SEARCH GATE contradicts Rule 8 on refusal replies and pushes the model into filtering. It gets a refusal exception and a most-refined-key / don't-repass reminder. (2) The 'dropped hotel' pattern (stay length with a single flight date) keeps recurring. It gets an explicit three-part block inside the DATE ANSWER rule, which is read early. (3) The two bare-search failures happened on first single-domain turns, so the generic hygiene example is replaced with the exact two-line shape for first restaurant and attraction searches, plus a ban on stray tags. (4) The time format error and the date-range-to-one-search error get a short flight-time rule next to the existing time-string note. The multi-city case is left alone because it rests on a single, odd gold example. No existing content is duplicated, and each edit patches a gap or a conflict.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- SEARCH GATE (do this first): read the CACHE dict.",
+        "content": "- SEARCH GATE (do this first): read the CACHE dict. Two pre-checks. (1) A reply that only declines or has no preference ('Not really, just something fun', 'No preference', 'Anything is fine') adds no constraint: write only `x = get_results_from_cache(key=\"<most refined key of that domain>\")`, with no filter, no search and no save, and never re-pass the earlier type or cuisine as a filter. (2) If one domain has several keys (e.g. 'hotels' and 'filtered_hotels'), load the one whose summary has 'Additionally filtering for' lines (the filtered one, never the raw one), pass only the kwargs that come from the last message, and never re-pass anything that summary already lists (its budget, cuisine, neighborhood, dietary flags)."
+      },
+      {
+        "op": "insert_after",
+        "target": "Never load another domain's key and re-save it as a stand-in for the missing search.",
+        "content": "\n   - STAY LENGTH: a hotel requested anywhere + a flight date now given + a number of nights stated anywhere ('6 nights') and no checkout date -> the block has THREE parts: the flight search saved as \"flights\" (a stated class goes inside it); `checkout_date = adjust_date(date=\"<flight date as written>\", delta_days=<N>)`; then `hotels = search_hotels(city=\"<destination>\", checkin_date=[\"<flight date as written>\"], checkout_date=[checkout_date])` saved as \"hotels\" (add num_people / num_rooms / stars / amenities only if the user stated them). 'Weekend getaway' or 'birthday' is context and never a reason to drop the hotel."
+      },
+      {
+        "op": "replace",
+        "target": "Example: `attractions = search_attractions(state=\"CA\", type=[\"Culinary\"])` then `save_to_cache(key=\"attractions\", value=attractions)`.",
+        "content": "Example: `attractions = search_attractions(state=\"CA\", type=[\"Culinary\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. This holds even for a one-line first turn: '<Type> attractions in <City>' is exactly `attractions = search_attractions(city=\"<City>\", type=[\"<Type>\"])` + `save_to_cache(key=\"attractions\", value=attractions)`, and 'a <cuisine> restaurant in <City> that is halal' is exactly `restaurants = search_restaurants(city=\"<City>\", cuisine=[\"<cuisine>\"], has_halal_options=True)` + `save_to_cache(key=\"restaurants\", value=restaurants)`. The last line of the answer is the save call; never add a closing tag such as </parameter>."
+      },
+      {
+        "op": "insert_after",
+        "target": "'at least X' rating -> rating=[X, 5].",
+        "content": "\n- Flight times: always 12-hour 'hh:mm AM/PM' strings, never '07:26:00', and never the same value twice in the list. 'arrive by 07:26 AM' -> `arrival_time=[\"12:00 AM\", \"07:26 AM\"]`; 'arrive after T' -> `[\"T\", \"11:59 PM\"]`; departure_time has the same shape. An arrival deadline tied to a stated event date ('wedding on May 26') adds `arrival_date=[\"May 26, 2025\"]` on the outbound search only. 'From <date X> until <date Y>' is still a round trip: outbound search with `departure_date=[X]` plus the time window, and a second, separately saved search with the cities swapped and only `departure_date=[Y]`. Never collapse it into one search."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

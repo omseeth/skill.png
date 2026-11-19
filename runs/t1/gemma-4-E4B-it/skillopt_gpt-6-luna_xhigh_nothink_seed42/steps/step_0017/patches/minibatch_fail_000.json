@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_update_scope_failure",
+      "count": 6,
+      "description": "Agents reran searches, ignored new filters, reused results with incompatible scope, or failed to act on cached results."
+    },
+    {
+      "failure_type": "required_argument_validation",
+      "count": 1,
+      "description": "An agent searched for a hotel with missing required dates instead of seeking them while searching the independent restaurant request."
+    },
+    {
+      "failure_type": "criteria_resolution",
+      "count": 2,
+      "description": "Agents misinterpreted a preference in context or normalized a user-provided category to a near synonym."
+    },
+    {
+      "failure_type": "pending_dependent_operation",
+      "count": 1,
+      "description": "An agent searched for a hotel after its dates arrived but did not complete the previously requested hotel-to-attraction proximity operation."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed failures already contradict explicit cache, argument-validation, or exact-value instructions, so repeating those rules would be redundant. The skill tracks pending searches but does not explicitly track a dependent operation waiting for a required input to its source search; the added rule covers that gap without authorizing proximity from mere co-mention.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Track each requested domain or flight leg deferred solely because mandatory information is missing as pending, retaining its established route, dates, and supported preferences. When a later user turn supplies the missing information, revalidate and execute each pending request that is now complete without requiring the user to restate it. Keep incomplete requests pending and seek only their missing mandatory details; do not rerun completed, unchanged domains.",
+        "content": "\n- Track explicitly requested or accepted operations that depend on multiple domain results (such as finding attractions near a hotel) as pending when a source search is waiting for mandatory information. Once that information arrives and compatible results for both inputs are available, complete the pending operation in the same turn using the updated source result and the compatible result for the other domain, then save its output. Do not create such an operation from mere co-mention of domains."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

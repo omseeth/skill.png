@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "flight_class_or_airline_reply_filtered_only_one_leg",
+      "count": 2,
+      "description": "With departure_flights and return_flights both cached, 'business' and 'AN in first' were applied to the departure leg only. This looks like fixation on the repeated 'exactly three lines' wording."
+    },
+    {
+      "failure_type": "hotel_reply_wrong_key_or_wrong_domain",
+      "count": 3,
+      "description": "A neighborhood reply was applied to attractions (T3). A neighborhood reply re-ran search_nearest with undefined variables instead of filtering the hotel key (T8). A rooms reply re-ran the previous turn's pool/playground filter, invented playground_present and loaded the stale filtered_hotels1 instead of filtered_hotels2 (T2)."
+    },
+    {
+      "failure_type": "code_hygiene_unassigned_nested_undefined",
+      "count": 3,
+      "description": "A bare search_restaurants with no save and no closing seek_information (T1). get_results_from_cache nested inside search_nearest with the requested pool filter skipped (T7). Undefined variables filtered_hotels and attractions used (T8)."
+    },
+    {
+      "failure_type": "placeholder_city_instead_of_seek_information",
+      "count": 1,
+      "description": "A restaurant request with only cuisine and budget and no city anywhere produced city=\"<city from any turn>\" (copied from a rule template) instead of seek_information for the city (T4)."
+    }
+  ],
+  "patch": {
+    "reasoning": "The failures come from existing rules being skipped or contradicted, not from missing topics, and recent epochs showed that adding gates or rewriting the flight rule regresses. So the four edits are narrow. (1) Several rules say 'write exactly three lines', which conflicts with the two-leg flight case, so the top SEARCH GATE now says one block per flight leg key. (2) The top hygiene bullet is generalized to any search_*, and now forbids nested get_results_from_cache and undefined variables. It also requires the hotel filter before search_nearest in compound turns. (3) The DATE GATE bullet now covers the restaurant city and forbids angle-bracket template placeholders. (4) Hotel-domain key choice is fixed: nearest_hotels counts as a hotels key, the highest-suffix key is chosen, and rooms/neighborhood replies filter that key with only their own kwargs.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "A search_* call is allowed only for a domain with NO key.",
+        "content": "A search_* call is allowed only for a domain with NO key. Flights have one key per leg (departure_flights + return_flights, or flights + return_flights): a flight class/airline/time/ticket-price reply needs the three-line block below for EACH leg key (2 legs = 6 lines), never only the first leg. Every other domain uses just its one most refined key."
+      },
+      {
+        "op": "replace",
+        "target": "Never write a bare `search_attractions(...)`. Never write `save_to_cache(value=search_...(...))`. Never repeat a search call, and never nest a search inside save_to_cache.",
+        "content": "Never write a bare `search_*(...)` for any domain (restaurants, hotels and flights as well as attractions). Never write `save_to_cache(value=search_...(...))`. Never repeat a search call, and never nest a search inside save_to_cache. Every variable you pass must be assigned earlier in the SAME block: load each cached key on its own line (`h = get_results_from_cache(key=\"...\")`) and pass `h`. Never nest get_results_from_cache inside search_nearest, filter_* or save_to_cache, and never use a name (filtered_hotels, attractions) you did not just assign. When one turn adds a hotel amenity AND asks for restaurants/attractions 'near the hotel', write the hotel load/filter/save first, then search_nearest(hotels=<the filtered result variable>, ...)."
+      },
+      {
+        "op": "replace",
+        "target": "A budget, stars, amenity or party-size reply never supplies dates (hotel requested, no dates, reply 'around 80 per night' -> seek_information, no search_hotels).",
+        "content": "A budget, stars, amenity or party-size reply never supplies dates (hotel requested, no dates, reply 'around 80 per night' -> seek_information, no search_hotels). Same for restaurants: a restaurant search needs a city the user literally wrote in some message (a hotel city or flight destination counts). Cuisine, budget or rating replies never supply one, so with no city anywhere the whole output is `seek_information(\"We need the city for the restaurant.\")`. Angle-bracket templates in this skill (<city from any turn>, <X>, <date>) are never output."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 23: Load the most refined CACHE key; never overwrite a key",
+        "content": "- Hotel-domain keys are hotels, filtered_hotels*, final_hotels*, hotels2 AND nearest_hotels. Load the one whose summary lists the most filters (highest suffix, created last). A nearest_hotels built on filtered hotels beats filtered_hotels, and filtered_hotels2 beats filtered_hotels1. A neighborhood, rooms, party-size, stars, budget or amenity reply is `filter_hotels(prior_results=<that key>, <only the kwarg named in the last message>)`. Never route it to attractions and never re-run search_nearest for it. 'N rooms for M people' -> `num_rooms=N, num_people=M` only. Anything said in an earlier turn (pool, playground, kids club) is already in the key, so never re-pass it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,33 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every successful answer opened with a clause-by-clause checklist, then emitted exactly one object per clause. That included 9-11 call answers (a 10-clause gaming session, an 11-clause email audit) with ancillary clauses such as help page, fake email generator and domain availability.",
+    "N distinct entities (3 cities, 3 emails x 2 tools) became N calls to the same tool. Each call carried its own value, and shared qualifiers were repeated.",
+    "Tool names were copied as `Provider: Endpoint` headings, even when the query phrased them loosely (e.g. 'Flight Fare Search API's Airport Search tool').",
+    "Coordinates plus a radius in the query were routed to the lat/lng count tool. The qualifiers 'N bedrooms' and 'up to N guests' were mapped to the schema's bedrooms and maxGuestCapacity optionals.",
+    "Counts and limits inside a clause became optional parameters ('10 random words, 5 letters' -> count=10 + wordLength=5; 'limit 25' -> limit=25; 'page 1, limit 10' -> page + limit).",
+    "Tools whose main input is optional-only (Chess Puzzles id, Zelda name/limit) were handled correctly by putting the values in `optional parameters`.",
+    "The only partial misses inside otherwise-passing answers were dropped qualifiers: 'Steam giveaways' lost platform, and 'first page with 15 results' kept pageSize but lost page."
+  ],
+  "patch": {
+    "reasoning": "Most passing behaviours are already encoded. Three small deltas remain. (1) Two passing answers still lost optional credit by emitting only half of a qualifier pair, or by omitting a named platform. (2) The 'typical 3-10 objects' sentence could push an agent to trim legitimate 10-12 clause queries, and every 9-11 call success here kept all its clauses. (3) The INPUT FIT rule only covers place hierarchies, so it needs a complementary rule for explicit coordinates plus a radius.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "  - 'first page' -> page `1`; '10 per page' -> per_page `10`; 'first 20' -> pageSize `20`; '3 scores on page 1' -> per_page `3`, page `1`.",
+        "content": "\n  - A pagination phrase with a size gives BOTH fields: 'just the first page with 15 results' -> page `1` AND pageSize `15` (never only the size). A named platform or store gives the platform field: 'current Steam giveaways sorted by popularity' -> platform `steam`, sort-by `popularity`. 'Once' / 'one time' on a tool with a `rolls` or `times` field -> `1` ('rolled 5 dice once' -> dice `5`, rolls `1`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- SEARCH vs HEADLINES.",
+        "content": " COORDINATES + RADIUS: when the query itself gives lat/lng and a range ('near (4.1755, 73.5093) within 2000 meters'), use the lat/lng tool (`Airbnb listings: Count listings by lat lng`) with required lat, lng, range copied verbatim. Map 'N bedrooms' and 'host up to N guests' to optional `bedrooms` and `maxGuestCapacity`. This mirrors the admin-division rule: pick the tool whose fields match the input the query supplies."
+      },
+      {
+        "op": "replace",
+        "target": "A typical answer has 3-10 objects; a long run of near-identical objects usually means a count was split into calls.",
+        "content": "A long run of near-identical objects usually means a count was split into calls. Do NOT trim distinct clauses to fit a 'typical' size: a 9-clause email audit or a 10-clause gaming session legitimately needs 9-11 objects. Ancillary clauses such as 'help documentation' (a Help Page tool), 'generate a fake business email', and 'is domain X available for registration' (a FreeDomain-style tool) are real deliverables, so each gets its own call."
+      }
+    ]
+  },
+  "source_type": "success"
+}

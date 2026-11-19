@@ -1,0 +1,45 @@
+{
+  "reasoning": "Consolidated overlapping cache guidance into one operational checklist and one result-saving rule. Combined the overlapping schema-mapping additions, while preserving their distinct rating and star-range cases. Kept flight-leg, proximity, missing-information, and direct-tool guidance in separate sections so no edits target the same text region. Support counts reflect how many of the four proposed patches support each merged edit. [optimizer-ranked: selected 4/7 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+      "content": "- Treat the latest user turn as an update to the full trip plan. Before planning, inventory every requested action and item from the full conversation, including replies to assistant questions, distinct flight legs, and explicitly requested lodging destinations or stays. Check cache coverage separately for each item and constraint. For an affected item, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. When a cached result already represents earlier criteria, apply each newly introduced constraint using the appropriate supported filter argument and ensure the call actually includes it; search when a needed result is unavailable. Do not skip uncovered requested items, redo unaffected domains, or rely on variables from earlier executions.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "## Missing mandatory information\nBefore searching, check the full conversation for all mandatory inputs required by each requested tool. If any are missing, do not invent values, use defaults, or run a partial search. Make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+      "content": "## Missing mandatory information\nBuild the requested actions from the full conversation, then check mandatory inputs separately for each requested domain. If information is missing for one or more domains, make one `seek_information` call asking only for those missing mandatory inputs; do not search a domain whose own mandatory inputs are incomplete. Still perform and cache searches for other requested domains whose mandatory inputs are complete. If the user gives an exact hotel check-in date and an explicit stay length in nights, use `adjust_date` to derive check-out; do not ask for a date that can be derived this way. Vague timing such as “a weekend” does not supply exact dates or a stay length. Do not invent values or use defaults; optional preferences are not mandatory inputs.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Validate tool arguments and preserve user intent",
+      "content": "- Match location granularity to the schema: use `state` when the user gives a state or region rather than a city. For a named neighborhood within a city, use the containing city in `city` and the named area in `neighborhood`; preserve the user’s supplied entity text, including city qualifiers in compound neighborhood labels. For attraction searches, a state name or abbreviation supplied without a city belongs in `state`, not `city`.\n- When the schema represents a minimum-only rating preference as a range, use that minimum and the scale’s upper bound (for example, on a 1–5 scale, “at least 3” becomes `[3, 5]`). When `stars` is a minimum/maximum pair, encode an exact N-star request as `[N, N]`.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "append",
+      "content": "\n## Execute tools directly\n- Call the provided tool functions directly; do not import tools, alter module paths, or define or redefine tool functions or their models. Use `print(\"No planning needed\")` only when valid cached results already satisfy the entire request, and never append it after performing searches, filters, sorts, or nearest-results calls.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 0 most broadly prevents omissions across the full trip plan and ensures new constraints are applied. Edit 5 improves handling of missing inputs across multiple domains and derives check-out dates when possible. Edit 4 adds concrete schema guidance for common location and rating preferences. Edit 6 provides broadly applicable safeguards against altering or bypassing tool functions.",
+    "selected_indices": [
+      0,
+      5,
+      4,
+      6
+    ]
+  }
+}

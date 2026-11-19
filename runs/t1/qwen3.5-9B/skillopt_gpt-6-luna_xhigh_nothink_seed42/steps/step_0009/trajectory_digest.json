@@ -1,0 +1,67 @@
+{
+  "step": 9,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 29,
+  "failure_patterns": [
+    {
+      "pattern": "cache follow-up and delta handling: Agents skipped, repeated, or incompletely updated cached results, including failing to apply a new preference to both flight legs.",
+      "count": 29,
+      "task_ids": [
+        "hotelrestaurant:train:6:41:0",
+        "restaurant:train:11:15:0",
+        "attraction:train:20:56:0",
+        "hotelattraction:train:12:34:4",
+        "restaurant:train:1:47:3",
+        "attraction:train:23:15:2",
+        "restaurant:train:2:3:3",
+        "restaurant:train:2:41:2",
+        "attraction:train:16:10:0",
+        "hotelattraction:train:16:42:2",
+        "hotelattraction:train:21:7:0",
+        "hotel:train:15:1:2",
+        "flighthotelattraction:train:10:53:3",
+        "flighthotelrestaurant:train:15:1:3",
+        "flighthotelrestaurant:train:11:35:2",
+        "flighthotel:train:22:9:2",
+        "flighthotelattraction:train:11:19:3",
+        "flighthotelattraction:train:18:53:1",
+        "flighthotel:train:17:29:1",
+        "flighthotelattraction:train:24:32:2",
+        "hotel:train:9:35:1",
+        "hotelrestaurant:train:15:1:1",
+        "hotel:train:14:17:4",
+        "hotelrestaurant:train:21:60:4",
+        "flight:train:9:16:3",
+        "flighthotel:train:8:39:3",
+        "flighthotelrestaurant:train:8:34:3",
+        "flighthotel:train:19:39:4",
+        "flighthotel:train:21:3:3"
+      ]
+    }
+  ],
+  "score_before": 0.44,
+  "score_after": 0.435,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "- **Retrieve pending results from cache after conversational follow-ups:** Treat an affirmative reply accepting an earlier offer to provide recommendations or results as a request to deliver them. If the user responds to a clarification with no additional preference or declines optional specificity (for example, “not really,” “I’m flexible,” or “anything”), keep the earlier requested deliverable and scope active rather than treating the reply as cancellation or broadening the request. Retrieve the relevant latest cached result when it already satisfies the request; do not repeat the search or apply an unnecessary filter. Use the no-planning response only when there is no pending deliverable.",
+      "target": "- **Retrieve accepted pending offers from cache:** Treat an affirmative reply that accepts an earlier offer to provide recommendations or results as a request to deliver them. Retrieve the relevant latest cached result, even if no new search or filter is needed; use the no-planning response only when there is no pending deliverable."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- When a hotel or restaurant is requested “near” a named district or neighborhood, treat it as a location constraint and use `neighborhood` where supported, preserving the full provided area name. Do not use `search_nearest` for an area; reserve it for proximity to a named attraction or landmark, and provide exactly two domain result sets as required by its schema.",
+      "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results. Do not pass the attraction name as a `neighborhood` value or approximate proximity with a neighborhood filter. If a later constraint changes an underlying domain result, such as filtering the hotel set, recompute and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call."
+    },
+    {
+      "op": "replace",
+      "content": "For numeric `rating` requests, a single value without minimum or “at least” language is exact `[x, x]`; “exactly x” is `[x, x]`, and “at least x” is `[x, 5]`. For hotel star-count requests, use the `stars` field, not `rating`: a bare count or “exactly x stars” is `[x, x]`, “at least x stars” is `[x, 5]`, and explicit ranges should be preserved.",
+      "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- For `flight_class`, use the supported lowercase values `economy`, `business`, or `first`.",
+      "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg."
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "follow-up/cache reconciliation",
+      "count": 5,
+      "description": "Skipped, misdirected, or redundantly applied follow-up filters, including treating a newly stated preference as a no-op."
+    },
+    {
+      "failure_type": "tool/schema/runtime misuse",
+      "count": 3,
+      "description": "Used an inappropriate or invalid tool call, or added imports and model definitions that broke execution."
+    },
+    {
+      "failure_type": "result persistence omission",
+      "count": 2,
+      "description": "Ran initial searches without assigning and saving their results to cache."
+    },
+    {
+      "failure_type": "parameter-field mapping",
+      "count": 1,
+      "description": "Passed a state abbreviation as a city instead of using the state field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers saving results, runtime-only tools, proximity restrictions, and avoiding unrelated updates, so those rules should not be duplicated. These additions clarify two uncovered ambiguities: affirmative answers to assistant questions are new constraints, and hotel star counts use the stars field rather than the review-rating field.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n- **Treat answers to preference questions as new constraints:** When the user agrees to or selects a preference in response to an assistant's question, treat that preference as an explicit user constraint. Retrieve the affected cached result, apply the relevant same-domain filter, and save the update; do not treat the reply as a no-op while the preference remains unapplied."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Map hotel star-count requests to the stars field:** Use `stars`, not `rating`, for hotel star counts. Map “at least N stars” to `stars=[N, 5]` and “exactly N stars” to `stars=[N, N]`; preserve any explicitly stated range."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

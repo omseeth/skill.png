@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "unrequested_or_adjacent_calls",
+      "count": 3,
+      "description": "Some trajectories added calls that did not satisfy any requested deliverable."
+    },
+    {
+      "failure_type": "parameter_schema_or_group_mismatch",
+      "count": 4,
+      "description": "Parameters were placed in the wrong required/optional group or serialized contrary to the expected call format."
+    },
+    {
+      "failure_type": "sort_semantics_or_token_mismatch",
+      "count": 2,
+      "description": "Sorting used a nearby metric or guessed token instead of the endpoint's own documented criterion."
+    },
+    {
+      "failure_type": "scalar_multi-target_bundling",
+      "count": 1,
+      "description": "Distinct values for a scalar parameter were bundled as repeated entries instead of separate calls."
+    },
+    {
+      "failure_type": "endpoint_action_mismatch",
+      "count": 1,
+      "description": "A general email deliverability endpoint was chosen over one that explicitly covered the requested format and authenticity checks."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers minimal calls, exact tool names, and schema-group validation, so those rules are not repeated. These additions clarify two narrower gaps: fan out values when an endpoint accepts only a scalar, and map sorting requests using that endpoint's own documented criteria rather than proxy metrics or guessed tokens.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "For multi-value filters, preserve whether the user asks for any listed value or for all of them to match. Use the endpoint's documented list encoding and, when available, its documented match-mode parameter; do not assume comma-separated values or an all-match mode without schema support.",
+        "content": "\n\nWhen a request supplies multiple values for a parameter whose schema is scalar, make a separate call for each value, keeping the other arguments attached to the appropriate value. Do not repeat the same parameter in one call unless the schema documents support for that encoding."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Handle independent calls, pagination, and explicit sorting requests.**",
+        "content": "\n\nFor sorting, use the criterion and canonical token documented by the selected endpoint; do not substitute a proxy metric or borrow a sort label from another tool. Treat sort direction as a separate constraint, and do not invent a direction parameter or enum token when the endpoint does not document one."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

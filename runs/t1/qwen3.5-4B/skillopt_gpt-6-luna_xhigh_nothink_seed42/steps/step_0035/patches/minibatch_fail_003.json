@@ -1,0 +1,36 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "follow_up_action_misclassification",
+      "count": 3,
+      "description": "Follow-up criteria were treated as a no-op, applied with an already-satisfied criterion, or handled with the wrong action instead of filtering compatible results."
+    },
+    {
+      "failure_type": "request_scope_or_completeness_error",
+      "count": 2,
+      "description": "Agents acted on unrelated cached domains or asked for information instead of executing independently complete requested searches."
+    },
+    {
+      "failure_type": "cache_write_omission",
+      "count": 3,
+      "description": "Generated filter or search results were not saved for reuse."
+    },
+    {
+      "failure_type": "runtime_contract_violation",
+      "count": 1,
+      "description": "The agent imported a nonexistent tools module despite the injected-tool runtime contract."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already covers saving results, turn scope, and direct tool calls, so repeating those instructions is unlikely to help. The clearest actionable gap is distinguishing a named neighborhood update from a request for relative proximity, which can prevent both skipped neighborhood filters and unnecessary nearest searches.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "\n- A named district or neighborhood is a location criterion, not by itself a request to find items near another result. For a neighborhood update, filter each explicitly named domain's latest compatible result independently using its supported `neighborhood` field; call `search_nearest` only when relative proximity to another result type is requested."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

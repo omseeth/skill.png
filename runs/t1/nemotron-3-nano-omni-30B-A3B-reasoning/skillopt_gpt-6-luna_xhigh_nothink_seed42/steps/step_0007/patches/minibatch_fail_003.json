@@ -1,0 +1,46 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "cache_coverage_and_result_lifecycle",
+      "count": 6,
+      "description": "Agents skipped requested work, used missing or incompatible cached results, or failed to save results; the existing skill already states the save invariant."
+    },
+    {
+      "failure_type": "schema_and_argument_mapping",
+      "count": 5,
+      "description": "Agents used unsupported or wrongly typed arguments, or omitted explicit location and rating criteria."
+    },
+    {
+      "failure_type": "conversation_delta_and_proximity_resolution",
+      "count": 2,
+      "description": "Agents failed to resolve an elliptical follow-up into a new domain request or to search for the named proximity target."
+    },
+    {
+      "failure_type": "partial_execution_with_missing_information",
+      "count": 1,
+      "description": "An agent failed to execute a domain with complete inputs while requesting missing mandatory information for another domain."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that missing mandatory inputs block only the incomplete action, not independent actions that are ready. Add practical safeguards for checking each tool variant's argument types and mapping explicit location details. Make proximity planning account for elliptical follow-ups and named targets. The skill already covers result saving and separate flight legs, so these edits avoid repeating those instructions.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "## Missing mandatory information\nBefore searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+        "content": "## Missing mandatory information\nCheck required inputs separately for each requested action and domain against explicit values in the full conversation; related context does not automatically satisfy a required field. Do not infer missing mandatory values or use defaults. If any action lacks mandatory information, make one `seek_information` call asking only for those missing inputs. Do not search an incomplete action, but still execute and cache other requested actions whose own mandatory inputs are complete. Optional preferences are not mandatory inputs."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- Validate arguments against the specific function being called: search and filter variants may support different fields, and filters require a real compatible `prior_results` object. Respect the schema's declared types and cardinality; do not pass a single airport value as a list unless the field is list-valued. Distinguish city-level requests from specific-airport requests, and map state or region values to `state`, not `city`.\n- Preserve explicit neighborhood labels in `neighborhood`. Encode an exact N-star hotel request as `stars=[N, N]`, since the field represents a minimum/maximum pair."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Proximity between travel domains",
+        "content": "\n- Resolve elliptical follow-ups against the preceding assistant prompt and the full conversation; an affirmative or brief reply can introduce a new domain or proximity request, so do not treat it as a no-op merely because another domain is cached. For a named place in a proximity request, identify its domain and search for that exact target when needed (`hotel_name`, `restaurant_name`, or `attraction_name` as appropriate). A generic same-city result does not cover a named target. Search any missing comparison results when their mandatory inputs are available, then call `search_nearest` with the relevant result objects."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_tool_action_or_persistence",
+      "count": 6,
+      "description": "Some trajectories omitted required actions or failed to save results; one produced no executable plan."
+    },
+    {
+      "failure_type": "overgeneration_or_scope_violation",
+      "count": 5,
+      "description": "Agents repeated valid searches, touched unaffected domains, or added an unrequested proximity call."
+    },
+    {
+      "failure_type": "schema_semantics_or_value_encoding",
+      "count": 3,
+      "description": "Agents confused state with city or supplied singleton lists where two-endpoint bounds were required."
+    },
+    {
+      "failure_type": "round_trip_leg_semantics",
+      "count": 1,
+      "description": "A round trip was encoded as an outbound arrival date instead of a separate reverse flight leg."
+    },
+    {
+      "failure_type": "runtime_or_output_failure",
+      "count": 2,
+      "description": "One trajectory failed on a tool import and another emitted no executable code."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already describes incremental planning, supported fields, flight legs, and caching, but the trajectories show repeated failures to operationalize those rules. These edits make result persistence immediate, clarify one-sided versus exact bounds and state handling, and distinguish an accepted proximity offer from an unaccepted suggestion. The persistence instruction also discourages verbose or speculative output.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- For every result-producing search, filter, sort, or nearest-results call, bind the exact return value to a variable and immediately save that object with `save_to_cache` under a unique, descriptive key; save refinements under a new key. Never leave such a call bare, discard its return value, or manually rebuild or merge results. Keep emitted code to the necessary executable tool calls—no narrative, repeated comments, debug/status prints, or post-call presentation."
+      },
+      {
+        "op": "replace",
+        "target": "Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`.",
+        "content": "Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`; a state or region, including a state abbreviation, belongs in `state`, not `city`; a city belongs in `city`; and a named attraction belongs in `attraction_name`."
+      },
+      {
+        "op": "replace",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "- Validate value encoding as well as argument names. For lower/upper endpoint fields, always provide both endpoints: encode an exact value x as `[x, x]`; encode a minimum x as `[x, U]` and a maximum x as `[L, x]`, using only the bounds established by the schema or its documented value scale. For example, a minimum restaurant rating of 3.0 on a five-point scale is `[3.0, 5]`. Do not use singleton lists, widen an exact value, or invent endpoints."
+      },
+      {
+        "op": "replace",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between supported domains. Before calling it, verify that each cached result covers the specific requested target, not merely the same domain or city. For example, a generic city attraction search does not cover a separately named attraction; search for the named attraction using `attraction_name` unless the cache summary shows that exact target is already covered.",
+        "content": "- Call `search_nearest` only when the user explicitly requests proximity between supported domains or affirmatively accepts a concrete assistant offer to find nearby options. An assistant’s unaccepted suggestion is not a request. Before calling, verify that each cached result covers the specific requested target, not merely the same domain or city. For example, a generic city attraction search does not cover a separately named attraction; search for the named attraction using `attraction_name` unless the cache summary shows that exact target is already covered."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

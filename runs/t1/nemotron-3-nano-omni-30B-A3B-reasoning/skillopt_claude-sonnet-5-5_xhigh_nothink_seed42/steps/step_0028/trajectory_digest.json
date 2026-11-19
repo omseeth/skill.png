@@ -1,0 +1,56 @@
+{
+  "step": 28,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 28,
+  "failure_patterns": [
+    {
+      "pattern": "flight_filter_single_leg: Flight class or budget reply filtered only the first flight key (departure_flights) and skipped return_flights, even though both keys were cached.",
+      "count": 28,
+      "task_ids": [
+        "flighthotel:train:18:2:3",
+        "flighthotelattraction:train:10:53:3",
+        "restaurant:train:14:15:3",
+        "flight:train:2:18:3",
+        "flighthotelrestaurant:train:19:35:2",
+        "flight:train:23:57:2",
+        "flighthotel:train:21:3:3",
+        "attraction:train:24:59:0",
+        "restaurant:train:8:21:3",
+        "attraction:train:19:56:0",
+        "flighthotel:train:12:7:1",
+        "flighthotelattraction:train:3:12:1",
+        "restaurant:train:8:56:0",
+        "flighthotelrestaurant:train:15:1:3",
+        "flighthotelattraction:train:7:36:4",
+        "flighthotelrestaurant:train:4:1:2",
+        "attraction:train:20:56:0",
+        "flighthotel:train:3:7:2",
+        "hotelrestaurant:train:7:37:4",
+        "hotelrestaurant:train:3:1:4",
+        "flighthotelrestaurant:train:23:52:0",
+        "flighthotelattraction:train:8:59:1",
+        "flighthotelrestaurant:train:25:52:1",
+        "flighthotelattraction:train:6:36:1",
+        "flight:train:7:30:4",
+        "hotelattraction:train:25:10:4",
+        "flight:train:17:11:1",
+        "flight:train:22:18:2"
+      ]
+    }
+  ],
+  "score_before": 0.535,
+  "score_after": 0.49,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "\n- DOMAIN LOCK (do this before the SEARCH GATE). Classify the LAST user message by its words. Hotel words (hotel, stars, gym, wifi, laundry, pool, kids club, spa, breakfast, shuttle, a hotel neighborhood, per-night price, rooms, nights, check-in/out) -> hotels. Cuisine, dietary words, restaurant rating, per-person price -> restaurants. Class, airline, flight time, ticket price -> flights. Attraction type or name -> attractions. Write code for that domain only, and load only that domain's keys. A reply such as 'a gym and laundry service' loads the newest HOTELS key (hotels2, filtered_hotels...), never filtered_restaurants and never a flight key, even when that key is newer or an earlier turn said 'economy'.\n  HOTEL TRIGGER: a hotel was requested in any turn, CACHE has no 'hotels' key, and check-in and check-out are known or derivable (outbound/return flight dates, or a stated start date plus 'N nights' via adjust_date). Then this block must contain `hotels = search_hotels(city=<destination>, checkin_date=[...], checkout_date=[...], <stars / neighborhood / amenities stated in any turn>, num_people only from a stated number)` followed by `save_to_cache(key=\"hotels\", value=hotels)`. This holds when only flight keys are cached (a message describing a hotel with stars and a neighborhood becomes a hotel search using the flight dates, with no filter_flights). It also holds when the message is only a date plus party size plus nights: save the flight search as 'flights' first if no flight key exists, then `checkout_date = adjust_date(...)`, then the hotel search.",
+      "target": "## HARD OUTPUT RULES (check before EVERY response)"
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- 'YES' TO A HOTEL PROPOSAL WITH NO HOTELS KEY (assistant asked 'Are you looking for a family-friendly hotel?', CACHE holds only flight keys): the hotel is a FIRST SEARCH, not a filter. Write `hotels = search_hotels(city=<flight destination>, checkin_date=[<outbound date as written>], checkout_date=[<return date as written>])` + save 'hotels'. Pass only hotel constraints the user actually stated. 'Family-friendly' and 'kid-friendly' are not parameters and never an airline, and num_people comes only from a stated number. Never load or filter a flight key for a hotel reply. If only one flight date is known, output only seek_information for the check-out date.\n- FLIGHT + HOTEL + RESTAURANT OPENER WITH NO DATES (CACHE `{}`): write `restaurants = search_restaurants(city=<destination>, <every restaurant constraint stated: rating, dietary flag, cuisine>)` + save 'restaurants'. Then add ONE `seek_information(\"We need the departure date for the flight, and the check-in and check-out dates for the hotel.\")`. Write no search_flights or search_hotels call and no '<date>' placeholder.",
+      "target": "1. Copy the CACHE keys of each domain the LAST user turn touches (flights / hotels / restaurants / attractions, including filtered_*, nearest_*, hotels2, final_* names)."
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "A passage already held the clue followed by the correct answer ('| Madge', 'A: the atmosphere', flashcard 'DRAKE'). The agent ignored it and gave a longer or different answer ('Madge the Manicurist', 'Friction', 'Francis Drake'). It was misled by a forum answer or by its own inference."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 3,
+      "description": "The answer carried extra words: a word from the clue ('hasty pudding' for 'pudding'), a role descriptor ('Madge the Manicurist'), or an over-long name ('Lucius Junius Brutus' for 'Brutus')."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 3,
+      "description": "The agent did not check every clue constraint, or did not see that the clue defines a generic term. 'Fruit crop' was answered 'coffee'. 'Astringent under the arms' was answered with the ingredient 'witch hazel' instead of 'antiperspirant'. 'Cyclone State' was answered 'Iowa' from sports chatter instead of the nickname list ('Kansas')."
+    }
+  ],
+  "patch": {
+    "reasoning": "The failures cluster in three places. (1) Verbatim clue-and-answer text in the context was not trusted or copied exactly, so Rule 3 needs to be a stricter procedure that says which sources win. (2) Answers carried clue words, descriptors or over-long names, so the formatting rules need an explicit trimming instruction. The singular-only rule also needs a plural exception for crops and commodities. (3) The agent did not check every clue constraint, did not recognise definition-style clues, and did not weigh sources, so a new rule covers verification and source reliability.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Context passages often reproduce the clue text from a trivia/Jeopardy archive (e.g. J! Archive, flashcard sites), followed by the answer (e.g. 'CLUE | answer', after a comma at the end, or in flashcard text). If you find this, copy that answer exactly, in the same form and spelling.",
+        "content": "- FIRST scan every passage for the clue's distinctive words repeated verbatim (J! Archive / jeopardy GitHub dumps, flashcard sites, trivia pages). The answer follows the clue after '|', 'A:', a comma, or at the end of the flashcard line (e.g. 'CLUE | Madge.', 'CLUE, THE ATMOSPHERE', 'Q: ... A: the atmosphere').\n- When such a verbatim hit exists, COPY that answer in its own form and spelling, including a leading 'the' or 'Sir' if shown. Do not lengthen it with descriptors ('Madge', not 'Madge the Manicurist'). Do not override it with your own inference or with a forum comment, a contestant's wrong response ('What is gravity?'), or an unrelated page that merely mentions the topic."
+      },
+      {
+        "op": "replace",
+        "target": "- Use the singular form for a generic object ('Well', not 'wells').",
+        "content": "- Use the singular form for a generic single object ('Well', not 'wells'), but keep the plural for crops, commodities and mass categories ('Bananas') or when the clue says 'these'/'ones'.\n- Give only the MISSING part. If a word from the clue is part of the answer phrase, do not repeat it ('A \"hasty\" dessert' -> 'pudding', not 'hasty pudding'). If the clue says 'this manicurist / this king / this dessert', do not append that role word to the answer ('Madge', not 'Madge the Manicurist'). Person known by one standard name in the context: use that short name ('Brutus'), not a long formal or ancestral name."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 5: Verify every constraint; definition clues want the generic term\n- Before answering, check the candidate against EVERY detail in the clue: the category word ('fruit crop' excludes coffee), the date and role (the person who held the post in that year, not an earlier namesake), and quantities ('a third of exports'). If the first candidate fails any detail, pick another from the context.\n- If the clue is a description with no 'this X' (e.g. 'An astringent applied under the arms to curtail sweating'), it defines a common noun. Answer the general term that the definition names ('antiperspirant'), not a specific ingredient, brand or example that happens to appear in the passages ('witch hazel').\n\n## Rule 6: When passages conflict, trust reference sources\n- For nickname, 'known as', or label clues (e.g. 'The \"X State\"'), prefer encyclopedic or list sources (official nickname lists, Wikipedia, almanacs) over sports-team, fan, blog or merchandise pages that reuse the phrase. The more common pop-culture association is not necessarily what the clue asks for."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

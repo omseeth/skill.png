@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result-binding and cache-write errors",
+      "count": 4,
+      "description": "Tool results were not assigned to local variables, saved using undefined variables, or not saved at all."
+    },
+    {
+      "failure_type": "unsupported inference or schema-field mapping",
+      "count": 3,
+      "description": "The agents inferred unstated hotel details or mapped star ratings and neighborhood names to the wrong or incomplete fields."
+    },
+    {
+      "failure_type": "hotel date inference or derivation",
+      "count": 2,
+      "description": "The agents guessed a checkout date or hardcoded a date instead of using the explicit stay length with adjust_date."
+    },
+    {
+      "failure_type": "assistant-solicited domain not activated",
+      "count": 1,
+      "description": "The agent treated an answer to a restaurant-recommendation question as a no-op instead of searching that domain."
+    }
+  ],
+  "patch": {
+    "reasoning": "Sharpen the existing execution guidance where failures show it was not applied: make result binding a strict code-generation invariant, clarify that an assistant's domain-specific recommendation question activates that domain, and disambiguate hotel stay dates and schema mapping without weakening required-input checks.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before finalizing tool code, verify that each `save_to_cache(value=...)` names the local variable assigned the corresponding tool result—not a guessed name derived from the domain or cache key. For example, assign `hotels = search_hotels(...)` and save with `value=hotels`.",
+        "content": "- **Result-binding invariant:** Never emit a bare search, filter, sort, or nearest-results call. Assign each call once to a local variable (for example, `restaurants = search_restaurants(...)`) and immediately save that exact variable (`save_to_cache(key=\"restaurants\", value=restaurants)`). Before returning, verify that every saved value is defined by the corresponding tool call; never guess a result variable from a tool name or cache key."
+      },
+      {
+        "op": "replace",
+        "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+        "content": "- At each turn, inspect cache summaries and resolve replies against the preceding assistant question and full conversation before choosing a tool action. An assistant question that solicits criteria for a domain as part of offering recommendations establishes that domain as an active request: for example, if the assistant asks for cuisine or dietary restrictions for restaurant recommendations, use the reply to search restaurants with established trip context once required inputs are available. Accepting an offer to search a new domain, category, or entity likewise creates that search. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested."
+      },
+      {
+        "op": "insert_after",
+        "target": "For hotels, when the check-in date and an explicit stay length in nights are known but checkout is not, use `adjust_date` to calculate checkout. Do not infer a stay length; ask when a required date cannot be obtained or derived from explicit information.",
+        "content": "\n- A date for a flight to the hotel destination may anchor hotel check-in only when the conversation clearly ties the hotel to that trip; it never establishes checkout or an unstated stay length. If checkout is missing and no explicit stay length is known, seek the checkout date rather than assuming a one-night stay. When explicit nights allow checkout to be derived, assign the returned `adjust_date` value to a local variable and pass it as `checkout_date=[that_variable]`; do not hardcode the calculated date."
+      },
+      {
+        "op": "replace",
+        "target": "For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; do not treat a request to stay in a named district as a proximity search. Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed. For flight `departure_time` and `arrival_time`, use 12-hour strings with an AM/PM suffix (for example, `[\"12:00 AM\", \"04:33 AM\"]`); represent midnight as `12:00 AM`, not `00:00:00`, and do not pass 24-hour `HH:MM:SS` strings to flight tools. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+        "content": "For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; preserve the complete user-supplied place name without shortening or truncating it, and do not treat a neighborhood request as proximity. Map a state abbreviation to `state`, not `city`. For hotel star-count requests, use `stars` (exactly N stars means `[N, N]`; at least N stars means `[N, 5]`); reserve `rating` for guest-review scores. Do not infer `num_people` from vague group descriptions such as “family”; use only an explicit or unambiguous count. Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed. For flight `departure_time` and `arrival_time`, use 12-hour strings with an AM/PM suffix (for example, `[\"12:00 AM\", \"04:33 AM\"]`); represent midnight as `12:00 AM`, not `00:00:00`, and do not pass 24-hour `HH:MM:SS` strings to flight tools. Do not add unrelated preferences."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

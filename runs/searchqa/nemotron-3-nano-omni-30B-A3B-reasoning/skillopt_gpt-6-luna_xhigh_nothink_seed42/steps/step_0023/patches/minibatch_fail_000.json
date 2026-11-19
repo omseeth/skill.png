@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "answer_format",
+      "count": 5,
+      "description": "Answers were plausible but missed the expected lexical form or granularity, including extra or omitted name parts and near-synonyms."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "The answer did not match the requested slot or relation, such as giving a process instead of a physical part."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "The answer used a present-day company name instead of the name associated with the historical event."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already gives broad instructions about exactness and answer slots, so the edits sharpen a few discriminative checks rather than repeat those rules: use a person's conventional public name, distinguish a requested component from its process, prefer the exact headword for definitions, and preserve historical organization names.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "For a person, use an explicitly supported full personal name rather than a familiar nickname when the full name is relevant, and preserve honorifics that are part of the context-supported conventional name, especially when the clue cues them.",
+        "content": "For a person, use the conventional public name supported by the clue and context, including a nickname when that is the established identifier. Do not expand it to a formal given name unless the clue requests the full name or expansion is needed to disambiguate. Preserve supported honorifics when they are part of the conventional name, especially when cued."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Before answering, parse the requested answer slot and all identifying relations or properties, then test the candidate against the complete clue. When snippets compete, prefer factual evidence that fits those details; keyword overlap in a title or heading, prominence, or a similar name alone is not enough. Do not substitute a related entity, example, remedy, or mechanism for the requested answer.",
+        "content": "\n- Treat the clue's grammatical head as a strict type constraint: a question asking for a part or component requires that component, not the process or mechanism occurring through it. For a short definitional clue, prefer the conventional term or headword that matches the definition over a related synonym or compound merely prominent in a retrieved passage."
+      },
+      {
+        "op": "append",
+        "content": "\n- When a clue ties an organization or company to a dated event, use the name it had at the time of that event. Do not silently substitute a present-day merged or rebranded successor name unless the question asks for its current identity."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

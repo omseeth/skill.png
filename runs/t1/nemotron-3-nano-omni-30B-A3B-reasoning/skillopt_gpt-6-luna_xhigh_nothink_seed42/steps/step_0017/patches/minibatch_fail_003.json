@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 5,
+      "description": "Search or filter results were left unbound or unsaved despite explicit cache requirements."
+    },
+    {
+      "failure_type": "missed_incremental_constraint_application",
+      "count": 3,
+      "description": "New hotel or restaurant criteria were omitted or not applied as explicit filter arguments to compatible cached results."
+    },
+    {
+      "failure_type": "cross_domain_scope_miss",
+      "count": 1,
+      "description": "A preference intended for both hotels and restaurants was not applied independently to both domains."
+    },
+    {
+      "failure_type": "proximity_relation_misclassification",
+      "count": 1,
+      "description": "A request for a hotel near a named attraction was treated as a neighborhood search instead of a cross-domain proximity request."
+    },
+    {
+      "failure_type": "unsupported_inference_or_parameter",
+      "count": 2,
+      "description": "The plan inferred unstated hotel criteria or added unsupported flight time constraints."
+    },
+    {
+      "failure_type": "incomplete_multi_domain_plan",
+      "count": 1,
+      "description": "A pending hotel request was omitted when the user supplied trip dates for both flight and hotel planning."
+    },
+    {
+      "failure_type": "round_trip_leg_semantics",
+      "count": 1,
+      "description": "The return date was treated as an arrival date rather than a separate reverse-direction departure leg."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make two recurring cache-refinement failures more operational: apply updates to every domain referenced by an elliptical reply and verify that each new constraint is an explicit filter argument. Clarify that ordinary “near” phrasing itself requests a cross-domain proximity operation. Existing persistence, inference, and flight-leg rules already cover the other failures, so they are not duplicated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. A direct answer can introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.",
+        "content": "- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. A direct answer can introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each. If the reply says a criterion applies to “both,” apply it independently to every still-pending domain referenced in context (for example, hotels and restaurants), using each domain’s appropriate filter and latest compatible cached result; do not apply it to only the last-mentioned domain."
+      },
+      {
+        "op": "replace",
+        "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+        "content": "- When refining a cached result, do not resend criteria already represented in that result. For every newly introduced, schema-supported criterion, pass its corresponding argument explicitly to the appropriate domain filter along with the latest compatible `prior_results`; `prior_results` alone does not apply the new criterion. Before calling, verify that each new criterion is present as a filter argument."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Proximity between travel domains",
+        "content": "\n- Treat relational wording such as “a hotel near [a named attraction]” as an explicit proximity request, even without a separate question asking to find the nearest options. Do not encode the named attraction as the hotel’s neighborhood; resolve the target in its proper domain and compare the relevant domain results with `search_nearest`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

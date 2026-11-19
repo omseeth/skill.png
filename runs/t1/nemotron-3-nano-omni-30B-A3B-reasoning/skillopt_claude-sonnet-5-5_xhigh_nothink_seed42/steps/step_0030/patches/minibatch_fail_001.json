@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_or_stale_replay",
+      "count": 2,
+      "description": "The reply was applied to the wrong cached domain, or the previous turn's kwarg was repeated. Hotel dates and rooms were answered by filtering cached restaurants. 'Downtown Raleigh' was answered by re-passing budget=55, which the summary already listed."
+    },
+    {
+      "failure_type": "invented_or_misrouted_params",
+      "count": 3,
+      "description": "num_people and has_kids_club were invented from 'family / kid-friendly'. num_people=3 was invented from '3 rooms'. A cuisine word ('Thai') was put in city=, where the gold output was a seek_information."
+    },
+    {
+      "failure_type": "dropped_literal_values",
+      "count": 3,
+      "description": "Values the user did state were omitted: the bare '4' answering the travelers question, num_people=4 from turn 1, 'kitchen' (has_inroom_kitchen), and the same-turn type 'Social' next to the named attraction."
+    },
+    {
+      "failure_type": "fabricated_date",
+      "count": 1,
+      "description": "A second multi-city hotel was searched with a checkout date ('May 26, 2025') that the user never wrote."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four small edits that merge into existing rules instead of adding sibling examples. (1) A per-domain gate plus a city gate: a hotel date/room reply must not be applied to a cached restaurants key, and a cuisine word is never a city. (2) KWARG TRACE rewritten to map each value in the last message to one kwarg, and to drop kwargs already listed in the loaded summary. (3) Rule 27 gets positive/negative rules for num_people, num_rooms, 'family/kid-friendly' and 'kitchen', plus when a stated head count is applied to hotels. (4) Rule 26's 'name only' wording is conditioned so a type stated in the same turn is kept. Each prohibition is paired with its positive trigger, as the meta-skill advises. Edits are short and avoid the large block insertions that regressed in earlier steps.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "saved as filtered_attractions.",
+        "content": "\n- DOMAIN GATE (the SEARCH GATE is per domain, and the reply's own words name the domain): check-in / check-out dates, rooms, guests, stars, amenities, per-night price -> hotels; cuisine, dietary words, per-person price -> restaurants. A cached key of ANOTHER domain never receives the reply. CACHE holds only 'restaurants' and the reply is 'I need 2 rooms for 2 people, checking in on <date> and checking out on <date>' -> `hotels = search_hotels(city=<city from any turn>, checkin_date=[<date as the user wrote it>], checkout_date=[<date as the user wrote it>], num_rooms=2, num_people=2)` + `save_to_cache(key=\"hotels\", value=hotels)`, with no restaurant line.\n- CITY GATE (before any search with city=): `city=` takes only a city literally named in a user message. A cuisine, dietary word or occasion ('Thai', 'gluten-free') is never a city. No city and no state anywhere in the conversation -> the only output is `seek_information(\"We need the city for the restaurant.\")` (hotel: add the missing dates to the same sentence). Never write helper assignments such as `city = ...`."
+      },
+      {
+        "op": "replace",
+        "target": "- KWARG TRACE (every filter_* call): each kwarg must come from a word in the user's LAST message.",
+        "content": "- KWARG TRACE (every filter_* call): first split the user's LAST message into its values and give each one kwarg: a place after an area question -> neighborhood=[\"<place>\"]; a number after a per-night / per-person / ticket question -> budget=N; a bare head count after a travelers question ('4 and ...') -> num_people=4 (hotels only); 'N rooms' -> num_rooms=N; an amenity or cuisine word -> its own flag. A kwarg whose value the loaded summary already lists (e.g. 'budget: $55') belongs to the PREVIOUS turn: drop it and write the last message's value instead. Each kwarg must come from a word in the user's LAST message."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 27: Exact value shapes and parameter names (check every kwarg before sending)",
+        "content": "\n- Counts and context words: `num_people` only from a literal head count ('4 people', 'we are 4', 'solo trip' -> 1, or a bare number answering a travelers question). `num_rooms` only from 'N rooms'; '3 rooms' is num_rooms=3 and NOT num_people. 'family', 'kids', 'kid-friendly', 'group' are neither a number nor an amenity (has_kids_club only for the words 'kids club'): 'family vacation, kid-friendly hotel' plus dates -> search_hotels(city, checkin_date, checkout_date) with no extras.\n- When a hotel is requested, a head count stated in any turn goes into the first search_hotels. If the hotels key already exists and its summary lists no travelers, add num_people=N to the next hotel filter together with that turn's new constraint.\n- 'kitchen' / 'hotel with a kitchen' -> has_inroom_kitchen=True. Amenities named in turn 1 (kitchen, gym, pool...) are carried into the first search_hotels when the dates finally arrive, even if the last turn only gives dates and rooms."
+      },
+      {
+        "op": "replace",
+        "target": "Pass the NAME ONLY: no type, even if a type was used for the earlier attractions search.",
+        "content": "Pass attraction_name=[\"<exact name>\"]; add `type=[...]` only when the SAME user turn states that type (e.g. 'stay downtown with Social attractions, and we want to visit <name>' -> type=[\"Social\"], attraction_name=[\"<name>\"]). Never re-add a type taken from an earlier turn's search."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

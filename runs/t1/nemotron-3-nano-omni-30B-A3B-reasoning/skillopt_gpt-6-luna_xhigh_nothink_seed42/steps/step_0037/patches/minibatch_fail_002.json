@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_or_misrouted_update",
+      "count": 7,
+      "description": "Ready requests were ignored, refined with a fresh search instead of the compatible cached result, or applied to the wrong target or domain."
+    },
+    {
+      "failure_type": "schema_or_value_misinterpretation",
+      "count": 4,
+      "description": "A user-supplied category or code was changed or misread, or a filter received an argument belonging to another domain."
+    },
+    {
+      "failure_type": "tool_execution_or_persistence",
+      "count": 8,
+      "description": "Plans omitted required calls or result saves, or imported unavailable tool modules instead of using the runtime-provided functions."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already specifies cache refinement, direct runtime tool use, and result saving, so repeating those rules would not address the gap. These edits clarify two recurring interpretation failures: affirmations to questions about a specific domain or type create an actionable request, and categorical values should not be silently normalized or mapped to a different preference slot.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed.",
+        "content": "When the assistant asks whether the user wants to explore a named supported domain or category, an affirmative reply makes that specific search pending even if the domain was not previously active; carry the named domain, target, or type into the appropriate search."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- Preserve user-supplied category, cuisine, airline-code, and other categorical values when passing them to compatible string or list fields; do not silently substitute a nearby example label or synonym. Resolve terse replies using the assistant’s immediately preceding question to select the argument slot, and normalize a value only when the schema explicitly requires a canonical enum value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

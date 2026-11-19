@@ -1,0 +1,26 @@
+{
+  "reasoning": "Preserved all failure-driven edits as the higher-priority corrections, including the precedence-based cache workflow, flight-leg filtering, cache-key guidance, and input-mapping clarifications. Kept the success-driven airport preference edit because it adds guidance not covered by the failure edits. No edits target the protected section. [optimizer-ranked: selected 2/8 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "content": "**Turn-action precedence (apply before any tool call):** Inspect the full conversation, preceding assistant question or offer, and cache summary; resolve terse replies in context and identify only the scopes changed by the latest turn. An offer is not accepted by an unrelated answer, and a proximity suggestion alone does not authorize `search_nearest`.\n1. If the user requests or accepts a proximity search, run `search_nearest` using compatible cached hotel and requested attraction or restaurant results; do not substitute a new category search. Preserve earlier explicit proximity requests unless withdrawn, and search only for any genuinely missing input scope.\n2. For each changed scope, if a compatible cached result covers the same domain, location, dates or leg, and entity scope, retrieve it by its exact literal cache key. If the user adds or changes a supported filterable constraint—including a relevant party-size or amenity constraint—apply the matching filter and save the result. Otherwise, retrieve and use the compatible result without searching or filtering again. Do not rebuild covered scopes, composite inputs, or unaffected domains and legs.\n3. Base-search only for a genuinely new or uncovered domain, category, entity, location, date, or leg, including all active supported criteria. Combine same-domain criteria in one call when supported, such as a category and named attraction.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+      "content": "- An assistant question that solicits criteria for a domain as part of offering recommendations establishes that domain as an active request (for example, asking about cuisine or dietary needs for restaurant recommendations); interpret the reply as supplying criteria for that domain. Then apply the turn-action precedence above: retrieve and filter a compatible cached result, or search only an uncovered scope once its mandatory inputs are available. Accepting an offer to search a new domain, category, or entity likewise activates that scope. A generic affirmative indicates proximity only if the preceding offer or request was explicitly about proximity.",
+      "support_count": 8,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 0 adds the high-priority turn-action classifier: resolve the full context, reuse compatible cached results, preserve proximity requests, and search only for uncovered scopes. Edit 3 complements it by clarifying that answers to recommendation questions establish an active domain request, a broadly useful gap not stated explicitly in the current skill.",
+    "selected_indices": [
+      0,
+      3
+    ]
+  }
+}

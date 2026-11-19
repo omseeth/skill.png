@@ -1,0 +1,61 @@
+{
+  "reasoning": "Preserved all failure-driven edits because they address distinct corrective patterns and do not conflict with the success-driven insight. Added the success insight as a complementary cache-use clarification: when a compatible cached result already covers an outstanding request, retrieve and use it rather than printing that no planning is needed. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+      "content": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness independently for each requested domain and, where applicable, each city or leg: proceed with searches or refinements for domains whose required inputs are available even if another is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across blocked domains. Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood. Optional preferences are not mandatory inputs.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+      "content": "\n- Tools are provided directly in the execution environment: call them by name without importing, redefining, or wrapping them.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+      "content": "\n- Preserve user-supplied categorical labels verbatim in supported fields such as attraction `type` and restaurant `cuisine`; do not substitute a presumed taxonomy synonym or normalize the wording unless the tool documentation explicitly specifies that mapping.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. A direct answer can introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.",
+      "content": "- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. Interpret replies in the context of the assistant's concrete question or suggestion, not only their literal wording: a direct answer can supply the asked-for amenity or preference, and asking what is available after an area is suggested makes that area an actionable search target. A direct answer can also introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the reply says a criterion applies to “both,” apply it independently to every still-pending domain referenced in context (for example, hotels and restaurants), using each domain’s appropriate filter and latest compatible cached result; do not apply it only to the last-mentioned domain. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+      "content": "\n- When a new itinerary-wide flight constraint is added after results exist for a round trip or other multi-leg itinerary, apply it independently to every affected directional leg using that leg’s compatible cached result, then save each refined leg under a distinct key. Existing base results do not satisfy the new constraint.\n- Resolve abbreviated preferences using the immediately preceding question’s context. When asked for preferred airlines or class of service, map an airline code such as “AM” to `airline` and a cabin label such as “economy” to `flight_class`; interpret AM/PM as a time preference only when answering a departure- or arrival-time question.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+      "content": "- When refining a cached result, do not resend criteria already represented in that result. For each newly introduced, schema-supported criterion, pass its corresponding argument explicitly to the appropriate domain filter along with the latest compatible `prior_results`; `prior_results` alone does not apply the new criterion. Before calling, verify that every new criterion is present as a filter argument.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Proximity between travel domains",
+      "content": "\n- Treat relational wording such as “a hotel near [a named attraction]” as an explicit proximity request, even without a separate question asking to find the nearest options. Do not encode the attraction as the hotel’s neighborhood. If replying to a question about hotels near an attraction, a named or accepted attraction is the reference target: verify that the cache covers that exact target and otherwise search for it using `attraction_name` before calling `search_nearest`. Rank hotels with `groupBy=\"hotel\"`. Mere interest in visiting a place without that proximity context does not imply a nearest-results call.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.",
+      "content": "\n- If the latest turn adds no criterion and a compatible listed cache result already covers the outstanding request—including when the user says they are flexible or accepts an offer to provide recommendations—retrieve that result with its exact listed key into a local variable and use it directly. Do not search or filter again, and do not use `print(\"No planning needed\")` in place of retrieving a result the user is expecting.",
+      "support_count": 6,
+      "source_type": "success"
+    }
+  ]
+}

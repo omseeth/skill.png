@@ -1,0 +1,46 @@
+{
+  "reasoning": "Merged overlapping no-op guidance and tool-execution safeguards into their existing bullets. Combined the hotel-date exceptions and partial-domain handling in the missing-information section, while keeping affirmative replies and distinct argument-mapping clarifications in separate, non-overlapping regions. Support counts reflect the number of source patches addressing each edit. [optimizer-ranked: selected 4/7 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+      "content": "Check each required tool field against explicit values in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Partition requested actions by domain: execute and save every action whose own mandatory inputs are available, even when another requested action is blocked by missing inputs. Make one `seek_information` call asking only for the missing mandatory information for blocked actions; optional preferences are not mandatory inputs. Do not invent values or use defaults. Resolve references such as “there” or “nearby” to a previously stated destination only when that destination is unambiguous. When a hotel stay is clearly at the sole destination of an explicitly dated round trip and no separate hotel location or dates were given, use that destination as the hotel city and the outbound and return dates as check-in and check-out. If an explicit check-in date and stay length in nights are given but checkout is missing, derive checkout with `adjust_date`. If the destination or date relationship is ambiguous, ask rather than infer.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Incremental planning and cache use",
+      "content": "- Resolve brief or affirmative replies against the immediately preceding assistant question or offer. Treat them as accepting the offered action or preference, add that work to the active plan, and retain earlier active requests; do not treat the reply as a no-op merely because related results are cached. Apply each new constraint to its intended item and domain, and filter only with a compatible cached result from that same domain.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "content": "- Call the provided tools directly; do not import tool modules, alter module paths, or define or redefine tool functions or models. Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key before proceeding. Save refined results under new keys and do not substitute hand-built dictionaries or redefined models for tool result objects. Before finishing, verify that every result-producing call has a corresponding save.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+      "content": "- Map comparative time language to a range for the correct field: “by” or “no later than X” means start-of-day through X; “after” or “no earlier than X” means X through end-of-day; “at X” means X to X. Apply departure constraints to `departure_time` and arrival constraints to `arrival_time`. Use the time syntax accepted by the specific tool; do not assume seconds or end-of-day sentinels are valid.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 6 addresses cross-domain blocking and resolves context gaps, though its conditional inferences require care. Edit 1 fills a conversational gap by preserving active requests when the user accepts an offer. Edit 2 strengthens tool-use integrity and ensures results are saved before proceeding. Edit 5 gives actionable guidance for interpreting common comparative time constraints. The remaining edits are narrower or more duplicative of existing guidance.",
+    "selected_indices": [
+      6,
+      1,
+      2,
+      5
+    ]
+  }
+}

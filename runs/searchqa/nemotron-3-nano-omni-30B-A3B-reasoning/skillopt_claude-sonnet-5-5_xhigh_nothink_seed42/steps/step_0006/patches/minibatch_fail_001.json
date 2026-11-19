@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "The answer did not satisfy the clue's category noun or descriptor, or was a component or relative named in the passages. Examples: 'sodium hydroxide' for 'caustic acid', 'radius' for 'Its area equals pi r squared', 'dugong' for 'found in Florida'."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "Bare list clues ('Edward Kennedy, John Kerry'; 'Finland, Norway, Sweden') have no guidance. The agent echoed a list item or an umbrella term that does not fit every item, instead of giving the shared link."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 2,
+      "description": "'Václav Havel' has diacritics where the key is ASCII ('Vaclav Havel'). The agent also gave a full legal name with a quoted nickname ('Anthony Allen \"Tony\" Williams') where the key has a short name, and a singular 'fungus' where the key has 'Fungi'."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "The passages never mentioned the key event (a mayor's 2-week sabbatical). The agent chose the best-documented person matching the generic descriptors instead of using trivia knowledge, which points to Marion Barry."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four failure patterns recur. (1) Answers ignored the category noun or a descriptor in the clue. (2) Bare list clues have no guidance. (3) Exact match fails on diacritics and over-long names. (4) The agent did not fall back on its own knowledge when the passages lacked the clue's key fact. The edits are short and general. They add a descriptor and category-noun check, a rule for list clues, ASCII and short-name formatting, and a knowledge fallback. None of them touches rules that were already working.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "\n- CHECK the category noun and every descriptor before answering. If the clue says 'caustic ACID', the answer must be an acid (hydrochloric acid), not a base from a nearby passage (sodium hydroxide). Keep words such as 'acid' when they are part of the standard name of a substance. If the clue says 'rare mammal found in Florida', the answer must live in Florida (manatee), even if a passage says 'a relative of the dugong'. A relative, component or variable in the passages is only an anchor.\n- 'Its area/volume/circumference equals <formula>' or 'its <property> is ...' asks for the WHOLE object that has that property (Circle), not a variable in the formula (radius).\n- A verbatim-looking passage line only overrides your own judgment if it matches the whole clue. A nearby sentence that merely shares the topic does not."
+      },
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- A clue that is just a bare list of names ('Edward Kennedy, John Kerry', 'Finland, Norway, Sweden') asks for what links the items. Prefer a single entity that all items share, such as a state, country, team, party or role (two senators -> their state, Massachusetts). Do not just repeat one person from the list. Before answering with an umbrella term, check that it contains EVERY item exactly. 'Scandinavia' does not strictly include Finland. If no umbrella fits, answer with the listed item that the passages treat as the common or central member."
+      },
+      {
+        "op": "insert_after",
+        "target": "('M*A*S*H', not 'MASH film').",
+        "content": "\n- Write names in plain ASCII letters without accents or diacritics, as a trivia answer key does ('Vaclav Havel', not 'Václav Havel'; 'Pokemon', 'Zurich'), even if the passage uses accents.\n- For people, use the commonly known short form (first and last name), not the full legal name, middle names or a nickname in quotes. Write 'Marion Barry', not 'Marion Shepilov Barry, Jr.', and 'Tony Williams' or 'Anthony Williams', not 'Anthony Allen \"Tony\" Williams'. Keep a middle initial only when it is part of how the person is standardly known ('Warren G. Harding')."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "\n- If no passage mentions the clue's key event or fact (a particular 'sabbatical', scandal, record or quote), do NOT default to the best-documented entity that fits only the generic descriptors (e.g. the longest-serving or most recent mayor). Use your own trivia knowledge of who or what that distinctive fact belongs to. Prefer a candidate that appears in the passages and whose time period and role fit. Consider the person famous for the headline-making event, such as a scandal-linked mayor, over the one who merely held the office."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

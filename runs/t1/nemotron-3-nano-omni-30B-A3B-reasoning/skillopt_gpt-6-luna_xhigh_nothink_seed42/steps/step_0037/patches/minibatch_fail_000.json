@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_refinement_selection_or_delta_omission",
+      "count": 5,
+      "description": "Agents selected base or unrelated cached results, searched instead of refining, or omitted one or more newly stated criteria."
+    },
+    {
+      "failure_type": "incomplete_requested_actions_or_result_persistence",
+      "count": 5,
+      "description": "Agents missed a ready domain or target, or failed to bind and save required tool results."
+    },
+    {
+      "failure_type": "attraction_target_and_proximity_confusion",
+      "count": 2,
+      "description": "Agents failed to search for a named attraction or treated interest in visiting it as a proximity request."
+    },
+    {
+      "failure_type": "schema_semantics_or_location_mapping",
+      "count": 2,
+      "description": "Agents mapped a state to a city or used an incorrect schema field for a stated preference."
+    },
+    {
+      "failure_type": "invented_mandatory_hotel_dates",
+      "count": 1,
+      "description": "An agent used dates not supplied for the hotel stay instead of asking for the missing check-in and check-out dates."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache failures recur despite general guidance, so make cache choice and delta application an explicit sequence that favors the most refined compatible result and applies every missing criterion. Clarify that a named attraction is a search target even without a proximity request, and add the missing allergy-field mapping. Other observed errors are already directly addressed by existing rules.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "- For each changed or pending domain, inspect the listed cache summaries and select the most refined compatible result: it must match the exact target and cover all earlier explicit criteria. If both base and filtered results exist, use the latest compatible filtered result. Retrieve it by its exact listed key into a local variable. Compare its summary with the full conversation and apply every still-uncovered criterion—including multiple new criteria in the latest turn—in the appropriate filter, passing the cached result as `prior_results` when required. Bind and save the exact refinement under a new key. Do not resend covered criteria, search instead of refining, reprocess unaffected domains, or rely on variables from earlier executions. Search only when no compatible cached result exists and mandatory inputs are explicit."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+        "content": "\n- This does not make a named attraction optional: a request to visit or find a named attraction is itself an attraction-search target. If no compatible result covers that exact name, search for it with `search_attractions` using the stated location and `attraction_name` (and any other explicit attraction criteria). Call `search_nearest` only when a proximity relation is requested."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`.",
+        "content": "\n- For a stated nightshade allergy, when the restaurant schema has no nightshade-specific field, use `has_tomato_allergy_options=True` as the closest supported allergy-options field; do not substitute an unrelated allergy field."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,56 @@
+{
+  "step": 26,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 23,
+  "failure_patterns": [
+    {
+      "pattern": "cache_scope_mismanagement: Repeated base searches, reprocessed already-satisfied constraints, or regenerated unrelated and derived results instead of acting only on the changed cached scope.",
+      "count": 23,
+      "task_ids": [
+        "flighthotel:train:8:39:3",
+        "flighthotel:train:8:13:1",
+        "attraction:train:16:10:0",
+        "hotelattraction:train:4:42:2",
+        "hotelrestaurant:train:16:3:0",
+        "flighthotelattraction:train:4:32:4",
+        "hotel:train:15:36:2",
+        "restaurant:train:5:28:2",
+        "flighthotel:train:14:2:4",
+        "flighthotelrestaurant:train:21:27:1",
+        "flighthotel:train:10:9:2",
+        "flighthotelattraction:train:12:16:4",
+        "flight:train:23:12:2",
+        "hotel:train:16:36:2",
+        "hotelattraction:train:21:43:2",
+        "restaurant:train:5:60:2",
+        "attraction:train:23:10:0",
+        "hotel:train:14:35:2",
+        "hotelrestaurant:train:18:45:3",
+        "flighthotelrestaurant:train:23:39:2",
+        "flighthotelattraction:train:3:19:2",
+        "hotel:train:9:25:3",
+        "restaurant:train:13:21:3"
+      ]
+    }
+  ],
+  "score_before": 0.505,
+  "score_after": 0.47,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "\n\nFor a same-scope follow-up that adds a filterable preference such as budget or an amenity, retrieve the compatible result and filter it rather than repeating the base search. Pass only newly requested criteria and active criteria not already embodied in the retrieved result; save each filtered result under a new descriptive key. Repeat this for each affected leg, not for unaffected legs or domains. For example, when the budget and room-service preference are newly requested and not already embodied:\n```python\nprior_hotels = get_results_from_cache(key=\"<exact compatible hotel key>\")\nfiltered_hotels = filter_hotels(prior_results=prior_hotels, budget=<requested budget>, has_room_service=True)\nsave_to_cache(key=\"<new filtered hotel key>\", value=filtered_hotels)\n\nprior_outbound = get_results_from_cache(key=\"<exact outbound-flight key>\")\nfiltered_outbound = filter_flights(prior_results=prior_outbound, flight_class=[\"<requested class>\"])\nsave_to_cache(key=\"<new filtered outbound key>\", value=filtered_outbound)\nprior_return = get_results_from_cache(key=\"<exact return-flight key>\")\nfiltered_return = filter_flights(prior_results=prior_return, flight_class=[\"<requested class>\"])\nsave_to_cache(key=\"<new filtered return key>\", value=filtered_return)\n```",
+      "target": "```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```"
+    },
+    {
+      "op": "replace",
+      "content": "For restaurant ratings and hotel guest ratings, interpret an unqualified numeric score (for example, “3.5 rating”) as exact and use `[N, N]` in `rating`. Use `[N, 5]` only when the user states a minimum, such as “at least N” or “N or higher.” For hotel star classification, use `stars`, not guest `rating`: use `[N, N]` for an exact star class and `[N, 5]` for “at least N stars.”",
+      "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating."
+    },
+    {
+      "op": "insert_after",
+      "content": "\nFor a specifically named attraction, use `attraction_name=[<exact user-provided name>]`; do not treat its name as an attraction `type` or assume a cached category-only result includes it. For hotel amenities, map “gym” to `gym_present=True`, “fitness center” to `has_fitness_class=True`, and an explicitly requested “business center” to `has_business_center=True`. Do not substitute between these fields or infer a specific amenity from a generic phrase such as “business facilities.”",
+      "target": "For attractions, put the requested category in `type` with its exact value (for example, if the requested type is `Scenic`, pass `type=[\"Scenic\"]`)."
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "structure_error",
+      "count": 3,
+      "description": "Duplicate non-empty 'optional parameters' keys (one list overwrote the other), a stray ']' after '}' that broke the whole list and gave an unparseable answer, and objects with no 'optional parameters' key. Two answers also lacked a closing </answer>."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 6,
+      "description": "Chose a tool whose fields did not fit the query's qualifiers: Moka By Source with 'United States' as source, Tomorrow.io instead of Foreca, Zelda Characters Route instead of the games list, Spotify Search or a URL-based tool for ID lookups, Radical position reused for a stroke count."
+    },
+    {
+      "failure_type": "missing_calls",
+      "count": 1,
+      "description": "The kanji English-meaning clause was dropped, and the stroke-count clause was merged into the radical-position tool."
+    },
+    {
+      "failure_type": "tool_name_form",
+      "count": 1,
+      "description": "Hybrid name `RapidWeather: Current conditions (detailed)`: the endpoint belongs to Easy Weather."
+    },
+    {
+      "failure_type": "value_form",
+      "count": 5,
+      "description": "Negative longitude sign dropped; count and amount parameters missed (25 puzzles, 5 words); lowercase slug values ignored (steam); Asos defaults partly omitted; Amazon domain given as amazon.com; optional-only starid placed in required."
+    }
+  ],
+  "patch": {
+    "reasoning": "Structure errors score zero and recurred in 3 of 8 failures despite the existing self-check, so edit 1 puts a short merge-then-close rule with the exact bad strings at the top of the skill. The largest bucket is wrong tool choice: the agent picks a tool by name and then stuffs values into mismatched fields. Edit 2 adds a param-fit test that catches this, with concrete examples from the batch. Edit 3 adds the endpoint-first lookup, which fixes hybrid names, and the one-call-per-facet kanji example. Edit 4 adds a compact value audit for sign, count, placement, slug and default errors, placed in the final self-check where it will be read last.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Output format (errors here score zero)",
+        "content": "- MERGE-THEN-CLOSE (three structure bugs that keep recurring). (1) Collect ALL optionals for a call first, then write ONE list. BAD `\"optional parameters\": [{\"name\": \"sort\", \"value\": \"best_seller\"}], \"optional parameters\": [{\"name\": \"page\", \"value\": \"1\"}]`. GOOD `\"optional parameters\": [{\"name\": \"sort\", \"value\": \"best_seller\"}, {\"name\": \"page\", \"value\": \"1\"}]`. (2) A call with only required params still ends with `\"optional parameters\": []`. BAD `{\"tool name\": \"X\", \"required parameters\": [...]}`. (3) Each line ends `]},` and never `}]}],` or `}],` (an extra `]` after `}` closes the whole list, nothing parses and the score is 0). Always finish with `</answer>`."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "- PARAM-FIT TEST (run for every clause before naming a tool). List the clause's qualifiers (topic, country, unit, day count, ID, name filter) and the schema field that would carry each. If you would have to stuff a value into a field whose name does not describe it (a country into `source`, a unit into `timesteps`, a bare ID into `spotify_url`), or a qualifier has no field, the tool is wrong. Find the sibling whose fields literally are those qualifiers. 'Business news from the United States' -> `News Network: Get News` (required `category`=`business`, `region`=`us`), not `Moka News: By Source (New)` with `source`=`United States`. 'Search for games with Majora in the name, 25 results' -> `The Legend of Zelda: List of The Legend of Zelda games` (`name`, `limit`), not `Characters Route`. 'Album information for these IDs' -> an albums tool taking `ids`; 'artist data for this ID' -> `Spotify: Get artists` (`ids`). Not `Spotify: Search` (needs a query) and not a URL-based tool when the query gives a bare ID."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "- ENDPOINT-FIRST LOOKUP AND ONE CALL PER FACET. Decide the endpoint words you need ('Current conditions (detailed)', 'Radical stroke number'), search the `### ` list for those words, and copy that heading with ITS OWN provider. Never attach the endpoint to a provider you used elsewhere in the answer: `RapidWeather: Current conditions (detailed)` does not exist; the heading is `Easy Weather: Current conditions (detailed)`. Kanji clauses are separate facets, each with its own tool and its own call: 'English meaning study' -> `Learn to read and write Japanese kanji: Kanji English meaning` (`kem`=`study`); 'radical position hen' -> `...: Radical position` (`rpos`=`hen`); 'radicals with 7 strokes' -> `...: Radical stroke number` (`rs`=`7`). Never reuse one facet tool for another clause, and never drop one of them."
+      },
+      {
+        "op": "insert_after",
+        "target": "If the tool cannot express a qualifier, switch to a sibling that can.",
+        "content": "\n8. VALUE AUDIT. (a) Copy numbers with their sign: coordinates `33.3563,-116.8649` keep the minus on the longitude (BAD `116.8649`). (b) Every count in a clause needs a field: '25 chess puzzles' -> `count`=`25`; '5 random words, 3-8 letters' -> `amount`=`5`, `minLength`=`3`, `maxLength`=`8`. Check the synonyms count/amount/limit/pageSize/per_page. (c) Optional-only inputs stay optional (`Stars API: Planet list` `starid` goes in `optional parameters`). Units and other qualifiers never go in `required parameters` unless the schema lists them there. (d) Filter values such as platform, type and sort are lowercase schema tokens: `steam`, `loot`, `popularity`. (e) A tool with locale defaults gets all of them (`Asos: v2/auto-complete`: country, currency, lang, sizeSchema, store). Amazon `domain` is `com`, not `amazon.com`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

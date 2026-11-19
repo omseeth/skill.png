@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_scope",
+      "count": 4,
+      "description": "Agents reran searches instead of filtering relevant cached results, or regenerated work in domains unaffected by the latest turn."
+    },
+    {
+      "failure_type": "result_binding_and_cache_persistence",
+      "count": 7,
+      "description": "Agents omitted required cache saves, discarded results, or saved an unassigned variable."
+    },
+    {
+      "failure_type": "round_trip_leg_modeling",
+      "count": 3,
+      "description": "Agents represented return travel as an arrival date on the outbound search instead of a reverse-direction flight leg."
+    },
+    {
+      "failure_type": "missing_required_information",
+      "count": 2,
+      "description": "Agents ignored missing mandatory details or invented a flight origin rather than asking for it."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make cache follow-ups and domain scope more operational, enforce binding and saving the actual result, spell out separate outbound and return calls, and clarify that missing information for one domain does not block complete searches in another.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Cache-aware tool workflow",
+        "content": "- On a follow-up that adds supported constraints to a cached domain, retrieve the matching result and apply one matching `filter_*` call with all newly supplied supported constraints for that domain; save the filtered result. Do not rerun its search. Work only on domains or itinerary legs newly requested or affected by changed constraints, and leave valid unrelated cached results alone. Call `search_nearest` only when the user explicitly asks for proximity or nearest options."
+      },
+      {
+        "op": "replace",
+        "target": "- Assign every search, filter, sort, and nearest-results output to a variable, then immediately save it with `save_to_cache` under a unique, descriptive key before using it in later calls. Pass the assigned prior result to filters, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally.",
+        "content": "- For every search, filter, sort, or nearest-results call, assign the call's return value immediately and save that exact variable with `save_to_cache` under a unique, descriptive key before using it later. Never print or discard a result, or save a guessed or undefined variable. Pass the retrieved or assigned prior result to filters, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally."
+      },
+      {
+        "op": "replace",
+        "target": "- Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to both legs, and do not combine distinct legs by repeating keyword arguments in one call.",
+        "content": "- Model each explicitly described flight leg as its own `search_flights` call, with its own origin, destination, and `departure_date`. For a round trip, search outbound from origin to destination on the outbound date, then search return from destination to origin using the return date as that call's `departure_date`. Never encode the return leg as `arrival_date` on the outbound call or assume a same-city origin and destination unless explicitly stated. Apply an explicitly requested flight class to both legs, assign each result to its own variable, and save each leg under a distinct cache key."
+      },
+      {
+        "op": "replace",
+        "target": "- Before calling a travel tool, check its required parameters against the full conversation and available context. If any required details are missing, use `seek_information` to ask only for those details; do not invent values, pass `None`, or run a partial search. For requests spanning multiple domains, bundle missing required details for all requested domains into the same information request. Do not ask for optional preferences.",
+        "content": "- Check mandatory inputs separately for every requested domain and itinerary leg against the full conversation and available context. If details are missing for a domain or leg, do not call that search or invent values; make one `seek_information` request listing only the missing mandatory details across affected domains and legs. Still execute and cache other requested searches whose required inputs are complete; missing flight information does not block a fully specified hotel or restaurant search. Do not ask for optional preferences."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,56 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "spurious_flight_or_hotel_refilter",
+      "count": 3,
+      "description": "Reply had no flight word (rooms/party size, bare 'Yes' to an attraction offer, hotel amenities), yet flight keys were re-filtered with an invented or earlier class/date, and old hotel kwargs were re-passed."
+    },
+    {
+      "failure_type": "missing_first_search_for_accepted_offer",
+      "count": 1,
+      "description": "'That would be great' accepting 'Touristy attractions near your hotel' (no attractions key) produced filters instead of search_attractions + search_nearest."
+    },
+    {
+      "failure_type": "multi_city_under_coverage",
+      "count": 1,
+      "description": "In a multi-city trip, the attraction search was done for only one destination city instead of one per city."
+    },
+    {
+      "failure_type": "dropped_searchable_domain_with_seek_information",
+      "count": 1,
+      "description": "Hotel without dates plus restaurants in a known city: output was only seek_information, with no search_restaurants."
+    },
+    {
+      "failure_type": "state_code_in_city",
+      "count": 1,
+      "description": "'NV' was passed as city= instead of state= in search_attractions."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of six failures were spurious flight filters on replies with no flight word, so I tightened the existing flight-rule sentence rather than adding a gate. That edit also adds the rooms/party-size row. The DATE GATE is the first rule the agent reads, and it implied a lone seek_information, so it now says to search other searchable domains first. A short bullet under Rule 26 covers bare acceptance of an attraction offer (first search plus search_nearest) and one attraction search per destination city. A one-line hygiene fix makes two-letter state codes unmistakable. I deliberately avoided touching the Rule 2/17 'earlier constraint' clauses, because edits there were rejected in earlier steps.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Conversely, when the last message is about hotels or restaurants, write no flight line.",
+        "content": "Conversely, when the user's LAST message has no flight word (an amenity, stars, neighborhood, a hotel budget, rooms or party size, a restaurant or attraction request, or a bare 'Yes' / 'That would be great'), write ZERO flight lines. A class or date named in an earlier turn is already in the flight keys' summaries and is never re-applied, and never invent a flight_class. A rooms / party-size reply ('M rooms and N people') is exactly `filter_hotels(prior_results=<most refined hotels key>, num_rooms=M, num_people=N)` + save, on hotels only."
+      },
+      {
+        "op": "replace",
+        "target": "It is the whole output unless another requested domain is searchable (see 4b).",
+        "content": "First search every OTHER requested domain that is searchable (a restaurant or attraction request with a city known anywhere, e.g. 'hotel in Fresno for 5 ... also restaurants in the city' -> `restaurants = search_restaurants(city=\"Fresno\")` + `save_to_cache(key=\"restaurants\", value=restaurants)`), and put the single seek_information last. The seek_information is the whole output only when no other requested domain is searchable (see 4b)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Without a hotels key, 'near the hotel' needs no search_nearest. Just run the normal first search.",
+        "content": "- A bare acceptance ('That would be great', 'Yes, that sounds amazing') of the assistant's offer of an attraction type or restaurants, when CACHE has NO key for that domain, is a FIRST SEARCH of it: type or cuisine copied from the assistant's last message, city = trip destination. If the offer said 'near your hotel' and a hotels key is cached: `attractions = search_attractions(city=\"<destination>\", type=[\"<offered type>\"])` + save 'attractions', then `h = get_results_from_cache(key=\"<most refined hotels key>\")`, `nearest_hotels = search_nearest(hotels=h, attractions=attractions, groupBy=\"hotel\")` + save. Never re-filter flights or hotels for such a reply.\n- Multi-city trip (keys like first_/second_ flights and hotels): run the attraction (or restaurant) search once per destination city, saved as first_attractions and second_attractions, in the same block. Add search_nearest only when the offer said near/close to the hotel (one per city, using that city's hotels key)."
+      },
+      {
+        "op": "replace",
+        "target": "A US state or abbreviation ('OR', 'CA', 'Georgia', 'a trip to CA') goes in `state=`, never in `city=`.",
+        "content": "A US state or any two-letter state code ('NV', 'OR', 'CA', 'GA', 'Georgia', 'a trip to CA') goes in `state=`, never in `city=`; `city=\"NV\"` is always wrong."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

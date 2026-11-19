@@ -1,0 +1,38 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_selection",
+      "count": 4,
+      "description": "Selected an overly broad or mismatched endpoint, added redundant alternatives, or included unrelated calls instead of matching each request to its most direct tool."
+    },
+    {
+      "failure_type": "parameter_mapping",
+      "count": 5,
+      "description": "Used noncanonical values or formatting, misplaced optional parameters, or failed to follow the tool's expected parameter conventions."
+    },
+    {
+      "failure_type": "output_format",
+      "count": 1,
+      "description": "Returned the wrong JSON key names and structure, so the tool calls could not be parsed."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most repeated issues are choosing among similar tools and mapping query values to each tool's schema. Add practical selection and parameter checks, plus a strict final-format validation to prevent the unparseable response.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Selecting tools\n- Match each distinct request to the endpoint whose operation and input scope most directly fit it (for example, an email-address check is not interchangeable with a domain-only check). Prefer the best-fit endpoint over calling several similar alternatives for the same requested result.\n- Make repeated calls to the same endpoint only when the user separately requests repeated retrievals. Do not add unrelated calls or invent inputs to make an endpoint appear relevant.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Mapping parameters\n- Follow the tool schema exactly: place each parameter in the required or optional list where it is declared, and use the parameter names as written.\n- Preserve query-provided identifiers and meaningful formatting. For coded fields, use the tool's conventional or documented code; for enumerated values, use an allowed spelling and casing. Format multiple values using the delimiter expected by the tool.\n- Include optional parameters only when the request calls for them; do not substitute a different value or invent a default."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Final response check\nBefore submitting, verify that the response is a parseable JSON list inside the required tags, with exactly the required keys (`tool name`, `required parameters`, and `optional parameters`) in every call object. Include only supported, relevant calls; do not put commentary or reasoning inside the JSON list."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

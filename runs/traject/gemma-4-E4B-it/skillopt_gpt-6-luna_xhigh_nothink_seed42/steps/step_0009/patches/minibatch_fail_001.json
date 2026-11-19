@@ -1,0 +1,35 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_coverage",
+      "count": 7,
+      "description": "Calls omitted, misassigned, or overextended requested facets; one trajectory was treated as requiring no calls because it was phrased retrospectively."
+    },
+    {
+      "failure_type": "argument_schema_mapping",
+      "count": 4,
+      "description": "Arguments were placed in the wrong schema group, incompletely scoped, or given noncanonical values."
+    },
+    {
+      "failure_type": "speculative_filtering_or_extra_calls",
+      "count": 2,
+      "description": "Contextual descriptions were converted into unrequested filters or adjacent endpoints were added."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already covers endpoint matching, schema adherence, and pruning unrelated calls, so those rules need no restatement. These edits address two narrower gaps visible in the batch: mistaking a retrospective description of requested operations for no request, and treating descriptive context as an explicit result filter.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Include optional fields only when requested or clearly implied, not as speculative defaults.",
+        "content": " Do not turn a modifier that describes the subject into a structured result filter unless the user asks to filter results by that facet; for example, a musician described as a classical composer does not by itself request a classical-genre filter."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Recognize requests phrased as past actions.** When a query narrates that the user already searched, retrieved, or checked something but specifies the desired data and constraints, treat those operations as requested deliverables rather than returning no calls solely because the wording is past tense. Map them to listed endpoints using the usual action-and-scope checks; do not invent unavailable endpoints."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

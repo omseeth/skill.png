@@ -1,0 +1,36 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection",
+      "count": 4,
+      "description": "Redundant or adjacent validators and unrelated endpoints were selected, while a more directly relevant requested operation was missed."
+    },
+    {
+      "failure_type": "argument_mapping",
+      "count": 4,
+      "description": "Calls guessed selector values, added unsupported fields, altered values, or omitted explicit constraints."
+    },
+    {
+      "failure_type": "response_serialization",
+      "count": 1,
+      "description": "A malformed JSON list prevented the calls from being parsed."
+    }
+  ],
+  "patch": {
+    "reasoning": "The repeated over-selection occurred when requests asked for comprehensive checks or multiple tools; clarify that these phrases do not authorize calling every topical candidate, and preserve the distinction between a full address and a bare domain. A separate gap is the guidance for optional selectors not covering required selectors, which contributed to guessing a restrictive mode for a general search. The existing JSON validation rule already covers the single serialization failure.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Deduplicate the call set: make one invocation per distinct requested operation and input unless the schema supports batching or the user requests repetition. Do not add related calls as extra checks. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint.",
+        "content": "\n- Wording such as “comprehensive,” “thorough,” or “use multiple tools” means cover the stated properties; it does not authorize calling every topical candidate. Add another validator only when it supplies a distinct requested property not already covered, and pass the subject in the form that operation requires (for example, a bare domain versus a full email address)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For optional search-mode or entity-type selectors, use the documented choice that matches an entity class or mode clearly identified in the request, even if the user did not phrase it as a filter. Do not choose an arbitrary restrictive value for another selector dimension the user left unspecified; omit it, or use a documented all/any value only when needed to express the requested scope.",
+        "content": "\n- Apply the same scope rule to required type or mode selectors: for a general request, use the endpoint's documented broad/all choice rather than guessing a restrictive subtype. If no valid broad choice is documented, do not fabricate one; choose another fitting endpoint or omit the call if its required value cannot be grounded."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

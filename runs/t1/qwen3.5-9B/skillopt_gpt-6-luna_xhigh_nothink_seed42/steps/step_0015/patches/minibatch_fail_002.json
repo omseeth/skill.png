@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_followup_handling",
+      "count": 4,
+      "description": "Follow-ups re-searched or filtered from an unsuitable cached result instead of applying only the new constraint to the suitable cached base."
+    },
+    {
+      "failure_type": "result_capture_and_persistence",
+      "count": 5,
+      "description": "Requested result-producing work was omitted or its tool result was not assigned and saved to cache."
+    },
+    {
+      "failure_type": "flight_constraint_mapping",
+      "count": 1,
+      "description": "An explicit non-stop flight request was not mapped to zero layovers."
+    },
+    {
+      "failure_type": "flight_time_bound_mapping",
+      "count": 1,
+      "description": "An arrival requested by a stated time was mapped to a lower bound rather than an upper bound."
+    },
+    {
+      "failure_type": "independent_domain_completion",
+      "count": 1,
+      "description": "The agent asked for missing inputs for some domains but failed to search a separately requested domain whose inputs were available."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers assigning and caching tool results and updating suitable cached results, so repeating those rules would not patch a content gap. These edits clarify two missing flight-language mappings and make the existing independent-domain requirement operational by requiring ready searches and missing-input questions to be handled together.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X” uses `[\"12:00 AM\", X]`, and “after X” uses `[X, \"11:59 PM\"]`, preserving the stated AM/PM value.",
+        "content": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X,” “by X,” or “no later than X” uses `[\"12:00 AM\", X]`; “after X” uses `[X, \"11:59 PM\"]`. Preserve the stated AM/PM value."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Map direct flights explicitly:** For a request for a “non-stop,” “nonstop,” or “direct” flight, set `num_layovers=[0]` in each applicable flight search."
+      },
+      {
+        "op": "replace",
+        "target": "Check required inputs independently by domain: seek missing information, but proceed with other requested searches whose inputs are available.",
+        "content": "Check required inputs independently for each requested domain: in the same generated code, execute and cache every search whose required inputs are available, and use `seek_information` only for missing required inputs in the other domains. Do not block ready searches or ask again for information already established in the conversation."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

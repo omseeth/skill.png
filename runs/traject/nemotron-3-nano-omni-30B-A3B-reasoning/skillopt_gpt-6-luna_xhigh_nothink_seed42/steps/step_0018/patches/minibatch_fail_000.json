@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "compound_action_coverage",
+      "count": 6,
+      "description": "Calls omitted distinct requested outputs, such as product details, location lookups, alerts, or services, despite explicit multi-part requests."
+    },
+    {
+      "failure_type": "endpoint_selection_or_identification",
+      "count": 6,
+      "description": "Several calls used the wrong operation or endpoint for the requested output, including searches in place of ID lookups and unrelated endpoints."
+    },
+    {
+      "failure_type": "schema_and_qualifier_mapping",
+      "count": 4,
+      "description": "Some calls mismatched identifier fields, endpoint-specific qualifiers, or canonical values."
+    },
+    {
+      "failure_type": "overcalling_and_serialization",
+      "count": 2,
+      "description": "One trajectory added many duplicate alternative checks and became unparsable; another added unrelated calls with fabricated values."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers checklist reconciliation, avoiding unrelated calls, and schema mapping, so repeating those rules would not address a documented gap. These narrow additions target recurring mistakes where agents used an endpoint with an incompatible input type or copied illustrative values from the prompt instead of using query-derived inputs.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Select the right endpoint",
+        "content": "- Verify that the request supplies the kind of input the endpoint consumes, not merely a related string. Use ID/detail endpoints for supplied IDs, keyword endpoints for searches, and documented resolvers or autocomplete endpoints when the user gives a name but asks to identify a location or code. Do not repurpose a city as a flight number or an item ID as a keyword."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Map constraints to the schema",
+        "content": "- Treat values shown only as examples in tool descriptions or the answer-format template as illustrative, never as query data. Pass only values stated by the user or unambiguously derived from them; do not copy sample IDs, dates, credentials, or placeholders into calls. If a required value is absent and cannot be derived, do not invent one."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

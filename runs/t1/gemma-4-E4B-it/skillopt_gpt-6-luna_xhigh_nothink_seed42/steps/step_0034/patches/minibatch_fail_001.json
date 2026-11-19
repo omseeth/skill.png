@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_delta_filtering",
+      "count": 7,
+      "description": "Filterable follow-ups triggered fresh searches, repeated already-applied constraints, or omitted newly supplied filters instead of updating compatible cached results."
+    },
+    {
+      "failure_type": "independent_domain_handling",
+      "count": 1,
+      "description": "A missing hotel date blocked searching a fully specified restaurant request, and an optional restaurant budget was incorrectly requested."
+    },
+    {
+      "failure_type": "tool_argument_format",
+      "count": 1,
+      "description": "A flight arrival-time range used an invalid 12-hour time string."
+    },
+    {
+      "failure_type": "proximity_grouping",
+      "count": 1,
+      "description": "The nearest-results grouping prioritized hotels when the request focused on finding restaurants near them."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers cache reuse, independent requests, and time formatting, so broad reminders would duplicate existing rules. Clarify that cached constraints are inherited and only unapplied criteria belong in a follow-up filter, and make the nearest-results grouping target explicit.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result.",
+        "content": "Treat constraints shown in the selected cache summary as already applied. For a covered scope, use the matching `filter_*` tool on the retrieved result only when a new or changed supported filterable constraint remains; pass that constraint and any still-active constraints not embodied in the selected result, but do not repeat constraints already represented there. Use the filtered result downstream, including for `search_nearest`; do not base-search merely to add a filterable preference."
+      },
+      {
+        "op": "replace",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants recommended: for example, “restaurants near the hotel” means `groupBy=\"restaurant\"`, while “a hotel with restaurants nearby” means `groupBy=\"hotel\"`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

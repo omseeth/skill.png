@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Agent answered the wrong slot type or class despite existing rules. It named the museum instead of the person ('her home ... museum'), a base (NaOH) for 'caustic acid', and 'vitamin C' instead of 'C'."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "Descriptive or translation clues. Agent echoed the clue ('1.5 story' for 'floors differing by half a story') or the foreign word ('Orzel') instead of giving the standard term or English meaning ('split-level', 'eagle')."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "Agent picked a distractor entity from noisy passages. It chose George Brett over Robin Yount, whose stats and team the clue gave, and Taiwan over China, which was the one admitted to the U.N. in 1971."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 1,
+      "description": "Verbatim archive answer 'a eucalyptus tree' was trimmed to 'Eucalyptus'. Rule 4 trimming and delete-clue-words overrode the Rule 3 copy-verbatim instruction."
+    }
+  ],
+  "patch": {
+    "reasoning": "Eight failures fall into four groups: slot-type or class mismatch, echoing the clue instead of giving the standard term, distractor entities in mixed passages, and trimming an archive answer that should be copied exactly. The edits are short and targeted, because earlier long multi-rule edits were rejected. One makes the verbatim-copy rule explicitly override Rule 4 trimming. One adds a class check, a person check for pronoun clues, and a reminder for the 'C' vitamin format. One covers definition clues and foreign-word clues. One adds anchor-based disambiguation for noisy passages, including direction verbs such as admitted versus lost.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not lengthen it with descriptors ('Madge', not 'Madge the Manicurist').",
+        "content": "\n- Never SHORTEN a verbatim archive answer either. Rule 4's delete-clue-words and bare-noun trimming do NOT apply to it. Copy the text after the final '|' exactly as printed, keeping a leading 'a/an/the' and any generic noun even if the clue already says that word ('...this Australian gum tree that reaches 300 feet | a eucalyptus tree' -> 'a eucalyptus tree', not 'Eucalyptus')."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "\n- Possessive or pronoun clues ('Her home in Rochester is now a museum...', 'His 1925 novel...') ask for the PERSON. Do not answer with the house, museum, book or institution the passages name ('Susan B. Anthony', not 'Susan B. Anthony Museum & House').\n- Class check: the answer must belong to the class the clue's noun names. 'this very caustic acid' needs an ACID ('hydrochloric acid'), not a base such as NaOH or lye, even if most passages discuss the base. Keep the word 'acid', because bare 'hydrochloric' is incomplete. 'this vitamin' -> 'C' alone, never 'vitamin C'."
+      },
+      {
+        "op": "insert_after",
+        "target": "and answer with the common English name (Conch).",
+        "content": "\n- Foreign-word clues ('This, an orzel in Poland, is seen on our coins'): the clue gives the foreign word as a gloss, so answer with its English meaning ('eagle'), never the foreign word itself.\n- Description clues with no 'this' ('A house with floors that differ by about half a story') ask for the standard NAME of the thing described ('split-level'). Do not restate the description's own words or numbers ('1.5 story'). Look in the passages for the term that glosses that description (e.g. 'split-level entry ... raised half a storey')."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not choose one that fits only some.",
+        "content": "\n- Mixed or noisy passages: when the context blends several people or countries (a Hall of Fame class page, a vote that admitted one government and expelled another), do NOT pick the most-mentioned name. Anchor on the clue's UNIQUE details: team or organization, career length, exact stats ('Brewers, 20 years, 3,142 hits' -> the player whose own stat line carries those numbers, not another player on the same page), size descriptors ('population giant' -> China, not Taiwan), and direction verbs (admitted or joined vs lost, expelled or out). Re-read the passage line holding the clue's exact numbers or verb and check whose name sits with it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

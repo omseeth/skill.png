@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_persistence_and_call_assignment",
+      "count": 7,
+      "description": "Result-producing calls were left bare, nested, repeated, or not saved to cache."
+    },
+    {
+      "failure_type": "location_field_mapping",
+      "count": 3,
+      "description": "Composite neighborhood-and-city phrases and a state abbreviation were passed as city values instead of mapped to the appropriate fields."
+    },
+    {
+      "failure_type": "cache_and_pending-task_reconciliation",
+      "count": 3,
+      "description": "The agent missed a new offered deliverable or repeated work for a domain whose cached results already matched the request."
+    }
+  ],
+  "patch": {
+    "reasoning": "A final call audit targets the most frequent execution failure. Explicit guidance for composite locations reduces city/neighborhood and state/city confusion. Criteria-aware cache checks clarify when an accepted offer requires new work and when an already-satisfied domain should be left alone.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Final call audit\n\nBefore emitting code, check every search, filter, sort, and `search_nearest` call: assign its result to a variable and save that exact result under a fresh cache key. Do not leave even an initial or repeated call bare, and do not nest `get_results_from_cache(...)` directly inside another tool call; retrieve and assign it first. Make each intended operation once, then save its result."
+      },
+      {
+        "op": "insert_after",
+        "target": "Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value.",
+        "content": "When a location combines a neighborhood or district with its city (for example, “Midtown Atlanta” or “Downtown St. Louis”), use the city in `city` and the full provided area phrase in `neighborhood`. When only a state or region is given—including an abbreviation—use `state`, not `city`."
+      },
+      {
+        "op": "replace",
+        "target": "- **Retrieve accepted pending offers from cache:** Treat an affirmative reply that accepts an earlier offer to provide recommendations or results as a request to deliver them. Retrieve the relevant latest cached result, even if no new search or filter is needed; use the no-planning response only when there is no pending deliverable.",
+        "content": "- **Resolve accepted offers against cache criteria:** Treat an affirmative reply accepting an earlier offer as a request to complete that specific offered deliverable. A cached result satisfies it only if its location, category, and other requested criteria match; a result for the same domain but a different attraction, cuisine, or filter is not sufficient. Search or filter when the offered deliverable is not yet represented in cache; otherwise retrieve the relevant latest cached result without repeating its search. Do not redo a different domain whose cached result already reflects all current constraints. Return no-planning only when no requested or pending deliverable remains."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "When the clue's own noun is the head of a standard compound term, agents kept the full compound and matched the key exactly: 'drip irrigation' for 'type of irrigation', 'Grasshopper pie' for 'Southern pie with an insect name', 'Eagle Scout' for 'one of these'. Dropping the clue noun would have left a bare modifier that is not the entity.",
+    "A search-aggregator page whose title is a single word (e.g. 'lenin - Search-ID') over a snippet repeating the clue verbatim: the title word is the answer. It is correct even when no other passage names the answer.",
+    "Ordinal or counting clues ('rise 5 ranks from Tenderfoot') were solved by finding the passage that lists the full ordered sequence and counting from the anchor.",
+    "Where the archive snippet repeated the clue but cut off before the answer (Jamestown, Mary Tyler Moore, Grasshopper Pie), agents completed it with the entity that recurred across other passages and fit every detail.",
+    "Picture and media cues ('seen here') were ignored and the answer came from the remaining textual hooks."
+  ],
+  "patch": {
+    "reasoning": "Three of the eight successes depended on details the skill does not state clearly. First, the delete-clue-words rule is in tension with 'type of <noun>' clues, where the full standard term is what the key expects. Second, one-word search-aggregator page titles often carry the answer. Third, counting clues need an ordered list from the passages. The edits are small and use examples drawn from these successes, to avoid the over-stripping and over-keeping failures seen earlier in this epoch.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "The 'do not repeat clue words' rule is for a separate modifier already stated in the clue ('hasty' + pudding).",
+        "content": "\n- 'Type/kind of <noun>' and 'this <dish/rank/term>' clues where the passages repeat one fixed two-word term: keep the whole standard term when the bare modifier alone is not the thing asked for or is ambiguous. 'The type of irrigation used in Israel to make the desert bloom' -> 'drip irrigation' (not 'drip'). 'Southern pie with an insect name, green, cookie-crumb crust' -> 'Grasshopper pie' (not 'Grasshopper', which is just an insect). 'rise 5 ranks from Tenderfoot & you're one of these' -> 'Eagle Scout'. Strip only a modifier the clue itself supplies, never the head noun of the standard term."
+      },
+      {
+        "op": "insert_after",
+        "target": "Take the answer that follows the clue, even if the whole context is one short passage.",
+        "content": "\n- Aggregator pages (Search-ID, flashcard or quiz-site pages) often put the answer in the PAGE TITLE, with the clue repeated verbatim in the snippet ('[TLE] lenin - Search-ID [PAR] ...In 1927, this Russian leader's book \"The State & Revolution\" was banned in Boston...'). Treat a short title word that sits over a snippet containing the clue's distinctive words as the prime candidate ('Lenin'), and sanity-check it against the clue. This works even when the context is only two short passages."
+      },
+      {
+        "op": "insert_after",
+        "target": "asks for the title or category noun itself (Dalai Lama), not the individual named in the clue.",
+        "content": "\n- Counting or ordinal clues ('rise 5 ranks from Tenderfoot & you're one of these', 'the third ... after X'): find the passage that lists the full ordered sequence (Scout, Tenderfoot, Second Class, First Class, Star, Life, Eagle), count from the anchor named in the clue, and answer with the item you land on, using the form the passages use ('Eagle Scout'). Do not answer with the anchor itself or a neighbouring step."
+      }
+    ]
+  },
+  "source_type": "success"
+}

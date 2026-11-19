@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_result_binding_or_persistence",
+      "count": 5,
+      "description": "Search results were left unbound or unsaved, or later saves referenced variables that did not hold the exact tool return."
+    },
+    {
+      "failure_type": "cache_scope_or_execution_misuse",
+      "count": 3,
+      "description": "Plans imported runtime tools, repeated already-covered work, or used an unavailable cache result instead of a compatible result."
+    },
+    {
+      "failure_type": "constraint_omission_or_schema_mismatch",
+      "count": 3,
+      "description": "A stated neighborhood, amenity, rating bound, or state was omitted or mapped to the wrong argument."
+    },
+    {
+      "failure_type": "accepted_proximity_action_omitted",
+      "count": 1,
+      "description": "An affirmative reply to a concrete question about nearby options was treated as requiring no action."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers cache scope and schema validation, so those failures do not warrant repeating existing guidance. The clearest actionable gaps are that required tool results are not consistently bound and saved, and the top-level proximity rule can be read as conflicting with the protected instruction about accepted offers. These edits make persistence operational and clarify when an affirmative reply triggers a nearest-results call.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- For every required search, filter, sort, or nearest-results call, bind the exact return value to a variable and immediately save that same variable with `save_to_cache` under a unique, descriptive key. Do not leave a result-producing call bare, save a different or undefined variable, or substitute hand-built data. Use the bound result for dependent calls, and save refinements under new keys."
+      },
+      {
+        "op": "replace",
+        "target": "## Proximity between travel domains\n- Call `search_nearest` only when the user explicitly requests proximity between supported domains. Before calling it, verify that each cached result covers the specific requested target, not merely the same domain or city. For example, a generic city attraction search does not cover a separately named attraction; search for the named attraction using `attraction_name` unless the cache summary shows that exact target is already covered.\n- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain), not the reference domain: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`.\n- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+        "content": "## Proximity between travel domains\n- Call `search_nearest` when the user explicitly requests proximity between supported domains or affirmatively accepts a concrete assistant question or offer about nearby options. Resolve the target and requested candidate domain from the conversation context. Mere interest in visiting or dining at a place, without proximity wording or a contextual proximity request, does not imply a nearest-results call.\n- Before calling, verify that each result covers the specific requested target, not merely the same domain or city. For example, a generic city attraction search does not cover a separately named attraction; search for the named attraction using `attraction_name` unless the cache summary shows that exact target is already covered.\n- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain), not the reference domain: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

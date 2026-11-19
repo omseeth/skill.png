@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "dropped_requested_domain",
+      "count": 3,
+      "description": "A requested domain was never searched even though its mandatory args were known. Hotel was dropped when flights were cached (T1) and when dates arrived (T4). Restaurants were dropped from a hotel-without-dates opener (T2)."
+    },
+    {
+      "failure_type": "wrong_constraint_source_in_filter",
+      "count": 3,
+      "description": "The filter ignored the last turn's literal content. It re-passed amenities already in the cache summary (T6), invented has_kids_club from 'kid-friendly' instead of num_people/num_rooms (T8), or reran search_nearest for a neighborhood reply (T3)."
+    },
+    {
+      "failure_type": "flight_leg_or_date_misparse",
+      "count": 3,
+      "description": "Flight date replies were mishandled. A date range got seek_information instead of two searches (T7). A multi-leg A->B, B->C, C->A trip was collapsed into two wrong legs (T5). A second date went into arrival_date (T4)."
+    },
+    {
+      "failure_type": "cross_domain_leakage",
+      "count": 1,
+      "description": "A hotel reply triggered a flight re-search and a business-class re-filter (T1)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three families of failures recur. (1) Requested domains are skipped, so I add a short requested-domain trigger at the top of the CACHE GATE, which Rule 0 and Section E currently bury. (2) Refinement filters are built from earlier context instead of the last message, so I add a last-turn literal map at the top and fix the party-size bullet so it covers num_people and num_rooms when a hotel exists. (3) Flight date and multi-leg parsing keeps failing, so I add one positive rule under Rule 9 that covers date replies, multi-leg trips and 'just the return flight'. Each edit pairs a prohibition with its positive trigger. None of them adds a sibling example for a rule that was already ignored.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n\n## LAST-TURN LITERAL MAP (build every filter from the words of the LAST user message)\n- Map each phrase of the last message to its own param: 'N of us' / 'for N people' -> num_people=N; 'N rooms' -> num_rooms=N (both go in ONE filter_hotels call when both appear); 'Yes, near/in <place>' or 'we're looking to stay in <place>' -> neighborhood=[\"<place as stated>\"]; a bare number after a per-night / per-person / per-ticket question -> budget=N.\n- Params named in the loaded CACHE summary ('Additionally filtering for has_room_service, has_fitness_class', 'Number of room(s): 4, budget: $1175') are DONE. Re-passing them is the most common wrong answer. If the summary already lists the amenities and the user says 'Yes, near Downtown X', output only neighborhood=[\"Downtown X\"].\n- Descriptive words from earlier turns ('kid-friendly', 'family', 'school trip') are not amenity params on a refinement. When the last turn answers 'how many people / rooms', the answer is num_people / num_rooms, not has_kids_club.\n- A neighborhood answer is a filter_hotels call on the most refined hotels key (a nearest_* key counts if it is the latest). Never answer it with a fresh search_nearest."
+      },
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\n-1. REQUESTED-DOMAIN TRIGGER (do this first). Scan every user turn for flight/fly, hotel/stay/room, restaurant(s)/dining, attraction(s). Each requested domain with no CACHE key must appear in this turn's code.\n   - Hotel request with a city but no dates, plus the words 'restaurants' / 'dining' (e.g. 'family-friendly hotel in Tucson ... with some restaurants') -> `restaurants = search_restaurants(city=\"<city>\")` + save 'restaurants', then ONE seek_information for the hotel dates. seek_information alone is wrong. Hotel budget, party size and 'family-friendly' do not go into the restaurant search.\n   - Flight keys cached (outbound and return dates known) and the turn describes a hotel (stars, neighborhood, amenities) with no 'hotels' key -> `search_hotels(city=<flight destination>, checkin_date=[<outbound date>], checkout_date=[<return date>], <every stated hotel constraint>)` + save 'hotels'. Do not search or filter flights again; class words from earlier turns are already applied.\n   - A hotel was requested in an earlier turn and this turn supplies the dates (even as an answer to a flight question) -> the flight search(es) AND search_hotels in the same block, carrying amenity words from any turn ('beach' -> has_beach_access=True, 'pool' -> pool_present=True, 'wifi' -> free_wifi_included=True). Cached restaurants stay untouched."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 9: Round-trip flights (+ hotel) are separate search calls",
+        "content": "\n- A DATE REPLY TO A FLIGHT QUESTION IS A SEARCH, never seek_information, whenever origin and destination appear anywhere earlier (a 'school trip' / 'large group' opener changes nothing). 'May 17, 2025 to May 25, 2025' -> outbound origin->destination on the first date and return destination->origin on the second date, as two assigned and saved searches. Never put the second date in arrival_date. Never ask for a departure city the user already gave, and never ask for hotel dates when no hotel was requested.\n- Multi-leg itinerary ('A to B and then B to C', later 'I head back to A'): one search per named leg, in order, with dates assigned in order of mention: leg 1 A->B on date 1, leg 2 B->C on date 2, final C->A on the last date. Do not collapse it into two legs. For a flight-only multi-leg trip the keys are first_departure_flights, second_departure_flights, first_return_flights. A hotel-bundled multi-city trip keeps flights / flights2.\n- 'Just the return flight' with a date pair -> search only the reverse leg (destination->origin) on the LATER date and save it as \"flights\". If a hotel was requested anywhere, also run search_hotels with check-in on the earlier date and check-out on the later date."
+      },
+      {
+        "op": "replace",
+        "target": "A party-size-only reply ('There are 5 of us') when NO hotel has been requested adds no constraint, because flight and restaurant tools have no party-size parameter.",
+        "content": "A party-size or room-count reply ('There are 5 of us', 'we need 4 rooms') when a hotel HAS been requested and a hotels key is cached is a hotel constraint: load the most refined hotels key, `filter_hotels(prior_results=h, num_people=5, num_rooms=4)` (only the numbers stated), save under a new key. Do not substitute an amenity from an earlier descriptor such as 'kid-friendly'. When NO hotel has been requested it adds no constraint, because flight and restaurant tools have no party-size parameter."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

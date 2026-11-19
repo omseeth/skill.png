@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_state_routing",
+      "count": 5,
+      "description": "Calls ignored the latest requested domain or constraint, reused an unrelated cache, or performed unrequested cross-domain work."
+    },
+    {
+      "failure_type": "mandatory_input_inference",
+      "count": 2,
+      "description": "Hotel searches proceeded with invented stay dates instead of requesting missing mandatory information."
+    },
+    {
+      "failure_type": "schema_argument_mismatch",
+      "count": 2,
+      "description": "Calls used a city field for a region or an unsupported amenity argument name."
+    },
+    {
+      "failure_type": "result_persistence_omission",
+      "count": 5,
+      "description": "Search or refinement calls were left unbound or their results were not saved to cache."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits make per-turn domain and cache decisions more explicit, allow complete independent requests to proceed when another domain needs clarification, reinforce strict tool-schema validation, and make result persistence an immediate part of every operation.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "- Treat the final user turn as the trigger for a per-domain action ledger, using earlier turns only for relevant context. For each requested item, identify its domain, new constraints, and whether a compatible cached result covers them; route it only to that domain’s tool. A cache summary is evidence only for criteria it states, so an unlisted new constraint is not satisfied. Refine the latest compatible cached result when available; otherwise search if mandatory inputs are present. Do not touch unrelated domains or infer a proximity request. Use `print(\"No planning needed\")` only when the ledger confirms that valid cached results already satisfy every requested action and constraint."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+        "content": "\n- Missing required inputs for one domain do not block independent requested calls in another domain when that domain’s mandatory inputs are available. In that case, make the single `seek_information` call for the missing mandatory values and still perform the complete independent searches or refinements; never invent values to enable an incomplete call."
+      },
+      {
+        "op": "replace",
+        "target": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated.",
+        "content": "- Treat each tool’s declared argument list as a strict whitelist: validate every keyword against that tool before calling, and use the full schema field name rather than shortening a natural-language label (for example, kids club maps to `has_kids_club`, not `kids_club`). Do not invent aliases. Match the user’s meaning to the schema: hotel stars use `stars`, a region uses `state`, a city uses `city`, a named attraction uses `attraction_name`, and amenities use their declared fields, such as `has_laundry_service`."
+      },
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- For every search, filter, sort, and nearest-results call, bind its exact return value to a variable and immediately save that object with `save_to_cache` under a unique, descriptive key before using it downstream. Save each refinement under a new key. Never leave a result-producing call unbound or substitute hand-built dictionaries or redefined models for tool result objects."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

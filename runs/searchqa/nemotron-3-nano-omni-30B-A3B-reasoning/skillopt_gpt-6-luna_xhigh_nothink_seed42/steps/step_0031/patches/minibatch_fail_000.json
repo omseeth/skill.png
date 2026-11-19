@@ -1,0 +1,35 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 6,
+      "description": "Answers ignored existing evidence, answer-slot, length, or name-form rules, including choosing a nearby topic or True/False instead of the requested entity."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A bare pair of people was answered with their relationship rather than the shared affiliation implied by context."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 1,
+      "description": "The completion guidance can encourage returning only a blanked name component when the requested answer is the full canonical proper name."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures already contradict explicit skill guidance, so adding more general reminders would be redundant. These edits address the two narrower gaps: inferring a shared affiliation from a bare pair of names, and distinguishing a missing word from a partially blanked full proper name.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Bare paired-name prompts\n- If a prompt is only a pair or list of proper names joined together, do not default to stating their relationship to one another. When context supports a shared affiliation or location indicated by the prompt, return that common value; if no intended shared slot is clear, do not guess."
+      },
+      {
+        "op": "replace",
+        "target": "- For completion or compound clues, identify the missing shared component that makes the alternatives fit; do not repeat a clue-supplied component or return one full compound. For partial-name prompts, give only the requested unknown name part. Omit components already stated in the question unless they are needed for unambiguous identification.",
+        "content": "- For completion or compound clues, determine whether the requested slot is a missing shared component or a specific named entity shown with part of its name blanked. For a missing shared component, return only that component, not clue-supplied components or a full compound. For a partially blanked proper name when the question seeks the entity, return its full canonical name, including the portion already shown. Give only the unknown part when the prompt explicitly asks for that name part."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

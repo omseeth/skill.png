@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 5,
+      "description": "Search results were not saved, or code saved an undefined variable instead of the variable holding the result."
+    },
+    {
+      "failure_type": "cache_reuse_and_incremental_update",
+      "count": 3,
+      "description": "Follow-up turns repeated searches for cached or unchanged domains instead of reusing applicable results."
+    },
+    {
+      "failure_type": "entity_field_mapping",
+      "count": 1,
+      "description": "An attraction category was changed to a near-synonym rather than passed using the user's exact wording."
+    },
+    {
+      "failure_type": "required_argument_and_domain_handling",
+      "count": 1,
+      "description": "A missing hotel date blocked a fully specified restaurant search, and the agent asked for an optional restaurant budget."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most common uncovered execution error was failing to save the actual result variable, despite the existing general persistence rule. Make the required code shape and variable identity explicit. The existing skill already covers cache reuse, required inputs, and exact entity preservation, so those instructions are not duplicated; add only a concise clarification against normalizing category labels.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Tool results and constraints",
+        "content": "\n\n**Code emission invariant:** For every search, filter, sort, or nearest-results call, bind its return value to a variable and immediately save that same variable, e.g. `results = search_restaurants(...)` followed by `save_to_cache(key=\"restaurants\", value=results)`. Do not emit a bare result-producing call, save an assumed or differently named variable, or wrap the call in `print()`."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Preserve category labels\nCopy user-supplied category and type labels exactly into tool arguments. Do not replace a label with a near-synonym or silently normalize it unless the tool explicitly documents that mapping."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

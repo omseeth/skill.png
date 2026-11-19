@@ -1,0 +1,33 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "All 8 questions were Jeopardy-style clues ('this Dante work', 'this Boy Scout founder', 'in this musical revival'). The agent treated the clue as a description of one entity and answered with just that entity's name or title.",
+    "The context was noisy search-result snippets, mostly irrelevant. The agent found the few passages that restated the clue nearly verbatim (Jeopardy archive pages, Wikipedia, Britannica) or that repeated the same key entity across several independent docs, and answered from those.",
+    "Answers were short and typed to the question: a person's name, a work's title, or an English translation. They carried no explanation or hedging, and surface forms were taken from the context or canonical usage, e.g. 'Lord Robert Baden-Powell', 'The Divine Comedy', 'My Crazy Life'.",
+    "For wordplay clues (Three Stooges changed 'All' to 'Oil'), the agent reversed the transformation to recover the original Shakespeare title. For clues giving a hint plus a specific detail (Pam Tillis, 'Mi Vida Loca'), it used the parenthetical in the song title as the translation.",
+    "Where the context was thin or off-topic, the agent still answered correctly by combining the few relevant snippets with its own background knowledge, instead of declining or over-hedging."
+  ],
+  "patch": {
+    "reasoning": "Every success was a single-step answer to a trivia clue given noisy retrieved context. The skill is empty, so it should encode the strategy that worked: read the clue as a description of one entity, anchor on passages that echo the clue or are corroborated across docs, resolve wordplay and translation clues explicitly, and output a concise canonical answer of the right type. These habits apply to any clue-style QA over noisy search snippets.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Reading Clue-Style Questions\n- Many questions are Jeopardy-style clues (\"this Dante work\", \"this Boy Scout founder\", \"in this musical revival\"). Treat the clue as a description and answer with the single entity it points to: a person, title, place, or term. Do not restate the clue.\n- Identify the answer type first (person, work title, translation, place, year) and make the answer match that type exactly.\n- Ignore the attribution frame (\"Hi, I'm Pam Tillis...\", \"need we say more?\") and focus on the factual hook."
+      },
+      {
+        "op": "append",
+        "content": "## Using Noisy Retrieved Context\n- Context is often a pile of loosely related search snippets. Skim for passages that (a) restate the clue almost verbatim, such as trivia/Jeopardy archive pages, or (b) mention the same candidate entity across several independent docs alongside the clue's key details. Prefer those and ignore off-topic docs.\n- Combine two or more clue details (e.g., 'Late Night' + bandleader + co-wrote 'It's Raining Men') to confirm a candidate. If the context is thin, fall back on well-established background knowledge that fits all the clue details rather than refusing to answer.\n- Always commit to one best answer."
+      },
+      {
+        "op": "append",
+        "content": "## Wordplay, Translation, and Transformation Clues\n- If the clue says a word was changed or swapped (e.g., \"changed 'All' to 'Oil' in this Shakespeare title\"), find the altered title in the context, then reverse the change and answer with the original work's title.\n- For \"translates to this in English\" clues, give the English rendering that appears in the context, typically in parentheses after the foreign title (e.g., \"Mi Vida Loca (My Crazy Life)\" -> \"My Crazy Life\"). Do not return the foreign phrase."
+      },
+      {
+        "op": "append",
+        "content": "## Answer Form\n- Give the canonical, full name or title of the entity, using the form common in the context (e.g., \"The Divine Comedy\", \"Lord Robert Baden-Powell\", \"All's Well That Ends Well\"). Keep punctuation and articles natural.\n- Put only the answer in <answer> tags: no explanation, no qualifiers, no alternatives. Brief reasoning belongs before the tags."
+      }
+    ]
+  },
+  "source_type": "success"
+}

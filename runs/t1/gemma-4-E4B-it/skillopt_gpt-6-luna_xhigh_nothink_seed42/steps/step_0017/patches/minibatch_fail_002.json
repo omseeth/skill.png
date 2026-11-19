@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_reuse",
+      "count": 6,
+      "description": "Agents used less-constrained cached results, repeated already-embodied filters, or rebuilt cached cross-domain results instead of updating only the changed scope."
+    },
+    {
+      "failure_type": "result_persistence_or_extra_output",
+      "count": 2,
+      "description": "A search result was not saved to cache, or an unnecessary print was added."
+    },
+    {
+      "failure_type": "semantic_overinference",
+      "count": 1,
+      "description": "A broad preference for a kid-friendly hotel was mapped to the specific kids-club amenity without the user requesting it."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most common failures concern choosing and updating cached results. This addition makes explicit that filters already embodied in a cached result should not be repeated, and that a cached nearest-results object should be filtered directly when narrowing one of its domains, preserving the existing relationship without recomputing it.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "A cached proximity result may also be used as filter input when its candidate set remains valid.",
+        "content": "When a cache summary shows that a result already includes previously active filters, retrieve the most-constrained compatible result and pass only newly added or changed criteria to `filter_*`; do not resend criteria already embodied in that result. When a user narrows one domain within a cached `search_nearest` result, use that result as the matching filter's `prior_results` and save the filtered output instead of retrieving the original domain result and recomputing nearest results."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

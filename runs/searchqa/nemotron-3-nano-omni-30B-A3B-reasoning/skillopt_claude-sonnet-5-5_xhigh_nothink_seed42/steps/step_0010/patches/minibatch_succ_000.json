@@ -1,0 +1,35 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Descriptive or definition clues ('This soft central part of your teeth contains the nerves & blood vessels', 'it's the basis of pomodoro & marinara sauces') were solved by naming the single common term that several passages define in nearly the clue's wording ('pulp', 'tomato'). The agent ignored hedges such as 'whether it's a fruit or vegetable' and gave a bare noun.",
+    "When the clue is copied verbatim into a passage that has no answer next to it (a YouTube title, a Topix forum post), the agent did not stall. It read the other passages for the sentence stating the fact ('trick-or-treating on Halloween') and filled the slot.",
+    "For a 'this <person/team>' slot the agent gave the full, standard name that the passages repeat ('Pablo Picasso', 'New York Giants'), with no role words, middle names or descriptors.",
+    "For 'name that means X' clues the agent picked the whole name the passages gloss with exactly that meaning, most often ('Abdullah'), not a component such as 'Abdul' or a rarer variant such as 'Abd al Bari'.",
+    "For a pronoun-slot clue ('Duchess of it') the agent answered with the bare place word from the title the passages repeat ('York'), without 'Duchess of'."
+  ],
+  "patch": {
+    "reasoning": "All eight trajectories succeeded on easy clues, and the existing rules already cover most of that behaviour. Four patterns are not stated explicitly. (1) Definition-style clues should be answered with the bare term that the passages define in the clue's wording. (2) A verbatim clue hit with no answer attached must trigger a fallback to the other passages, not a refusal and not a guess from the clue alone. (3) Slot-type reminders for 'this team' (full city + nickname) and for people (first + last name). Existing rules suggest dropping city prefixes and shortening names, and these reminders prevent over-trimming. (4) 'Name meaning X' clues want the whole, most frequent glossed name. Each edit is short and generalises beyond these questions.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- Descriptive / definition-style clues ('This soft central part of your teeth contains the nerves & blood vessels', 'the basis of pomodoro & marinara sauces', 'common Arabic name which means \"servant of Allah\"') ask for the one term that several passages define or gloss in nearly the clue's wording. Find that wording ('the center of the tooth that contains nerves, blood vessels...') and answer with the term it defines ('pulp'), as a bare common noun. Ignore hedges and puns such as 'whether it's a fruit or vegetable' or 'that's no fiction'. For 'name meaning X', give the whole name that the passages pair with exactly that meaning most often ('Abdullah'), not a component ('Abdul') or a rarer variant."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not choose one that fits only some.",
+        "content": "\n- A passage that repeats the clue word for word but gives no answer next to it (a video title, forum post, quiz list, search-result stub) is NOT a usable hit. Do not give up or guess from the clue alone. Read the other passages for the sentence that states the same fact with the missing word filled in ('...limited trick-or-treating on Halloween'), and answer with that word. A blank written as 'it' or 'this' in a clue like 'became the Duchess of it' is filled with the bare place or word the passages attach to the title ('York')."
+      },
+      {
+        "op": "insert_after",
+        "target": "Other named entities in the clue are anchors, never the answer.",
+        "content": "\n- 'This team's <player>' wants the full team name as the passages give it, city plus nickname ('New York Giants'). Only a clue that names the team and asks for 'this city' wants the city alone. 'This <nationality> artist / author / actor' wants the person's usual first + last name ('Pablo Picasso'), not just a surname and not a long legal name with middle names or initials."
+      },
+      {
+        "op": "append",
+        "content": "\n## Quick sanity check before answering\n- Strip the clue's decoration, then name the single entity the strongest passages tie to the clue's distinctive details. Write it in the short form a trivia answer key would use: a bare noun for common things ('pulp', 'tomato'), and a full first + last name for people. If a verbatim archive line gives the answer, copy it instead."
+      }
+    ]
+  },
+  "source_type": "success"
+}

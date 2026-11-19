@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_incremental_filtering",
+      "count": 6,
+      "description": "Follow-up criteria triggered fresh searches or ignored compatible cached results instead of filtering only the new constraint."
+    },
+    {
+      "failure_type": "pending_request_state",
+      "count": 2,
+      "description": "New information or an affirmative reply did not activate a previously requested or newly accepted domain using established trip context."
+    },
+    {
+      "failure_type": "flight_leg_scope",
+      "count": 3,
+      "description": "Flight requests were omitted, duplicated, or represented with the wrong leg direction or date."
+    },
+    {
+      "failure_type": "constraint_mapping",
+      "count": 2,
+      "description": "A rating threshold was treated as an exact rating, or an attraction type was changed from the user's wording."
+    },
+    {
+      "failure_type": "tool_result_binding",
+      "count": 2,
+      "description": "Tool results were called inline or a different, undefined variable was saved."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed cache, flight-leg, value-preservation, and result-binding errors already contradict explicit skill rules, so repeating those rules is unlikely to help. Add guidance for the uncovered case where a later reply completes a previously blocked domain request, and clarify how to encode a guest-rating floor.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Cache-aware tool workflow",
+        "content": "- Keep track of requested domains or itinerary legs whose searches were deferred because mandatory information was missing. When a later turn supplies that information, treat the now-complete request as actionable even if the reply was prompted by a question about another domain. Use the destination, dates, and preferences already established for that request; do not drop it or regenerate unrelated completed results."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool results and constraints",
+        "content": "- For a guest-rating floor, such as a rating of N or higher, use the inclusive range `[N, 5]` for the `rating` field. Use equal bounds only when the user explicitly requests an exact guest rating; do not confuse guest ratings with hotel stars."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

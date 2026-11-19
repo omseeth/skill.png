@@ -1,0 +1,62 @@
+{
+  "step": 8,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 29,
+  "failure_patterns": [
+    {
+      "pattern": "tool_name_format: Tool name was the provider tagline line (T5) or dropped the `Provider:` prefix (`BestBuyProductData`, T8), so the call cannot match.",
+      "count": 29,
+      "task_ids": [
+        "parallel_music_simple:44",
+        "parallel_ecommerce_simple:19",
+        "parallel_email_simple:188",
+        "parallel_email_simple:29",
+        "parallel_news_media_simple:14",
+        "parallel_email_simple:46",
+        "parallel_ecommerce_simple:10",
+        "parallel_finance_simple:13",
+        "parallel_education_simple:51",
+        "parallel_email_simple:177",
+        "parallel_ecommerce_simple:116",
+        "parallel_travel_simple:7",
+        "parallel_gaming_simple:184",
+        "parallel_gaming_simple:76",
+        "parallel_ecommerce_simple:66",
+        "parallel_education_simple:66",
+        "parallel_ecommerce_simple:157",
+        "parallel_travel_simple:130",
+        "parallel_email_simple:125",
+        "parallel_weather_simple:81",
+        "parallel_news_media_simple:59",
+        "parallel_email_simple:115",
+        "parallel_email_simple:170",
+        "parallel_travel_simple:80",
+        "parallel_travel_simple:166",
+        "parallel_ecommerce_simple:102",
+        "parallel_ecommerce_simple:183",
+        "parallel_education_simple:136",
+        "parallel_gaming_simple:182"
+      ]
+    }
+  ],
+  "score_before": 0.39325842696629215,
+  "score_after": 0.34831460674157305,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "Do not close the list early or leave stray brackets. Calls are separated only by `}, {`. A `]` in the middle (`}], {`, `}]}, {`, `], [`) ends the answer and makes every later call unparseable (score zero). The single `]` comes after the last object, right before `</answer>`: finish with `}]</answer>`, never `]]` or `}]}`.\n- Every entry in a parameter list is a `{\"name\": ..., \"value\": ...}` object, never a bare name or string (wrong `\"required parameters\": [\"offset\"]`; right `[{\"name\": \"offset\", \"value\": \"0\"}]`). An endpoint name is not a parameter. Every call has all three keys even when it has only required or only optional parameters (never omit `\"optional parameters\": []`). `\"optional parameters\"` appears exactly once per object, last. `\"optional parameters\": [{...}], \"optional parameters\": []` throws away the filled list, so merge every optional value (platform, sort-by, type, page, pulls, ...) into that one list.",
+      "target": "Do not close the list early or leave stray brackets."
+    },
+    {
+      "op": "replace",
+      "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely (wrong: `BestBuyProductData`, `email Check SMTP`; right: `BestBuy Product Data: BestBuyProductData`, `fast Email verifier: email Check SMTP`). The name is the `### ` heading text only: never paste the `Provider:` description line or its ` — tagline`. Copy the heading character for character, including slashes, braces, parentheses and lowercase initials (e.g. `OpenCritic API: /game/hall-of-fame/{year}`, `Learn to read and write Japanese kanji: Study list (AP exam)`). Never invent, shorten or paraphrase an endpoint (`Priceline com Provider: Search locations` does not exist; the heading is `Priceline com Provider: Search hotels locations`). Before answering, find each call's name verbatim as a `### ` heading in the tool list. Keep its spelling and case, lowercase first letters, suffixes such as `(Deprecating)` and numbers such as `Item Search 3`.",
+      "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- Count calls by kind of request, not by platform: each distinct data type asked for gets its own endpoint, and later sentences are as real as the first. 'Current pollution' + '48-hour forecast' + 'sun position' = three tools (current-data tool, forecast tool with hours `48`, sun tool). 'Pricing, warranty services, reviews and common product information' = four Wayfair endpoints (get-pricing, get-warranty-services, reviews/list, get-common-info). 'Images, reviews, delivery services, financing options for SKU X' = get-images, reviews/list, get-home-services, get-financing-offers. 'Detailed information about item X, including similar items' = the detail tool (e.g. `products/v2/detail`) AND the similar-items tool. 'On both ASOS and Wayfair' or 'alternatives on other platforms like Aliexpress and Asos' = one call per named platform (plus the host retailer's own search or auto-complete if the query asks for it). 'A store (storeId, sellerId)' -> the store item-search endpoint with both ids. 'Available base regions' -> `User Basic Parameters` with `filter`=`baseRegion`.\n- First-person or narrative queries ('I rolled..., I looked up..., I checked the latest news..., Finally I retrieved...') are checklists: one call per sentence, in order. Endpoints that need no input ('latest news', 'news feed', 'list of stats') still get a call with `[]` for both parameter lists. Do not add optional fields such as `callback` unless the query states a value for them.\n- In long lists, emit each call once unless the query asks for the same action twice. Scan for accidental repeats, and for a tool reused with another item's parameters (e.g. Ukrainian-word filters sent to the English random-word tool). Remove them or switch to the matching tool.",
+      "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for."
+    }
+  ]
+}

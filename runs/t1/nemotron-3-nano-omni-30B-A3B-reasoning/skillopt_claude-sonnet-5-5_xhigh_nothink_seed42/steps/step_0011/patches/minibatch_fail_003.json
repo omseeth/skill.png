@@ -1,0 +1,46 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "Re-passing constraints already applied in the CACHE summary",
+      "count": 1,
+      "description": "The refinement 'around 85' re-passed cuisine and both dietary flags that the cache entry already lists, instead of filtering with budget=85 only. Rule 17 already forbids this, so it was not followed."
+    },
+    {
+      "failure_type": "Output-form violations (import, comments, print, wrong cache key, bare calls)",
+      "count": 2,
+      "description": "One trajectory wrote `from cache import ...`, long comments, a print, and the key 'outbound_flights', which caused a ModuleNotFoundError. Another called search_attractions with no assignment and no save_to_cache, and put the state 'NV' in city. Rules 21 and 9 already cover both, but they sit deep in a long document and were ignored."
+    },
+    {
+      "failure_type": "Wrong parameter mapping or extra parameters",
+      "count": 1,
+      "description": "'Sauna' was mapped to has_spa_services, a near-synonym of the wrong parameter. The correct parameter is has_sauna."
+    }
+  ],
+  "patch": {
+    "reasoning": "Rules 9, 17, 21 and 22 already describe all four mistakes, yet they were repeated. The skill is long and the placeholder at the top is empty, so the models miss the rules. The first edit puts a short, high-salience checklist at the top, with worked examples taken from these failures. The other three edits sharpen the rules at the point of use: how to read a CACHE summary that lists boolean flags, round-trip dates stated tentatively, and exact amenity mapping.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## TOP-PRIORITY CHECKLIST (verify before answering; these are the most often broken rules)\n1. Output ONLY plain tool calls inside <CODE></CODE>. Never write `import` or `from ... import` (even `from cache import ...` or `from tools import ...` raises ModuleNotFoundError). Never write comments, print() or prose. All tools and cache helpers are already defined.\n2. Every search_*/filter_*/sort_results/search_nearest call is assigned to a variable and followed by `save_to_cache(key=..., value=...)`. A bare `search_attractions(...)` is wrong.\n3. A US state name or abbreviation ('NV', 'Nevada', 'GA') goes in `state=`, never in `city=`. Do not pass city unless a city was named. 'Social attractions in NV' -> `attractions = search_attractions(type=[\"Social\"], state=\"NV\")` then `save_to_cache(key=\"attractions\", value=attractions)`.\n4. If the domain already has a CACHE key, the turn is load -> filter -> save with ONLY the new constraint from the last user turn. Everything the CACHE summary lists (city, neighborhood, cuisine, dietary flags such as has_vegan_options, rating, budget, amenities) is already applied. Example: CACHE 'neighborhood(s): [Downtown St. Louis], cuisine(s): [Norwegian], has_gluten_free_options, has_vegan_options' and the user says 'I'm looking to spend around 85' -> `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, budget=85)`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`. Do NOT repeat cuisine or dietary flags.\n5. A round trip is two search_flights calls saved under exactly \"departure_flights\" and \"return_flights\" (Rule 9). Never use other key names such as 'outbound_flights'.\n6. Map each amenity word to its own exact parameter (sauna -> has_sauna, hot tub -> has_hot_tub, spa -> has_spa_services, gym -> gym_present). Never substitute a near-synonym."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Value formats: neighborhood uses the user's wording including the city (\"Downtown Tucson\"). 'at least X' rating -> rating=[X, 5].",
+        "content": "- Boolean flags in a CACHE summary appear as bare names (e.g. 'has_gluten_free_options, has_vegan_options', 'pool_present'). They are filters that are ALREADY applied. Do not re-pass them, or the cuisine/neighborhood/city shown next to them. A reply that only gives a number ('around 85', 'under 325') produces a filter call with exactly one kwarg: budget=<number>. Before sending, compare each kwarg in your filter_* call with the CACHE summary and delete every kwarg that the summary already lists."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use date strings exactly as the user wrote them (e.g. \"May 15, 2025\").",
+        "content": "- Tentative wording ('thinking of going around May 21, 2025 possibly and returning May 28, 2025') still states concrete dates. Search both legs immediately; do not ask again. Use the date text as given (\"May 21, 2025\"). A party size ('5 people') has no flight parameter, so drop it. Save the legs under \"departure_flights\" and \"return_flights\". Write nothing else: no import, no comments, no print()."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Hotel amenity wording: 'fitness center' or 'fitness classes' -> `has_fitness_class=True`; 'gym' -> `gym_present=True`.",
+        "content": "- More hotel amenity wording: 'sauna' -> `has_sauna=True`; 'hot tub' or 'jacuzzi' -> `has_hot_tub=True`; only the word 'spa' or 'spa services' -> `has_spa_services=True`. Never use has_spa_services as a stand-in for sauna or hot tub. Always check each amenity word against the exact parameter list in TOOL CONFIG."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

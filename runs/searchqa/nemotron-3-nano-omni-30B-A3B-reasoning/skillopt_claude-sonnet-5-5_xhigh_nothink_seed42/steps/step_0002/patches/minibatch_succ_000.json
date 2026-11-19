@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Agents found the clue (or a close paraphrase) repeated across many context passages and filled the blank with the missing word or entity, e.g. 'Only the arrival of the Cunard liner Carpathia...' and the flashcard 'CLUE, RHAPSODY'.",
+    "When the context named several candidates (e.g. George Brett and Robin Yount in the same baseball passages), the agent chose the one that fit every distinctive detail: 3,142 hits, 20 years, Brewers.",
+    "Quoted words in the clue ('drag', 'Uncle Walter') acted as pun or nickname hints. The agent matched them to context passages (Tootsie, Walter Cronkite) and answered with the real entity.",
+    "'One of these ...' clues were answered with the title or category noun (Dalai Lama) rather than the individual named in the clue (Tenzin Gyatso).",
+    "Answers were short and bare: 'Pascal', 'Carpathia', 'Pippi Longstocking', with no descriptors or extra words."
+  ],
+  "patch": {
+    "reasoning": "All 8 successes were clean one-step answers, and they fit the existing rules. Three reusable reading strategies are not yet written down. First, treat the clue as a sentence with a slot and find its paraphrase in the context. Second, resolve competing candidates by checking unique numbers, teams and dates against every detail. Third, handle quoted pun words, nicknames and 'one of these <role>' clues. Adding these should help on harder clues where the context is noisy or contains distractor entities.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "- The clue is often a near-copy of a sentence that appears in many context passages with one slot blanked ('Only the arrival of the Cunard liner ___ ...'; 'named in his honor ... Pascal'). Locate that sentence and take the word or name that fills the slot. A phrase repeated across many independent passages is strong evidence.\n- If the context mentions several candidate entities (e.g. a different player in the same article), pick the one that satisfies ALL distinctive details: exact numbers, team, years, place. Do not choose a candidate that fits only some of them."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "- A word in quotation marks inside the clue (e.g. a 'drag', a nickname) is usually a pun or hint tied to the answer. Look for context passages where that word appears next to a candidate (a film, a person) and answer with that candidate.\n- 'One of these <role/title>' ('the 14th one of these spiritual leaders') asks for the title or category noun itself (Dalai Lama), not the individual named in the clue (Tenzin Gyatso)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use the singular form for a generic object ('Well', not 'wells').",
+        "content": "- For nickname or description clues about a person ('known as \"Uncle Walter\"'), answer with the real full name as it appears in the context (Walter Cronkite), not the nickname."
+      }
+    ]
+  },
+  "source_type": "success"
+}

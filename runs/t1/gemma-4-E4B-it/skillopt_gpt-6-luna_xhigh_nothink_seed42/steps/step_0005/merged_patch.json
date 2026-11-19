@@ -1,0 +1,53 @@
+{
+  "reasoning": "Preserved all six failure-driven edits as the higher-priority corrective guidance. The success-driven flight clarification does not conflict with the existing round-trip instructions, so it is retained as a complementary clarification. No edits target protected content.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "At each turn, inspect cache summaries before searching. If a relevant result exists for the same domain, city, dates, and itinerary leg, retrieve it with its exact key using `get_results_from_cache`, then apply the matching `filter_*` tool with that result as `prior_results` and the newly supplied constraints. If no suitable cached result exists, run a new search. Apply new preferences to all relevant cached results or itinerary legs, but do not repeat valid searches or regenerate unaffected domains.",
+      "content": "At each turn, inspect cache summaries and identify which domains or itinerary legs the latest turn changes. For each changed request, retrieve by exact key a compatible cached result for the same domain, location, dates, and leg whenever its candidate set can be narrowed to the request. It need not already include newly supplied filterable criteria such as cuisine, budget, rating, or amenities. Apply the matching `filter_*` tool to that result with the new constraints, retaining constraints already embodied in the cached result. Do not repeat a base search just to add filterable criteria. Search only when no compatible cached result exists or the request's scope has changed; leave unaffected domains and legs alone.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Cache-aware tool workflow",
+      "content": "- Resolve terse follow-ups using the full dialogue, especially the immediately preceding assistant turn. If the assistant suggests a named neighborhood or place and the user responds with an inquiry such as “No, what’s there?”, treat it as a request to explore that suggestion, not as a refusal: retrieve compatible cached results and filter by the suggested place where supported. Do not repeat the broad search.\n- If a new detail cannot be expressed by any supported search or filter criterion and does not change the cached results’ scope (for example, traveler count for a flight tool with no passenger-count field), do not search, filter, retrieve, or rewrite the cache solely for that detail.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Assign every search, filter, sort, and nearest-results output to a variable, then immediately save it with `save_to_cache` under a unique, descriptive key before using it in later calls. Pass the assigned prior result to filters, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally.\n- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+      "content": "- Assign every search, filter, sort, and nearest-results call to a variable and immediately save that same result with `save_to_cache` under a unique, descriptive key, even when it is the final call. For example, use `results = search_restaurants(...)` followed by `save_to_cache(key=\"restaurants\", value=results)`. Do not call these tools inline, print their results instead of saving them, or save an assumed or differently named variable. Pass the assigned result to later filters or nearest calls, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally.\n- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.\n- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- When the user requests proximity, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "content": "\n  Interpret `groupBy` as the type of result the user wants prioritized, not the location anchor. For example, for restaurants near a hotel, pass both result sets and use `groupBy=\"restaurant\"`; for hotels near an attraction, use `groupBy=\"hotel\"`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Before calling a travel tool, check its required parameters against the full conversation and available context. If any required details are missing, use `seek_information` to ask only for those details; do not invent values, pass `None`, or run a partial search. For requests spanning multiple domains, bundle missing required details for all requested domains into the same information request. Do not ask for optional preferences.",
+      "content": "Before calling a travel tool, validate its mandatory parameters separately for each requested domain and itinerary leg using the full conversation and available context. If any are missing, do not call that incomplete tool or run a partial search; use one `seek_information` request listing only the missing mandatory details across incomplete requests. Continue with fully specified independent domains or legs, and save their results. Never invent values, pass `None`, or ask for optional preferences. For hotels, when the check-in date and an explicit stay length in nights are known but checkout is not, use `adjust_date` to calculate checkout. Do not infer a stay length; ask when a required date cannot be obtained or derived from explicit information.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "append",
+      "content": "\n\n## Preserve category labels\nCopy user-supplied category and type labels exactly into tool arguments. Do not replace a label with a near-synonym or silently normalize it unless the tool explicitly documents that mapping.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Flight itinerary legs",
+      "content": "Do not infer a return leg or ask for a return date solely because the user mentions a vacation, getaway, or destination. Request a return date only when the user explicitly asks for a round trip or return leg, or supplies a return date.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ]
+}

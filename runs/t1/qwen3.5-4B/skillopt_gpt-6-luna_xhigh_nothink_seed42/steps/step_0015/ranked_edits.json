@@ -1,0 +1,34 @@
+{
+  "reasoning": "Preserved all failure-driven corrections, including the schema safeguards, non-stop encoding, clarification-answer handling, and use of updated inputs for proximity searches. Added the success-driven guidance for declining optional preferences as a distinct case: it complements clarification handling by retaining and reusing compatible cached results without unnecessary searches or filters. [optimizer-ranked: selected 3/5 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+      "content": "- Resolve brief replies against the immediately preceding assistant question or proposal. Carry forward accepted entities or criteria as stated. If the user declines an optional preference or says they are flexible (for example, “not really”), treat that as adding no constraint and retain the existing request. When a compatible cached result already satisfies it, retrieve that result for continuity; do not broaden or repeat the search, filter it, save an unchanged copy, or retrieve unrelated domains.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Never pass a preference as an unsupported extra argument or place it in an unrelated field. For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+      "content": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Set an optional field only when it corresponds to an active criterion stated in the conversation; do not fill unrelated fields just because the schema supports them. For dietary or allergy requests, set only the matching supported accommodation option(s), not every allergy or dietary flag. Never pass a preference as an unsupported extra argument or place it in an unrelated field. For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). For time-range arguments, use AM/PM strings; when the user states only a latest-time bound (for example, “by 10:00 AM”), encode the range from midnight through that time, and interpret “as early as possible” as the earliest time the tool supports. For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Resolve brief replies against the immediately preceding assistant question or proposal. Carry forward accepted entities or criteria as stated. If the user declines an optional preference or says they are flexible (for example, “not really”), treat that as adding no constraint and retain the existing request. When a compatible cached result already satisfies it, retrieve that result for continuity; do not broaden or repeat the search, filter it, save an unchanged copy, or retrieve unrelated domains.",
+      "content": "\n- Treat an answer to an earlier clarification question as a value for the active plan, even when phrased as a statement rather than an explicit request. Apply the answer to the relevant search or, if compatible cached results lack that criterion, retrieve the closest matching result, filter it using the supplied value, and save the update under a unique key.",
+      "support_count": 1,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 2 addresses the most frequently observed issue and clarifies how to handle flexible replies and compatible cached results. Edit 1 adds broad, actionable safeguards for mapping active criteria to supported schema fields. Edit 3 generalizes how answers to clarification questions should update the active plan; the remaining edits are narrower to direct flights or nearest-result workflows.",
+    "selected_indices": [
+      2,
+      1,
+      3
+    ]
+  }
+}

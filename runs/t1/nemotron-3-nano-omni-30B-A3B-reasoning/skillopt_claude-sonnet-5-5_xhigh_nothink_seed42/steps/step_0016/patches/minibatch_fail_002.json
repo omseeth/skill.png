@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "malformed_code_structure",
+      "count": 4,
+      "description": "First searches were emitted as bare calls with no assignment or save, as a search nested inside save_to_cache, or with a stray </parameter> tag. A state abbreviation was passed as city='CA'. Invented optional params were added (airline from 'kid-friendly', default time windows, num_people on a flight)."
+    },
+    {
+      "failure_type": "round_trip_mishandled",
+      "count": 2,
+      "description": "A flight date range ('X to Y', 'depart X and come back Y') was sent as one search with both dates in one departure_date list or the return date in arrival_date, instead of two assigned and saved searches."
+    },
+    {
+      "failure_type": "wrong_domain_scope_or_dropped_constraints",
+      "count": 3,
+      "description": "Once hotel dates arrived, the agent reloaded and re-saved the restaurants cache instead of running search_hotels. It re-filtered already-filtered flights when the turn was about hotels. It dropped an earlier-stated hotel constraint (ocean view) from the first search_hotels call."
+    },
+    {
+      "failure_type": "bad_time_format_and_stale_key",
+      "count": 1,
+      "description": "A 'before 04:39 AM' filter used the '00:00:00' format, which raises 'Unrecognized time format'. It also loaded the raw flights key instead of the most refined filtered key and saved over the wrong name."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures repeat rules that already exist but sit deep in a very long document. The largest group is bare or nested search calls, state-in-city errors, and invented optional params, so I replace the empty placeholder at the top with a short, high-visibility output template. Round-trip date ranges still fail, so I add a concrete rule to Rule 9 that forbids multi-date lists, arrival_date for the return date, and invented params. A separate edit to Rule 14 covers the first-search scope failures: when dates complete a hotel request, search the hotel with every earlier constraint, never reload and re-save another cached domain, and never re-filter cached flights. The last edit adds the 12-hour time format and the most-refined-key rule for 'before/after' time filters.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Output template (check before EVERY response)\n- Every search_*, filter_* and search_nearest call is written as `name = tool(...)` and followed on the next line by `save_to_cache(key=\"...\", value=name)`. Never write a bare `search_attractions(...)`. Never write `save_to_cache(value=search_...(...))`. Never repeat a search call, and never put a search inside save_to_cache.\n  Example: `attractions = search_attractions(state=\"CA\", type=[\"Culinary\"])` then `save_to_cache(key=\"attractions\", value=attractions)`.\n- Output only tool calls inside <CODE></CODE>. No comments, no `import`, and no stray tags such as `</parameter>`.\n- A US state or abbreviation ('CA', 'a trip to CA', 'Georgia') goes in `state=`, never `city=`. Use `city=` only when a city is named.\n- Pass only values the user literally stated. Never invent an airline from words like 'kid-friendly'. Never add default time windows, flight_class, budget, num_layovers or num_people on flights. 'As soon as possible' and 'around May 22' only mean the date is May 22."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 9: Round-trip flights (+ hotel) are separate search calls",
+        "content": "- A date reply for a flight such as 'April 19, 2026 to April 27, 2026' or 'depart around May 22 and coming back May 26' is ALWAYS a round trip, even when it arrives as the answer to the assistant's date question. Write two assigned and saved searches. The first has `departure_date=[\"<first date>\"]` and is saved as \"departure_flights\". The second has `departure_date=[\"<return date>\"]` and is saved as \"return_flights\". Never put both dates in one departure_date list. Never use arrival_date, arrival_time or departure_time for the return date. Take origin and destination from earlier turns. Add no other params: no airline, flight_class, budget, times or num_people.\n  Example: `departure_flights = search_flights(start_airport_city=\"Anchorage\", end_airport_city=\"Tucson\", departure_date=[\"April 19, 2026\"])`, `save_to_cache(key=\"departure_flights\", value=departure_flights)`, `return_flights = search_flights(start_airport_city=\"Tucson\", end_airport_city=\"Anchorage\", departure_date=[\"April 27, 2026\"])`, `save_to_cache(key=\"return_flights\", value=return_flights)`."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 14: Straight-line first search once mandatory args become complete (supplements Rule 11)",
+        "content": "- When the last turn supplies the missing hotel dates and the CACHE has no hotel key (even if a restaurants key exists), the ONLY code is `hotels = search_hotels(...)` plus `save_to_cache(key=\"hotels\", value=hotels)`. Never `get_results_from_cache` followed by `save_to_cache` of the same key. That is a no-op and it skips the search.\n- That first search_hotels call must carry EVERY hotel constraint stated in earlier turns: city, neighborhood, budget, num_people, num_rooms, stars, rating and amenities. Example: earlier 'hotel in Lexington for 5 with a budget of 45 per night', then dates -> `search_hotels(city=\"Lexington\", num_people=5, budget=45, checkin_date=[\"September 5, 2025\"], checkout_date=[\"September 17, 2025\"])`. Example: 'hotel in Tucson with a view of the ocean' -> add `has_ocean_view_rooms_present=True` ('city view' -> `has_city_view_rooms_present=True`).\n- If the last turn is about hotels or attractions and flight keys (raw or filtered) already exist, do NOT load, re-filter or re-save them, even if the budget or class was discussed earlier. The CACHE summary shows those filters are already applied. A 'Downtown X' answer plus a named attraction type means: `search_hotels` with `neighborhood=[\"Downtown X\"]` (when the hotel has no key yet), `search_attractions` for the type, then `search_nearest`. Nothing else."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 17: Refinements - pass ONLY the new constraint (the CACHE summary shows what is already applied)",
+        "content": "- Time-window phrases map to 12-hour strings. 'before 04:39 AM' -> `departure_time=[\"12:00 AM\", \"04:39 AM\"]`. 'after 3 PM' -> `[\"3:00 PM\", \"11:59 PM\"]`. 'afternoon' -> `[\"12:00 PM\", \"5:00 PM\"]`. Never use '00:00:00' or '23:59:59': they raise 'Unrecognized time format'. A time answer about when to fly out is departure_time (arrival_time only if the user says arrive).\n- For such a time filter, load the MOST REFINED key of each flight leg in the CACHE (e.g. `filtered_departure_flights`, not `departure_flights`). Do NOT re-pass flight_class, budget or other filters its summary already lists. Save under a new, unused key (e.g. `filtered_departure_flights1`). If the CACHE has only one leg, filter only that leg."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

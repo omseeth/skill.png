@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "output_form_rules_ignored",
+      "count": 3,
+      "description": "Bare search_attractions(...) with no assignment or save, a US state abbreviation ('NV', 'AZ') passed as city, and a `from cache import ...` line. Rule 21 already forbids all three, but it sits deep in a long document and the model ignores it."
+    },
+    {
+      "failure_type": "hotel_first_search_missed_or_wrong_domain",
+      "count": 2,
+      "description": "A hotel was requested, the CACHE has no hotel key, and the round-trip dates were already known. The agent loaded a non-existent 'hotels' key, re-filtered flights, or filtered flights with cuisine. It should have called search_hotels with the outbound date as check-in and the return date as check-out."
+    },
+    {
+      "failure_type": "seek_only_instead_of_search_plus_seek",
+      "count": 1,
+      "description": "A hotel without dates plus 'restaurants in the city' got only seek_information. search_restaurants(city=...) should have run first."
+    },
+    {
+      "failure_type": "refinement_not_grounded_in_last_turn",
+      "count": 3,
+      "description": "The filter params did not match the last user turn. Amenities from earlier turns (spa/hot tub, pool) were passed instead of the new ones (fitness/room service, rooms/people). The agent loaded a stale raw key and re-passed num_rooms/num_people for a budget answer."
+    }
+  ],
+  "patch": {
+    "reasoning": "Two failures are output-form errors that existing rules already forbid (no assignment/save, state in city, import). The rules are buried, so a short high-salience block replaces the empty placeholder at the top. Two failures are first hotel searches missed after round-trip dates were known, which Rule 9 and Rule 14 do not cover when the hotel request and dates arrive in different turns. One failure is seek_information with no search for the complete restaurant domain, so a concrete worked example is added next to Rule 7. Three failures are refinements that did not map the last turn's literal words to params or that loaded a stale key, so a last-turn grounding rule with worked examples is added after Rule 22. None of these edits asks for more clarification questions or adds new filters, so they should not repeat the over-seeking regressions seen in Step 4.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Non-negotiable output checks (apply before every answer)\n- Every search_*, filter_*, sort_results and search_nearest call is assigned (`x = ...`) and followed by `save_to_cache(key=..., value=x)`. A bare `search_attractions(...)` is always wrong. First-search keys are \"flights\", \"hotels\", \"restaurants\", \"attractions\".\n- Never write `import` or `from ... import ...`. The tools, get_results_from_cache and save_to_cache are already defined. `from cache import ...` crashes the run.\n- A US state name or abbreviation ('NV', 'AZ', 'Georgia') goes in `state=\"NV\"`, never in `city=`. 'Social attractions in NV' -> `attractions = search_attractions(type=[\"Social\"], state=\"NV\")` then `save_to_cache(key=\"attractions\", value=attractions)`. 'Social and Cultural attractions in AZ' -> `type=[\"Social\", \"Cultural\"], state=\"AZ\"`.\n- Only load keys that literally appear in the CACHE summary. If a domain has no key there, run search_* for it (when its mandatory args are known) instead of loading.\n- Each filter_* must use that domain's own params. Never pass `cuisine`, amenity or other foreign params to filter_flights.\n- Code is straight-line tool calls only. Reasoning goes nowhere in the output (no comment blocks)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use date strings exactly as the user wrote them (e.g. \"May 15, 2025\").",
+        "content": "- Hotel added later (or dates completed later): when the conversation has a ROUND-TRIP flight with both dates known and a hotel is requested (even if the hotel request only arrives in the last turn, e.g. 'I'd like a hotel in Midtown Atlanta with a 1 star rating', or the user just supplied 'May 16, 2025 to May 30, 2025'), and the CACHE has no hotel key, the hotel is a FIRST search. Never `get_results_from_cache(key=\"hotels\")` or filter_hotels here. Emit `hotels = search_hotels(city=<destination city>, checkin_date=[<outbound date>], checkout_date=[<return date>], <every hotel preference the user stated anywhere, e.g. neighborhood=[\"Midtown Atlanta\"], stars=[1, 1], gym_present=True>)` then `save_to_cache(key=\"hotels\", value=hotels)`. Outbound date = check-in and return date = check-out only for a round trip. A one-way flight date still needs a checkout date from the user.\n- If the last turn only supplies dates for flights that have no cache entry yet, search both flight legs (Rule 9) and the hotel in the same block. Do not re-filter or re-load other cached domains (e.g. an existing 'restaurants' key stays untouched). Never invent filters such as `cuisine=` on flights."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Keep it to one short sentence, e.g. seek_information(\"We need to ask for the check-in and check-out dates\") or seek_information(\"We need the departure date for the flight\").",
+        "content": "- Worked example (hotel without dates + another domain with complete args): 'Need a hotel in Fresno for 5 with a budget of 95 per night. Also, chip in some restaurants in the city' has the hotel city but no check-in/check-out dates. The restaurant city is the same city. Correct output is exactly: `restaurants = search_restaurants(city=\"Fresno\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. seek_information alone is correct only when NO requested domain can be searched. Phrases like 'also some restaurants in the city', 'show me restaurants there' or 'chip in restaurants' request the restaurant domain in the city already named. Do not put num_people or budget into search_restaurants."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Hotel amenity wording: 'fitness center' or 'fitness classes' -> `has_fitness_class=True`; 'gym' -> `gym_present=True`.",
+        "content": "- Ground every refinement in the LAST user turn's literal words. Before writing filter_*, quote the new phrases from the last turn and map each to exactly one param. Do not reuse params from earlier turns, and never invent a link ('kids club implies pool'). Worked examples:\n  - Last turn 'Yes, a fitness center and room service' (earlier turns mentioned sauna/hot tub, already applied) -> `x = get_results_from_cache(key=\"filtered_hotels\")`, `y = filter_hotels(prior_results=x, has_fitness_class=True, has_room_service=True)`, `save_to_cache(key=\"filtered_hotels2\", value=y)`. No has_spa_services, no has_hot_tub, no has_sauna.\n  - Last turn '2 rooms for 3 people' (pool, stars and budget already in the CACHE summary) -> load the most refined hotel key (e.g. filtered_hotels2), `filter_hotels(prior_results=x, num_rooms=2, num_people=3)`, save as a new key (filtered_hotels3). Room and party-size answers are hotel filters (num_rooms / num_people), not amenities. Do not re-pass pool_present or anything else already applied.\n  - Last turn 'around 950 for the flight and 105 per night for the hotel' -> budget=950 on the flight domain's most refined key, and budget=105 on the hotel domain's most refined key (e.g. filtered_hotels, not the raw 'hotels'). Do not add num_rooms / num_people from earlier turns.\n- A value the last turn states (a budget, a rating, a room count) is always passed, even if some earlier summary line looks similar. Values from earlier turns are passed only if the loaded key's summary does not list them. Always chain from the newest filtered_* key of that domain and save under the next unused key name (filtered_hotels, filtered_hotels1, filtered_hotels2 -> filtered_hotels3)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

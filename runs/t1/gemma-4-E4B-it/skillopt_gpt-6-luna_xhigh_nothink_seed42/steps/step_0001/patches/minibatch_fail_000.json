@@ -1,0 +1,38 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_and_state_reuse",
+      "count": 7,
+      "description": "Follow-up requests often triggered fresh or irrelevant calls instead of retrieving and filtering relevant cached results."
+    },
+    {
+      "failure_type": "result_persistence",
+      "count": 8,
+      "description": "Generated plans omitted saving tool outputs to cache, preventing later turns from reusing them."
+    },
+    {
+      "failure_type": "multi_leg_flight_planning",
+      "count": 2,
+      "description": "Round-trip requests were not consistently planned as separate outbound and return searches with the requested class applied to both."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch repeatedly misses the incremental cache workflow and result persistence, while the flight examples reveal a separate round-trip modeling error. These operational rules address the common failures without encoding task-specific values.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Cache-aware follow-up turns\nTreat each new user turn as an update to the existing plan. Check the cache summary for relevant results; when they exist, retrieve the most relevant key and use the matching filter tool with `prior_results` and the newly requested criteria rather than repeating the original search. Avoid rerunning unaffected domains, and use `search_nearest` only when proximity is requested."
+      },
+      {
+        "op": "append",
+        "content": "\n## Persist tool results\nAssign the output of every search, filter, sort, or nearest-results call to a variable, then immediately save it with `save_to_cache` under a unique, descriptive key. Do not leave results unsaved or replace an existing cache entry unintentionally."
+      },
+      {
+        "op": "append",
+        "content": "\n## Round-trip flights\nFor a requested outbound-and-return itinerary, plan two flight legs: search the outbound route on the departure date, then reverse the origin and destination and search the return route on the return date. Apply any explicitly requested flight class to both legs. Do not use the return date as the outbound search's `arrival_date`; cache or filter each leg separately as appropriate."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

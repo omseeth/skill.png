@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_flight_leg_coverage_or_wrong_domain",
+      "count": 3,
+      "description": "A flight class or price reply filtered only one flight key (3 keys cached, 2 keys cached), or the agent filtered hotels with a copied `budget=125` example when the user said 'economy'."
+    },
+    {
+      "failure_type": "re_searched_existing_key",
+      "count": 2,
+      "description": "The domain key already existed (restaurants, attractions), but the agent re-ran search_* instead of filtering for a rating reply or an accepted neighborhood proposal."
+    },
+    {
+      "failure_type": "ignored_answer_re_asked",
+      "count": 1,
+      "description": "The user supplied hotel dates ('June 3, 2025 to June 7, 2025'), but the agent called seek_information again. 'Solo trip' should also have given num_people=1."
+    },
+    {
+      "failure_type": "multi_city_key_naming",
+      "count": 1,
+      "description": "A multi-city flight trip was saved as departure_flights/return_flights instead of flights/flights2."
+    },
+    {
+      "failure_type": "no_op_turn_over_action",
+      "count": 1,
+      "description": "A party-size-only reply with no hotel requested should produce no tool calls. The agent loaded three flight keys and re-saved them unchanged."
+    }
+  ],
+  "patch": {
+    "reasoning": "Two of the largest groups are flight replies that touch too few keys (or the wrong domain) and cached domains that were re-searched. Both are fixed with short, top-of-skill checkable rules that pair each prohibition with the action to take instead. A third edit applies the date-reply rule at the Rule 6 paragraph that misled the agent (dates were given but it asked again), adds num_people=1 for 'solo', and sets multi-city key names. The fourth replaces the 'at most get_results_from_cache' wording for the party-size no-op, which led to a pointless load-and-save. The existing duplicated examples are left alone, and the new rules cover the actual failures instead of adding sibling examples.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\n-1. FLIGHT REPLIES = ONE BLOCK PER FLIGHT KEY. If the assistant's last question was about flight class, airline, flight time or ticket price (or the reply is a class word such as 'economy'/'first', an airline code, or 'under N' answering a flight-price question), the reply is about flights, even when a 'hotels' key is also in CACHE. Count the flight keys in CACHE (flights, return_flights, departure_flights, first_departure_flights, second_departure_flights, ...) and write one three-line block for EACH key, with the same new kwarg in every block: `x = get_results_from_cache(key=\"<flight key>\")`, `y = filter_flights(prior_results=x, <kwarg>)`, `save_to_cache(key=\"filtered_<flight key>\", value=y)`. 2 keys -> 2 blocks, 3 keys -> 3 blocks. Stopping after the first key is wrong. Write no hotel line for that reply. Literal values in this skill's examples (budget=125, etc.) are illustrations only; every value comes from the user's last message ('I'd prefer economy' -> flight_class=[\"economy\"] on each flight key and nothing on hotels; 'keep it under 1150' after a flight-price question -> budget=1150 on each flight key)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- SEARCH GATE (before writing any search_*): look up that domain's key in CACHE (flights / hotels / restaurants / attractions). If the key is there, search_* is forbidden for that domain. Load the most refined key and filter it instead. A reply that gives a rating ('okay with at least 3.0' -> rating=[3.0, 5]), budget, cuisine or neighborhood, or that shows interest in the assistant's proposal ('Actually, I haven't. What's there?', 'Sure', 'Yes'), is a filter on the key that already exists. Apply a proposed neighborhood to the domain being discussed: attractions cached -> `a = get_results_from_cache(key=\"attractions\")`, `a2 = filter_attractions(prior_results=a, neighborhood=[\"<neighborhood exactly as the assistant proposed it>\"])`, `save_to_cache(key=\"filtered_attractions\", value=a2)`. Restaurants cached -> filter_restaurants the same way, hotels cached -> filter_hotels. Re-running search_attractions / search_restaurants with the old criteria is always wrong."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 6: Never fabricate mandatory parameters (dates especially)",
+        "content": "\n- DATE REPLY OVERRIDES THE 'VAGUE TIMING' PARAGRAPH BELOW. If the user's last turn gives actual dates ('June 3, 2025 to June 7, 2025') and a hotel was requested earlier with a known city, the first date is check-in and the second is check-out. Write `hotels = search_hotels(city=\"<earlier city>\", checkin_date=[\"<first date>\"], checkout_date=[\"<second date>\"])` + `save_to_cache(key=\"hotels\", value=hotels)`. Words like 'solo trip' or 'weekend' from earlier turns no longer block the search, and calling seek_information again after the user supplied dates is wrong. 'Solo trip' or 'just me' means num_people=1 on that search_hotels (a stated party size such as 'for 4' means num_people=4). Add any other hotel constraint the user stated, and search any other requested domain that still has no key.\n- Multi-city flights (leg 2 starts at leg 1's destination and ends somewhere other than the origin, e.g. 'May 21 from Fresno to Raleigh, and May 30 from Raleigh to San Jose') are saved as \"flights\" and \"flights2\", with hotels per destination city saved as \"hotels\" and \"hotels2\". The keys departure_flights/return_flights are only for a round trip back to the origin."
+      },
+      {
+        "op": "replace",
+        "target": "Write no search and no filter. At most `x = get_results_from_cache(key=\"<flight key>\")` for each cached flight key.",
+        "content": "Write no search, no filter, no get_results_from_cache and no save_to_cache. The whole output is exactly `print(\"No planning needed\")` (the one allowed print). Loading flight keys and saving them back unchanged is wrong."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

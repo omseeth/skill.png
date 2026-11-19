@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_scope_and_cache_errors",
+      "count": 7,
+      "description": "Plans missed pending domains or legs, ignored new constraints, refined the wrong cached results, or treated an unmet request as complete."
+    },
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 6,
+      "description": "Search and refinement calls were often not bound to variables and saved to cache."
+    },
+    {
+      "failure_type": "hotel_party_size_mapping",
+      "count": 1,
+      "description": "An explicitly solo hotel traveler was not passed as the supported hotel `num_people` value."
+    },
+    {
+      "failure_type": "unsupported_result_inspection",
+      "count": 1,
+      "description": "Generated code iterated through results and accessed an assumed dictionary key, causing a runtime error."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly requires saving result-producing calls, refining compatible cache results, and preserving pending work, so repeating those rules would not patch a gap. These additions clarify two under-specified cases: applying a trip-wide flight update to each affected cached leg, and mapping hotel traveler counts to the correct supported field.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "\n- When a new itinerary-wide flight criterion (such as a budget cap, cabin class, or time window) applies to multiple legs, apply it independently to each affected leg's latest compatible cached result. Retrieve each leg's result by its exact listed cache key, refine and save each leg under a new key; do not treat one leg's refinement, or the existence of cached legs, as satisfying the other leg. Reuse unaffected legs directly."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+        "content": "\n- For hotel searches and filters, pass an explicitly stated traveler count—including “solo” as one traveler—as `num_people` when supported. Do not map traveler count to `num_rooms`; infer a room count only when it is separately stated. Preserve the traveler count in later hotel refinements unless superseded."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

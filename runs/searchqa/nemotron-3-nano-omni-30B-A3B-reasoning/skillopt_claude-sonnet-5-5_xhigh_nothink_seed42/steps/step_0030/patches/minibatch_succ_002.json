@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Verbatim archive hits (a 'jeopardy/..._Qs.txt' line with 'clue | answer') were copied exactly as printed, including quote marks and punctuation. This is already covered by Rule 3.",
+    "Fragment clues ('In Dijon & Bordeaux') were resolved to the single connecting category (French). Slot clues ('a predicate & one of these', 'this state') were resolved to the missing set member or the owner (subject, Tennessee). Both are already covered by Rules 1 and 2.",
+    "'First name of the man who...' was answered with ONLY the requested part (Helmut), after identifying the person from repeated passage evidence. Nothing in the skill says to output a partial name when the clue asks for one.",
+    "'Rise 5 ranks from Tenderfoot' was solved by finding the ordered rank list in the passages and counting steps from the starting item. The answer was the landing item in its person-form title (Eagle Scout). Counting or ordinal clues are not covered.",
+    "An epithet in the clue ('sweetheart of an actress') was matched to the passage phrase that attaches that epithet to a name ('dubbed America's sweetheart'). The name from that phrase was the answer, not other actresses mentioned in the passages."
+  ],
+  "patch": {
+    "reasoning": "Most successes rely on rules the skill already has (archive copy, referent slot, bare answer). Three recurring success mechanisms are not explicit: partial-name requests, counting steps along an ordered list in the passages, and matching a descriptor in the clue to a passage epithet. Each is a short, conditional, checkable step triggered by a visible clue feature. None conflicts with Rule 3 or Rule 4. The partial-name edit explicitly overrides the full-name preference only when the clue asks for a part.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Give the bare name ('Ronald Reagan'), not the event, the place or the date.",
+        "content": "\n- 'First name / last name / surname / initials / nickname of ...' asks for ONLY that part of the entity. First identify the person from the passages, then output just the requested part ('First name of the man elected chancellor of a reunified Germany in 1990' -> 'Helmut'). This overrides the full-name preference in Rule 4."
+      },
+      {
+        "op": "insert_after",
+        "target": "Jokes, asides and filler in the clue",
+        "content": " [Counting clues: 'rise 5 ranks from Tenderfoot', 'two steps above X', 'the third in line'. Find the ordered list in the passages (Scout, Tenderfoot, Second Class, First Class, Star, Life, Eagle), count the steps from the start item the clue names, and say the count in your reasoning line. Answer with the item you land on, in the standard title form that fits 'you're one of these' ('Eagle Scout').] Jokes, asides and filler in the clue"
+      },
+      {
+        "op": "insert_after",
+        "target": "- A word in quotation marks inside the clue (a 'drag', a nickname) is usually a pun or hint tied to the answer. Look for passages where that word appears next to a candidate and answer with that candidate.",
+        "content": "\n- The same holds for an unquoted epithet or descriptor in the clue ('sweetheart of an actress', 'queen of soul', 'father of ...'). Look for the passage sentence that attaches that epithet to a name ('actress Mary Pickford, dubbed America's sweetheart') in the clue's topical context, and answer with that name. Prefer it over other people who merely appear in the same passages."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "malformed_answer_json",
+      "count": 2,
+      "description": "Unparseable answers: stray `]` after each object (`]}],`), a filled optional list followed by a second `optional parameters` key, and a missing final `]` (news:94, ecommerce:108)."
+    },
+    {
+      "failure_type": "same_param_name_twice_in_one_call",
+      "count": 3,
+      "description": "One call holds two values under one param name. COVID stats `location` EG and US went in one object instead of two calls (news:30). Two `publisher` entries should be one comma-joined value (news:94). `category` should be `science,technology` (news:160)."
+    },
+    {
+      "failure_type": "wrong_tool_or_dropped_clause",
+      "count": 3,
+      "description": "The BBC clause was dropped instead of using the source-id tool. A qualifier-rich Hollywood Reporter clause went to the no-param Trending feed instead of Kubric News (news:175). Drill 'details' used practice-question instead of drill-details (education:86). A disposable-domain clause used a sibling provider (email:65)."
+    },
+    {
+      "failure_type": "missing_or_misplaced_filter_params",
+      "count": 4,
+      "description": "The `top` or topic category filter was not filled on NewsData sources (news:175, news:160). A required param was put in the wrong list, e.g. Stars `starid` in required (education:71). A tag was lowercased where `Technology` was expected (news:160). Required BestBuy `page` and Amazon `domain` were omitted (ecommerce:108)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three fixes address the most common fixable patterns. (1) The rule against repeating a param name is made operational: one comma-joined value when the schema accepts several values, one call per value otherwise. This covers news:30, news:94 and news:160 and replaces the weaker existing rule 4 rather than adding another warning. (2) Two gaps in tool selection are closed: an outlet with no dedicated endpoint, and qualifier-rich clauses sent to a no-param feed. This covers the dropped BBC clause and the wrong Kubric tool in news:175. (3) Topic, category and 'top' words are mapped to the schema's filter options, which fixes the missing `category` values in news:175 and news:160. A redundant negative-example bullet is also deleted to cut priming and length. The meta-guidance notes that the bad string is already shown four times and that repeated warnings have not helped. No new format warnings are added.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "4. No list contains the same `name` twice. BAD one call with three `email` entries, or `country` twice (US and GB). GOOD one call per value, each its own object.",
+        "content": "4. No list contains the same `name` twice. Two cases. (a) The schema says the param takes several values ('comma-separated', or a `publisher` / `category` filter): write ONE entry with the values joined by commas and no spaces, e.g. `publisher`=`cnn.com,bbc.com`, `category`=`science,technology`. (b) The param takes a single value (`location`, `email`, `domain`, `country`, `sku`): make one call per value, each its own object, with shared qualifiers repeated. 'COVID-19 stats for Egypt and the United States' -> two `Coronavirus Smartable: GetStats` objects, one with `location`=`EG` and one with `location`=`US` (BAD: one object holding both `location` entries)."
+      },
+      {
+        "op": "insert_after",
+        "target": "'General global news' with no topic takes a no-input feed (`Moka News: Recent 50`), not Search with an invented `q`.",
+        "content": "\n- OUTLET WITH NO ENDPOINT OF ITS OWN, AND QUALIFIER-RICH CLAUSES. 'Latest news stories from BBC' when no BBC endpoint is listed -> a tool whose input is a source id (`BizToc: News / Source`, required `source_id`=`bbc`). Never drop the clause and never swap in an unrelated feed. A clause with a count, sentiment, outlet or type ('5 positive movie news articles from the Hollywood Reporter') goes to the sibling whose optional list names those fields (`Kubric: The Comprehensive Movie News API: News`: `limit`=`5`, `sentiment`=`positive`, `source`=`Hollywood Reporter`), not to a no-parameter 'Trending' feed."
+      },
+      {
+        "op": "insert_after",
+        "target": "only when that call's own clause states or implies it.",
+        "content": "\n- TOPIC AND OPTION WORDS FILL FILTERS. A topic word in a clause fills the tool's category/topic filter even on a 'sources' or 'list' tool: 'US-based science and technology news sources in English' on `NewsData: sources` -> category=`science,technology`, country=`us`, language=`en`. With no topic named and 'top' wording, use the listed option `top` ('top English-language news sources from the United States' -> category=`top`, country=`us`, language=`en`). Copy enum values from the option list printed in the schema. 'Federal' or 'active' qualifiers on a politicians tool fill `level_of_government` and `active`."
+      },
+      {
+        "op": "delete",
+        "target": "- Stray trailing key after a one-param list: `\"optional parameters\": [{\"name\": \"value\", \"value\": \"A\"}], \"optional parameters\": []`. The empty list erased `value`=`A`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

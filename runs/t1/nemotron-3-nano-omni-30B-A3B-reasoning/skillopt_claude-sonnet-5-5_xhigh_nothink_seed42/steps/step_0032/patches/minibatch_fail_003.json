@@ -1,0 +1,40 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "format_hygiene_violation",
+      "count": 1,
+      "description": "A state code was passed as city= in search_attractions ('trip to CO' -> city=\"CO\"), and the call was left unassigned and unsaved. The rules for this already appear three times, so the agent missed them."
+    },
+    {
+      "failure_type": "search_instead_of_filter_on_cached_domain",
+      "count": 1,
+      "description": "Attractions were already cached at state level. The user then named two cities, and the agent re-ran search_attractions for only the first city. The gold answer loads the cache once and runs one filter_attractions(city=...) per city, each saved under its own key."
+    }
+  ],
+  "patch": {
+    "reasoning": "The multi-city failure comes from conflicting guidance. The top SEARCH GATE example covers only the neighborhood case. Rules 13 and 17 say 'do not add city to a filter', which contradicts the slow block's filter_attractions(city=...) rule. The agent therefore fell back to a fresh search. Edits 1-3 put the city-filter case in the top gate, using placeholders rather than task values, and add a city exception to Rules 13 and 17. For the hygiene failure, the assign-and-save rule is already stated in the top gate, the slow block and Rule 21, and the agent still skipped it. Following the meta-skill advice to shrink, edit 4 deletes the redundant Rule 21 copy instead of adding another one.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "saved as filtered_attractions.",
+        "content": "saved as filtered_attractions. Attractions cached (e.g. searched by state) + the user names one or more cities ('thinking of visiting X and Y') -> load the attractions key ONCE, then one `filter_attractions(prior_results=a, city=\"X\")` and one `filter_attractions(prior_results=a, city=\"Y\")`, each assigned and saved under its own new key (filtered_attractions1, filtered_attractions2). Never call search_attractions for it and never drop a named city."
+      },
+      {
+        "op": "replace",
+        "target": "and do not add city to a filter.",
+        "content": "and do not add city to a hotel/restaurant filter. Exception: cached attractions + a city the user names -> `filter_attractions(prior_results=a, city=\"<city>\")`, one call per named city."
+      },
+      {
+        "op": "replace",
+        "target": "Do not add checkin_date/checkout_date or city to a filter,",
+        "content": "Do not add checkin_date/checkout_date to a filter (city is allowed only in filter_attractions when the user names a city for cached attractions),"
+      },
+      {
+        "op": "delete",
+        "target": "- Every search_*, filter_*, sort_results and search_nearest call is assigned to a variable and followed by `save_to_cache`, even for a one-turn attraction or restaurant request. Correct: `attractions = search_attractions(city=\"Tucson\", type=[\"Culinary\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. A bare `search_attractions(...)` with no assignment and no save is wrong."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

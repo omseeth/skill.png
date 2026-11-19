@@ -1,0 +1,114 @@
+{
+  "reasoning": "fallback: failure first, then success",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Write exactly three lines:",
+      "content": "Write one three-line group (load, filter, save) per key that must be refined: a flight class/airline/time/price reply needs one group per flight leg, and a message that names two domains needs one group per domain. Each group is:",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## CACHE GATE (run this before writing any code, every turn)",
+      "content": "\nREPLY -> ACTION TABLE (read first; the rows use placeholders, never copy their kwargs)\n- Flight class / airline / time / ticket-price reply: one load-filter-save group for EVERY flight key in CACHE (departure_flights AND return_flights, or flights AND return_flights, or each multi-leg key), identical kwargs in each. Zero hotel lines.\n- Hotel service or amenity words (room service, shuttle, wifi, gym, ...), stars or neighborhood: filter_hotels on the highest-numbered / most refined hotels key. Never filter restaurants or flights for it, even if a restaurant rating was discussed earlier.\n- A bare number answering 'how many travelers/people' -> num_people=N. Answering 'how many rooms' -> num_rooms=N. If the same message gives a per-night budget, put both in ONE filter_hotels call.\n- One message naming two domains ('X for the flight and Y per night for the hotel'): one group per domain, budget=X on every flight key and budget=Y on the most refined hotels key.\n- Cuisine or restaurant rating while a restaurants key exists: filter_restaurants on that key, never search_restaurants again. 'Near the hotel' then adds search_nearest (see Rule 26).\n",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Rule 9: Round-trip flights (+ hotel) are separate search calls",
+      "content": "\n- MULTI-CITY LEGS: when the user names several hops ('A to B and then B to C', 'then I head back to A'), write ONE search_flights per hop. Dates are given in leg order: leg 1 departs on the first date, leg 2 on the next date, the final return leg on the last date. Example: 'A to B and then B to C', dates 'd1 to d2 and then d3 I head back to A' -> A->B on d1, B->C on d2, C->A on d3 (three searches, none skipped).\n- Every search_flights is its own statement `x = search_flights(...)` followed by its save. Never put one search call inside another call's arguments (there is no return_flights= kwarg). A party size such as 'for 2 people' is never passed to search_flights (no num_people kwarg).",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Without a hotels key, 'near the hotel' needs no search_nearest. Just run the normal first search.",
+      "content": "\n- If the restaurants (or attractions) key ALREADY exists in CACHE, do not search it again. Load it, filter it with only the new constraints (e.g. cuisine, rating), save it, load the most refined hotels key WITHOUT filtering it, then `search_nearest(hotels=<hotels>, restaurants=<filtered restaurants>, groupBy=\"restaurant\")` and save it. Example: CACHE restaurants + hotels2, last turn '<cuisine> and a <rating> restaurant near the hotel' -> filter_restaurants(cuisine=[...], rating=[...]) + search_nearest, with no filter_hotels and no search_restaurants.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "search_flights never takes num_people or num_layovers.",
+      "content": "\n- ORIGIN GATE (before any search_flights): the origin must be a city the user literally named as the departure ('from X', 'out of X', 'I normally fly from X'). A destination ('a trip to <city>'), the hotel city, or 'help me with flights too' after a hotel is NOT an origin. Never guess an origin, never reuse the destination as origin, never swap cities, and never write a placeholder such as '<origin city>'. Dates being known does not change this. Flights requested + origin missing -> NO search_flights. The closing line is `seek_information(\"We need the departure city for the flight.\")`, naming only the origin (add the date only if it is also missing). Before that line, still run every other requested domain that is searchable. Example: flights + hotel, destination city and both dates given, no origin -> `search_hotels(city=<destination>, checkin_date=[<first date as written>], checkout_date=[<second date as written>])` + save as hotels, then the seek_information. Example: only a hotel key in CACHE and the reply is 'help me with flights too' with no origin stated -> the seek_information alone, with no filter and no search.",
+      "source_type": "failure",
+      "support_count": 6,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Flight requested: outbound",
+      "content": "Flight requested AND an origin city the user named (otherwise the ORIGIN GATE applies and there is no flight search): outbound",
+      "source_type": "failure",
+      "support_count": 6,
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "saved as filtered_attractions.",
+      "content": "\n- REPLY ROWS (cached domain; kwargs come only from the last message, and anything said in earlier turns is already inside the cached entry): (a) A hotel was requested anywhere and the reply is only a head-count ('There are N of us') -> load the MOST RECENT hotel key in CACHE (a `nearest_hotels` key beats `hotels` and `filtered_hotels*`), `filter_hotels(prior_results=h, num_people=<N>)`, save under an unused key. Pass nothing else: no neighborhood, stars, amenity, hotel name or attraction name from earlier turns (a place named in turn 1 such as 'near <attraction>' is already applied). (b) Attractions cached from a state or type search and the reply names a city -> `filter_attractions(prior_results=a, city=\"<city as written>\")` saved as filtered_attractions. Never a new search_attractions. (c) The assistant's last question was about dining, 'restaurants' has no key, and the reply only gives a place ('near <place>') -> the reply is a RESTAURANT request, not a hotel filter. Write `search_restaurants(city=<trip city>)` and then `search_nearest(hotels=<hotel result>, restaurants=<restaurant result>, groupBy=\"restaurant\")`, each assigned and saved. If <place> is a specific hotel name rather than an area, the hotel result is `search_hotels(city=<trip city>, checkin_date=<cached dates as written>, checkout_date=<cached dates as written>, hotel_name=[\"<place>\"])`. Never pass a place name as neighborhood=[...] on filter_hotels.",
+      "source_type": "failure",
+      "support_count": 6,
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## HARD OUTPUT RULES (check before EVERY response)",
+      "content": "\n\n- FIVE QUICK CHECKS (they override any older wording below that seems to conflict):\n  1. DOMAIN OWNERSHIP. A cached key is touched only if the LAST message talks about that domain. Hotel words (hotel, stars, amenity, per night) with no hotels key are never applied to another domain's key. With no dates known, the output is `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. If flights or a hotel were requested earlier and the reply is a date or an 'X to Y' range, write the round-trip flight searches (plus the hotel search) even though 'restaurants' or 'attractions' is cached. Never write a filter on a cached domain with a value already shown in its summary (e.g. a cuisine or attraction type).\n  2. REFUSAL = ONE LINE. A refusal or no-preference reply ('Not really', 'No', 'No preference', 'Anything is fine') on a cached domain is exactly `x = get_results_from_cache(key=\"<most refined key of that domain>\")`. Write no filter, no save, and do not re-pass any earlier constraint.\n  3. SEARCH CALLS carry only kwargs the user stated. Never write a kwarg set to None, [0, 1], 60, '00:00:00' or '23:59:59'. A date range is TWO search_flights calls with only origin, destination and departure_date (no arrival_date, no times). Every search is `x = search_*(...)` with `save_to_cache(...)` on the next line. A bare call or a stray tag such as </parameter> is a SyntaxError.\n  4. STATE vs CITY. 'a trip to GA', 'Guided attractions in GA' or any two-letter state code goes in `state=\"GA\"`, never `city=`.\n  5. VALUES. A restaurant rating (a 'X star rating', 'X rating', or 'at least X') is a floor, rating=[X, 5]. Hotel stars are exact, [n, n]. 'fitness center' and 'gym' map to gym_present=True; only 'fitness class(es)' maps to has_fitness_class=True.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Save it as nearest_hotels / nearest_restaurants. Add no hotel filter the user did not state.",
+      "content": "\n   - Worked example (hotels AND restaurants cached; the assistant asked about special restaurant needs; the user says '<dietary or allergy need>. Can you recommend a hotel with good restaurants nearby?'). The need is a RESTAURANT constraint. Write: `r = get_results_from_cache(key=\"<most refined restaurants key>\")`, `r2 = filter_restaurants(prior_results=r, has_<need>_options=True)`, `save_to_cache(key=\"final_restaurants\", value=r2)`, `h = get_results_from_cache(key=\"<most refined hotels key>\")`, `n = search_nearest(hotels=h, restaurants=r2, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=n)`. Do not call filter_hotels and do not re-pass a neighborhood.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "'a 3.5 rating' -> rating=[3.5, 3.5]. 'at least / minimum 3.5' -> rating=[3.5, 5]. Never pass a one-element list.",
+      "content": "Hotel 'a 3.5 rating' -> rating=[3.5, 3.5]. A restaurant rating ('something with a 3.5 star rating', 'a 3.5 rating', 'at least / minimum 3.5') is a floor -> rating=[3.5, 5]. Never pass a one-element list.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "a plain 'X rating' -> rating=[X, X].",
+      "content": "a plain hotel 'X rating' -> rating=[X, X]; a restaurant 'X rating' or 'X star rating' -> rating=[X, 5].",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "'One-way', 'N travelers', 'solo trip', 'weekend getaway', 'birthday' and 'special occasion' are context, not dates.",
+      "content": "'One-way', 'N travelers', 'solo trip', 'weekend getaway', 'birthday', 'special occasion', 'last-minute', an arrival or departure time wish ('arrive before 6:36 PM'), a layover city ('with a layover in San Antonio'), and a class or airline are context, not dates. A flight request that has only origin, destination and such preferences, with no literal date, gets ONLY `seek_information(\"We need the departure date for the flight.\")`. Never write search_flights with an invented date ('January 1, 2025') or a placeholder ('<date>').",
+      "source_type": "success",
+      "support_count": 8
+    },
+    {
+      "op": "replace",
+      "target": "Time strings use the 12-hour style \"12:00 PM\" / \"5:00 PM\", because \"12:00:00\" raises 'Unrecognized time format'.",
+      "content": "Time strings in EVERY flight call (search_flights and filter_flights: departure_time, arrival_time) use the 12-hour style \"12:00 AM\" / \"6:36 PM\", because \"00:00:00\" and \"12:00:00\" raise 'Unrecognized time format'. This applies even though the TOOL CONFIG examples show 24-hour strings.",
+      "source_type": "success",
+      "support_count": 8
+    },
+    {
+      "op": "replace",
+      "target": "'Solo trip' / 'just me' -> `num_people=1`; any other party size only from a stated number.",
+      "content": "'Solo trip' / 'just me' -> `num_people=1`; any other party size only from a stated number. A room count or headcount stated in ANY earlier turn ('We need 4 rooms', 'traveling with 5 people') goes into this first search_hotels as num_rooms=4 / num_people=5.",
+      "source_type": "success",
+      "support_count": 8
+    }
+  ]
+}

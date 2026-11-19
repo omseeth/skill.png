@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "duplicate_optional_key",
+      "count": 2,
+      "description": "A filled optional list was followed by a second empty `\"optional parameters\": []` key (Random Words, data_visualisation, Helioviewer getUserVideos). The second key overwrote the first and dropped minLength, X-RapidAPI-Key and num."
+    },
+    {
+      "failure_type": "wrong_tool_sibling_or_generic_substitute",
+      "count": 3,
+      "description": "Picked a sibling or generic tool instead of the one whose domain noun matched. Foreca Daily was used for an air-quality forecast. Pokemon Unite was used for a Pokédex query, with an invented `country` param. Rocket League News was used where Blog's description covers both 'blog posts and news'."
+    },
+    {
+      "failure_type": "dropped_clauses",
+      "count": 1,
+      "description": "Education:158 returned 8 of 10 calls. It missed 'climate change news from CNN' (Climate_change: specific news, newspaperId) and 'information about faith' (Uncovered Treasure /topic/{topic})."
+    },
+    {
+      "failure_type": "required_optional_misplacement",
+      "count": 2,
+      "description": "BestBuy `page` was put in optional although the schema lists it as required. Aliexpress Item Search 2 `q` was put in required although the schema says Required: none."
+    },
+    {
+      "failure_type": "value_form_and_defaults",
+      "count": 3,
+      "description": "Asos auto-complete defaults were omitted. The SBB query and Pokédex values were not lowercased. 'books' was left in the GetBooksInfo subject. The Aliexpress sort enum value was invented. These are already covered by the protected block or are gold artifacts, so no new rule."
+    }
+  ],
+  "patch": {
+    "reasoning": "The duplicate `optional parameters` key is the most frequent persistent bug and cost params in two tasks. The current two-pass skeleton instruction has the agent write an empty `\"optional parameters\": []` first, which probably produces the habit, so it is replaced by a single-pass instruction with canonical filled lines. Three wrong-tool cases (air quality, Pokédex, Blog/News) share one cause, so a single 'domain noun first' rule covers them. A short completeness rule covers the dropped topic-provider and same-provider clauses, with an output-count gate. A short per-schema placement fact covers the two required/optional misplacements. Entity-specific rules are kept minimal, and the protected block is not touched.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Build the answer in two passes. Pass 1: write an empty skeleton for every checklist call, `{\"tool name\": \"<### heading>\", \"required parameters\": [], \"optional parameters\": []}`. Pass 2: put the parameter objects INSIDE those two existing brackets (decide all optionals first; never add a third list or a second key).",
+        "content": "Write each object ONCE, left to right, in a single pass: `tool name`, then `required parameters` (filled or `[]`), then `optional parameters` (filled or `[]`), then `}`. Decide the optional values BEFORE you type the optional key, and type that key exactly once. Do not write an empty skeleton first. Nothing but `}` may follow the closing `]` of the optional list. Model lines to imitate (filled lists stay filled):\n`{\"tool name\": \"Zappos Realtime Data: Zappos search product\", \"required parameters\": [{\"name\": \"keyword\", \"value\": \"running shoes\"}], \"optional parameters\": [{\"name\": \"sort\", \"value\": \"best_seller\"}, {\"name\": \"page\", \"value\": \"1\"}]},`\n`{\"tool name\": \"Helioviewer v1: getUserVideos\", \"required parameters\": [], \"optional parameters\": [{\"name\": \"num\", \"value\": \"5\"}]},`"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n- DOMAIN NOUN FIRST. Before the verb or time scope, find the tool whose provider, heading or description contains the clause's domain noun. Never substitute a generic tool from another domain. '48-hour air quality forecast' -> `Air Quality: Air Quality Forecast` (`lat`, `lon`, optional `hours`=`48`), not `Foreca Weather: Daily` with a city string. 'Pikachu from the Pokédex using UK region' -> `Pokedex: Get Specific Pokemon` (required `country`, `pokemon`), not `Pokemon Unite Pokemons`, which has no region field. If a clause qualifier has no field in your chosen tool, you picked the wrong provider. When one tool's Description literally contains both of the clause's phrases ('blog posts and news' -> `Rocket League: Blog`), make that one call, not that tool plus its sibling."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Which calls to make",
+        "content": "\n- TOPIC + OUTLET, AND SAME-PROVIDER CLAUSES. 'Recent climate change news from CNN' -> the provider named for the topic (`Climate_change: specific news`) with the outlet as the optional value (`newspaperId`=`CNN`). An outlet name is a parameter value, never a reason to skip the clause. 'Today's Bible insight AND some information about faith' -> two Uncovered Treasure calls (`/today` and `/topic/{topic}` with `topic`=`faith`), because two clauses on one provider with different inputs are still two calls. OUTPUT-COUNT GATE: before `</answer>`, count the query's deliverables (every comma, 'and', 'then' and 'finally' item). The number of objects must equal that count. In a query of about 10 items, 8 objects means two were dropped, so re-scan the tool list by topic word for each missing item."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Parameters",
+        "content": "\n- PLACEMENT FACTS FROM THE SCHEMA BLOCK (copy, do not infer). `Required parameters: none` -> `\"required parameters\": []`, and the main input goes in optional. `Aliexpress DataHub: Aliexpress - Item Search 2` has NO required params, so 'iPhone accessories sorted by ascending price' -> optional `q` and `sort` (never `q` in required). The reverse also holds: `BestBuy Product Data: BestBuyProductData` lists `keyword` AND `page` under Required, so `page`=`1` goes in `required parameters` next to `keyword`. Siblings differ: `Lazada DataHub: Lazada - Item Search` requires `region` and `q`, and its `sort` and `page` are optional."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

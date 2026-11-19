@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "schema_and_argument_mapping",
+      "count": 6,
+      "description": "Arguments had incorrect buckets or parameter shapes, missed or mis-mapped constraints, or used noncanonical values."
+    },
+    {
+      "failure_type": "endpoint_selection_and_call_set",
+      "count": 3,
+      "description": "Calls included redundant or unrelated endpoints, or omitted requested outcomes in favor of poor substitutes."
+    },
+    {
+      "failure_type": "response_format_conformance",
+      "count": 2,
+      "description": "Calls did not follow the active format's required parameter-entry shape or wrapper."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers endpoint eligibility and argument requirements, so those failures do not warrant repeating existing guidance. The response-format errors suggest making the boundary between tool-schema semantics and output serialization explicit: resolve each argument from the endpoint schema, then encode it only in the active format.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Validate before responding",
+        "content": "\n- Keep schema interpretation separate from response serialization: first resolve each parameter's exact name, value, and required/optional status from the selected endpoint; then encode the invocation in the active answer format. The endpoint schema determines parameter meaning and bucket, while the answer format determines the wrapper and entry shape. Do not invent an `arguments` wrapper or use raw keyed objects when the format requires `{ \"name\": \"...\", \"value\": ... }` entries, and never duplicate a parameter across buckets."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_invocation_contract_violation",
+      "count": 8,
+      "description": "Every trajectory imported tools even though the runtime provides them directly, causing execution to fail."
+    },
+    {
+      "failure_type": "incomplete_or_guessed_flight_details",
+      "count": 3,
+      "description": "Flight plans omitted a return leg or guessed a missing departure city instead of asking for it."
+    },
+    {
+      "failure_type": "missing_required_information",
+      "count": 2,
+      "description": "Agents proceeded without required dates or route details rather than seeking only the missing mandatory inputs."
+    },
+    {
+      "failure_type": "cache_and_operation_misuse",
+      "count": 3,
+      "description": "Agents repeated searches, applied redundant filters, or retrieved cached results unrelated to the requested update."
+    },
+    {
+      "failure_type": "entity_value_normalization",
+      "count": 2,
+      "description": "Agents changed user-provided date formats or flight-class casing instead of preserving the supplied values."
+    }
+  ],
+  "patch": {
+    "reasoning": "These concise rules target the recurring execution failure and the main planning errors: guessing missing required details, incomplete round trips, unnecessary cache operations, and changing user-provided values.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Reliable travel-tool planning\n- Call runtime-provided tools directly; never import, redefine, or wrap them. Use keyword arguments except for `seek_information`, and return code in the required format.\n- Check mandatory inputs before each search. If any are missing, call `seek_information` asking only for those missing inputs; do not guess or invent values. Continue with independent searches whose required inputs are available.\n- For a round trip, search each leg separately, reversing the outbound route for the return and using that leg’s departure date. If an endpoint is unknown, ask for it rather than assuming a route. Preserve user-provided dates, entity values, and casing as stated.\n- Use compatible cached results for updates: retrieve and filter them when new criteria apply, rather than repeating a search. Do not retrieve unrelated results or apply a filter that repeats constraints already used in a search. Save each newly generated search or transformation result under a unique cache key."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

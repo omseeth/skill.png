@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "parameter_binding",
+      "count": 5,
+      "description": "Several trajectories misbound a requested facet, date bound, or canonical parameter value, including choosing an endpoint that did not cover all requested checks."
+    },
+    {
+      "failure_type": "parameter_serialization",
+      "count": 2,
+      "description": "Parameter entries did not consistently follow the required name/value structure or string encoding."
+    },
+    {
+      "failure_type": "tool_identifier",
+      "count": 1,
+      "description": "A call used the provider name without the full endpoint identifier listed in the tools."
+    },
+    {
+      "failure_type": "redundant_endpoint_fanout",
+      "count": 1,
+      "description": "A request was sent to multiple overlapping validators rather than a focused set of calls covering its distinct checks."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers exact tool names, required/optional placement, facet coverage, and avoiding redundant alternatives, so those rules do not need repeating. These edits clarify the parameter-entry structure and add explicit guidance for directional date bounds and API-specific source identifiers, addressing concrete binding and serialization errors in the batch.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- In this answer format, encode scalar `value` fields as JSON strings, including numeric and boolean-like parameter values, unless the task's response contract explicitly requires native JSON numbers or booleans.",
+        "content": "- In this answer format, each parameter entry must be an object with exactly `name` and `value` keys; do not use shorthand objects such as `{ \"limit\": \"10\" }`. Encode scalar `value` fields as JSON strings, including numeric and boolean-like parameter values, unless the task's response contract explicitly requires native JSON numbers or booleans."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Preserve user-provided identifiers and meaningful free text unless the schema requires a documented conversion. For categorical filters, codes, and selectors, map the request to the documented parameter meaning—not a similarly named field—and use the endpoint's canonical accepted token and casing from its enums or examples. Do not pass a descriptive word as a category value when it changes the field's meaning; preserve original wording when no conversion is documented. Interpret directional constraints according to field semantics.",
+        "content": "\n- Map temporal wording to the endpoint's date-bound semantics: a start such as “since” or “from” belongs in the lower/start-bound field, while an end such as “until” or “through” belongs in the upper/end-bound field. Check the documented inclusivity and do not reverse the bounds.\n- When a source or publisher filter expects API-specific identifiers, use its documented canonical form (for example, a publisher domain rather than a display name) instead of assuming the human-readable label is accepted."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,36 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_call_reconciliation",
+      "count": 3,
+      "description": "A source-specific retrieval was replaced by broad search, an overlapping endpoint was called unnecessarily, or a distinct requested verification result was omitted."
+    },
+    {
+      "failure_type": "schema_value_and_argument_shape",
+      "count": 2,
+      "description": "One call used a nonmatching canonical value form, while another listed required parameter names without supplying values in the required entry shape."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that an endpoint's documented output can cover multiple coordinated content labels without requiring an overlapping call, while keeping separately requested verification properties mapped to their own checks. Make the parameter-entry audit explicit so required names cannot be mistaken for complete arguments.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Account for every requested deliverable in the calls. Use separate calls for distinct operations or targets unless an endpoint explicitly supports handling them together. Do not infer calls from incidental context or a name match, or add duplicate or alternative calls unless the user requests separate results.",
+        "content": "- When one endpoint's documented output explicitly includes multiple requested content types for the same target, treat those terms as one covered deliverable and do not add an overlapping call for only part of that output. Use separate calls only for results the first endpoint does not provide."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Select the right endpoint",
+        "content": "- For a compound verification request, map each separately requested property to an endpoint that explicitly checks or returns that property; do not treat a general validation result as covering a distinct MX, existence, or deliverability check. If the user explicitly requests multiple verification tools, include tools for distinct checks, but do not add competing tools for the same check."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Preserve the answer structure",
+        "content": "- When parameters are represented as name/value entries, include both the schema parameter name and its value for every required field; a bare parameter name is not a complete argument. Keep each entry in the required or optional bucket specified by the schema, using the active answer contract's exact entry shape and the documented value type."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

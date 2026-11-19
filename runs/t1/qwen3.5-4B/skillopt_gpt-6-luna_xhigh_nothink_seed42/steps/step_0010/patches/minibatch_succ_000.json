@@ -1,0 +1,18 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Limit planning and information requests to travel services the user explicitly requested; a trip, occasion, destination, or flight layover alone does not imply a hotel, restaurant, or attraction request.",
+    "Validate required location fields before searching: restaurant and hotel searches need a city, and flight searches need a departure date and usable origin. Ask for missing required values rather than passing `None` or treating optional preferences as required."
+  ],
+  "patch": {
+    "reasoning": "The existing skill covers missing dates and avoiding invented values, but it does not spell out required city/origin fields or explicitly guard against adding unrequested travel services. Both gaps recur across the batch, including restaurant requests with no city and trip-planning language that does not request lodging.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available.",
+        "content": "- Identify only the travel services explicitly requested in the full conversation; a general trip, occasion, destination, or flight layover does not itself request hotels, restaurants, or attractions. Check each requested domain’s mandatory inputs against the full conversation and relevant cached results: flights require a departure date and a usable origin; hotels require a city plus check-in and checkout dates; restaurants require a city. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only those missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them, and never pass `None` for a required field. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available."
+      }
+    ]
+  },
+  "source_type": "success"
+}

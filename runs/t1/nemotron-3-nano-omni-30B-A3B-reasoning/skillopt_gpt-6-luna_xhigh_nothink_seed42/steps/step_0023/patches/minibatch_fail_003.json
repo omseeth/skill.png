@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "round_trip_leg_modeling",
+      "count": 3,
+      "description": "Combined outbound and return dates in one flight search and treated the return date as an arrival date instead of a reversed leg's departure date."
+    },
+    {
+      "failure_type": "result_binding_and_cache_persistence",
+      "count": 3,
+      "description": "Called search tools without assigning their results and saving them to cache."
+    },
+    {
+      "failure_type": "missing_mandatory_input",
+      "count": 1,
+      "description": "Invented hotel dates and searched despite missing an explicit mandatory hotel date."
+    },
+    {
+      "failure_type": "tool_protocol_and_pending_action_omission",
+      "count": 1,
+      "description": "Imported a cache module and declared no planning was needed while requested hotel and attraction actions remained."
+    }
+  ],
+  "patch": {
+    "reasoning": "The repeated flight errors call for a pre-emission audit of every itinerary leg, not just a general instruction to search separately. The repeated unsaved calls call for an explicit final audit of tool-result assignments and saves, and the missing import prohibition addresses the tool-protocol error. Existing missing-input and cross-domain rules already cover the remaining failures, so they are not duplicated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.",
+        "content": "- Before emitting code, enumerate each explicitly described flight leg and verify that the plan covers it with a compatible cached result or its own search using the stated direction and departure date. A round trip requires two directional searches: outbound origin-to-destination with `departure_date=[D1]`, and return destination-to-origin with `departure_date=[D2]`. Treat the return date as the return leg’s departure date; never put it in the outbound date list or use it as `arrival_date` or `return_date`. Do not infer `flight_class` from trip purpose; apply a class to both legs only when explicitly requested. Reuse cached results only when their direction, date, and criteria cover that exact leg."
+      },
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- These tools, including cache retrieval and saving, are already defined; call them directly and never import a tool or cache module. For every search, filter, sort, or nearest-results call, assign the exact returned object to a variable and save it with `save_to_cache` under a unique, descriptive key; do not leave a result-producing call standalone. Save refined results under a new key. Before emitting code, verify that every such call has its matching assignment and save. Do not substitute hand-built dictionaries or redefined models for tool result objects."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

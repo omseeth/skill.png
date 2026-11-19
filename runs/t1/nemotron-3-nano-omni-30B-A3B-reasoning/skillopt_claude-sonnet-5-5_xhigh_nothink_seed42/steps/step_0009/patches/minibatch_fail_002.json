@@ -1,0 +1,53 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "stale_or_invented_cache_key",
+      "count": 4,
+      "description": "Loaded the raw key (restaurants, hotels) when filtered_*/nearest_* existed, or loaded a key not in CACHE (departure_flights when only flights exists, hotels when absent). Also re-passed constraints the summary already lists (T1, T3, T5, T8)."
+    },
+    {
+      "failure_type": "wrong_domain_touched",
+      "count": 2,
+      "description": "The last turn answered a hotel question, but the agent also re-filtered already-filtered flight keys instead of filtering only hotels (T5, T6)."
+    },
+    {
+      "failure_type": "search_instead_of_filter",
+      "count": 2,
+      "description": "The CACHE had the domain's key (flight legs; attractions after the assistant proposed a neighborhood), but the agent re-ran search_* with old criteria and a 24h time (T2, T7)."
+    },
+    {
+      "failure_type": "filter_when_no_cache_key_should_search",
+      "count": 1,
+      "description": "Hotel dates, rooms and people arrived while CACHE held only restaurants. The agent filtered a nonexistent 'hotels' key instead of calling search_hotels (T8)."
+    },
+    {
+      "failure_type": "fabricated_mandatory_params",
+      "count": 1,
+      "description": "Hotel + restaurants request with no hotel dates. The agent copied example dates into search_hotels instead of searching restaurants and calling seek_information (T4)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures are already covered by Rules 2, 6, 13, 14 and 17, but the agent still breaks them. The cause is not a missing principle. The rules are buried in a very long document and lack concrete examples for the cases that fail. The edits are short, example-driven, and placed where they get read. (1) A cache-key discipline block at the top covers stale/invented keys and repeated constraints. (2) A domain-scoping rule stops hotel answers from re-filtering flights. (3) A search-vs-filter rule keyed on whether the domain has a CACHE entry covers refinement-as-search, filter-on-missing-key, and the 'What's there?' reply to a proposal. (4) A worked example stops dates being fabricated beside a complete domain. The edits avoid the broad bundles that were rejected in earlier steps.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Cache-key discipline (check before every get_results_from_cache / save_to_cache)\n1. Load only keys that literally appear in the CACHE dict. If CACHE has 'flights' and 'return_flights', then 'departure_flights' does NOT exist. If CACHE has no 'hotels' key, never load 'hotels'.\n2. Per domain, load the most refined key: nearest_* > filtered_* (highest suffix) > raw key. Example: CACHE {'hotels', 'attractions', 'nearest_hotels'} and the reply 'Yes, Downtown Memphis would be perfect' -> `h = get_results_from_cache(key=\"nearest_hotels\")`, `h2 = filter_hotels(prior_results=h, neighborhood=[\"Downtown Memphis\"])`, `save_to_cache(key=\"filtered_hotels\", value=h2)`. Never load the raw 'hotels' there.\n3. Everything the loaded key's summary already lists (budget: $55, cuisine, rating, stars, amenities, dates, traveler count) is applied. Pass ONLY the new constraint. Example: CACHE {'restaurants', 'filtered_restaurants': '...Additionally filtering for budget: $55'} and the reply 'Yeah, Summerlin would be great' -> `r = get_results_from_cache(key=\"filtered_restaurants\")`, `r2 = filter_restaurants(prior_results=r, neighborhood=[\"Summerlin\"])`, `save_to_cache(key=\"filtered_restaurants1\", value=r2)`. No budget, no cuisine, and not the raw 'restaurants' key.\n4. Save under a key that is not already in the CACHE (add a suffix such as 1 if needed)."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 31: Touch only the domain the last turn answers\n- Read the assistant's last question. A reply about stars, rating, amenities (kids club, business center, gym...), neighborhood, hotel budget or rooms is a HOTEL answer. Emit only hotel calls: load the most refined hotels key, filter_hotels with the new constraint(s), save. Do NOT load, re-filter or save any flight or restaurant key, even if flight keys exist in the CACHE and flight preferences were given earlier. Their summaries already show them applied.\n  Example: CACHE {flights, return_flights, hotels, filtered_flights, filtered_return_flights}; user 'Something with a 5 star rating and a kids club' -> `h = get_results_from_cache(key=\"hotels\")`, `h2 = filter_hotels(prior_results=h, stars=[5, 5], has_kids_club=True)`, `save_to_cache(key=\"filtered_hotels\", value=h2)` and nothing else.\n  Example: CACHE {flights, return_flights, hotels}; user 'A 3 star hotel in Summerlin' -> filter only 'hotels' with stars=[3, 3], neighborhood=[\"Summerlin\"]. Never touch 'flights' or 'return_flights'.\n- Likewise, a flight answer (class, airline, time, price) touches only flight keys, and a restaurant answer touches only restaurant keys."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 32: Search vs filter depends on whether the CACHE has a key for THAT domain\n- Domain HAS a key -> never call search_* for it. This includes replies that sound like a new request.\n  - Flight preference with two leg keys: 'We prefer AB and economy class' with CACHE {departure_flights, return_flights} -> for EACH leg: `x = get_results_from_cache(key=\"departure_flights\")`, `y = filter_flights(prior_results=x, airline=[\"AB\"], flight_class=[\"economy\"])`, `save_to_cache(key=\"filtered_departure_flights\", value=y)`. Repeat for return_flights. Do not re-search, and do not re-pass arrival times or dates the summary already shows.\n  - Reply to an assistant proposal: assistant 'Have you considered Ashland Park?' + user 'No, I haven't. What's there?' with CACHE {attractions} -> `a = get_results_from_cache(key=\"attractions\")`, `a2 = filter_attractions(prior_results=a, neighborhood=[\"Ashland Park\"])`, `save_to_cache(key=\"neighborhood_attractions\", value=a2)`. Copy the place name exactly as the assistant wrote it.\n- Domain has NO key in the CACHE -> never write get_results_from_cache / filter_* for it. Run search_* once its mandatory args are known (from any turn). Example: CACHE {restaurants} only, hotel in Las Vegas requested earlier, and the user now says 'I need 2 rooms for 4 people, checking in on May 17, 2025 and checking out on May 22, 2025' -> `hotels = search_hotels(city=\"Las Vegas\", checkin_date=[\"May 17, 2025\"], checkout_date=[\"May 22, 2025\"], num_rooms=2, num_people=4)` then `save_to_cache(key=\"hotels\", value=hotels)`. Do not touch 'restaurants'."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 33: Hotel requested without dates -> no search_hotels, even beside a complete domain\n- 'Looking for a family-friendly hotel in Tucson for 2 with a budget of 120 per night with some restaurants.' (empty CACHE) gives no check-in/check-out dates. Output exactly: `restaurants = search_restaurants(city=\"Tucson\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need the check-in and check-out dates for the hotel.\")`.\n- Never write search_hotels with placeholder, example or default dates (e.g. 2025-08-03 / 2025-08-04 from the tool docs), never use a one-night default, and never pass the hotel's budget, num_people or 'family-friendly' to the restaurant search. The hotel's constraints go into search_hotels once the dates arrive, and 'family-friendly' maps to no parameter."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

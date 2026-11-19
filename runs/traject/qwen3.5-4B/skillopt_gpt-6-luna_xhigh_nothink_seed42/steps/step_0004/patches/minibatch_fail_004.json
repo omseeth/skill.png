@@ -1,0 +1,45 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "schema_bucket_adherence",
+      "count": 2,
+      "description": "In both trajectories, an explicitly requested optional parameter was placed in the required-parameters bucket."
+    },
+    {
+      "failure_type": "scope_expansion",
+      "count": 1,
+      "description": "The agent added searches on unnamed providers despite the query specifying which retailers to use."
+    },
+    {
+      "failure_type": "constraint_mapping_completeness",
+      "count": 1,
+      "description": "The requested US region was mapped to only some of the applicable locale fields."
+    },
+    {
+      "failure_type": "output_value_serialization",
+      "count": 1,
+      "description": "A numeric parameter was emitted as a JSON number where the expected name/value format uses a string value."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that broad multi-provider wording does not authorize calls to unnamed sources, and that a requested region can determine several directly applicable locale fields. Also distinguish a parameter's schema type from its serialized representation in the active answer format. The repeated required/optional bucket errors are already explicitly covered by the skill, so no duplicate rule is added.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Build the smallest complete call set: cover every requested outcome, and make every call serve one of them. Use one endpoint for multiple outcomes only when it genuinely covers them; make separate calls for distinct inputs unless the schema supports batching. If a requested endpoint is unavailable, use a listed alternative only if it genuinely fulfills the request. Do not invent tools, add unrelated calls, or include redundant alternatives or validators.",
+        "content": "\n- Treat named providers in a multi-provider request as the scope for provider selection. Broad framing such as “across multiple retailers” does not authorize searches on additional, unnamed providers unless the user separately requests them."
+      },
+      {
+        "op": "insert_after",
+        "target": "Use the endpoint's accepted locale form and canonical enum, code, or slug; do not guess undocumented values or substitute a semantically different field when the requested distinction is unavailable.",
+        "content": " When a user requests a country or region for a localized endpoint, treat it as a regional setting that may determine multiple directly applicable fields exposed by that endpoint (such as country, store, currency, language, or size system). Populate those fields using documented mappings; do not assume one field alone represents the whole setting or fill unrelated fields."
+      },
+      {
+        "op": "append",
+        "content": "\n\n- Distinguish a parameter's semantic type from its serialized representation: the endpoint schema determines the parameter's meaning and required/optional placement, while the active answer format determines how its `value` is encoded. If that format uses string-valued name/value entries, serialize numeric values as canonical decimal strings without changing their meaning."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

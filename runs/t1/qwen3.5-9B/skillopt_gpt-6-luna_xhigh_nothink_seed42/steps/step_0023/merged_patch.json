@@ -1,0 +1,54 @@
+{
+  "reasoning": "Preserved all six failure-driven edits, which address concrete tool-use, schema-mapping, cache-suitability, occupancy, and multi-leg update failures. Included the distinct success-driven budget mapping without letting it override or duplicate the failure guidance. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation.",
+      "content": "Keep generated code limited to necessary tool and cache calls: do not add print or display loops, inspect or subscript result models, or sort results unless explicitly requested; pass returned models intact to downstream tools and the cache.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Do not map vague amenity wording to a narrower tool flag without clear equivalence. Preserve complete names, categories, criteria, and date strings unless a tool requires a format conversion.",
+      "content": "Do not map vague amenity wording to a narrower tool flag without clear equivalence; when wording clearly matches a supported hotel amenity, use its exact schema field (for example, laundry facilities maps to `has_laundry_service`, and room service maps to `has_room_service`). Preserve complete names, criteria, and date strings. For string-valued category fields, use the user's exact category wording and form when accepted by the schema; if the schema requires an enum, use the supported canonical label that matches the category, not a similar synonym.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "content": "Set `num_people` only from a count explicitly stated or confirmed for hotel occupancy; do not infer a count from labels such as family or kids alone, carry over a flight-only passenger count, or treat an assistant-suggested number as confirmed. If a hotel party size has been explicitly stated or confirmed and the user later answers a separate room-count question without changing it, retain the party size as `num_people` and use the answer as `num_rooms`.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "content": "For an approximate numeric budget such as “around 125,” use the stated amount as `budget=125`; do not invent a tolerance or range.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "A cached result satisfies the offer only if it matches the requested location, category, and other criteria; a same-domain result for a different attraction, cuisine, or filter is not sufficient.",
+      "content": "A cached base must also be broad enough to contain candidates for the new request; a name-specific or otherwise restrictive result cannot be used to discover a different or broader category. When the user accepts an offer to explore an attraction category or type, treat it as an explicit request and use the corresponding supported `type` value. If no suitable matching result is cached, search in the established destination; acceptance alone is not a request for proximity.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "For updates affecting multiple results, such as outbound and return legs, retrieve, filter, and process each independently.",
+      "content": "For updates affecting multiple results, such as outbound and return legs, retrieve, filter, and process each independently. When a new flight constraint applies to both legs of a cached round trip, apply it to each leg and save each updated leg under a fresh key; do not update only the outbound leg.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Format flight time ranges as required:** For `departure_time` and `arrival_time`, use the validator's accepted 12-hour format with AM/PM (for example, `12:00 PM`), not `HH:MM:SS`. Choose a supported interval for vague time periods.",
+      "content": "- **Map flight class values:** Use the tool's canonical lowercase labels in a list: `business`, `economy`, or `first`.",
+      "support_count": 1,
+      "source_type": "failure"
+    }
+  ]
+}

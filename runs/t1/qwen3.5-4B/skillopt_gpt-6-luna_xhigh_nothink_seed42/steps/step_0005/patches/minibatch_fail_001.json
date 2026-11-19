@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_contract_violation",
+      "count": 4,
+      "description": "Agents imported the unavailable `tools` module despite the skill's direct-call instruction."
+    },
+    {
+      "failure_type": "incomplete_round_trip_search",
+      "count": 2,
+      "description": "Round trips were represented with an arrival date instead of a separate reversed return-leg search."
+    },
+    {
+      "failure_type": "cache_and_result_handling",
+      "count": 5,
+      "description": "Agents omitted result saves, used an incompatible cached domain, or searched instead of refining compatible cached results."
+    },
+    {
+      "failure_type": "missed_proposal_followup",
+      "count": 2,
+      "description": "Agents treated a question about a just-proposed neighborhood as requiring no planning."
+    },
+    {
+      "failure_type": "proximity_linking",
+      "count": 2,
+      "description": "Agents omitted the nearest-results operation or did not use compatible results for both requested domains."
+    },
+    {
+      "failure_type": "semantic_parameter_mapping",
+      "count": 1,
+      "description": "An attraction category and a named attraction were combined in the category parameter, and the stated solo traveler count was omitted."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers direct tool calls, separate round-trip legs, cache reuse, and saving results, so repeating those instructions would not address a documented gap. These edits clarify three less explicit behaviors in the batch: interpreting questions about a proposed place, mapping distinct concepts to distinct schema fields, and linking compatible local recommendations while choosing the correct nearest-results organizing domain.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "\n- Also resolve follow-up questions about a just-proposed entity or area. For example, after proposing a neighborhood, “No, I haven’t. What’s there?” requests information about that proposed neighborhood, not a no-op. Retrieve compatible cached results and filter to the proposal, or search the appropriate domain if the cache does not cover it; save the resulting transformation or search."
+      },
+      {
+        "op": "replace",
+        "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "- Match arguments to the tool schema’s expected type, cardinality, and meaning. Keep distinct request concepts in their matching fields: for attractions, categories or types go in `type`, while named places go in `attraction_name`. For hotels, map an explicitly stated traveler count—and “solo” as one traveler—to `num_people`; map room count only to `num_rooms`, without inferring one from the other. Use only supported parameters with a matching meaning; omit a preference if no suitable parameter exists rather than repurposing an unrelated field. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`)."
+      },
+      {
+        "op": "replace",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- When a user requests recommendations across multiple local result types for the same destination or stay (such as a hotel and attractions or restaurants), treat them as a coordinated itinerary and call `search_nearest` once compatible results for the requested types are available; an explicit request for one type near another always requires this. Save the nearest result. Set `groupBy` to the domain the user wants organized or annotated—not automatically to the comparison domain: for example, restaurants near a hotel use `groupBy=\"restaurant\"`, while hotels with nearby attractions use `groupBy=\"hotel\"`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

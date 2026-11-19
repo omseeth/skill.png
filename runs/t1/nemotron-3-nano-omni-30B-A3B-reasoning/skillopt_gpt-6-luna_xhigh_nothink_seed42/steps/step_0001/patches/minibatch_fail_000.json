@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache and result lifecycle",
+      "count": 8,
+      "description": "Agents missed cache retrieval, result saving, or treated cached results in one domain as completing unrelated requested work."
+    },
+    {
+      "failure_type": "itinerary and date decomposition",
+      "count": 2,
+      "description": "Round trips were represented as one search or as multiple outbound dates instead of separate one-way searches with the correct class."
+    },
+    {
+      "failure_type": "tool-schema compliance",
+      "count": 3,
+      "description": "Calls used an unsupported argument, an incorrect field name, or omitted a required hotel-search date."
+    },
+    {
+      "failure_type": "conversation and constraint extraction",
+      "count": 4,
+      "description": "Agents dropped explicit traveler details or preferences, or prematurely skipped new requested work."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill has no learned rules yet. These additions target recurring failures by making cache use and persistence operational, clarifying round-trip flight searches, and adding a schema-and-context check before calls.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "# Travel Planning Skill\n\n(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "# Travel Planning Skill\n\n## Incremental planning and cache\n- Check cache coverage separately for each requested domain and constraint: cached flight results do not satisfy a new hotel or attraction request. For a follow-up constraint on valid cached results, retrieve the exact cache key with `get_results_from_cache` and filter those results instead of repeating the search. Use cache-key strings, not variables from earlier turns.\n- Bind each search, filter, sort, or nearest result to a variable and save it under a unique descriptive key. Return “No planning needed” only when cached results already satisfy every requested item and constraint.\n\n## Round-trip flights\n- Handle a round trip as two one-way searches: search outbound on the outbound date, then search the reverse route on the return date. Do not use an unsupported `return_date` argument or treat the two dates as outbound dates. Apply an explicitly requested flight class to both directions; when directional results are already cached, retrieve and filter each direction.\n\n## Validate fields and preserve context\n- Before a call, verify argument names and required fields against the tool definition. Do not invent aliases; use the exact supported field name (for example, `has_laundry_service`). A hotel search requires both check-in and check-out dates, and a hotel filter requires `prior_results`.\n- Carry forward relevant details from the whole conversation and include every explicitly supplied criterion in the appropriate call. Interpret “solo” as one traveler, and map stated traveler and room counts to their supported fields."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every clause of the query got exactly one call, the last clause included. Calls to no-parameter endpoints used `[]` for both lists, with no padding calls (news:89, gaming:165, email:45, email:153).",
+    "Qualifiers in a clause were mapped to the tool's own optional or required fields: 'first page, limit 5' -> page=1, pageSize=5; 'sort by value' -> sort-by=value; '3 scores, first page' -> per_page=3, page=1; 'US region' -> country=US; a required enum such as Rocket League `type` took its value from the query wording (gaming:165, gaming:92, education:12).",
+    "Sibling choice followed the clause wording. 'Six-sided die' -> `Regular die` with no params. '20-sided die' -> `Custom die` with sides=20. A named outlet got its own endpoint (CNN Arabic, France24 Arabic). 'MX records' with a full address -> the MX tool with `email`. 'Role account' with a bare domain -> `domain` (gaming:92, gaming:165, news:89, news:15, email:45).",
+    "When the expected disposable-check endpoint was not listed, the agent picked the listed tool whose description covers disposable detection (`Alpha Email Verification: Email Checker`) instead of dropping the clause (email:153).",
+    "Partial-credit misses came from optionals the query implied but the agent left out or invented. It omitted the subject of a search (`title`=Diablo IV on CheapShark List of Games). It invented `to` and `country` for a 'since October 2023' clause (gaming:92, news:15)."
+  ],
+  "patch": {
+    "reasoning": "The successes already follow the skill's core rules, so only the residual partial-credit gaps are worth patching. (1) In gaming:92 the agent chose the right list tool but left out the game name, so the optional score was 0.8. (2) In news:15 the agent invented upper-bound and country filters. (3) Both dice siblings exist in the tool lists, and 'six-sided' maps to `Regular die`, which the skill does not state. (4) In email:153 the preferred disposable endpoint was absent and the agent fell back correctly, so a short fallback rule is worth encoding. I kept each edit to one rule plus one example and avoided restating the duplicate-key warnings, since earlier rewrites of that area scored worse.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).",
+        "content": "A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).\n  - The clause's subject goes into the tool's own title/name/search field even when that field is optional: 'price deals for Diablo IV games, limit to 10 results' -> `CheapShark - Game Deals: List of Games` with `title`=`Diablo IV` AND `limit`=`10` (limit alone returns unrelated games).\n  - One-sided dates stay one-sided: 'since October 2023' -> `from`=`2023-10-01` only. Do not add `to`, `country` or any other bound or filter the clause never states."
+      },
+      {
+        "op": "replace",
+        "target": "Several dice -> `Custom dice`, one die -> `Custom die`.",
+        "content": "Several dice -> `Custom dice`, one die -> `Custom die` (`sides`=N). A plain 'six-sided die' -> `Regular die` with both lists `[]` when that tool is listed. Use `Custom die` only for another side count ('20-sided die' -> `sides`=`20`)."
+      },
+      {
+        "op": "replace",
+        "target": "each placed per that tool's schema.",
+        "content": "each placed per that tool's schema. If the endpoint you expect is not listed (e.g. no `Check for Disposable emails`), take the listed tool whose Description states that facet (`Alpha Email Verification: Email Checker` 'identifies if it's a disposable email'). Never drop the clause, and never swap in a free-provider or syntax-only tool."
+      }
+    ]
+  },
+  "source_type": "success"
+}

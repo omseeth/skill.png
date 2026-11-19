@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_incremental_filtering",
+      "count": 4,
+      "description": "Follow-up requests caused fresh or unrelated searches instead of retrieving applicable cached results and filtering only the newly supplied constraints."
+    },
+    {
+      "failure_type": "flight_itinerary_decomposition",
+      "count": 2,
+      "description": "Date ranges were treated as one outbound search with an arrival_date rather than separate outbound and return searches."
+    },
+    {
+      "failure_type": "result_binding_and_cache_saving",
+      "count": 5,
+      "description": "Search outputs were not consistently assigned and saved, were referenced through undefined variables, or searches were repeated inside cache-save calls."
+    },
+    {
+      "failure_type": "missing_required_tool_arguments",
+      "count": 1,
+      "description": "A hotel search was attempted without the mandatory checkout date."
+    },
+    {
+      "failure_type": "entity_field_mapping",
+      "count": 1,
+      "description": "A state abbreviation was passed as a city instead of using the state field."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make cache reuse explicitly apply to broader results that can be narrowed, and limit follow-up work to changed domains and legs while retaining all explicit constraints. Add an unambiguous one-call/one-variable/save pattern to prevent duplicate calls and undefined variables. Clarify that date ranges imply separate directional flight legs, and make missing mandatory hotel dates a hard stop requiring clarification.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- At each turn, inspect cache summaries before searching. If a relevant result exists for the same domain, city, dates, and itinerary leg, retrieve it with its exact key using `get_results_from_cache`, then apply the matching `filter_*` tool with that result as `prior_results` and the newly supplied constraints. If no suitable cached result exists, run a new search. Apply new preferences to all relevant cached results or itinerary legs, but do not repeat valid searches or regenerate unaffected domains.",
+        "content": "- At each turn, use the cache summary to identify which domains or itinerary legs the latest turn changes. For each changed request, retrieve by exact key any cached result whose scope can cover the request, including a broader location or category result that can be narrowed with a filter. Apply the matching `filter_*` tool with that result as `prior_results` and the newly supplied constraints; preserve prior constraints already embodied in the result, and represent every explicit new constraint in the appropriate field. Do not use a narrow result for a broader request or reuse results for a different domain, location, date, or leg. Search only when no cached result can cover the changed request, and leave unchanged domains and legs alone."
+      },
+      {
+        "op": "replace",
+        "target": "- Assign every search, filter, sort, and nearest-results output to a variable, then immediately save it with `save_to_cache` under a unique, descriptive key before using it in later calls. Pass the assigned prior result to filters, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally.",
+        "content": "- Call each search, filter, sort, and nearest-results tool exactly once for its result: assign its output to a variable, then immediately save that same variable with `save_to_cache` under a unique, descriptive key before using it in later calls. Never call a search inline inside `save_to_cache` or repeat it to obtain the saved value; never save an undefined variable. Pass the assigned result to filters, and use distinct variables and keys for separate domains or itinerary legs."
+      },
+      {
+        "op": "replace",
+        "target": "Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to both legs, and do not combine distinct legs by repeating keyword arguments in one call.",
+        "content": "Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and `departure_date`. A request to travel from one date to another is an outbound and return itinerary unless the user specifies otherwise: make one outbound search on the first date and one reverse-direction return search using the second date as that call's `departure_date`. Never encode the return as `arrival_date` on the outbound call. Apply an explicitly requested flight class and any trip-wide flight preference to both legs, and carry a stated airport code into the corresponding origin or destination airport-code field on each leg. Assign and save each leg's result separately."
+      },
+      {
+        "op": "replace",
+        "target": "Before calling a travel tool, check its required parameters against the full conversation and available context. If any required details are missing, use `seek_information` to ask only for those details; do not invent values, pass `None`, or run a partial search. For requests spanning multiple domains, bundle missing required details for all requested domains into the same information request. Do not ask for optional preferences.",
+        "content": "Before each tool call, verify that all of that tool's mandatory parameters are available. In particular, a hotel search requires a city, check-in date, and checkout date; do not call it with either date missing or infer a checkout date when the itinerary does not establish one unambiguously. If required details are missing, use `seek_information` to ask only for those details; do not invent values, pass `None`, or make a partial call for that request. For requests spanning domains or legs, bundle missing mandatory details into one information request, while proceeding with other fully specified requests when appropriate. Do not ask for optional preferences."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_name_format",
+      "count": 3,
+      "description": "Tool name was built from the Provider description line or joined with an em-dash (e.g. 'Wayfair — auto-complete', 'Rocket League: News — Rocket League: News', the full tagline), so no tool matched (T3, T4, T6)."
+    },
+    {
+      "failure_type": "param_structure_and_placement",
+      "count": 4,
+      "description": "Bare names in the required list (['page'], ['region','version']) with no values; schema-optional params put under required (Flight schedules, home-services postalCode); optional key omitted (T1, T5, T7, T8)."
+    },
+    {
+      "failure_type": "call_enumeration",
+      "count": 3,
+      "description": "A stacked non-requested validator in T2; one clause split into two near-duplicate calls with different date fields in T7; the query-named Aliexpress search call dropped in T5."
+    },
+    {
+      "failure_type": "missing_or_wrong_values",
+      "count": 3,
+      "description": "Implied optionals missed or mis-valued: locale fields (store/sizeSchema/lang), count=5, multi-theme list with themesType, 'WA' state code, 'us'/'global' scope values (T3, T4, T7, T8)."
+    },
+    {
+      "failure_type": "answer_format_syntax",
+      "count": 1,
+      "description": "Stray closing brackets `}]]}` made the answer unparseable (T6)."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent hard failures are (a) tool names polluted by the Provider tagline or an em-dash, (b) parameter lists with bare names or optionals promoted to required, and (c) wrong call counts (duplicates, stacked extras, dropped named platforms). All three recur across several tasks and are not yet explicit in the skill in a short, mechanical form. A fourth edit adds the general value-filling rules (all locale fields, counts, multi-value fields, scope values) seen in T3, T4, T7 and T8. The edits are short and use concrete wrong/right pairs, avoiding the long rewrites that were rejected in earlier steps.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+        "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely. The name is ONLY the `### ` heading line. The `Provider: X — tagline` line under it is a description, not a name: never include ` — `, any tagline text, or a dash between provider and API, and never repeat the name twice (wrong: `Wayfair — auto-complete`, `Rocket League: News — Rocket League: News`, `Hearthstone — This API provides cards...: Get Cards`; right: `Wayfair: auto-complete`, `Rocket League: News`, `Hearthstone: Get Cards`). Nothing follows the endpoint name."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Each parameter is `{\"name\": \"x\", \"value\": \"y\"}`. Every value is a quoted string, including numbers (`\"2023\"`, `\"1\"`, `\"9098084\"`).",
+        "content": "\n- Both lists hold ONLY `{\"name\",\"value\"}` objects with a real value taken from the query. Never write bare names (wrong: `\"required parameters\": [\"page\"]`; right: `[{\"name\": \"page\", \"value\": \"1\"}]`). A required parameter always gets the query's value (region `us`, version `v1`, location `global`, page `1`). Copy the schema's split exactly: only names listed under 'Required parameters' go in `required parameters`. If the schema says `Required parameters: none`, that list is `[]` and every value (airports, flight number, carrier, date, ...) goes in `optional parameters`. If a schema lists `sku` as required and `postalCode` as optional, `postalCode` stays optional. Every object keeps all three keys, e.g. `\"optional parameters\": []` even when empty. Close the answer with exactly one `}]` before `</answer>`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "\n- One clause = one call. Never emit the same tool twice with alternative parameters to 'cover both readings' (e.g. one schedules call with DepartureDateTime and another with ArrivalDateTime; 'flight from SFO on May 25' = one call with DepartureDateTime plus the airports, carrier and flight number as optionals). Repeat a call only when the query asks for the action twice.\n- N named checks = N calls, one tool each, each tool's description matching its check. 'Existence, MX records and deliverability' = the verify tool, the MX tool, and the tool whose description says deliverable/valid. Do not add format-only or disposable checkers the query does not name.\n- Every retailer or platform the query lists ('BestBuy, Wayfair, Zappos, and Aliexpress') gets its own search call with the product term, even when later clauses give SKUs or IDs for some of them. Check each listed name before answering."
+      },
+      {
+        "op": "insert_after",
+        "target": "'sorted by date' -> the sort field.",
+        "content": "\n- Fill every field the clause implies. A locale ('US region with USD currency') on a tool with `store`, `country`, `currency`, `sizeSchema`, `lang` fills all of them that the locale determines (store `US`, country `US`, currency `USD`, sizeSchema `US`, lang `en-US`). A count ('find 5 puzzles') goes in the count field (`count` `5`). Several values for one field ('endgame and promotion themes') go in that one parameter in the schema's list style (e.g. `[\"endgame\",\"promotion\"]`), plus any match-mode field (themesType `ALL` for 'and'). Scope words ('global stats', 'US region') are values themselves (`global`, `us`), matching the case of the schema's examples. A US state for a state parameter -> the 2-letter code (`WA`) unless the schema shows full names."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

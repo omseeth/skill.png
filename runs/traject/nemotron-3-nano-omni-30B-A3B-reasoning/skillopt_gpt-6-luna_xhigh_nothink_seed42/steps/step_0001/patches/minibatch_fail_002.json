@@ -1,0 +1,38 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "Tool selection and endpoint identity",
+      "count": 6,
+      "description": "Several trajectories chose a related but incorrect endpoint, or failed to use the exact fully qualified provider-and-endpoint name."
+    },
+    {
+      "failure_type": "Incomplete subtask coverage",
+      "count": 3,
+      "description": "Multi-part requests were not fully decomposed, causing requested independent lookups or detail calls to be omitted."
+    },
+    {
+      "failure_type": "Argument and output-schema fidelity",
+      "count": 3,
+      "description": "Some calls misplaced optional parameters, omitted requested options, or did not match the required JSON parameter-object structure."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch shows repeated failures to cover every independent request, distinguish similar endpoints, and validate call names and argument structure. These additions provide a compact checklist for decomposition, endpoint matching, and final schema validation.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Coverage checklist\nBefore composing calls, split the request into atomic operations and list each requested entity, lookup, and detail action. For singular endpoints, account for every requested value separately. Before answering, compare the call list against that checklist so no independent subtask is missed, even in long or narrative-style requests."
+      },
+      {
+        "op": "append",
+        "content": "\n## Endpoint matching\nUse the available tool catalog as the source of truth. For each atomic operation, select the endpoint whose description most specifically supports it; do not substitute a merely related endpoint or reuse one broad endpoint automatically for distinct operations. If a user mentions an endpoint that is not listed, do not invent it: match the requested function to a genuinely suitable listed endpoint. Emit the exact fully qualified tool name shown in the catalog (`Provider: endpoint`), not an alias or shortened name."
+      },
+      {
+        "op": "append",
+        "content": "\n## Argument and output validation\nMap every argument to the exact parameter name and required/optional category in that endpoint's schema. Include explicitly requested optional parameters, use the documented types and allowed enum or locale values, and do not invent arguments. Before submitting, validate the JSON structure: use the required keys, represent parameter entries as `{ \"name\": ..., \"value\": ... }` objects, place them in the correct arrays, and remove duplicate keys."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_followup_action_missed",
+      "count": 5,
+      "description": "New criteria or a proposed attraction location were ignored or handled with a fresh search instead of refining compatible cached results."
+    },
+    {
+      "failure_type": "pending_itinerary_values_misread",
+      "count": 3,
+      "description": "Dates and trip duration supplied in response to a clarification were treated as missing, prompting unnecessary information requests."
+    },
+    {
+      "failure_type": "runtime_contract_violation",
+      "count": 1,
+      "description": "An import from a nonexistent tools module caused execution failure."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers import-free tool use and filtering cached results for follow-up criteria, so repeating those directives would not address a document gap. The clarification-answer cases reveal a narrower ambiguity: a trip start date given for a requested itinerary should also establish hotel check-in when a hotel is part of that same trip and the stay duration is supplied.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Still perform every independent requested search or update whose own required inputs are complete in the same turn.",
+        "content": "\n- When a user answers a clarification about an already requested trip, map the supplied information to that pending itinerary before deciding anything is missing. For a requested hotel stay tied to the same trip, use the stated trip start date as check-in when no distinct lodging date is given; if the user supplies an unambiguous duration in nights, compute checkout with `adjust_date`. Ask only for required inputs that remain genuinely unknown, and do not request details for domains the user did not request."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

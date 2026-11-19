@@ -1,0 +1,51 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "date_handling_and_format",
+      "count": 5,
+      "description": "Parsed or reformatted user-provided dates in Python instead of preserving them for tool calls."
+    },
+    {
+      "failure_type": "inferred_scope_or_constraints",
+      "count": 5,
+      "description": "Added unrequested hotel searches or inferred lodging details, guest counts, or outbound arrival-date constraints."
+    },
+    {
+      "failure_type": "incomplete_location_mapping",
+      "count": 1,
+      "description": "Used a clarified airport code without also preserving the known destination city."
+    },
+    {
+      "failure_type": "overly_narrow_amenity_mapping",
+      "count": 1,
+      "description": "Mapped vague “business facilities” wording to the narrower business-center filter."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers these topics, but the trajectories show repeated violations of its date and scope rules. These edits make the key decisions more operational: preserve date strings, ask rather than invent missing hotel boundaries, keep return dates on the return leg, and avoid inferring lodging from trip context. The airport edit captures the one missing city-plus-code mapping. No amenity edit is needed because the existing rule already prohibits narrowing vague amenity wording.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Pass user-provided date strings unchanged to date-taking tools unless the schema explicitly requires a different format; do not parse, reformat, or calculate dates in Python or import date libraries. Use `adjust_date` only to compute checkout from an explicit trip start date and stated number of hotel nights. Never infer a one-night stay or derive check-in by subtracting from checkout; use explicitly supplied stay boundaries or a clearly established itinerary start date, and seek any genuinely missing required date.",
+        "content": "Treat user-provided dates as opaque: copy their strings unchanged to date-taking tools. Never import `datetime`/`timedelta`, parse or normalize dates, or do date arithmetic in Python. Use `adjust_date` only to compute hotel checkout from an explicit stay start and explicitly stated number of hotel nights. If a hotel is requested but checkout cannot be established from explicit stay boundaries or stated nights, seek the missing checkout; flight departure or return dates alone do not establish a hotel stay duration. Never assume a one-night stay."
+      },
+      {
+        "op": "replace",
+        "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+        "content": "- **Search round-trip flights as separate legs:** For an explicit round trip or date range with a return date, search outbound on the first date and return from destination to origin on the return date. Use each date only as that leg's `departure_date`; do not put the return date in the outbound `arrival_date` unless the user separately states an outbound arrival-date constraint. Cache each leg separately. Do not infer a return flight from hotel stay duration. If the user says the trip is one-way or declines a return flight, search only outbound."
+      },
+      {
+        "op": "replace",
+        "target": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+        "content": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are known, include them in one search where supported rather than searching broadly and filtering later. Search only explicitly requested or accepted domains: trip context, route dates, or a party-size mention alone does not request a hotel. For a requested hotel search or update, map an explicitly stated party size to `num_people`; if no count was stated, omit it (never default to one). Apply a newly supplied count with a same-domain filter when needed. Do not pass traveler counts to flight tools."
+      },
+      {
+        "op": "replace",
+        "target": "Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value.",
+        "content": "Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; when both a city and its airport or airport code are known for an endpoint, provide both supported values rather than replacing the city with the code. Do not put a state abbreviation in `city` or truncate a location value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

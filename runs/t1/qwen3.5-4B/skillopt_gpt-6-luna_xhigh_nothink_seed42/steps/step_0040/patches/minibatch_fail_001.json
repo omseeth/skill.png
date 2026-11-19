@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_result_followup_or_persistence_failure",
+      "count": 5,
+      "description": "Cached results were ignored, used without retrieval, followed up with the wrong action, or not saved."
+    },
+    {
+      "failure_type": "pending_input_resolution_failure",
+      "count": 3,
+      "description": "A clarification supplied dates needed for earlier requests, but the agent asked again or filtered without a compatible result."
+    },
+    {
+      "failure_type": "category_value_normalization",
+      "count": 1,
+      "description": "The agent changed a requested attraction category instead of preserving the user’s label."
+    },
+    {
+      "failure_type": "runtime_import_error",
+      "count": 1,
+      "description": "The generated code imported a nonexistent tools module."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make cache handling an explicit decision procedure: retrieve full compatible results for follow-ups, search requested domains that lack results once inputs are complete, and save new outputs. This also clarifies how to handle answers to pending requests without broadening work to unrelated domains. The category edit addresses the demonstrated label normalization without repeating the existing import prohibition.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- On each turn, resolve the reply against the full conversation, including pending domain requests, and act only on domains, subjects, and itinerary legs requested now or answered this turn. For a follow-up criterion, retrieve the latest compatible result with `get_results_from_cache(key=...)` and pass its returned full tool result—not the cache summary or a prior-turn variable—to the relevant filter; apply only newly stated criteria. Never call a filter with an absent or `None` base. If a requested domain has no compatible cached result and its required inputs are complete, including after a clarification, perform its search; ask only for inputs still missing. For `search_nearest`, retrieve full compatible results for the requested types, or search for a missing requested type, before calling it. Do not repeat unchanged searches or filters, or act on unrelated cached domains. Save every new search, filter, sort, or `search_nearest` output under a unique cache key. Use “No planning needed” only when compatible cached results satisfy all current requests without further action."
+      },
+      {
+        "op": "insert_after",
+        "target": "For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+        "content": "\nWhen a type or category field is a free-form string list, preserve the user's labels verbatim rather than normalizing them to a similar label; use a controlled-choice value only when the schema explicitly requires one."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

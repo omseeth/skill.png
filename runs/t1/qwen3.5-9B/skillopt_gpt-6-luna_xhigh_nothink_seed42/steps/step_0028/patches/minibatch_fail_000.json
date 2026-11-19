@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_result_persistence_and_call_hygiene",
+      "count": 5,
+      "description": "Some trajectories left results unsaved or made duplicate/bare calls despite existing assign-and-save and no-duplicate rules."
+    },
+    {
+      "failure_type": "cache_followup_reconciliation",
+      "count": 4,
+      "description": "Agents missed pending requests, failed to apply new constraints to suitable cached results, or used unrelated results and operations."
+    },
+    {
+      "failure_type": "required_deliverable_omission",
+      "count": 2,
+      "description": "Agents failed to search both legs of an explicit round trip or proceeded to seek dates already supplied in context."
+    },
+    {
+      "failure_type": "parameter_mapping",
+      "count": 2,
+      "description": "Agents mis-mapped a state abbreviation to city and treated an exact departure time as a one-sided lower bound."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed failures are already directly covered by the skill's persistence, cache-follow-up, date, and location rules, so repeating them would not patch a gap. The flight-time guidance does not explicitly distinguish an exact time from a one-sided bound; clarifying that distinction addresses the remaining supported ambiguity.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X” uses `[\"12:00 AM\", X]`, and “after X” uses `[X, \"11:59 PM\"]`, preserving the stated AM/PM value.",
+        "content": "\n\nWhen the user specifies one exact flight time as “at X” without a range or one-sided qualifier, use `[X, X]` for the corresponding time field; do not interpret it as an “after X” bound."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

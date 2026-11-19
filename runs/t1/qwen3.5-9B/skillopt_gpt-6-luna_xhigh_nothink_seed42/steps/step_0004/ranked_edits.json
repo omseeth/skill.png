@@ -1,0 +1,41 @@
+{
+  "reasoning": "Failure-driven changes take priority for cache handling, location values, round-trip searches, flight time ranges, ratings, hotel dates, party size, and persistence checks. The success-driven clarification about vague trip descriptions complements the failure guidance on missing required dates, so it is retained as a separate edit. The accepted-offer insight adds a distinct pending-deliverable requirement and is also retained. [optimizer-ranked: selected 4/9 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- **Distinguish required dates from optional details when seeking information:** `search_flights` requires `departure_date`; `arrival_date` is optional, even for a round trip. `search_hotels` requires both `checkin_date` and `checkout_date`, while `num_people` and `num_rooms` are optional. Phrases such as “last-minute” do not provide a date. Ask only for missing required values, not optional counts or dates.",
+      "content": "- **Distinguish required dates from optional details when seeking information:** `search_flights` requires `departure_date`; `arrival_date` is optional, even for a round trip. `search_hotels` requires both `checkin_date` and `checkout_date`, while `num_people` and `num_rooms` are optional. Phrases such as “last-minute,” “weekend getaway,” or “family vacation” do not provide exact travel dates. Do not infer or substitute sample dates; ask only for missing required values, not optional counts or dates.",
+      "support_count": 7,
+      "source_type": "success"
+    },
+    {
+      "op": "append",
+      "content": "\n- **Retrieve accepted pending offers from cache:** Treat an affirmative reply that accepts an earlier offer to provide recommendations or results as a request to deliver them. Retrieve the relevant latest cached result, even if no new search or filter is needed; use the no-planning response only when there is no pending deliverable.",
+      "support_count": 7,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- **Check required city inputs and distinguish event dates from travel dates:** `search_hotels` and `search_restaurants` require `city`. A date given only for an event, such as a wedding or reunion, is not a flight departure date or hotel stay date unless the user explicitly identifies it as travel timing.",
+      "content": "- **Check required city inputs and distinguish event dates from travel dates:** `search_hotels` and `search_restaurants` require `city`. When lodging is requested for an explicitly planned trip and both trip dates are known, use the trip start and end dates as hotel check-in and check-out. When an explicit trip start date and number of hotel nights are known, use the start date as check-in and call `adjust_date` with the night count to compute checkout. For a hotel added to an ongoing itinerary, reuse a clearly established trip date as check-in when applicable; do not guess check-in by subtracting a day from checkout. If a required hotel date cannot be established from user-provided itinerary details, seek it. Preserve user-provided date strings unless conversion is required, and use `adjust_date` rather than importing date libraries or doing date arithmetic in Python. A date given only for an event, such as a wedding or reunion, is not a flight departure date or hotel stay date unless the user explicitly identifies it as travel timing.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Search round-trip flights as separate legs:** Search outbound from origin to destination using the outbound date, then return from destination to origin using the return date as that leg's `departure_date`. Cache each leg separately; do not use the return date as the outbound `arrival_date`.",
+      "content": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+      "support_count": 2,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Prioritize the widely supported gaps around recognizing missing travel dates and honoring accepted pending deliverables. Then add actionable hotel-date derivation and clearer round-trip/one-way handling. The remaining edits are narrower or largely duplicate existing rules.",
+    "selected_indices": [
+      7,
+      8,
+      5,
+      2
+    ]
+  }
+}

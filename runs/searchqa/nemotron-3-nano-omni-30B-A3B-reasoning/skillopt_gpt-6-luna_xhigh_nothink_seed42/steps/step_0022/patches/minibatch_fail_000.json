@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "answer_format",
+      "count": 6,
+      "description": "The answer was broadly related to the target but mismatched the expected lexical form, such as number, a required name or noun component, or spelling."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "The answer followed a salient related entity rather than the clue's pronoun referent, despite existing guidance to track relationships."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A name-only officeholder prompt was answered with an expanded title instead of the clearly context-supported associated place."
+    }
+  ],
+  "patch": {
+    "reasoning": "Narrow the category-omission guidance so it does not strip conventional name components or required noun heads, and clarify that lexical number can differ from a clue's demonstrative. Add focused checks for name-only officeholder prompts and pronoun antecedents to help identify the requested relation before selecting an answer.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "When the clue already supplies the category or type, return the distinguishing value alone: do not append a generic category noun, institution label, explanatory wording, or unnecessary title, subtitle, or suffix unless needed for disambiguation.",
+        "content": "Only omit a category noun when it is truly redundant. Preserve a head noun that belongs to the conventional full proper name or is needed to express the requested common-noun answer; do not reduce such an answer to a modifier or genus alone. For class or taxon answers, use the conventional lexical number rather than blindly matching a nearby demonstrative such as “this.” Still omit explanatory labels and category words that the answer does not conventionally contain."
+      },
+      {
+        "op": "replace",
+        "target": "Treat terse statements, quoted fragments, and incomplete phrases as information-seeking clues when appropriate. Infer the answer slot from the wording, then use the context to identify the entity or value that satisfies the clue.",
+        "content": "Treat terse statements, quoted fragments, and incomplete phrases as information-seeking clues when appropriate. Infer the answer slot from the wording and context rather than assuming the named entity itself is the answer. For a name-only officeholder prompt, consider an explicitly salient associated relation (such as a ruler and their realm); return that associated value only when the clue and context make the intended relation clear."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Track the clue's relationships carefully: distinguish a place from its country, a performer from a tribute act, and a quoted hint from its concrete referent. Do not answer with a nearby topic, merely repeat the clue, or respond True/False unless the prompt actually asks for a yes/no judgment.",
+        "content": "\n- Resolve pronouns such as “they,” “this,” and “it” to their antecedents before interpreting nearby names. If a clue says something was named after a place, answer the thing being named when that is the requested referent, not the place supplying its name."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

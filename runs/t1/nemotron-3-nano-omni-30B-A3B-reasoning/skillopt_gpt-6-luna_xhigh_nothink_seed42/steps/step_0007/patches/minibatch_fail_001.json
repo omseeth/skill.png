@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_refinement_and_result_lifecycle",
+      "count": 8,
+      "description": "Agents failed to complete cache deltas, use the most relevant refined result, save outputs, or execute tool calls correctly."
+    },
+    {
+      "failure_type": "conversation_scope_and_domain_coverage",
+      "count": 2,
+      "description": "Agents skipped newly requested hotel or attraction searches because earlier flight results were cached or treated the request as a no-op."
+    },
+    {
+      "failure_type": "argument_fidelity",
+      "count": 3,
+      "description": "Agents mapped an allergy to an unrelated option or inferred unrequested amenities and preferences."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers broad conversation audits, saving results, and avoiding unsupported preferences, so those rules should not be duplicated. These edits clarify direct tool execution, selection and use of refined cache results, the valid use of explicit trip dates for a hotel stay, and a schema-relevant allergy mapping seen in the batch.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "\n- Call the provided tools directly as functions. Do not import tools, modify module paths, or define or redefine tool functions or their models."
+      },
+      {
+        "op": "insert_after",
+        "target": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.",
+        "content": "\n- When multiple listed cache results cover the same item, use the most refined compatible result that preserves all earlier active criteria. Retrieval alone does not complete an update: apply every new, uncovered constraint through the matching filter, bind its result, and save it under a new key. Do not call a filter with only `prior_results` when a new constraint must be applied."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Missing mandatory information",
+        "content": "\nIf a hotel stay is clearly at the single destination of an explicitly dated round trip and no separate hotel dates were given, use the outbound date as check-in and the return date as check-out. If the destination or date relationship is ambiguous, ask instead of inferring."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- Map an allergy to a schema-supported allergy-option field only when the allergen is directly represented by that option; for example, a nightshade allergy can map to `has_tomato_allergy_options=True` because tomato is a nightshade. Do not substitute an unrelated allergen field or imply that a narrower option guarantees accommodation for the full allergy."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

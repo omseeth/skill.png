@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_or_scope_mismatch",
+      "count": 4,
+      "description": "Some calls used a broadly suitable or neighboring endpoint without matching the requested input level or the most specific check for each target."
+    },
+    {
+      "failure_type": "value_serialization",
+      "count": 4,
+      "description": "Numeric parameters were emitted as JSON numbers where the required call-format examples represented parameter values as strings."
+    },
+    {
+      "failure_type": "required_optional_group_mismatch",
+      "count": 2,
+      "description": "Parameters were placed in the wrong group instead of following the individual endpoint's schema."
+    },
+    {
+      "failure_type": "noncanonical_market_value",
+      "count": 1,
+      "description": "A storefront hostname was passed where the marketplace selector expected a canonical market code."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify serialization precedence and per-endpoint schema checks, and strengthen endpoint matching for resource IDs and per-target differences. Also make explicit when a marketplace selector requires a canonical code rather than a hostname. These edits address repeated or clearly evidenced gaps without adding speculative defaults.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Serialize values according to the required call-format convention: follow explicit examples that consistently encode values as strings, even for numeric or boolean parameters; otherwise follow the declared schema types.",
+        "content": "Serialize each parameter value according to the required call format, not merely its semantic schema type. When the output-format example represents parameter values as strings (for example, `\"page\": \"1\"`), encode numeric and boolean parameter values as strings too; use JSON numbers or booleans only when the output-format instructions or examples require them."
+      },
+      {
+        "op": "replace",
+        "target": "Cross-check every parameter against the tool schema: place required parameters only in the required array and optional parameters only in the optional array, even when the user explicitly requests an optional field.",
+        "content": "For each call, check that exact endpoint's schema independently: put only its required parameters in the required array and only its optional parameters in the optional array. Do not infer a parameter's group from another endpoint, its use in the query, or its value's JSON type."
+      },
+      {
+        "op": "insert_after",
+        "target": "For each candidate, verify that its result fulfills the requested action for the right entity and scope: suggestions, checks of weaker properties, or unfiltered results do not substitute for a requested lookup, verification, or scoped result.",
+        "content": "When an input is a resource ID, verify that its resource level or type matches the endpoint parameter's semantics and the requested result; endpoint titles alone are not decisive. For multiple targets, assess endpoint fit per target when their requested properties differ rather than forcing one endpoint for consistency."
+      },
+      {
+        "op": "replace",
+        "target": "When a request specifies a market or locale, populate directly corresponding documented parameters (such as country, store, currency, or language) when their values are documented or unambiguously implied; use canonical codes and a market-specific locale when a documented mapping establishes one.",
+        "content": "When a request specifies a market or locale, populate directly corresponding documented parameters (such as country, store, currency, language, or marketplace `domain`) when their values are documented or unambiguously implied. Use the endpoint's canonical market code—not a storefront hostname or prose market label—when its selector convention expects a code, and use a market-specific locale when a documented mapping establishes one."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

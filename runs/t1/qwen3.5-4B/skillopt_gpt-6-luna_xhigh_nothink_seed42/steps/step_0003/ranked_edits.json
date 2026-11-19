@@ -1,0 +1,46 @@
+{
+  "reasoning": "Consolidated overlapping cache, date, itinerary, and schema-mapping guidance into single edits at their respective bullets. Where the patches disagreed about missing inputs, the merged guidance allows searches for independent domains with complete inputs while deferring only an incomplete domain. Kept the distinct proximity-trigger clarification as its own edit. [optimizer-ranked: selected 4/5 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied in a search. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+      "content": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. Before returning “No planning needed,” compare every current request and constraint with the cached results: a result’s existence, item count, or broad coverage does not establish that it satisfies a criterion unless the summary explicitly supports that criterion. If the user adds criteria, retrieve the closest compatible result and apply all newly stated criteria in the same compatible search or filter call, to every affected result set (including each affected flight leg). Reapply a criterion only when the compatible cached result does not already satisfy it. Do not filter unrelated results; search for an entity or category the cache does not cover. Avoid retrieving unrelated results or repeating constraints already applied in a search. Save each newly generated search or transformation result under a unique cache key.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available.",
+      "content": "- Check mandatory inputs against the full conversation and relevant cache, and request dates only for domains the user actually requested. Flight searches require a departure date; hotel searches require check-in and checkout dates. Dates phrased approximately (for example, “around” a stated calendar date) still count as supplied; use the stated date without inventing alternatives. For a hotel at the destination of the same trip, if no separate stay dates are given, use the trip’s outbound date for check-in and return date for checkout. If checkout is missing but the user explicitly gave a stay length and check-in date, derive checkout with `adjust_date`; do not infer an unstated stay length. If any requested domain still lacks required inputs, make exactly one `seek_information(...)` call listing only those missing values. In the same turn, proceed with independent searches whose required inputs are complete; defer only incomplete domains and do not partially search them. Do not guess values or ask for optional preferences as if they were required.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+      "content": "- Match arguments to the tool schema’s expected type and cardinality, and map each preference only to a parameter with the same meaning. Map state names and abbreviations to `state`, not `city`; for attraction searches, a supplied state is sufficient when no city is given. Use the schema’s canonical spelling for categorical values (for example, `flight_class=[\"business\"]`), while preserving user-provided dates and named entities exactly. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating); for a one-sided bound, use the requested bound and the schema’s supported limit for the other endpoint (for example, a minimum rating of 3 on a 0–5 scale is `[3, 5]`). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). Do not approximate an unsupported or vague preference with an unrelated field (for example, do not interpret “kid-friendly” as pet-friendly); omit an unmatched optional parameter rather than inventing a value.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, search each leg separately, reverse the outbound route for the return, and use the return leg’s departure date. Ask for an unknown endpoint rather than assuming a route.",
+      "content": "- Preserve user-provided dates, named entities, and casing. For a round-trip flight search, make separate outbound and return searches: reverse the route for the return and pass each leg’s date as that search’s `departure_date`; do not represent the return only as the outbound search’s `arrival_date`. For a multi-city itinerary, read the stated route segments in order and map dates to their corresponding legs using the conversation’s chronology. Search every explicitly stated leg separately, in its given direction and using its provided departure date; do not force a multi-leg itinerary into a round trip or ask for dates or endpoints that are already clear. Ask only when a required leg endpoint or date is genuinely unknown.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 3 addresses recurring cache-reuse and constraint-satisfaction failures across requests. Edit 0 improves required-input handling and lets complete independent searches proceed without blocking. Edit 2 gives broadly applicable, concrete guidance for mapping preferences to tool parameters. Edit 1 clarifies multi-city itinerary handling, but is more specialized and partly overlaps existing round-trip guidance. Edit 4 is a narrower clarification about when proximity is implied.",
+    "selected_indices": [
+      3,
+      0,
+      2,
+      1
+    ]
+  }
+}

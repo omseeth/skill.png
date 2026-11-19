@@ -1,0 +1,48 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "malformed_code_or_fabricated_args",
+      "count": 2,
+      "description": "Bare search calls with no assignment or save, a nonexistent return_date kwarg, and invented hotel dates with an undefined `hotels` variable, even though Rules 6 and 9 forbid these. T3 also added `import sys` and comment lines."
+    },
+    {
+      "failure_type": "missing_search_nearest_for_hotel_attraction",
+      "count": 2,
+      "description": "In hotel+attraction conversations the agent stopped after filtering hotels or searching attractions. It never paired them with search_nearest and never saved nearest_hotels."
+    },
+    {
+      "failure_type": "wrong_refinement_routing",
+      "count": 2,
+      "description": "T1: the user replaced the cuisine ('Actually only Pakistani'), but the agent filtered the old cached results and overwrote filtered_restaurants. T5: the user asked 'What's there?' about a proposed neighborhood, and the agent re-ran search_attractions instead of filtering by neighborhood."
+    },
+    {
+      "failure_type": "invalid_or_extra_hotel_params",
+      "count": 2,
+      "description": "T6 used invented kwargs (meeting_rooms, has_large_dining_area) instead of has_meeting_rooms. T8 turned the vague word 'kid-friendly' into pool_present and has_kids_club on a rooms/people reply."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four recurring gaps remain. (1) Basic format errors persist even though rules exist deep in the document, so I put a short, concrete block at the top using the exact failing patterns (assigned+saved calls, no return_date, no imports or comments, restaurant search plus seek_information when hotel dates are missing). (2) Hotel+attraction conversations need a search_nearest step, which no rule covers except the named-attraction case. (3) A user who replaces an already-applied constraint needs a fresh search, which contradicts Rule 13's blanket 'always filter', and a curious reply to a proposed neighborhood must be treated as acceptance. (4) Hotel kwargs need an explicit whitelist, a rule to drop features that have no parameter, and a rule not to turn style words like 'kid-friendly' into amenities.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Hard format rules (most frequently broken; check before every answer)\n- Every search_*, filter_*, sort_results and search_nearest call is written `x = tool(...)` and followed on its own line by `save_to_cache(key=\"...\", value=x)`. A bare `search_flights(...)` or `search_hotels(...)` is wrong. `save_to_cache(value=hotels)` when `hotels` was never assigned raises NameError.\n- Output only tool calls inside <CODE></CODE>: no `import` (not even `import sys`), no comment lines, no print.\n- search_flights has NO return_date. 'depart May 21, 2025 and return June 2, 2025' with origin Anchorage and destination Raleigh is TWO assigned and saved calls: `departure_flights = search_flights(start_airport_city=\"Anchorage\", end_airport_city=\"Raleigh\", departure_date=[\"May 21, 2025\"])`, save as \"departure_flights\", then `return_flights = search_flights(start_airport_city=\"Raleigh\", end_airport_city=\"Anchorage\", departure_date=[\"June 2, 2025\"])`, save as \"return_flights\". Add a hotel search only if a hotel was requested.\n- Never invent check-in or check-out dates. 'Need a hotel in St. Louis for 2 with a budget of 80, also restaurants in the city' (no dates) produces exactly: `restaurants = search_restaurants(city=\"St. Louis\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need to ask about the check-in and check-out dates for the hotel\")`. There is no search_hotels call."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 26: Hotel + attraction conversations end with search_nearest\n- When both hotel and attraction domains are active (the assistant offered 'a hotel near <attraction>' or 'attractions near your hotel'), pair them with `search_nearest(hotels=<hotel var>, attractions=<attractions var>, groupBy=\"hotel\")` and save it as \"nearest_hotels\" (use \"nearest_hotels1\" etc. if that key already exists).\n- Case A: the hotel keys and an 'attractions' key are cached and the user adds a hotel amenity ('We need a hotel with a gym and wifi'). Write: `hotels = get_results_from_cache(key=\"hotels\")`, `attractions = get_results_from_cache(key=\"attractions\")`, `filtered_hotels = filter_hotels(prior_results=hotels, gym_present=True, free_wifi_included=True)`, `save_to_cache(key=\"filtered_hotels\", value=filtered_hotels)`, `nearest_hotels = search_nearest(hotels=filtered_hotels, attractions=attractions, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`. Pass the newly filtered variable, not the stale raw one.\n- Case B: hotels are cached, there is no attractions key, and the user accepts an attraction proposal ('That would be great, thank you' after 'Would you like Touristy attractions near your hotel?'). Write: `attractions = search_attractions(city=\"Anchorage\", type=[\"Touristy\"])`, `save_to_cache(key=\"attractions\", value=attractions)`, `hotels = get_results_from_cache(key=\"hotels\")` (use the most refined hotels key), `nearest_hotels = search_nearest(hotels=hotels, attractions=attractions, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`. Use the attraction type word exactly as the assistant proposed it. Do not re-search flights or re-filter hotels.\n- Flight caches are irrelevant to this step; leave them alone."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 27: Replacing a constraint needs a fresh search; a curious reply to a proposal is acceptance\n- If the user overrides a value that is already applied in the CACHE summary ('Actually we want only Pakistani restaurants' when the summary shows cuisine(s): [Japanese]; 'instead', 'switch to', 'never mind'), filtering cannot work, because the cached results only contain the old value. This overrides Rule 13's 'always filter'. Run a NEW search for that domain with the city from the conversation, the new value, and every other constraint that is still valid, including a budget given in this turn. Drop the replaced value and context-only words such as party size. Save it under a key not yet in CACHE. Example: `restaurants1 = search_restaurants(city=\"Fresno\", cuisine=[\"Pakistani\"], budget=120)`, `save_to_cache(key=\"restaurants1\", value=restaurants1)`. Never save over an existing key such as 'filtered_restaurants'.\n- If the assistant's last message proposed a neighborhood ('Have you considered Downtown St. Louis?') and the user replies with interest or curiosity ('Actually, I haven't. What's there?', 'Tell me about it'), that is acceptance of the neighborhood. Never re-run search_* for a domain that is already cached. Filter the domain's most refined key with the proposed neighborhood in the assistant's wording, for example `attractions = get_results_from_cache(key=\"attractions\")`, `filtered_attractions = filter_attractions(prior_results=attractions, neighborhood=[\"Downtown St. Louis\"])`, `save_to_cache(key=\"filtered_attractions\", value=filtered_attractions)`. Use filter_restaurants or filter_hotels the same way for those domains."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 28: Hotel parameter whitelist and what NOT to pass\n- filter_hotels / search_hotels accept only these amenity kwargs: gym_present, pool_present, breakfast_included, smoking_allowed, air_conditioning_present, heating_present, free_wifi_included, airport_shuttle_present, is_pet_friendly, has_spa_services, has_room_service, has_beach_access, has_business_center, has_fitness_class, has_laundry_service, has_valet_parking, has_balcony, has_rooftop_bar, has_inroom_kitchen, has_kids_club, has_meeting_rooms, has_electric_vehicle_charging, has_hot_tub, has_sauna, has_free_parking, is_wheelchair_accessible, has_skiing_lodging, has_ocean_view_rooms_present, has_city_view_rooms_present. Anything else raises a ValidationError. 'meeting rooms' -> `has_meeting_rooms=True` (never `meeting_rooms`).\n- If a requested feature has no matching parameter ('large dining area', 'spacious', 'quiet'), omit it silently and pass only the features that do map. Example: 'Yes, meeting rooms and a large dining area' -> `filter_hotels(prior_results=x, has_meeting_rooms=True)`.\n- Style or context words ('kid-friendly', 'family-friendly', 'family vacation', 'large group', 'business trip') are not amenities. Do not turn an earlier 'kid-friendly' into pool_present or has_kids_club unless the user literally says pool or kids club. A reply that only gives counts ('There are 4 of us and we need 4 rooms') is `filter_hotels(prior_results=x, num_rooms=4, num_people=4)` and nothing else."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_persistence_omission",
+      "count": 4,
+      "description": "Search, filter, or nearest results were not assigned and saved to cache."
+    },
+    {
+      "failure_type": "required_input_guessing",
+      "count": 2,
+      "description": "Agents guessed missing hotel dates or a flight origin instead of requesting required information."
+    },
+    {
+      "failure_type": "stateful_scope_or_cache_misuse",
+      "count": 3,
+      "description": "Agents reused an incompatible broad result, repeated completed flight work, or missed new criteria."
+    },
+    {
+      "failure_type": "location_field_mapping",
+      "count": 2,
+      "description": "Named hotel areas were omitted instead of being passed separately from the containing city."
+    },
+    {
+      "failure_type": "runtime_namespace_violation",
+      "count": 1,
+      "description": "An agent imported tools despite the existing instruction to call injected functions directly."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify the required-input check for missing flight origins and dates, make cache updates and result persistence an explicit sequence, and sharpen how named local areas map to location fields. The import failure is already directly prohibited by the skill, so it does not warrant duplicating that rule.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Flight searches require a known route and departure date; hotel searches require a city, check-in date, and checkout date; restaurant searches require a city. Count a date only when its stated meaning matches the required field: an event date, such as a reunion or celebration, is not automatically a flight departure date or hotel check-in or checkout date. Never fill missing travel dates from examples, defaults, or assumptions.",
+        "content": "Before calling a search, verify each required value against the conversation and compatible cache, and confirm it has the right meaning for that field. Flights need an established origin, destination, and departure date; a hotel city may establish the flight destination when context supports it, but does not imply the origin or a same-city route. Hotels need a city and check-in and checkout dates; restaurants need a city. Count dates only when they are tied to the relevant itinerary field, and never take missing values from tool examples, defaults, or assumptions."
+      },
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- **Turn and cache discipline:** Use the latest request and full conversation to identify newly requested work and earlier explicit work still incomplete; leave unrelated or already-satisfied domains untouched. Reuse results only when domain, subject, and prior criteria match. For additive changes, retrieve the most specific compatible result and apply only criteria absent from its summary. A broad category result does not satisfy a newly named specific-entity request; search for that entity in the matching domain. Assign every search, filter, sort, or nearest result to a variable and immediately save that exact value with `save_to_cache`, using the established canonical key for base results and a distinct descriptive key for additional or transformed results. Use “No planning needed” only when all current requests are already satisfied."
+      },
+      {
+        "op": "replace",
+        "target": "Map location values by kind: put a named district or neighborhood in a supported `neighborhood` field while retaining its containing city in `city`, and put state names or standard postal abbreviations in `state`, not `city`.",
+        "content": "Map location values by kind: when a named district or local area accompanies a city—including wording such as “Downtown [City]”—pass the containing city in `city` and preserve the full stated area name in a supported `neighborhood` field. Put state names or standard postal abbreviations in `state`, not `city`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

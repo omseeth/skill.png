@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "conversation_context_and_proposal_resolution",
+      "count": 5,
+      "description": "Missed new criteria or treated an interested reply to a suggested category or neighborhood as a no-op."
+    },
+    {
+      "failure_type": "cache_reuse_and_transformation_discipline",
+      "count": 3,
+      "description": "Used a broader cached result instead of its refined version, duplicated already-satisfied results, or failed to complete the requested cache update."
+    },
+    {
+      "failure_type": "itinerary_date_and_leg_resolution",
+      "count": 2,
+      "description": "Asked for dates already supplied or omitted a return flight established by the round-trip request."
+    },
+    {
+      "failure_type": "runtime_tool_namespace_violation",
+      "count": 1,
+      "description": "Imported tools from a nonexistent module, causing a runtime failure."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers direct tool calls, supplied dates, trip durations, return legs, and saving results, so repeating those rules would not address a documented content gap. These edits clarify how to interpret curious follow-ups to assistant proposals and make cache selection and no-op decisions more operational.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve terse replies against the immediately preceding assistant question or proposal, not in isolation. A “yes” or an interested follow-up such as “I haven’t—what’s there?” accepts the proposed action or entity/category; carry that proposal forward. If it introduces a category or neighborhood absent from compatible cached results, search or filter for it rather than returning “No planning needed.”"
+      },
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- On each turn, consider the full conversation and cached result summaries, and reuse results only when their domain and subject match. When the user adds a criterion, retrieve the most specific compatible result for that subject—prefer an already-filtered or nearest result over its broader base—and apply only criteria not already included. If a compatible cached result already satisfies a domain and the user adds no action for it, leave it untouched: do not repeat its search or filter, or copy and re-save it unchanged. Do not retrieve or filter unrelated results; search for a requested entity or category that compatible results do not cover. Save each newly generated search or transformation under a unique cache key. Use “No planning needed” only when cached results satisfy every current request and no action remains."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

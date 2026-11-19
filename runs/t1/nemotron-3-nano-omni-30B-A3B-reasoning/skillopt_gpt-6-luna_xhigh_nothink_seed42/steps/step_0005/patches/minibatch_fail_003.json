@@ -1,0 +1,36 @@
+{
+  "batch_size": 3,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle",
+      "count": 2,
+      "description": "Search results were returned without being assigned and saved to cache."
+    },
+    {
+      "failure_type": "latest_turn_scope",
+      "count": 1,
+      "description": "The agent repeated work on previously cached domains and omitted the newly requested restaurant search."
+    },
+    {
+      "failure_type": "entity_value_normalization",
+      "count": 1,
+      "description": "The agent substituted a similar attraction category instead of preserving the user's category wording."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly requires assigning and saving every tool result, so repeating that instruction would not patch a gap. The edits clarify how to prioritize a new request within an ongoing trip and preserve user-provided category values verbatim.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "- Identify the action requested in the latest user turn before acting on cached domains. When it introduces a new domain, perform that request rather than repeating unrelated earlier work; use the current trip destination as the location for an in-trip search when the context makes it unambiguous. If a required location remains unclear, ask for it rather than guessing."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- Pass user-provided entity and category values verbatim. Do not replace them with synonyms or nearby category labels unless the tool schema explicitly requires a mapping."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

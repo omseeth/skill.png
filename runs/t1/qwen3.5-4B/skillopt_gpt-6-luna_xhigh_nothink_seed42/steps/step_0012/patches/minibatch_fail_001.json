@@ -1,0 +1,66 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_namespace_violation",
+      "count": 5,
+      "description": "Imported tools from a nonexistent module despite the existing instruction to call injected tools directly."
+    },
+    {
+      "failure_type": "cache_and_result_lifecycle",
+      "count": 2,
+      "description": "Skipped a needed cached-result filter or repeated a search for a cached result that already satisfied the request."
+    },
+    {
+      "failure_type": "cross_domain_input_gating",
+      "count": 2,
+      "description": "Failed to complete an independent requested search when another domain lacked required inputs, or asked for irrelevant optional information."
+    },
+    {
+      "failure_type": "conversation_context_resolution",
+      "count": 1,
+      "description": "Did not use the assistant's proposed neighborhood as the subject of the user's follow-up request."
+    },
+    {
+      "failure_type": "schema_input_mapping",
+      "count": 1,
+      "description": "Asked for a city even though the attraction search supports the state the user provided."
+    },
+    {
+      "failure_type": "date_derivation",
+      "count": 1,
+      "description": "Did not use the date-adjustment tool to derive hotel checkout from a stated stay length."
+    },
+    {
+      "failure_type": "unrequested_transformation",
+      "count": 1,
+      "description": "Added sorting when the user requested filtering by budget but did not request an ordering."
+    }
+  ],
+  "patch": {
+    "reasoning": "The repeated import and cache errors are already explicitly addressed by the skill, so repeating those rules is unlikely to close a text gap. These edits address remaining actionable gaps: clarify conflicting guidance about incomplete domains, resolve follow-ups about proposed places, recognize state-only attraction searches, and use the date tool for stated hotel durations.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available.",
+        "content": "- Check required inputs for each requested domain independently against the full conversation, compatible cached results, and the tool schema. Flight searches require a known route and departure date; hotel searches require a city, check-in date, and checkout date; restaurant searches require a city. If required values are missing, make exactly one `seek_information(...)` call listing only all missing required values across the requested domains. Do not search or filter an incomplete domain, guess values, or ask for optional preferences as if they were required. Still perform every independent requested search or update whose own required inputs are complete in the same turn."
+      },
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated. If the user asks what is there after the assistant proposes a specific place or category, treat that proposal as the active search/filter criterion and use compatible cached results when available."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "\n- For attraction searches, use each explicitly provided location field (`city` and/or `state`) along with the requested category or name. A state alone is a usable state-level search; do not ask for a city merely because the user supplied only a state."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, search each leg separately, reverse the outbound route for the return, and use the return leg’s departure date. Ask for an unknown endpoint rather than assuming a route.",
+        "content": "\n- When the user provides a hotel check-in date and stay duration in nights instead of a checkout date, derive checkout by calling `adjust_date(date=<check-in date>, delta_days=<number of nights>)` and use the returned date as checkout; do not treat the duration as missing."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

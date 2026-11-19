@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_mismanagement",
+      "count": 6,
+      "description": "Agents searched instead of filtering compatible cached results, reused results that omitted already-satisfied constraints, or reprocessed unchanged domains and legs."
+    },
+    {
+      "failure_type": "field_or_value_mapping",
+      "count": 4,
+      "description": "Agents confused state, city, and neighborhood fields, changed literal attraction categories, or inferred a specific amenity from a broad phrase."
+    },
+    {
+      "failure_type": "proximity_scope_misclassification",
+      "count": 2,
+      "description": "Agents missed proximity implied by access-to wording or unnecessarily regenerated a nearest result."
+    },
+    {
+      "failure_type": "result_persistence_omission",
+      "count": 2,
+      "description": "Agents omitted the required save after an attraction search."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the general cache, schema, and save rules, but the trajectories show recurring ambiguity in applying them. These edits make cache-summary precedence and geographic narrowing operational, clarify that access-to wording can signal proximity, and add a compact attraction search-and-save pattern. A focused amenity clarification addresses the unsupported inference from generic business-facilities language.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no cached result can cover the changed scope.",
+        "content": "\n\n**Operational cache check:** Treat each cache summary as a record of constraints already embodied. Retrieve the most constrained compatible result and apply only newly supplied constraints and active constraints absent from that result; do not pass a constraint again when its summary shows it is already satisfied. A broader cached geographic scope can cover a contained city or neighborhood when the matching filter supports narrowing it; filtering cannot broaden a narrower result. Do not rerun or filter unaffected domains or legs; retrieve an unchanged counterpart only when needed for an explicitly requested operation."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "\n\nInterpret explicit wording such as “near,” “close to,” or “with access to” a requested attraction, restaurant, or hotel as a proximity request. A mere co-mention of domains in the same city remains insufficient."
+      },
+      {
+        "op": "replace",
+        "target": "For attractions, put the requested category in `type` with its exact value (for example, if the requested type is `Scenic`, pass `type=[\"Scenic\"]`).",
+        "content": "For attractions, put the requested category in `type` with its exact user-provided value; do not substitute a near-synonym. A US state abbreviation supplied as the location belongs in `state`, not `city`. Assign and immediately save every new attraction search, for example:\n```python\nattractions = search_attractions(state=\"<state abbreviation>\", type=[\"<exact requested category>\"])\nsave_to_cache(key=\"attractions\", value=attractions)\n```"
+      },
+      {
+        "op": "insert_after",
+        "target": "If no supported argument captures an optional preference, omit it and proceed with the supported request without inventing a substitute or asking for unsupported details.",
+        "content": "Do not infer a specific amenity from a broad phrase: “business facilities” alone does not establish `has_business_center=True` or `has_meeting_rooms=True`; use those fields only when the user explicitly requests the corresponding amenity."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

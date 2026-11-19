@@ -1,0 +1,53 @@
+{
+  "reasoning": "Consolidated the two overlapping cache-workflow proposals into one precedence-based classifier near the top, covering changed scopes, compatible filtered results, accepted offers, and proximity. Combined the separate nearest-search proposals into one precise rule. Kept the unique cache-scope, hotel party-size, flight-daypart, and rating clarifications. The edits target distinct regions and do not touch the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "content": "**Turn-action precedence (before tool selection):** Inspect the full conversation, preceding assistant question or offer, and cache summary; identify only the scopes changed by the latest turn.\n1. If a covered scope gets a new or changed filterable constraint—including a narrower location that a supported filter can express—retrieve the most constrained compatible cache entry by its exact key from the summary, preferring one that already embodies active constraints. Apply only constraints not already embodied in that result, then save it. Repeat for each affected leg and leave unrelated scopes untouched; do not re-search or reapply existing constraints.\n2. If the user only accepts an offer to present recommendations from an already covered scope, retrieve the cache entry matching the offered final scope and stop; do not search, filter, or save a duplicate.\n3. For explicitly requested or accepted proximity, use compatible cached datasets with `search_nearest`; search only for a genuinely missing dataset. Keep the offered or requested proximity operation active through later clarifications unless the user withdraws it.\n4. Make a new base search when the request is genuinely new or the compatible cached candidate set cannot cover its domain, entity, location, date, or leg. Include all active supported criteria.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, neighborhood=[\"<requested neighborhood>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "A result restricted to a different category or entity does not establish that a newly requested specific entity is included; search if the cached scope cannot cover it.",
+      "content": "Cache compatibility is about candidate-set scope, not just matching domain or location: a cached result can cover a narrower location (for example, filtering citywide restaurant candidates to a requested neighborhood) only when the relevant `filter_*` tool supports that constraint, but an entity-specific result cannot be broadened into a category search (for example, one named attraction cannot yield all Scenic attractions). Search when the cached candidate set cannot cover the requested scope.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Call `search_nearest` when the user explicitly requests or accepts proximity, including a clear spatial relation such as asking for restaurants near a hotel or a hotel with access to nearby attractions. Merely requesting a hotel and a restaurant recommendation, or independently mentioning a planned attraction visit in the same trip or city, does not imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "content": "- Call `search_nearest` only when the user explicitly requests or accepts proximity; mentioning domains together does not imply it. Use exactly two compatible datasets from `hotels`, `restaurants`, and `attractions` that match the requested proximity operation. If a proximity offer is answered with new criteria (such as hotel amenities), filter the changed candidate set first, then call `search_nearest` with that updated result and the compatible cached result for the unchanged counterpart. Retrieve existing compatible datasets and search only for a genuinely missing dataset; do not use stale broader candidates or repeat an unaffected base search. Set `groupBy` to the domain the user wants prioritized (for example, “restaurants near the hotel” means `groupBy=\"restaurant\"`).",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+      "content": "\n- If room or party counts arrive after compatible hotel results are cached, retrieve the most constrained compatible hotel result and use `filter_hotels` with only the newly supplied `num_rooms` and/or `num_people`. Do not repeat the hotel base search or regenerate unchanged domains or legs.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed.",
+      "content": " For flight dayparts without numeric bounds, interpret “afternoon” as `[\"12:00 PM\", \"05:00 PM\"]`. Interpret “anytime after X” as `[X, \"11:59 PM\"]`. Apply a new time constraint to every affected cached flight leg using its filter tool.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+      "content": "For restaurant and hotel guest ratings, treat a bare numeric rating request (for example, “a restaurant with 3.5 rating”) as exact and use `[N, N]`. Use `[N, 5]` for “at least N,” “N or higher,” or another explicit minimum. Preserve the distinction between hotel guest `rating` and hotel star category `stars`.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

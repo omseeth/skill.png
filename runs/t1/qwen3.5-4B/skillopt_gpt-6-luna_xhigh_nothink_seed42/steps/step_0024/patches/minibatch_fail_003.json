@@ -1,0 +1,51 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "conversation_context_and_itinerary_scope",
+      "count": 5,
+      "description": "Agents missed direct-answer context, explicit return legs, or newly affirmed requests, leading to omitted or incorrect searches."
+    },
+    {
+      "failure_type": "missing_input_handling_and_domain_independence",
+      "count": 3,
+      "description": "Agents requested values already supplied, invented missing hotel dates, or failed to proceed with independent ready domains."
+    },
+    {
+      "failure_type": "cache_and_result_workflow",
+      "count": 4,
+      "description": "Agents repeated covered searches, used broad cached results for a newly named entity, or omitted required result saves."
+    },
+    {
+      "failure_type": "tool_schema_argument_error",
+      "count": 1,
+      "description": "A hotel amenity was passed under an unsupported field name instead of its schema field."
+    },
+    {
+      "failure_type": "runtime_namespace_violation",
+      "count": 1,
+      "description": "The agent imported tools from a nonexistent module despite the direct-call constraint."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers imports, cache reuse, independent domains, and return legs, so repeating those rules is unlikely to help. These edits clarify two narrower gaps exposed by the batch: how direct answers establish date meaning and how to handle a named anchor in a nearby-recommendation request. The schema example addresses the unsupported free-parking argument.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "When hotel lodging is requested for a clearly stated trip interval, use its start and end as check-in and checkout unless the user provides distinct lodging dates.",
+        "content": " Interpret answers in light of the immediately preceding assistant question: a value given in direct answer to a question about a specific field supplies that field (for example, a date answering a question about the planned travel date is a flight departure date, not merely an event date). When a flight and hotel are explicitly requested for the same trip and only one outbound departure date is provided, use it as hotel check-in if no distinct lodging date or contrary timing is stated; ask only for any still-missing checkout date."
+      },
+      {
+        "op": "replace",
+        "target": "Map ordinary-language descriptions to a supported schema criterion when the meaning is unambiguous (for example, map “laundry facilities” to `has_laundry_service` when that field is in the tool schema); if no field represents a preference, omit it rather than adding an unsupported argument.",
+        "content": "Map ordinary-language descriptions to a supported schema criterion when the meaning is unambiguous (for example, map “laundry facilities” to `has_laundry_service` and “free parking” to `has_free_parking` when those fields are in the tool schema); if no field represents a preference, omit it rather than adding an unsupported argument."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "\n  When the user requests recommendations near a named place, treat that place as the location anchor, not automatically as a neighborhood or a name filter for the requested target domain. Reuse a compatible cached anchor result or search for the named entity in its matching domain, then reuse or search the requested target domain and call `search_nearest`. A cached broad category does not satisfy a newly named specific attraction; search for that attraction by name before calling `search_nearest`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

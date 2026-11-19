@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_followup_reconciliation",
+      "count": 5,
+      "description": "Follow-ups missed applicable cached results or legs, reused stale bases, repeated completed work, or added unrelated operations."
+    },
+    {
+      "failure_type": "result_call_persistence",
+      "count": 3,
+      "description": "Result-producing calls were left unsaved or unassigned, or cache retrieval was nested in another tool call."
+    },
+    {
+      "failure_type": "proximity_tool_usage",
+      "count": 2,
+      "description": "Nearest searches used an invalid number of result domains or replaced a requested same-domain filter."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures already violate explicit cache, scope, and save rules, so repeating those rules would add little. These edits clarify two genuine ambiguities: search_nearest requires exactly two result domains and groups the requested target domain; itinerary-wide flight preferences must be applied to both cached legs.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain.",
+        "content": "Use `search_nearest` only when the user asks about proximity. Pass exactly two distinct result-domain arguments (`hotels`, `attractions`, or `restaurants`), one for the anchor and one for the requested nearby targets, and set `groupBy` to the target domain the user wants grouped (for example, hotels near attractions uses `groupBy=\"hotel\"`)."
+      },
+      {
+        "op": "replace",
+        "target": "For updates affecting multiple results, such as outbound and return legs, retrieve, filter, and process each independently.",
+        "content": "For a new itinerary-wide flight preference, such as airline or class, retrieve the latest suitable cached result for each applicable leg, apply the preference to each leg independently, and save each update under a fresh key. Apply a leg-specific constraint only to its corresponding leg. Process other updates affecting multiple results independently as well."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

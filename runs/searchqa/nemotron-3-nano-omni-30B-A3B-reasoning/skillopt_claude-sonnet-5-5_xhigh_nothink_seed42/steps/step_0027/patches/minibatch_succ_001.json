@@ -1,0 +1,32 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Verbatim archive hits were copied as printed: a J!-Archive-style line gave 'pizza', and a TriviaBistro page repeating the whole clue gave 'Mae West'.",
+    "The agent answered with the entity type the clue's noun or pronoun asked for: a flower ('violet'), a person ('Charles Evans Hughes', 'Jasper Johns', 'Mae West'), a substance ('hydrogen peroxide'), a term ('ringer'). It never answered with the passage topic.",
+    "Bare descriptive fragments with no 'this' ('3 points on one throw in horseshoes', 'Georgia guy, flag-fashioning pop painter') were treated as definitions. The agent answered with the single term or name that the passages tie to every distinctive detail.",
+    "Picture clues with no usable image ('the molecule whose structure is seen here ... used as a bleach') were answered from the textual descriptors plus own knowledge, ignoring the missing media.",
+    "When the passages repeat one phrase for the slot ('What Americans refer to as Swiss cheese'), the agent kept the full standard two-word term ('Swiss cheese') rather than trimming to the modifier.",
+    "When the only archive-style passage repeated the clue with the answer cut off (a StudyStack flashcard dump), the agent did not treat it as an answer hit. It used the topical passages and its own knowledge instead."
+  ],
+  "patch": {
+    "reasoning": "Most successes are already covered by the archive-copy, slot-type and caption rules. Two behaviors are not stated explicitly. First, short noun-phrase fragments with no 'this' are definitions whose answer is a term or person tied to every detail. Second, a passage that only repeats the clue without its answer is not an archive hit, so the agent should fall back to topical passages. A short tie-breaker on the head-noun test also protects the 'Swiss cheese' behavior from the 'drop modifiers' rules. These are short, conditional additions that reinforce existing sections without adding top-level structure.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Give the bare name ('Ronald Reagan'), not the event, the place or the date.",
+        "content": "\n- A short fragment with no 'this/he/she' ('3 points on one throw in horseshoes', 'Georgia guy, flag-fashioning pop painter') is a bare definition. Answer with the single term or name that satisfies ALL its details: a sport or idiom term for a scoring or action description, a person for a role plus place or trait. Find the passage sentence that states the same fact ('A ringer scores three points', 'Born in Augusta, Georgia ... best known for Flag') and take the answer from it."
+      },
+      {
+        "op": "insert_after",
+        "target": "Before the answer tags, briefly quote the matched line.",
+        "content": "\n- A passage that only REPEATS the clue with the answer cut off (a flashcard dump, a quiz-title listing) is not an archive hit. Do not guess from it. Take the answer from topical passages that restate the clue's facts, or from your own knowledge."
+      },
+      {
+        "op": "insert_after",
+        "target": "If not, keep the head noun.",
+        "content": " When the passages repeatedly name the slot with a standard two-word term ('Americans refer to Emmentaler as this' -> 'Swiss cheese'), keep both words, because the modifier alone ('Swiss') would not be accepted."
+      }
+    ]
+  },
+  "source_type": "success"
+}

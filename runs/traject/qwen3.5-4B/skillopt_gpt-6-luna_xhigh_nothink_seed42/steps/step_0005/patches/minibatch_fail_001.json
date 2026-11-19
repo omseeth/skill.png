@@ -1,0 +1,36 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "unmatched_or_duplicate_tool_calls",
+      "count": 3,
+      "description": "Added unrelated or duplicate calls, and in one case substituted a related list endpoint for an explicitly requested draw."
+    },
+    {
+      "failure_type": "endpoint_operation_or_source_mismatch",
+      "count": 2,
+      "description": "Selected endpoints based on topical similarity rather than the requested operation, result granularity, or named data source."
+    },
+    {
+      "failure_type": "schema_argument_mapping",
+      "count": 3,
+      "description": "Misplaced parameters between required and optional buckets or failed to map all requested numeric bounds and filters."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch shows recurring call-set drift, endpoint selection that does not fully honor requested operation or source, and incomplete mapping of numeric ranges. These edits make endpoint eligibility and deduplication explicit, and extend range handling beyond market constraints.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Plan tool calls",
+        "content": "\n- Treat endpoint eligibility as a gate: confirm the endpoint's own operation and schema support the requested result kind and granularity, and can represent every compatible explicit qualifier. A topical neighbor or broader operation is not sufficient. A named provider or source is a hard constraint for that outcome; do not fulfill or supplement it with another provider when a fitting named-source endpoint exists.\n- Deduplicate the call set: make one invocation per distinct requested operation and input unless the schema supports batching or the user requests repetition. Do not add related calls as extra checks. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Preserve requested search text, identifiers, and constraints; normalize only as the endpoint requires, without dropping meaningful words or substituting one value or geographic level for another. Map explicit filters, counts, pages, sorting, locale, category, and location to the corresponding schema fields, using accepted representations for enums and locales.",
+        "content": "\n- Map every numeric range or threshold to the endpoint's corresponding filter fields, regardless of domain. When both bounds are available, set both; keep range bounds distinct from result counts and page sizes. For example, a requested length range maps to minimum- and maximum-length fields, not a per-page count. Do not omit a bound or repurpose a count field."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

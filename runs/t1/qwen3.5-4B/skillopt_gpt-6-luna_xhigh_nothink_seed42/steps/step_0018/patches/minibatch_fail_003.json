@@ -1,0 +1,26 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "cached_result_update_failure",
+      "count": 5,
+      "description": "Agents missed that the latest turn added criteria to existing results, returning a no-op or searching again instead of retrieving, filtering, and saving the compatible cached result."
+    },
+    {
+      "failure_type": "tool_namespace_misuse",
+      "count": 1,
+      "description": "An agent imported tools from a nonexistent module despite the existing direct-call instruction."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache rules already describe reuse and filtering, but the affirmation rule only mentions carrying forward proposed entities or categories. Clarifying that answers to follow-up questions and accepted preferences are active criteria makes the required cache update more explicit. No namespace edit is needed because the skill already prohibits imports.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Interpret the latest user reply in context as a possible plan update, including answers to clarification questions and affirmations accepting a proposed preference or entity. Carry forward every explicit value or criterion. If a newly supplied filterable criterion is not reflected in the matching cached result, retrieve the closest compatible result, filter it using all applicable new criteria, and save the update under a unique key. Do not use “No planning needed” until all current criteria are reflected in the relevant cached results."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

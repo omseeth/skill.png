@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_incremental_filtering",
+      "count": 6,
+      "description": "Follow-up preferences triggered fresh searches instead of retrieving compatible cached results and filtering only the changed criteria."
+    },
+    {
+      "failure_type": "tool_result_binding_and_cache_persistence",
+      "count": 6,
+      "description": "Results were not saved, were saved through duplicate inline calls, or were saved using variables that had never been assigned."
+    },
+    {
+      "failure_type": "argument_mapping_and_constraint_encoding",
+      "count": 4,
+      "description": "Some calls used incorrect argument shapes or fields, malformed preference values, or an overly narrow rating bound."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache-reuse and result-saving failures already directly contradict explicit rules in the skill, so repeating those rules would not patch a gap. This edit addresses uncovered parameter-shape and rating-threshold cases from the batch.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+        "content": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Check argument types against the tool schema: a single airport name or code is a scalar string (for example, `end_airport=\"ANC\"`), not a one-item list. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`): for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum; for a guest-rating floor, use `[N, 5]`; use equal bounds only for an explicitly exact rating or category. Do not add unrelated preferences."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

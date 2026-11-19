@@ -1,0 +1,23 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Follow the active answer format’s wire representation for parameter values; name/value wrappers may require strings even for numeric or Boolean schema fields.",
+    "For localized marketplace searches, carry an explicit market across compatible selectors when their canonical values are unambiguously derivable."
+  ],
+  "patch": {
+    "reasoning": "The trajectories repeatedly serialize numeric settings as strings, while native Boolean and number values caused mismatches in one call. The two Asos trajectories also show that market context can apply across related fields such as language, country, store, currency, and sizing, not just the field named explicitly.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- In formats that represent parameters as name/value entries, serialize each schema parameter as its own `{ \"name\": \"<exact field>\", \"value\": <concrete value> }` entry. Do not pack multiple parameters into a single object keyed by parameter names.",
+        "content": "\n- Follow the active answer format's wire representation for each `value`; it takes precedence when it differs from the underlying parameter type. If a name/value-entry format serializes values as strings, serialize numeric, Boolean, and enum values as strings too (for example, `\"10\"` or `\"true\"`), without changing their meaning or required/optional placement."
+      },
+      {
+        "op": "insert_after",
+        "target": "Use the endpoint's accepted locale form and canonical enum, code, or slug; do not guess undocumented values or substitute a semantically different field when the requested distinction is unavailable.",
+        "content": " For localized or marketplace endpoints with related selectors (such as country, store, currency, language, or sizing), carry an explicitly stated market across every compatible selector when the endpoint documentation or a deterministic mapping makes each value clear. Do not infer undocumented mappings or add selectors unrelated to that market."
+      }
+    ]
+  },
+  "source_type": "success"
+}

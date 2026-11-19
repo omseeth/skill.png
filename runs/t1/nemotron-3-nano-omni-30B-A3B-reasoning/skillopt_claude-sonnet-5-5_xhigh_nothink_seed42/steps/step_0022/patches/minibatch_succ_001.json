@@ -1,0 +1,21 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Flight openers with origin and destination but no date (including 'arrive before 01:17 AM' and 'large group school trip') get exactly one seek_information naming only the departure date, with no search and no hotel dates.",
+    "A first search on an empty cache is assigned to a variable and followed by save_to_cache (Fresno Scenic attractions).",
+    "A flight class reply with several cached legs loads each leg's key, filters each with only flight_class, and saves each under its own new key.",
+    "Refinements on a cached domain (restaurants cuisine and rating) use only the last turn's constraints and do not re-pass earlier ones.",
+    "Two runs scored as passes still carried defects: one used an undefined variable as prior_results with no load, and one wrote a bare, nested search call. A third loaded a 'hotels' key that was not in CACHE and crashed, when the gold answer was a seek_information for the checkout date."
+  ],
+  "patch": {
+    "reasoning": "The seek-only, first-search and multi-leg filter patterns are already covered, so I add nothing for them. The remaining defects in this batch are load/key mistakes: an undefined prior_results variable, and a load of a key that is not in CACHE (a hotel refinement when only flight keys exist, which crashes). The existing rule sits low in the CACHE GATE (step 3), so I promote it to a short top-level hard rule with a positive fallback (first search, or seek_information when hotel dates are missing). This follows the meta-guidance to promote rather than add sibling examples.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- Load before filter, and only keys that exist: every `prior_results=` value is a variable assigned by `x = get_results_from_cache(key=\"K\")` earlier in the same block, and K must appear verbatim as a key in the CACHE dict. If the domain you want to refine has no key in CACHE (for example CACHE holds only flight keys and the user now describes a hotel), do not load it. Instead run the first search when every mandatory arg is known, or output only the seek_information naming the missing hotel date(s) (check-out date when only the flight date is known)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

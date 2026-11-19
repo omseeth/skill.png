@@ -1,0 +1,60 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "A bare list of real people ('Ferdinand VII, Juan Carlos') should map to their shared country. The agent answered with one list member ('Juan Carlos I')."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "The clue contains an acronym ('PIP') and asks for 'this feature'. The agent latched onto a stray phrase from a forum snippet ('second out of set tuner') instead of expanding the acronym (Picture in Picture)."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "A 'he wrote ...' clue asks for the person (Charles Guiteau). The agent answered with another work the person produced, a poem named in the passages."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "A descriptor already in the clue ('third') was carried into the answer ('third Dalai Lama' instead of 'Dalai Lama')."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "A quotation-completion answer copied a typo or stray characters from a passage ('ragaE' instead of 'rag')."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A spoonerism clue ('queer old dean') was given a single garbled word ('queen'). The answer is the intended, unswapped phrase ('dear old queen')."
+    }
+  ],
+  "patch": {
+    "reasoning": "Each edit is narrow and targets a pattern the skill does not yet handle cleanly. (1) Lists of real people map to the shared country, and acronyms in the clue are expanded; the Rule 1 list line is too weak to stop the agent answering with a list member. (2) A 'he/she + verb' clue about an event wants the person, not something the person made. (3) Ordinals and counts already in the clue are dropped, and quote completions give one clean word. (4) Spoonerism clues give the intended phrase. All are phrased generically, with no broad 'verify everything' text of the kind that earlier steps rejected.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- A bare comma-separated list of real people with no verb ('Ferdinand VII, Juan Carlos'; two kings, presidents, senators, players) asks for the ONE entity they share. For monarchs or heads of state that is the country or realm they ruled ('Spain'); for legislators the state; for athletes the team. The answer is never one list member, a regnal variant of one ('Juan Carlos I'), or a third person from the same passages.\n- An acronym or abbreviation inside the clue ('If your TV has PIP, it has this feature', 'DVR', 'GPS') usually means the answer is the spelled-out expansion ('Picture in Picture'). Look for the passages that gloss the letters ('Picture in Picture (PIP)') and answer with that expansion. Ignore unrelated phrases from forum threads or questions that merely sit next to the acronym."
+      },
+      {
+        "op": "insert_after",
+        "target": "Other named entities in the clue are anchors, never the answer.",
+        "content": "\n- A clue whose subject is only a pronoun with a dated action ('On June 16, 1881 he wrote an explanation of why he was going to kill President Garfield', 'In 1815 she ...') asks for WHO that person is, as a bare name ('Charles Guiteau'). Never answer with a document, poem, speech or other work the person produced, or with an event. Passages often mention several things he wrote or did, and those are only details to identify him. Pick the name that every passage ties to the clue's date and action."
+      },
+      {
+        "op": "insert_after",
+        "target": "Brief reasoning belongs before the tags.",
+        "content": "\n- Ordinals, numbers and role words that the clue already uses for the referent ('The THIRD leader of the Yellow Hat sect was the first to bear this title') are not part of the answer. Give the bare title or name ('Dalai Lama', not 'third Dalai Lama'). This covers 'first/second/third', 'the 14th', and 'former/late'.\n- Completing a quotation or line of verse ('... to wash the steps with pail and' this): answer with only the missing word, cleanly spelled ('rag'). If one passage shows a typo or stray characters ('ragaE', a footnote mark, or a line number glued to the word), compare it with the other passages that quote the line and drop the artifact. Never answer with a longer phrase than the single missing word unless the gap clearly spans several words."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 5: Wordplay clues that show the garbled version\n- Spoonerism clues ('Dr. Spooner once talked of his queer old dean', 'He toasted the \"queer old dean\"') display what was mis-spoken. The answer is the INTENDED phrase obtained by swapping the initial sounds back ('dear old queen'). Give the complete intended phrase (all the words that were swapped), not just one swapped word ('queen'), and do not repeat the garbled phrase. Passages usually gloss it ('instead of \"our dear old Queen\"'), so copy that gloss without the lead-in words ('our', 'a toast to').\n- Other clues that quote a mangled saying, pun or misspoken phrase ask for the original correct version in the same way."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

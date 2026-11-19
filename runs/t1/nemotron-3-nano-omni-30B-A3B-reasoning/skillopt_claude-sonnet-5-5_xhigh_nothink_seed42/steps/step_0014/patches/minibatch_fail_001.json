@@ -1,0 +1,43 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_scope / re_search_instead_of_filter",
+      "count": 3,
+      "description": "The CACHE already held the domain, but the model re-ran search_* (T1 flight class, T4 flight and hotel budgets) or searched a single city instead of filtering the cached attractions (T3)."
+    },
+    {
+      "failure_type": "refinement_missing_or_wrong_constraint",
+      "count": 3,
+      "description": "The last-turn constraint was not applied. T8 loaded and saved the cache with no filter. T2 re-applied an old budget instead of the new gym and wifi. T6 dropped the neighborhood and kept only the stars."
+    },
+    {
+      "failure_type": "malformed_code_structure",
+      "count": 2,
+      "description": "First attraction searches were bare calls with no assignment or save_to_cache (T5, T7). T5 also put a state abbreviation in city= instead of state=."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains rules for all three patterns, but they sit deep in a long document and the model keeps violating them. The edits do three things: a short high-salience block at the top of the skill, worked examples taken from these exact failure shapes, and one rule for narrowing a cached state-level attraction search by city. The top block replaces the empty placeholder and stays short, because an earlier long checklist was rejected.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## READ FIRST: the failures that keep recurring (check before every answer)\n1. Every search_*/filter_* call is assigned to a variable and followed by `save_to_cache`. A bare `search_attractions(...)` is always wrong. Template: `attractions = search_attractions(state=\"AZ\", type=[\"Touristy\", \"Guided\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. A US state name or abbreviation goes in `state=`, never in `city=`. No import and no explanatory comments.\n2. If the CACHE already has a key for a domain, the answer for that domain is load -> filter_* -> save. Never call search_* for that domain again, even when the new constraint (flight_class, budget, airline) is also a search_* parameter.\n3. A refinement turn MUST contain a filter_* call built from the new constraint(s) in the last user message. Loading a key and saving it under a new name, with no filter_*, is wrong. Do not re-apply a constraint from an earlier turn that the CACHE summary already lists.\n4. Take EVERY constraint the last message gives (e.g. neighborhood AND stars, gym AND wifi, flight budget AND hotel budget). Each goes into the matching domain's filter_* call, and none is dropped."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 30: Worked examples for refinement turns (copy the shape)\n- CACHE has 'filtered_hotels' (budget and travellers already listed) and the user answers an amenity question with 'Yes, a gym and pool would be great.' -> `h = get_results_from_cache(key=\"filtered_hotels\")`, `h2 = filter_hotels(prior_results=h, gym_present=True, pool_present=True)`, `save_to_cache(key=\"filtered_hotels1\", value=h2)`. Never output only a load and a save. The new constraint is the amenity. Do not repeat the budget from an earlier turn.\n- 'Yes, a gym and wifi would be great.' with the most refined key 'filtered_hotels1' (stars, neighborhood and budget already applied) -> `filter_hotels(prior_results=h, gym_present=True, free_wifi_included=True)` only.\n- The assistant asked 'what location and star rating?' and the user says 'Downtown Portland and a 3 star hotel' -> `filter_hotels(prior_results=h, neighborhood=[\"Downtown Portland\"], stars=[3, 3])`. The location is a neighborhood (keep the city name in it) and the star count is stars. Both belong in the one call. Do not drop the neighborhood, and do not add explanatory comments.\n- The raw 'hotels' key may be the only hotel key in CACHE. In that case load 'hotels', filter it, and save under 'filtered_hotels'."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 31: Several domains or legs answered in one turn, and flight class on cached round trips\n- 'We'd like first class.' with CACHE 'departure_flights' and 'return_flights' -> filter BOTH legs and never call search_flights: `d = get_results_from_cache(key=\"departure_flights\")`, `d2 = filter_flights(prior_results=d, flight_class=[\"first\"])`, `save_to_cache(key=\"filtered_departure_flights\", value=d2)`, then the same three lines for 'return_flights' saved as 'filtered_return_flights'. A travel date, party size or route stated earlier is not a reason to search again.\n- 'I'm looking to spend around 950 for the flight and 105 per night for the hotel' with CACHE 'flights', 'hotels' and 'filtered_hotels' answers the assistant's budget question for two domains, so filter both. Flights: `f = get_results_from_cache(key=\"flights\")`, `f2 = filter_flights(prior_results=f, budget=950)`, `save_to_cache(key=\"filtered_flights\", value=f2)`. Hotels: load the most refined hotel key ('filtered_hotels'), `filter_hotels(prior_results=h, budget=105)`, and save under a NEW key ('filtered_hotels2'). Never re-run search_flights or search_hotels in this turn. For round trips, filter each flight leg key.\n- Map each part of the sentence to its domain first (flight price -> flights, per-night price -> hotels, per-person price -> restaurants), then write one load -> filter -> save block per domain."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 32: Attractions - state searched first, cities named afterwards\n- A first attraction request such as 'Touristy and Guided attractions in AZ' is one assigned and saved call: `attractions = search_attractions(state=\"AZ\", type=[\"Touristy\", \"Guided\"])`, then `save_to_cache(key=\"attractions\", value=attractions)`. 'Culinary attractions in Portland' is `search_attractions(city=\"Portland\", type=[\"Culinary\"])` plus the save. Pass the types exactly as the user wrote them.\n- If CACHE already holds the state-level 'attractions' result and the user then names the cities they will visit (e.g. 'I'm thinking of visiting Memphis and Las Vegas'), do not search again. Load the cached key once and write ONE filter_attractions call per city, because `city` takes a single string. Save each under its own new key: `a = get_results_from_cache(key=\"attractions\")`, `a1 = filter_attractions(prior_results=a, city=\"Memphis\")`, `a2 = filter_attractions(prior_results=a, city=\"Las Vegas\")`, `save_to_cache(key=\"filtered_attractions1\", value=a1)`, `save_to_cache(key=\"filtered_attractions2\", value=a2)`. Do not repeat the type or state, because the CACHE summary already lists them."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

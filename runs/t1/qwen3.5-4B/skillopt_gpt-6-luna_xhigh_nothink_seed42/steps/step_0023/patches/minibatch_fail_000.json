@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "stateful_request_scope",
+      "count": 3,
+      "description": "The agent repeated or invented actions, missed newly requested filters, or stopped despite earlier requested domains still needing work."
+    },
+    {
+      "failure_type": "result_persistence_omission",
+      "count": 3,
+      "description": "The agent called a base search but did not assign and save its result to cache."
+    },
+    {
+      "failure_type": "runtime_namespace_violation",
+      "count": 2,
+      "description": "The agent imported tools from a nonexistent module despite the injected-namespace contract."
+    },
+    {
+      "failure_type": "schema_value_mapping",
+      "count": 2,
+      "description": "The agent failed to map an amenity phrase to its supported field or used noncanonical casing for a controlled choice."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add operational audits for choosing actions across the full conversation and capturing every tool result, rather than relying only on general guidance. Clarify how to map natural-language criteria and controlled-choice values to the schema. The runtime prohibition is already explicit in the skill, so no duplicate edit is warranted.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "\n- **Turn-level action audit:** Before writing code, list the active requested actions by domain using the full conversation and cache summaries. Treat the latest reply as updating the domain(s) under discussion, not as canceling earlier requests in other domains; keep those requests active unless the user explicitly cancels them. For each active action, search if no compatible result exists, filter only new criteria if a compatible result exists, or make no call if it is already satisfied. Do not repeat applied criteria, touch unrelated domains, or sort results unless requested. Use “No planning needed” only when every active action is satisfied."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "\n- **Result-capture audit:** Assign every result-producing search, filter, sort, or nearest call to a variable, then save that result under the appropriate established cache key before returning. Never emit a bare result-producing call; use a distinct filtered-result key for transformations."
+      },
+      {
+        "op": "replace",
+        "target": "A field's presence alone does not make every wording a valid value: for fields expecting named choices (such as “airline” or “hotel_name”), pass only explicitly named choices. Do not encode a generic quality such as “kid-friendly” as an entity value when the schema has no matching criterion.",
+        "content": "A field's presence alone does not make every wording a valid value: for fields expecting named choices (such as `airline` or `hotel_name`), pass only explicitly named choices. Map ordinary-language descriptions to a supported schema criterion when the meaning is unambiguous (for example, “laundry facilities” to `has_laundry_service`); if no field represents a preference, omit it rather than adding an unsupported argument. For controlled-choice fields, use the canonical spelling and casing declared by the schema (for example, `flight_class=[\"economy\"]`), while preserving the user's casing for free-form entity values. Do not encode a generic quality such as “kid-friendly” as an entity value when the schema has no matching criterion."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

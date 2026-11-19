@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_update_omission_or_misdirection",
+      "count": 6,
+      "description": "The agent retrieved cached results or declared no planning needed instead of applying the new criterion or searching for a requested subject not covered by cache."
+    },
+    {
+      "failure_type": "cache_persistence",
+      "count": 3,
+      "description": "The agent generated a filter or search result but did not save the output to cache."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already calls for compatible cache reuse and saving, but the trajectories show those instructions are not consistently converted into a concrete follow-up action. This replacement makes the decision path explicit: update a covered result, search for an uncovered subject, apply criteria across relevant itinerary legs, and save each output—without touching unrelated domains.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied in a search. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- For every current-turn addition or affirmation of a proposal, execute the new request even when related results are cached: determine whether the requested subject or category is covered; if covered, retrieve the latest compatible result and filter using only the newly stated criteria; if not, perform the requested search rather than merely retrieving a same-domain result. Apply a criterion to every relevant requested itinerary leg or result. Save every search or filter output under a distinct follow-up cache key, and leave unrelated domains untouched. Return “No planning needed” only when cached results already satisfy the new criterion and every other current request."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

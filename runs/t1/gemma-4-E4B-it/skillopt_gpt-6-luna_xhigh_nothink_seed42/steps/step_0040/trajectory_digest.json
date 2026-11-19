@@ -1,0 +1,53 @@
+{
+  "step": 40,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 25,
+  "failure_patterns": [
+    {
+      "pattern": "cache_scope_selection: Filter-only follow-ups triggered fresh searches or failed to retrieve and filter a compatible cached result.",
+      "count": 25,
+      "task_ids": [
+        "flight:train:2:40:4",
+        "hotelrestaurant:train:14:41:1",
+        "hotelrestaurant:train:7:59:2",
+        "hotel:train:15:1:2",
+        "flighthotelrestaurant:train:15:1:3",
+        "hotelattraction:train:25:8:3",
+        "hotelrestaurant:train:15:1:1",
+        "attraction:train:1:8:0",
+        "hotelrestaurant:train:25:12:3",
+        "attraction:train:20:56:0",
+        "hotelrestaurant:train:22:59:4",
+        "hotelrestaurant:train:13:45:0",
+        "hotelattraction:train:23:13:4",
+        "restaurant:train:23:15:1",
+        "flighthotelattraction:train:3:53:1",
+        "hotel:train:15:3:1",
+        "attraction:train:1:27:1",
+        "flighthotelrestaurant:train:25:34:3",
+        "flighthotelrestaurant:train:25:52:1",
+        "hotel:train:15:36:2",
+        "flighthotelrestaurant:train:1:59:3",
+        "restaurant:train:20:8:0",
+        "flight:train:2:56:3",
+        "attraction:train:18:34:2",
+        "restaurant:train:1:28:2"
+      ]
+    }
+  ],
+  "score_before": 0.51,
+  "score_after": 0.44,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "**Latest-turn action precedence:** Read the full conversation, the preceding assistant offer or question, and the cache summary. Identify only the scopes changed by the latest turn and pending requests that are now complete. For each changed scope:\n1. If the user explicitly requests or accepts proximity, use compatible cached datasets—applying any new constraints to the relevant dataset—and run `search_nearest`. Search only for inputs the cache cannot cover; do not substitute a new category search for an accepted proximity offer. Preserve earlier explicit proximity requests unless the user withdraws them. Do not infer proximity merely because domains are mentioned together.\n2. If the user only accepts an offer to present recommendations from an already-covered scope, retrieve the relevant cached result for use; do not search, filter, or save a duplicate.\n3. If a covered scope gains or changes a filterable constraint, retrieve the most constrained compatible result by its exact cache key, apply the matching filter, and save it. Do not repeat the base search or regenerate unaffected scopes.\n4. Search only for a genuinely new or cache-uncovered scope, or execute a pending request that has just become complete. Include all active supported criteria and combine same-domain criteria in one call when supported. Validate mandatory arguments before each search; do not execute an incomplete search, and seek only its missing required details while continuing independent requests that are complete.",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```"
+    },
+    {
+      "op": "replace",
+      "content": "When filtering a compatible cached result, pass only newly supplied constraints and still-active supported constraints not already embodied in the selected result. Do not re-pass criteria already represented in it.",
+      "target": "Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result."
+    }
+  ]
+}

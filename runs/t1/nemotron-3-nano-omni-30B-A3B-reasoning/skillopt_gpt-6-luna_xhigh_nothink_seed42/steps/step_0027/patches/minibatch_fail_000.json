@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_selection_and_incremental_refinement",
+      "count": 5,
+      "description": "Agents repeated searches or stopped instead of refining compatible cached results for newly stated preferences."
+    },
+    {
+      "failure_type": "schema_value_encoding",
+      "count": 3,
+      "description": "Agents used incorrect location or time encodings, or failed to map an explicitly requested hotel facility."
+    },
+    {
+      "failure_type": "pending_action_and_missing_input_handling",
+      "count": 1,
+      "description": "The agent skipped a ready restaurant search and did not ask for dates needed by blocked flight and hotel searches."
+    },
+    {
+      "failure_type": "unsupported_inference_and_overprocessing",
+      "count": 2,
+      "description": "Agents inferred an unstated hotel restriction or repeated unrelated work."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains broad cache, readiness, and schema-validation guidance, so these edits clarify recurring ambiguities rather than restating those rules: a cached flight leg remains usable when only a new filter is missing, cache keys are distinct from their summaries, flight time endpoints need the accepted format, and stated business facilities map to their separate hotel fields.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.",
+        "content": "\n- A cached directional result for the same route and date remains compatible when it lacks only a newly requested filter. Retrieve it and use `filter_flights` for only the new criterion rather than searching again; apply this independently to each affected leg and save each refinement."
+      },
+      {
+        "op": "insert_after",
+        "target": "- If the latest turn adds no criterion and a compatible listed cache result already covers the outstanding request—including when the user says they are flexible or accepts an offer to provide recommendations—retrieve that result with its exact listed key into a local variable and use it directly. Do not search or filter again, and do not use `print(\"No planning needed\")` in place of retrieving a result the user is expecting.",
+        "content": "\n- In a cache listing, use the exact cache key (the mapping key) in `get_results_from_cache`; the human-readable result summary is descriptive evidence, not a cache key."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "\n- For flight departure- and arrival-time ranges, use the time format accepted by the tool. Encode an afternoon range as `['12:00 PM', '5:00 PM']`; do not pass `HH:MM:SS` values when the tool rejects that format."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`.",
+        "content": "\n- For hotels, map an explicit request for a business center or business facilities to `has_business_center`, and a request for meeting rooms to `has_meeting_rooms`. Do not infer either preference merely from a business-trip purpose."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

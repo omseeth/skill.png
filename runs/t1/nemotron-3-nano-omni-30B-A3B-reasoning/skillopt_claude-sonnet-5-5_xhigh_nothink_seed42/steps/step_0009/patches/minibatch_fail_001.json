@@ -1,0 +1,48 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "seek_only_instead_of_search_plus_seek",
+      "count": 2,
+      "description": "A requested domain was complete (attractions, or restaurants whose city came from another domain), but the agent emitted only seek_information(s) and skipped that search."
+    },
+    {
+      "failure_type": "hotel_dates_or_flight_legs_not_derived",
+      "count": 4,
+      "description": "The agent missed that a date range, a return-flight date or 'N nights' supplies hotel check-in/checkout. It either over-sought the departure date, ignored the hotel, or searched the wrong legs. In one case it re-filtered flights on a hotel-only turn."
+    },
+    {
+      "failure_type": "invalid_param_or_invented_param",
+      "count": 3,
+      "description": "The agent put a state code in city, used neighborhood=['beach'] instead of has_beach_access, invented flight_class=economy, or re-passed has_gluten_free_options that the summary already listed."
+    },
+    {
+      "failure_type": "output_format",
+      "count": 2,
+      "description": "Bare search_* calls with no assignment or save_to_cache, and a stray </parameter> tag that caused a SyntaxError."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four patterns recur across the batch. (1) Skill Rule 6 says a flight date never supplies a checkout date, which contradicts the tasks that supply a return date, a date range or 'N nights'. A replacement of that bullet plus a new rule on date ranges, return-only flights and hotel dates fixes three trajectories. (2) The agent emits only seek_information even when attractions or restaurants are searchable; a dedicated rule with concrete examples fixes that. (3) Rules 21 and 17/22 are already present but were violated (state codes, bare searches, stray tags, re-passed summary flags, invented kwargs). A short final-check rule written as a counting heuristic addresses these. (4) A hotel-only last turn must not redo earlier flight filters; this is covered in the date rule's example.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "A flight departure date or arrival date supplies at most the check-in date. It never supplies a checkout date, and a one-night stay is never a default.",
+        "content": "A single flight departure/arrival date supplies at most the check-in date and never a checkout date, and a one-night stay is never a default. The checkout IS known (do not seek it) when the user gave a return-flight date, an 'X to Y' date range (checkout = the later date), or 'for N nights' (checkout = adjust_date, see Rule 31)."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 31: Date ranges, return-only flights, and hotel dates taken from flights or nights\n- A reply such as 'April 19, 2026 to April 27, 2026' or 'out on May 17, back on May 24' to a flight/trip question gives BOTH the departure date and the return date. Never seek_information for the departure date after it. A round trip is two searches (Rule 9): `departure_flights = search_flights(start_airport_city=\"Anchorage\", end_airport_city=\"Tucson\", departure_date=[\"April 19, 2026\"])`, save as \"departure_flights\"; `return_flights = search_flights(start_airport_city=\"Tucson\", end_airport_city=\"Anchorage\", departure_date=[\"April 27, 2026\"])`, save as \"return_flights\". Descriptors like 'kid-friendly airline' or 'family vacation' add no kwargs.\n- 'No, just the return flight' (answer to 'round trip?') with 'May 17 to May 27' means ONE flight search for the return leg only: `flights = search_flights(start_airport_city=<destination city>, end_airport_city=<origin city>, departure_date=[\"May 27, 2025\"])`, saved as \"flights\". Do not search the outbound leg. Add no flight_class, airline or other kwarg the user did not say.\n- If a hotel is also requested, its dates come from the same range: check-in = the first date, checkout = the second date. Example: `hotels = search_hotels(city=\"Las Vegas\", checkin_date=[\"May 17, 2025\"], checkout_date=[\"May 27, 2025\"], has_beach_access=True, pool_present=True, free_wifi_included=True)` ('hotel near the beach' is has_beach_access=True, never neighborhood=[\"beach\"]). Saved as \"hotels\".\n- 'for N nights' with a known check-in or flight date: derive the checkout, then search flights and hotel in the same block. Example (flight Las Vegas to Memphis, hotel for 6 nights, 'traveling on May 15, 2025 and prefer economy'): `flights = search_flights(start_airport_city=\"Las Vegas\", end_airport_city=\"Memphis\", departure_date=[\"May 15, 2025\"], flight_class=[\"economy\"])`, `save_to_cache(key=\"flights\", value=flights)`, `checkout_date = adjust_date(date=\"May 15, 2025\", delta_days=6)`, `hotels = search_hotels(city=\"Memphis\", checkin_date=[\"May 15, 2025\"], checkout_date=[checkout_date])`, `save_to_cache(key=\"hotels\", value=hotels)`. 'Weekend getaway' adds no kwargs.\n- Hotel first specified in the LAST turn while the CACHE only holds flight keys (round trip May 17 out, May 24 back; user: 'a hotel in Downtown Lexington with a 5 star rating'): run only `hotels = search_hotels(city=\"Lexington\", checkin_date=[\"May 17, 2025\"], checkout_date=[\"May 24, 2025\"], neighborhood=[\"Downtown Lexington\"], stars=[5, 5])` and save as \"hotels\". Do NOT re-filter or reload the flight keys and do not redo flight preferences from earlier turns.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 32: Search every complete domain in the same block as the seek_information\n- seek_information goes at the END of a block that also searches every other requested domain whose mandatory args are complete. Never output seek_information alone, or several seek_information calls, when any requested domain can be searched. Use ONE seek_information naming everything still missing across domains.\n- Attractions need no dates: 'a hotel in Raleigh for 2 people and we want Social attractions' (no hotel dates) -> `attractions = search_attractions(city=\"Raleigh\", type=[\"Social\"])`, `save_to_cache(key=\"attractions\", value=attractions)`, `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. No num_people or search_hotels.\n- Restaurants need only a city, and that city may come from any domain's destination. If the last turn adds restaurant needs, search restaurants even though flights/hotel still lack dates. Example: trip Tucson to Colorado Springs, flights and hotel dates unknown, last turn 'my child has a nut allergy, need a restaurant with a 3.0 rating' -> `restaurants = search_restaurants(city=\"Colorado Springs\", rating=[3.0, 3.0], has_nut_allergy_options=True)`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need the departure date for the flight, and the check-in and check-out dates for the hotel.\")`. An allergy maps to has_<allergen>_allergy_options=True. A plain 'X rating' maps to rating=[X, X].\n- The domain the last turn talks about is always handled, even when other domains are still waiting for dates.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 33: Final check before answering\n- Every search_*, filter_* and search_nearest call is assigned to a variable and followed by save_to_cache, even on a one-turn request. A bare `search_attractions(...)` is wrong.\n- A two-letter US state code or state name goes in `state=`, never `city=`. 'Trip to CO, Sporting attractions' -> `attractions = search_attractions(state=\"CO\", type=[\"Sporting\"])` + `save_to_cache(key=\"attractions\", value=attractions)`.\n- The answer is only code inside <CODE></CODE>. Never emit any other tag (e.g. </parameter>), markdown fence, or stray text, because it causes a SyntaxError.\n- Pass only kwargs for facts the user stated. Do not add flight_class, airline or amenities nobody mentioned. Check each kwarg exists on that tool.\n- Single-fact refinement test: count the new facts in the last turn and pass exactly that many kwargs to filter_*. Every flag or value shown in the loaded key's CACHE summary (has_gluten_free_options, has_vegetarian_options, cuisine, neighborhood, rating, stars) is already applied; never re-pass it. Example: summary 'neighborhood(s): [Midtown Atlanta], cuisine(s): [Livonian], has_gluten_free_options' and last turn 'around 125 per person' -> `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, budget=125)`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`.\n- Do not redo preferences from earlier turns (e.g. a flight class) just because a cache key for that domain exists. Act only on the last turn's new constraint."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

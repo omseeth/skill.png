@@ -1,0 +1,40 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "state_code_in_city_param",
+      "count": 2,
+      "description": "A state code ('OR', 'AZ') was passed as city= in a first-turn attraction search, even though several rules say it belongs in state=."
+    },
+    {
+      "failure_type": "output_form_violation",
+      "count": 2,
+      "description": "A first-turn search_* call was emitted bare, with no variable assignment and no save_to_cache (restaurant and attraction opener)."
+    },
+    {
+      "failure_type": "dropped_new_constraint_in_compound_turn",
+      "count": 1,
+      "description": "The reply 'Yes, a pool would be great. And ... Norwegian near the hotel' was answered with search_nearest on the old filtered hotels. The pool filter_hotels step was skipped and its result was never passed into search_nearest."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the four failures are first-turn hygiene errors (bare search_* lines, state codes in city=). The skill already states these rules, but only deep inside long sections, so they are being missed. Per the optimizer notes, the fix is to promote them rather than add sibling examples: a short pre-flight check at the very top, repeated as a three-line checklist at the very end where it is closest to the conversation. The fourth failure is a compound turn where a hotel amenity answer is combined with a 'near the hotel' request. Existing guidance exists but the agent skipped the filter, so a narrow, positively phrased trigger is added to the top of the CACHE GATE ladder. It states that the hotel filter must be written first and its result fed into search_nearest.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Travel Planning Skill",
+        "content": "\n\n## PRE-FLIGHT CHECK (do this before writing the first character of code)\n1. Every search_*, filter_*, search_nearest and sort_results call is written `<name> = tool(...)`, and the NEXT line is `save_to_cache(key=\"<key>\", value=<name>)`. A line that begins with `search_` or `filter_` is wrong. First-search templates: `attractions = search_attractions(state=\"<ST>\", type=[\"<type>\"])` then `save_to_cache(key=\"attractions\", value=attractions)`; `restaurants = search_restaurants(city=\"<city>\", cuisine=[\"<cuisine>\"], has_halal_options=True)` then `save_to_cache(key=\"restaurants\", value=restaurants)`. A named cuisine goes in cuisine=[...]. A dietary word ('halal', 'vegan', 'gluten-free') is a has_*_options flag. Both can appear in one call.\n2. Location: a two-letter capital code or a state name ('OR', 'AZ', 'CA', 'Georgia') is `state=\"OR\"` and city is omitted. `city=\"OR\"` or `city=\"AZ\"` is always wrong, even for 'I'm planning a trip to AZ'. Use `city=` only for a real city name.\n3. Pass attraction types, cuisines and flags exactly as the user wrote them, and nothing else.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\n\n-3. HOTEL CONSTRAINT + 'NEAR THE HOTEL' IN ONE MESSAGE. If the last message states a hotel constraint ('Yes, a pool would be great', a gym, a neighborhood) AND asks for a restaurant or attraction near the hotel, write the hotel filter FIRST. Load the most refined hotels key, then `h2 = filter_hotels(prior_results=h, <kwarg from the user's words, e.g. pool_present=True>)`, then save h2 under a new key. After that, load the restaurants or attractions key and call search_nearest with `hotels=h2`, the FILTERED result and never the unfiltered loaded hotels. Then save the nearest result. Output that is only get_results_from_cache + search_nearest + save is wrong, because the new hotel constraint is never applied. Anything already listed in the restaurants summary (for example the cuisine) is not re-passed."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## LAST-LINE CHECKLIST (re-read right before answering)\n- Does every search_*/filter_*/search_nearest line start with `name = ` and is it followed by save_to_cache? Is there a state code or state name in city=? If so, move it to state=.\n- Does every amenity, budget, neighborhood or cuisine word in the user's LAST message appear as exactly one kwarg in a filter or search, and was the filter written BEFORE any search_nearest that depends on it?\n- No imports, no comments, no print, and no bare tool calls.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

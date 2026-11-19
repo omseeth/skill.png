@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_mismanagement",
+      "count": 5,
+      "description": "Agents repeated searches or filters for cached or unchanged domains instead of acting only on the changed scope and reusing valid results."
+    },
+    {
+      "failure_type": "constraint_mapping",
+      "count": 3,
+      "description": "Agents inferred unsupported hotel amenities, confused state with city, or mapped a hotel star class to a guest-rating field."
+    },
+    {
+      "failure_type": "tool_transaction_error",
+      "count": 2,
+      "description": "Search calls were not reliably assigned and saved, including a save using an undefined result variable."
+    },
+    {
+      "failure_type": "independent_scope_blocking",
+      "count": 1,
+      "description": "A missing hotel date blocked a fully specified restaurant search that could have proceeded independently."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states general cache, argument-validation, and save-variable rules, so those are not repeated. These edits add a concrete hotel filter pattern, make cache reuse during accepted proximity work operational, clarify named attraction anchors, and remove ambiguity between hotel star classes and guest scores.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "\nFor a same-city, same-stay hotel result that does not yet embody newly supplied occupancy or budget constraints, filter the cached result rather than repeating the base search:\n```python\nhotel_prior = get_results_from_cache(key=\"<exact compatible hotel key>\")\nfiltered_hotels = filter_hotels(prior_results=hotel_prior, num_people=<user-stated count>, budget=<requested budget>)\nsave_to_cache(key=\"<new filtered hotel key>\", value=filtered_hotels)\n```\nDo not regenerate other domains whose results remain valid."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "\nWhen the user accepts an assistant's offer to find one domain near another, reuse each compatible cached result by retrieving its exact key. If both candidate sets already cover the request, call and save `search_nearest` without repeating searches or filters. Search or filter only a side whose requested scope or constraints are not already covered."
+      },
+      {
+        "op": "replace",
+        "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+        "content": "For restaurant ratings and hotel guest-review scores, interpret “N or higher” as a minimum threshold and use `[N, 5]` in `rating`; use `[N, N]` only for an explicitly exact score. Hotel star classifications use `stars` only, never `rating`."
+      },
+      {
+        "op": "insert_after",
+        "target": "For attractions, put the requested category in `type` with its exact value (for example, if the requested type is `Scenic`, pass `type=[\"Scenic\"]`).",
+        "content": "\nWhen a user names a specific attraction as a proximity anchor, identify it with `attraction_name` and the exact user-provided name. Do not carry over a broader attraction `type` filter unless the user explicitly asks for the named attraction to satisfy that category too."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

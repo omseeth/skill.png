@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "clarification_reply_not_applied",
+      "count": 5,
+      "description": "Agents treated answers or affirmations as no-ops, or applied an accepted preference to only part of a multi-location request."
+    },
+    {
+      "failure_type": "injected_tool_namespace_misuse",
+      "count": 3,
+      "description": "Agents imported tools from a nonexistent module despite the existing direct-call instruction."
+    },
+    {
+      "failure_type": "result_not_saved_to_cache",
+      "count": 2,
+      "description": "Agents made a search but omitted the required save of its result."
+    }
+  ],
+  "patch": {
+    "reasoning": "The direct-call and cache-save rules already cover the latter failures, so repeating them would not patch a skill gap. Clarification replies remain the main actionable gap: make explicit that answers carry active criteria, apply them to every relevant result or stop, and do not declare planning complete while a requested criterion or proximity relation is unmet.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve every reply against the immediately preceding assistant question or proposal, including answers phrased as statements or brief affirmations. Treat each explicit value or accepted criterion in the reply—such as an allergy, cuisine, neighborhood, rating, amenity, or flight class—as active plan information. Apply it to every affected requested result; when compatible cached results do not already satisfy it, retrieve and filter the closest compatible result and save the update. For requests spanning multiple itinerary stops or stays, apply an accepted category or preference to each relevant stop or result. Do not use “No planning needed” while any requested criterion or proximity relationship remains unmet."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

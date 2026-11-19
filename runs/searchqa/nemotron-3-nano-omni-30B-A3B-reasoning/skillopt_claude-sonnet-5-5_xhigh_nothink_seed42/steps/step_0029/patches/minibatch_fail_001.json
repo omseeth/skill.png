@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 4,
+      "description": "Wrong slot or form despite existing rules. Hawking radiation was given for 'this author' (a person). Devereux Tower was given for 'this British site' (a part, not the whole). 'Denver Mint' repeated the clue noun 'mint'. 'Egg White Denver Omelet' was a long passage title, although the skill already says to answer 'Omelet'."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "A bare list of countries or capitals with no verb. The agent answered a category label ('Nordic countries', 'capital cities'), but the key is one list member."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "'Lucius Junius Brutus' was chosen from the first passage even though the clue says 44 B.C. and a different Brutus fits. The year detail and the commonly used short name were not applied."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "The clue says 'current king of Jordan' but is an old archive clue. The agent substituted today's holder from its own knowledge, while most passages tied the clue's details to the earlier king."
+    }
+  ],
+  "patch": {
+    "reasoning": "Step-0 and slot-naming lines were already tried and rejected, so this patch uses different, compact mechanisms. (1) Replace the long Denver-type sentence with a shorter one that no longer shows the full wrong string as a model answer. (2) Add one READ-BACK substitution test. It catches an effect or work named after the person (wrong for a person slot), a part named in the clue when the whole site is asked for, and a doubled clue noun ('this mint' -> 'X Mint'). (3) Extend the existing 'outdated context' bullet so 'current/present/new' is read relative to the clue's era, instead of adding a new bullet. (4) Add a conditional rule for bare lists of top-level places: never give a category label, give one member. It is limited to places with no single containing region, so it does not clash with the 'cities in one country -> the country' and 'list of real people -> shared entity' rules.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Search the passages for '<Modifier> <noun>' (e.g. 'Egg White Denver Omelet', 'Denver omelet') and answer with the bare generic noun ('Omelet'), not the modifier and not a branded or themed product from the passages.",
+        "content": "Find the '<Modifier> <noun>' compound in the passages ('Denver omelet') and answer with ONLY the generic head noun ('Omelet'). The clue already supplies the modifier and every other qualifier (diet, ingredient, method), so none of them belongs in the answer. Never output modifier + noun, a longer recipe/menu title, or a branded or themed product from the passages."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "- READ-BACK TEST (run on your final candidate): put the candidate in place of 'this <noun>' / 'he' / 'she' / 'it' / 'these' and read the clue as a sentence. It must be true and not circular. (a) If the clue's own noun comes out doubled ('a specialty of this mint' -> 'the X Mint mint'), drop that noun and keep the bare name. (b) If the clue says 'this <author / inventor / ruler / actor>' and your candidate is an effect, law, theory, title or object named after or made by that person, it fails: the slot wants the PERSON. (c) PART vs WHOLE: in 'one of the buildings / wings / rooms / galleries at this site / museum / campus is named for X', the named part is an anchor, and the answer is the WHOLE place that contains it, never the part."
+      },
+      {
+        "op": "replace",
+        "target": "When the context is clearly outdated on a superlative or descriptor ('largest', 'first'), let the unique detail win (Khartoum -> Sudan even if Sudan is no longer 'largest').",
+        "content": "When the context is clearly outdated on a superlative or descriptor ('largest', 'first') or on a time word in the clue ('current', 'present', 'new', 'reigning'), let the unique detail win (Khartoum -> Sudan even if Sudan is no longer 'largest'). Archive clues were written years ago, so 'current' means the holder in the clue's era: do not swap in today's holder from your own knowledge. Choose the person the passages most often tie to the clue's other details (schools, dates, places), and use the short name or title form those passages use."
+      },
+      {
+        "op": "insert_after",
+        "target": "If the list is of real people, answer with the team, state or other entity they share.",
+        "content": "\n- A bare list of top-level PLACES (countries, or capitals of different countries) with no verb, where the passages offer only a category label ('capital cities', 'Nordic countries', 'Scandinavia'): the label is never the key. Give ONE of the listed items, spelled as in the clue. Take the item an archive line or passage singles out; otherwise the one mentioned most across the passages, and if tied, the first-listed. If instead the items are cities or towns inside one country or state (all in the same place), answer with that shared country or state."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

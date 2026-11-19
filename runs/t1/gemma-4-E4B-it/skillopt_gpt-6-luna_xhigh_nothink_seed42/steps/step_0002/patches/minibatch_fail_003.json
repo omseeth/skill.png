@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_scope",
+      "count": 3,
+      "description": "Follow-up turns reran searches or included unchanged domains instead of retrieving compatible cached results and acting only on changed requests."
+    },
+    {
+      "failure_type": "tool_result_persistence_and_dataflow",
+      "count": 7,
+      "description": "Results were not consistently assigned and saved immediately, or save calls referenced variables that had never been defined."
+    },
+    {
+      "failure_type": "round_trip_leg_modeling",
+      "count": 3,
+      "description": "Date ranges were treated as an outbound arrival date rather than separate outbound and return flight searches."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make cache selection depend on whether the stored query actually covers the current request, clarify how to process only the changed domains, and reinforce result assignment and persistence as required code-generation steps. The flight guidance explicitly maps natural-language date ranges to separate legs.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- At each turn, inspect cache summaries before searching. If a relevant result exists for the same domain, city, dates, and itinerary leg, retrieve it with its exact key using `get_results_from_cache`, then apply the matching `filter_*` tool with that result as `prior_results` and the newly supplied constraints. If no suitable cached result exists, run a new search. Apply new preferences to all relevant cached results or itinerary legs, but do not repeat valid searches or regenerate unaffected domains.",
+        "content": "- Plan by domain from the full conversation and cache summaries: identify which domains or constraints the latest turn changes, and process only those. For each changed request, retrieve the exact-key cached result if its domain, location, dates/leg, and query scope make it compatible, then apply the matching `filter_*` tool with the newly supplied constraints. A cached result for a materially different query (for example, a broad attraction-type search when the user now names a specific attraction) is not a substitute; run a targeted search for that request. Do not repeat valid searches or regenerate unaffected domains."
+      },
+      {
+        "op": "replace",
+        "target": "- Assign every search, filter, sort, and nearest-results output to a variable, then immediately save it with `save_to_cache` under a unique, descriptive key before using it in later calls. Pass the assigned prior result to filters, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally.",
+        "content": "- Never emit a bare call to a search, filter, sort, or nearest-results tool: assign its returned object to a defined variable and immediately save that exact object with `save_to_cache` under a unique, descriptive key before making dependent calls. Pass an assigned or cache-retrieved result as `prior_results`; never save or pass an undefined or mismatched variable. Use distinct variables and keys for separate domains or itinerary legs, and do not overwrite valid cache entries unintentionally."
+      },
+      {
+        "op": "replace",
+        "target": "## Flight itinerary legs\nTreat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to both legs, and do not combine distinct legs by repeating keyword arguments in one call.",
+        "content": "## Flight itinerary legs\nTreat a stated travel date range or explicit return date as two departure dates: search the outbound leg from origin to destination on the first date, then search the return leg from destination to origin on the return date. Do not encode the return date as `arrival_date` on the outbound search. Make separate calls and keep each leg's route, date, and any explicitly requested flight class distinct; do not combine legs by repeating keyword arguments in one call."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 5,
+      "description": "Answer was over-extended or echoed clue words: 'Giblet gravy' for 'gravy made with these innards', 'University of Guam' for 'the university of this territory', 'Sirius Satellite Radio' for 'this satellite radio company', 'sheep or goat' (an alternative list), and 'Lyndon B. Johnson' (middle initial)."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A bare one-word place clue ('Hamburg') was answered with the same word; the answer is the containing country."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "The role qualifier 'former first lady' was not verified. The dominant topic name (Corazon Aquino, a sitting president) was chosen over the passage that literally says 'former First Lady Imelda Marcos'."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "Palmdale facility: the gold key (Edwards AFB) conflicts with the passages (Air Force Plant 16). Not fixable by a rule."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures are over-long or echoing answers: a derived phrase instead of its base, or a hedge. One compact rule for possessive/derived-thing clues and one for single-entity answers target these without a long template, which regressed in earlier steps. Two further edits cover a missing rule (bare place clue -> country) and a missed constraint (role phrases like 'former first lady' must match the candidate). No blanket shorten/lengthen rules and no middle-initial rule, to protect the stable passes.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 2: Answer the referent, not a word from the clue",
+        "content": "\n- OWNER / INGREDIENT CLUES: when the clue names a thing that belongs to, is made from, or is located in the answer ('the university of this U.S. territory', 'gravy made with these turkey innards', 'the capital of this country'), the answer is the owner or ingredient itself ('Guam', 'Giblets'), NOT the derived phrase ('University of Guam', 'Giblet gravy'). Strike the clue's own noun (university, gravy, capital) and any compound built from it, then answer with what is left. Keep the plural when the clue says 'these'."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 1: Questions are Jeopardy-style clues; always answer with the missing entity",
+        "content": "\n- A clue that is only ONE bare place name ('Hamburg') is a category-style fragment. The answer is the larger entity the passages tie it to: a city or region -> its country (a U.S. city -> its state if no country fits). Never repeat the clue word. Passages saying 'second-largest city in Germany' -> 'Germany'."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Put only the bare answer in the answer tags. Do not write a sentence, restate the clue, or add dates, qualifiers or alternatives. Brief reasoning belongs before the tags.",
+        "content": "- ONE ENTITY ONLY: never write 'X or Y' or 'X and Y' in the tags. When passages list several candidates ('sheep or goat intestines'), commit to the first-listed or most repeated one ('Sheep'). For a company or brand, drop generic words the clue already states ('this satellite radio company' -> 'Sirius', not 'Sirius Satellite Radio'). Before the tags, check that no word of your answer is a content word of the clue."
+      },
+      {
+        "op": "insert_after",
+        "target": "- If the context offers several candidates (a different player in the same article, a film and its song), pick the one that satisfies ALL distinctive details: exact numbers, team, years, place. Do not choose one that fits only some.",
+        "content": "- ROLE / TIME QUALIFIERS must fit the candidate: 'former first lady', 'ex-', 'widow of', 'then-governor'. If the most-mentioned name was a sitting president or held a different role, reject it. Look for a passage that literally pairs the clue's role phrase with a name ('including former First Lady Imelda Marcos') and take that person, even if the page's main topic is someone more famous."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_call_set",
+      "count": 7,
+      "description": "Several trajectories chose a less suitable endpoint, omitted a requested endpoint, or added redundant or unrelated calls."
+    },
+    {
+      "failure_type": "schema_argument_serialization",
+      "count": 4,
+      "description": "Calls had incorrect required/optional placement, malformed duplicate keys, or values that did not match the expected representation."
+    },
+    {
+      "failure_type": "incomplete_outcome_coverage",
+      "count": 1,
+      "description": "A requested company-overview outcome was omitted because a customizable endpoint's operation selector was not enumerated."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers exact endpoint matching, minimal call sets, and schema audits, so repeating those rules is not warranted. Add a narrow safeguard for customizable endpoints so an explicit requested outcome is not skipped when a canonical operation selector is unambiguous, while retaining the prohibition on guessing unsupported values.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Ground arguments in the request and schema",
+        "content": "\n- For a generic or customizable endpoint with a required operation selector such as `function` or `mode`, do not omit a requested outcome solely because the schema does not enumerate selector values. Use a standard canonical selector only when the endpoint's contract and the requested outcome make the mapping unambiguous; otherwise, do not guess or call it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

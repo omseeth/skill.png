@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "First-turn flight requests with an origin and destination but no literal date ('one-way for 2 travelers', 'for my birthday', 'for a wedding', 'a specific arrival time') succeeded when the whole output was one short seek_information naming only the departure date. Flight + hotel with only a destination asked for the origin city, departure date, and hotel dates in one call.",
+    "When the assistant asked for dates and the user replied with a date range, the agent immediately ran search_hotels with the city from turn 1 and the party size and per-night budget from earlier turns, saved as 'hotels'. It did not ask again and did not filter.",
+    "A bare class reply ('I prefer first') with a single flight key in CACHE produced load, filter_flights(flight_class=[...]), save under a new key. Only the new constraint was passed. The arrival-time and date constraints already in the cache summary were not re-passed.",
+    "Seek_information was written without optional items (class, airline, passenger count, hotel dates for an unrequested hotel).",
+    "The one trajectory that wrote a placeholder date (departure_date=['<date>']) failed execution, though its cache comparison still matched. Literal dates only is the lesson. No literal date means seek_information."
+  ],
+  "patch": {
+    "reasoning": "All observed successes are already covered by existing rules, so no new gate is added. The optimizer notes say to remove contradictions instead of stacking text. Three fast-rule clauses conflict with the protected guidance, which says to pass only the last message's new constraint, to put a stated class in the flight search, and to use filter_attractions(city=...) for a city reply. The edits below remove those conflicts. They match the successful behaviour: filters carry only the new constraint, and searches carry the stated constraints.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "the constraints introduced in the LAST user turn, plus any earlier-stated constraint that the CACHE summary text (\"Additionally filtering for ...\" / search description) does not show as applied. Do NOT repeat filters or search parameters the summary already lists.",
+        "content": "only the constraints introduced in the LAST user turn. Everything said in earlier turns is already in the cached entry, so never re-pass it."
+      },
+      {
+        "op": "replace",
+        "target": "Include an earlier-stated constraint only if the summary does NOT list it.",
+        "content": "Earlier-turn constraints are already in the entry, so pass only the last message's new constraint."
+      },
+      {
+        "op": "replace",
+        "target": "Add no other params: no airline, flight_class, budget, times or num_people.",
+        "content": "Add no param the user did not state (never num_people, num_layovers or times). A class or airline the user did state goes into both searches."
+      },
+      {
+        "op": "replace",
+        "target": "and do not add city to a filter.",
+        "content": "and do not add city to a hotel, restaurant or flight filter. The only exception is filter_attractions(city=...) when the user names a city for attractions cached at state level."
+      }
+    ]
+  },
+  "source_type": "success"
+}

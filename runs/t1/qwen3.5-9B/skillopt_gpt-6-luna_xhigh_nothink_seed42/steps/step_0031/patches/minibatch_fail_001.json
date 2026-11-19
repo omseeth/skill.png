@@ -1,0 +1,39 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "Deliverable and cache reconciliation",
+      "count": 6,
+      "description": "Agents repeated completed work, missed accepted or newly constrained deliverables, or failed to proceed with a requested domain whose inputs were available."
+    },
+    {
+      "failure_type": "Tool-call discipline",
+      "count": 5,
+      "description": "Agents made duplicate or bare calls, failed to save results, nested cache retrieval, or supplied invalid nearest-search inputs."
+    },
+    {
+      "failure_type": "Proximity and area interpretation",
+      "count": 2,
+      "description": "Agents used stale results for proximity or called nearest for a named area instead of filtering attractions by that area."
+    },
+    {
+      "failure_type": "Location-field mapping",
+      "count": 1,
+      "description": "An abbreviated state was passed as a city."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains the underlying cache, date, and tool rules, but the trajectories show agents are not sequencing them reliably. A compact dispatch gate makes the per-domain decision explicit and reinforces one assigned-and-saved operation per needed result. A focused proximity check addresses the area-versus-anchor confusion and ensures nearest searches use current domain results.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Compact dispatch gate\nBefore writing code, make one row per requested or pending deliverable: latest suitable cache result, current constraints, missing required inputs, and the one needed operation. If the latest result already reflects all constraints, do not repeat its search or filter. If a new same-domain constraint is missing, retrieve the suitable base into a variable, filter once, and save the exact result; if there is no suitable base and inputs are complete, search once and save. If required inputs are missing for one domain, seek only those inputs while completing other requested domains whose inputs are available. Audit that every intended result-producing call is assigned and saved exactly once. In an explicitly planned trip with a date range, use the first date for outbound departure and hotel check-in, and the second for return departure and hotel checkout; do not treat the return date as an outbound arrival-date constraint unless stated."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Proximity preflight\nWhen a user asks what is available in an assistant-suggested area or neighborhood, and the referent is a location rather than a specific attraction, filter the relevant domain by that full area name; do not call `search_nearest`. For an actual proximity request, first apply any new constraints to each relevant domain result, then call `search_nearest` once with the latest suitable results for exactly two distinct supported domains and the requested `groupBy`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

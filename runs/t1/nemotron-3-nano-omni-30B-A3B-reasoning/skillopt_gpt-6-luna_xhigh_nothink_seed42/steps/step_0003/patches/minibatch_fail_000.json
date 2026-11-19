@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle",
+      "count": 8,
+      "description": "Tool results were left unassigned or unsaved instead of being stored in cache."
+    },
+    {
+      "failure_type": "incomplete_trip_coverage",
+      "count": 3,
+      "description": "Agents omitted a requested return or multi-city leg and, in one case, other requested trip domains."
+    },
+    {
+      "failure_type": "cache_refinement",
+      "count": 3,
+      "description": "Agents failed to apply a new constraint to cached results or searched anew instead of refining them."
+    },
+    {
+      "failure_type": "location_field_mapping",
+      "count": 2,
+      "description": "Agents placed a state in the city field or a neighborhood in the city field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the basic cache, refinement, and flight-leg rules, but the trajectories repeatedly fail to execute them. Making the workflow an explicit inventory of every requested action and forbidding bare tool calls adds operational clarity. Clarifying location granularity and minimum-rating ranges addresses missing schema-mapping details.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "- Treat the latest user turn as an update to the full trip plan. Before planning, inventory every requested action and domain from the full conversation, including each distinct flight leg and each explicitly requested lodging destination or stay. Check cache coverage separately for each item and constraint. For an affected item, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only newly introduced constraints to results that already represent earlier criteria; search when a needed result is unavailable. Do not skip uncovered requested items, redo unaffected domains, or rely on variables from earlier executions."
+      },
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- Never leave a search, filter, sort, or nearest-results call as a bare expression: assign its exact return value to a variable and immediately save that object with `save_to_cache` under a unique, descriptive key. Save each refinement under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- Match location granularity to the schema: use `state` when the user gives a state or region rather than a city; when a named area is a neighborhood within a city, use the containing city in `city` and the named area in `neighborhood`. Preserve the supplied entity text.\n- For a minimum-only rating preference, populate the rating range with that minimum and the scale's upper bound (for example, on a 1–5 scale, “at least 3” becomes `[3, 5]`)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

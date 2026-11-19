@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_composite_refresh",
+      "count": 5,
+      "description": "Compatible cached scopes were re-searched instead of filtered, or nearest results were refreshed without first applying the new constraint to the changed candidate set."
+    },
+    {
+      "failure_type": "constraint_semantics",
+      "count": 2,
+      "description": "A restaurant price range was treated as a rating, and broad kid-friendly wording was incorrectly mapped to a kids-club amenity."
+    },
+    {
+      "failure_type": "omitted_airport_identifier",
+      "count": 1,
+      "description": "A specifically stated airport code was omitted even though the user also supplied the city."
+    },
+    {
+      "failure_type": "tool_execution_and_pending_requirements",
+      "count": 1,
+      "description": "A search result was saved from an undefined variable, and missing dates for other requested domains were not sought while completing the independent restaurant search."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache and unsupported-amenity failures are already addressed explicitly in the skill, so another generic reminder would duplicate existing guidance. These edits target remaining gaps: recognizing price-range wording, retaining a specific airport identifier alongside a city, and completing an explicitly offered proximity operation after the user supplies its clarifying criteria.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+        "content": "\n- In hotel or restaurant recommendations, interpret an amount phrased as “around X,” “in the X range,” or similar pricing language as a `budget` when it describes spending; do not map a price amount to `rating`. Use `rating` only when the user explicitly refers to a rating or stars."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Flight itinerary legs",
+        "content": "\nIf the user states a specific airport name or code as well as a city, include both in the flight call using the appropriate supported fields. Preserve the airport identifier exactly; the city does not make it redundant. On a reverse leg, use the corresponding destination-airport field (`end_airport` or `end_airport_code`) for the same airport."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Call `search_nearest` when the user explicitly requests or accepts proximity, including a clear spatial relation such as asking for restaurants near a hotel or a hotel with access to nearby attractions. Merely requesting a hotel and a restaurant recommendation, or independently mentioning a planned attraction visit in the same trip or city, does not imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "\n- If the assistant offers to find one domain near another and asks a clarifying question to fulfill that offer (such as asking about hotel amenities), a responsive answer supplies criteria within the pending proximity request. Retrieve compatible datasets, filter and save only the changed candidate set first, then run and save `search_nearest` with that updated result and the compatible unchanged counterpart. Do not use stale broader candidates or re-search an unaffected base scope."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_or_misapplied_incremental_update",
+      "count": 6,
+      "description": "New constraints or targets were omitted, applied to the wrong domain, or applied to an older or incomplete cached result."
+    },
+    {
+      "failure_type": "incomplete_multi_leg_itinerary",
+      "count": 1,
+      "description": "Only the first flight segment was searched; later itinerary legs and their saved results were omitted."
+    },
+    {
+      "failure_type": "invented_inputs_and_blocked_ready_domain",
+      "count": 1,
+      "description": "Hotel dates and optional preferences were invented instead of requesting missing dates while proceeding with the ready restaurant search."
+    },
+    {
+      "failure_type": "unsupported_runtime_tool_access",
+      "count": 1,
+      "description": "The agent imported tools that were already provided by the runtime, causing execution to fail."
+    }
+  ],
+  "patch": {
+    "reasoning": "The recurring gap is not lack of general reminders, but failure to follow an ordered, exhaustive plan: track each pending target and delta, refine the latest compatible result before using it downstream, and handle every ready item independently. The proximity edit makes named reference targets actionable in their own domain, and the itinerary edit makes every stated leg an explicit saved call.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "- Before emitting code, resolve the latest turn against the preceding assistant question and all still-pending requests, then make a checklist of every pending action. For each item, record its domain, exact target and location or flight leg, requested relation, and all new or still-pending criteria. Do not reprocess unaffected items.\n- Assess each checklist item independently. A search or refinement is ready only when its mandatory inputs are explicit; do not infer missing dates, locations, or other values. Ask once for missing mandatory inputs across blocked items, while completing other ready items.\n- For each ready item, compare the listed cache summaries against its exact target, domain, location or leg, and criteria. Retrieve the latest compatible result by its exact listed key. If it already covers the full request, use it directly. If it covers prior criteria but not all new criteria, apply every missing constraint to that result and save the refinement; do not repeat covered filters or substitute a new search. Search with all applicable stated criteria only when no compatible result exists.\n- Complete any requested relation, such as proximity, using results that already include all applicable filters. Keep every item pending until its required tool action has been performed or a compatible cached result fully covers it. Use `print(\"No planning needed\")` only when no pending action remains and every request is covered by valid results."
+      },
+      {
+        "op": "replace",
+        "target": "## Proximity between travel domains\n- Call `search_nearest` only when the user explicitly requests proximity between supported domains. Before calling it, verify that each cached result covers the specific requested target, not merely the same domain or city. For example, a generic city attraction search does not cover a separately named attraction; search for the named attraction using `attraction_name` unless the cache summary shows that exact target is already covered.\n- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain), not the reference domain: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`.\n- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+        "content": "## Proximity between travel domains\n- Call `search_nearest` when the user explicitly requests proximity between supported domains or accepts a specific offer to identify nearby options. Before calling it, ensure each input result covers the exact target and includes all applicable constraints. A generic city result does not establish coverage of a separately named place. If a named reference place is missing, search for that exact target in its domain using the schema-supported field (for example, a named hotel with `hotel_name`, a restaurant with `restaurant_name`, or an attraction with `attraction_name`). Search for the requested candidate domain as well when no compatible result exists.\n- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain): hotels near an attraction use `groupBy=\"hotel\"`; restaurants near a hotel use `groupBy=\"restaurant\"`. Save the nearest result. Do not run proximity on a stale result when a pending filter applies to it; refine and save that result first, then use the refinement.\n- Mere interest in visiting or dining at a place, without a proximity request or accepted proximity offer, does not imply a nearest-results call."
+      },
+      {
+        "op": "replace",
+        "target": "- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "- For multi-city trips, enumerate every explicitly stated flight segment in destination order and make a separate search for each leg, matching its departure date to that leg. Do not stop after the first segment, combine legs or dates, or invent arrival dates. Bind and save every leg’s result separately."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

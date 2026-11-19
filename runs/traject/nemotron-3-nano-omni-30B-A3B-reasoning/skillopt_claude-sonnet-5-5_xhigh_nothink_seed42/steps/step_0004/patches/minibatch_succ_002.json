@@ -1,0 +1,29 @@
+{
+  "batch_size": 3,
+  "success_patterns": [
+    "Each distinct clause or named platform in the query got exactly one call: 6 clauses gave 6 calls, 2 gave 2, and 3 gave 3. Nothing was added and nothing was dropped.",
+    "The tool chosen was the one whose provider and API name literally matched the platform or object named in the query (YouTube Music, dev.to month's top, Youm7, Wayfair financing offers). Look-alike tools from the same family (other Billboard charts, other Arabic outlets, other Amazon or Shopee tools) were ignored.",
+    "Parameter values were copied verbatim from the query (ASIN, SKU, artist ID, channel ID, names). Values implied by the query were mapped to the matching field: 'amazon.de' gave domain 'de', 'limit to 5' gave limit, and 'by stage name' gave by='Stage Name'.",
+    "Parameters were placed in the list where the tool schema puts them, even when the value is the query's main input (channel_id is optional, so it went under optional). Tools with no parameters got empty lists, and no unstated optionals were added.",
+    "Tool names were copied exactly from the `### ` heading, including special characters, braces and non-Latin text."
+  ],
+  "patch": {
+    "reasoning": "All three successes followed the same simple procedure: split the query into clauses, map each clause to the single most literal tool, copy the exact tool name, fill parameters from the query using the schema's own required/optional placement, and add nothing extra. Earlier attempts to encode this were long and over-prescriptive, and each scored worse than the empty skill. These rules are short and reinforce only behavior that actually succeeded.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Core procedure\n1. Split the query into its atomic requests: each sentence, each 'then / also / additionally / finally' clause, each named platform or provider, and each aspect in a list. Make exactly one call per request. Before answering, check that every clause has a call and that no call lacks a clause.\n2. For each request, pick the tool whose provider and API name and description literally mirror the query's platform, verb and object. A named platform such as YouTube Music, SoundCloud, Spotify, Wayfair, Amazon or dev.to means that provider's endpoint. Prefer the dedicated endpoint over a generic search.\n3. Copy `tool name` exactly from the tool's `### ` heading (`Provider: API`), including braces, slashes, symbols and non-Latin text. Do not shorten or rephrase it.\n4. Every call has the three keys `tool name`, `required parameters` and `optional parameters`. Parameters are objects `{\"name\": ..., \"value\": ...}` with quoted string values, and empty lists are `[]`. Add no other keys, such as `description`."
+      },
+      {
+        "op": "append",
+        "content": "\n## Parameters\n- Use only parameter names that the chosen tool lists. Put each parameter in the list where the schema places it: under 'Required parameters' goes in `required parameters`, and under 'Optional parameters' goes in `optional parameters`. This holds even when the value is the query's main input (e.g. an optional `channel_id` or `q`). If the schema says 'none', use `[]`.\n- Copy IDs, SKUs, ASINs, URLs, names and numbers verbatim from the query. Never invent values.\n- Map every constraint the query states or clearly implies to the matching parameter:\n  - 'limit to 5' -> `limit` `\"5\"`\n  - 'amazon.de' -> `domain` `\"de\"`\n  - 'using the stage name' -> `by` `\"Stage Name\"`\n  - 'from 2017' -> `year` `\"2017\"`\n- Include an optional parameter only when the query states or implies it. Do not add defaults or extras."
+      },
+      {
+        "op": "append",
+        "content": "\n## Avoiding wrong or extra calls\n- Large tool lists contain many look-alikes from the same family: other chart countries, other news outlets, other marketplaces, and list, region or source helper endpoints. Call only the one that matches the named item. Do not call helper, list, regions or sources endpoints unless the query asks for them.\n- A tool with no required or optional parameters is still called, with both lists empty, when the query asks for what it does (e.g. 'latest LGBTQ+ news', 'Youm7 headlines')."
+      }
+    ]
+  },
+  "source_type": "success"
+}

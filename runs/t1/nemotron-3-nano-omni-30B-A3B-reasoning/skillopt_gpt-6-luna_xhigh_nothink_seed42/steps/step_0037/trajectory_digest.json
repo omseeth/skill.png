@@ -1,0 +1,59 @@
+{
+  "step": 37,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 31,
+  "failure_patterns": [
+    {
+      "pattern": "cache_refinement_selection_or_delta_omission: Agents selected base or unrelated cached results, searched instead of refining, or omitted one or more newly stated criteria.",
+      "count": 31,
+      "task_ids": [
+        "hotelrestaurant:train:20:10:1",
+        "flighthotelattraction:train:12:16:4",
+        "flighthotelrestaurant:train:18:42:1",
+        "attraction:train:16:59:0",
+        "restaurant:train:2:3:3",
+        "hotelattraction:train:12:9:0",
+        "flighthotelrestaurant:train:21:58:1",
+        "flighthotelattraction:train:4:34:3",
+        "attraction:train:23:8:0",
+        "restaurant:train:14:15:3",
+        "flight:train:7:30:4",
+        "attraction:train:14:32:0",
+        "hotel:train:2:25:3",
+        "hotelattraction:train:8:42:3",
+        "hotelattraction:train:14:7:5",
+        "hotelrestaurant:train:6:41:0",
+        "flight:train:20:12:3",
+        "hotel:train:22:57:2",
+        "hotelattraction:train:3:52:2",
+        "flighthotel:train:15:13:3",
+        "flighthotelattraction:train:12:30:3",
+        "hotelattraction:train:24:13:4",
+        "restaurant:train:4:17:2",
+        "flighthotelrestaurant:train:5:19:3",
+        "hotelattraction:train:21:7:0",
+        "hotelrestaurant:train:3:60:3",
+        "flight:train:6:50:1",
+        "hotelrestaurant:train:2:51:2",
+        "hotelrestaurant:train:3:51:1",
+        "hotel:train:10:15:3",
+        "attraction:train:15:12:0"
+      ]
+    }
+  ],
+  "score_before": 0.26,
+  "score_after": 0.23,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "- For each changed or pending domain, inspect the listed cache summaries and select the most refined compatible result: it must match the exact target and cover all earlier explicit criteria. If both base and filtered results exist, use the latest compatible filtered result. Retrieve it by its exact listed key into a local variable. Compare its summary with the full conversation and apply every still-uncovered criterion—including multiple new criteria in the latest turn—in the appropriate filter, passing the cached result as `prior_results` when required. Bind and save the exact refinement under a new key. Do not resend covered criteria, search instead of refining, reprocess unaffected domains, or rely on variables from earlier executions. Search only when no compatible cached result exists and mandatory inputs are explicit.",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions."
+    },
+    {
+      "op": "replace",
+      "content": "## Proximity between travel domains\n- A request to visit or find a named attraction is itself an attraction-search target. If no compatible result covers that exact name and the required location is available, search for it with `search_attractions`, using the stated location and `attraction_name`. This standalone interest does not by itself imply a proximity request.\n- Call `search_nearest` when the user explicitly requests proximity between supported domains. Also treat a reply naming a place after the assistant asks whether the user wants options near that place as a proximity request, even if the reply is phrased as wanting to visit it. Mere interest in visiting or dining somewhere, without that contextual proximity question or an explicit proximity request, does not imply proximity.\n- Before calling, verify that each result covers the specific requested target and applicable criteria, not merely the same domain or city. A generic city attraction result does not cover a separately named attraction; search for the named target using the appropriate exact-name field unless the cache summary shows that exact target is covered.\n- Pass the relevant result objects for the domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain): hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`.",
+      "target": "## Proximity between travel domains\n- Call `search_nearest` only when the user explicitly requests proximity between supported domains. Before calling it, verify that each cached result covers the specific requested target, not merely the same domain or city. For example, a generic city attraction search does not cover a separately named attraction; search for the named attraction using `attraction_name` unless the cache summary shows that exact target is already covered.\n- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain), not the reference domain: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`.\n- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call."
+    }
+  ]
+}

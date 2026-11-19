@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "schema_argument_grouping_and_serialization",
+      "count": 5,
+      "description": "Calls repeatedly misplaced optional fields, serialized numeric-looking values inconsistently, used noncanonical enum values, or supplied empty placeholders."
+    },
+    {
+      "failure_type": "coverage_and_endpoint_selection",
+      "count": 4,
+      "description": "Some trajectories added unsuitable calls or skipped requested facets despite a relevant supported endpoint."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers endpoint matching, coverage, and fallbacks, so duplicating those rules is unwarranted. A more explicit per-call, two-pass schema audit addresses the repeated grouping and serialization errors while reinforcing exact enum matching and omission of empty placeholders.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- **Validate the final response.**",
+        "content": "Use a separate, per-call audit for each exact endpoint: first place every parameter in the required or optional group declared by that endpoint's schema, regardless of how explicitly the user requested it; then serialize its value according to the output format's consistent examples. If those examples consistently use strings, encode numeric-looking values as strings too. Match enum values exactly to the schema, and omit unspecified optional fields rather than sending empty strings."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

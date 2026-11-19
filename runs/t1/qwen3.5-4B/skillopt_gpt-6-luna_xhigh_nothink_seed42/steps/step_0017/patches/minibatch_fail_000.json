@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_namespace_import",
+      "count": 6,
+      "description": "Agents imported the nonexistent `tools` module, despite the skill explicitly requiring direct calls to injected functions."
+    },
+    {
+      "failure_type": "required_input_and_itinerary_handling",
+      "count": 3,
+      "description": "Agents guessed missing hotel dates, searched an incomplete hotel request, or represented a round trip as one outbound search with an arrival date."
+    },
+    {
+      "failure_type": "conversation_and_cache_continuity",
+      "count": 3,
+      "description": "Agents missed follow-up intent or failed to use compatible cached results for added criteria and proximity requests."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent errors already violate explicit skill rules, so duplicating those rules is not warranted. One uncovered conversational case is a user asking about a just-proposed place: this should activate the proposal as a request rather than be treated as a no-op. The edit clarifies that case and how to use a broader compatible cached result.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve brief replies against the immediately preceding assistant question or proposal, and carry forward accepted entities and criteria. If the user asks a follow-up about a specific proposed place or category (for example, “What’s there?” after a suggested neighborhood), treat the proposal as an active request, not as a no-op or rejection. When a compatible cached result covers the broader domain, retrieve and filter it using the proposed place or category, then save the narrowed result."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

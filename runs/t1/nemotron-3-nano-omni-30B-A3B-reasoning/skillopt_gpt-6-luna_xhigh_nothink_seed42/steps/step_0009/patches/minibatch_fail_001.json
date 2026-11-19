@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_delta_and_refinement",
+      "count": 5,
+      "description": "Agents re-applied earlier criteria, selected unsuitable results, or repeated work that valid cached results already covered."
+    },
+    {
+      "failure_type": "requested_scope_and_missing_information",
+      "count": 3,
+      "description": "Agents missed an active domain or request, or failed to handle missing inputs separately from actions that were ready to execute."
+    },
+    {
+      "failure_type": "tool_execution_or_result_persistence",
+      "count": 8,
+      "description": "Required work was not successfully completed and persisted, due to missing saves, invalid imports or redefinitions, or unnecessary calls."
+    },
+    {
+      "failure_type": "schema_argument_semantics",
+      "count": 4,
+      "description": "Agents mapped explicit values to the wrong schema fields or added unsupported, unstated criteria."
+    },
+    {
+      "failure_type": "return_leg_direction",
+      "count": 1,
+      "description": "An explicitly requested return-only flight was searched in the outbound direction."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make cache refinement steps more operational, clarify how to proceed when only some requested actions lack mandatory inputs, and resolve common schema mappings for party size and state abbreviations. Reinforce direct tool use and add explicit handling for a return-only flight without duplicating the skill’s existing general cache and result-saving rules.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+        "content": "- For a cache refinement, use the most refined compatible result under an actual key listed in the cache summary: retrieve it into a local variable and pass that exact result as `prior_results` to the matching filter with only the newly introduced criteria. Do not rely on variables from earlier executions or resend criteria already represented in the result. Save the refinement under a new key. If no compatible base is listed and mandatory inputs are available, make one search containing all currently active, explicit, schema-supported criteria for that item rather than a broad search followed by redundant filters."
+      },
+      {
+        "op": "replace",
+        "target": "## Missing mandatory information\nBefore searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+        "content": "## Missing mandatory information\nCheck mandatory inputs separately for every active requested action and domain against the full conversation; related context does not automatically satisfy a required field. Do not invent values or use defaults. If any action lacks mandatory information, make one `seek_information` call asking only for those missing inputs. Still execute and save other requested actions whose own mandatory inputs are complete; missing information for one domain does not block an independent, ready action. For a hotel stay at an unambiguous single trip destination, use an explicitly supplied trip start and end date as check-in and check-out when no separate hotel dates were given. If the destination or date relationship is ambiguous, ask instead. Optional preferences are not mandatory inputs."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- Map an explicitly stated numeric party or guest count to `num_people` when the hotel schema supports it; map an explicitly stated room count to `num_rooms`. Do not infer one count from the other or infer a room count from a broad description such as “family.” Treat a state or province abbreviation as a region and use `state`, not `city`, while preserving the supplied abbreviation.\n- Call the provided tool functions directly. Do not import tool modules or define or redefine tool functions or input models."
+      },
+      {
+        "op": "replace",
+        "target": "## Represent flight legs separately\n- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip, search outbound and return separately, reversing the route for the return; do not use an unsupported `return_date` argument or treat the return date as another outbound date. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "## Represent flight legs separately\n- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip, search outbound and return separately, reversing the route for the return; do not use an unsupported `return_date` argument or treat the return date as another outbound date. If the user requests only the return leg and the outbound route is known, reverse that route and use the return date as the return leg’s `departure_date`; do not search the outbound leg. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

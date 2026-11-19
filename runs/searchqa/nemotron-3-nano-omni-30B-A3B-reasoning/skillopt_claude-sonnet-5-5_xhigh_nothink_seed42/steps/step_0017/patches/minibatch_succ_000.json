@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "In 5 of 8 trajectories the clue appeared verbatim in an archive page (jedoublen/jeopardy GitHub, StudyStack, J! Archive, Game Show NewsNet), and the agent copied the answer in its short form. Examples: 'a bouncer' -> bouncer, 'a fall' -> fall, 'What is France?' -> France.",
+    "For a 'Title held ... by A, B & C' clue, the agent gave the single shared title or role word ('Emperor'), not a country, a person, or the list items.",
+    "Clues with a stage direction or aside ('Jimmy of the Clue Crew grapples...') or a quoted work title still matched the archive and the other passages through the distinctive core. The agent ignored the decoration.",
+    "Answers were bare nouns or names that matched the 'this <noun>' pointer: author -> Wally Lamb, country -> France, instrument -> harpsichord, island -> Padre Island. No clue words were echoed, and leading articles were dropped.",
+    "The entity that recurred across many passage titles and snippets together with the clue's anchors (Hawking radiation, Padre Island, Landowska harpsichord) won when there was no archive line."
+  ],
+  "patch": {
+    "reasoning": "The existing skill covers most of what worked here. Two small gaps remain. (1) The real-person-list rule names 'team, state or other entity' but not a shared TITLE or ROLE, as in 'Title held by Balbinus, Bao Dai & Bidatsu' -> 'Emperor'. (2) Archive answers often appear as a contestant response ('What is France?') or with a leading article ('a fall'), and aside-laden clues still match the archive on their core. Short, concrete notes on these should help the agent without conflicting with earlier rules.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "If the list is of real people, answer with the team, state or other entity they share.",
+        "content": "If the list is of real people, answer with the team, state, realm or other entity they share. A clue such as 'Title held in different countries at different times by Balbinus, Bao Dai & Bidatsu' asks for the shared title or role as a bare common noun ('Emperor'), not a country, one person, or the list items."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not lengthen it with descriptors ('Madge', not 'Madge the Manicurist').",
+        "content": " Archive answers may be written as a contestant response ('\"What is France?\"', 'Who is Wally Lamb?') or with a leading article ('a bouncer', 'a fall', 'the harpsichord'). Strip the 'What is / Who is' wrapper and the leading a/an/the (unless the article is part of a proper title) and answer with the bare entity ('France', 'bouncer', 'fall')."
+      },
+      {
+        "op": "insert_after",
+        "target": "The archived clue may be slightly garbled (missing accents or letters, parentheses, dropped words), so match on the distinctive words.",
+        "content": " Video or host asides at the start of a clue ('(Jimmy of the Clue Crew grapples with another clue...)') may or may not be reproduced in the archive. Match on the factual core after the aside ('the shoulders have to be pinned to the mat for 1 second...'). Aggregator pages also sometimes show the answer as the page title ('fall - Search-ID.com') above a snippet that repeats the clue. Treat that title word as a strong candidate and check it against the clue."
+      }
+    ]
+  },
+  "source_type": "success"
+}

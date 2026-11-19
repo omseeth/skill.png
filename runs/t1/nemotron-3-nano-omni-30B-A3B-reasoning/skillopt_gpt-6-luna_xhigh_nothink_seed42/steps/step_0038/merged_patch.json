@@ -1,0 +1,77 @@
+{
+  "reasoning": "Consolidated the overlapping action-audit, cache-refinement, and result-saving guidance into executable decision rules. Combined accepted offers to add searches across itinerary destinations, while making accepted nearby-options offers a clear trigger for search_nearest and preserving the distinction from mere interest in a place. Kept the round-trip hotel-date clarification, safeguards against substituting example dates, and literal categorical-value preservation. Omitted the proposed flight-time formatting guidance because its ranges and encoding were not established by the skill and could encourage guessed arguments. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+      "content": "- At each turn, build an action checklist from the full conversation: every still-pending request, accepted proposal, explicitly described flight leg, and intended target, location, and criterion. A follow-up supplies information but does not cancel other pending work. For each item, check mandatory-input readiness and coverage in listed compatible results. Execute every ready item not already satisfied; when an existing result already satisfies an outstanding request and the user is expecting it, retrieve and use that result directly. Leave fully satisfied, unchanged items alone, and seek all missing mandatory values for blocked items. Use `print(\"No planning needed\")` only when no requested action remains and no result is expected to be returned.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Incremental planning and cache use",
+      "content": "\n- An affirmative reply to a concrete assistant question or offer proposing a specific supported search or filter makes that action pending, even if it adds a domain. Carry forward the offered target, type, and location, and perform it when mandatory inputs are available. If the proposal covers multiple explicit itinerary destinations but the reply does not repeat their names (for example, attractions “during your stay”), apply the proposed search to each covered destination and save a distinct result for each; acceptance does not mean existing cached domains complete the plan.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+      "content": "- For each changed item, compare its exact target, domain, location or flight leg, and all explicit criteria with listed cache summaries. If a compatible result exists, retrieve by its exact key the latest result that already includes the prior criteria. Apply every uncovered criterion to the most refined compatible result, passing it as `prior_results` when required; do not repeat covered filters or refine an older base result. For example, a newly supplied neighborhood is uncovered until applied with the supported neighborhood filter; retrieving city-level results alone does not complete the update. Search only when no compatible prior result exists and mandatory inputs are explicit. Leave unaffected items alone and do not rely on variables from earlier executions.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "delete",
+      "target": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.",
+      "content": "",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "content": "- For every search, filter, sort, or nearest-results call, bind the exact return value to a local variable and save that same object under a unique, descriptive key before proceeding. This applies to every flight leg and refinement; an unsaved tool call is incomplete. Save refinements under new keys. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Call `search_nearest` only when the user explicitly requests proximity between supported domains. Before calling it, verify that each cached result covers the specific requested target, not merely the same domain or city. For example, a generic city attraction search does not cover a separately named attraction; search for the named attraction using `attraction_name` unless the cache summary shows that exact target is already covered.",
+      "content": "- Call `search_nearest` when the user explicitly requests proximity between supported domains, or affirmatively accepts an assistant offer specifically to find or recommend options near another supported domain. Resolve an accepted offer to its proposed focal and reference domains. Before calling, verify that each result covers the specific requested target—not merely the same domain or city—and retrieve a compatible listed result or search for the missing target if needed. For example, a generic city attraction search does not cover a separately named attraction; search for that attraction using `attraction_name` unless the cache summary shows the exact target is already covered.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood.",
+      "content": "Hotel check-in and check-out dates must be explicit. When a hotel is requested for the same trip and the conversation gives explicit outbound and return dates, use them as check-in and check-out dates, respectively. Do not infer hotel dates from unrelated event dates or from an incomplete or one-way itinerary; ask for any missing stay dates. Do not infer a neighborhood.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not infer missing mandatory values or use defaults.",
+      "content": "\nNever substitute dates copied from tool examples or schema descriptions, or dates from an assumed trip window, for missing user-provided values. Block calls requiring those dates, ask for the missing inputs once, and proceed with other ready domains.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`.",
+      "content": "\n- Preserve user-supplied categorical values verbatim when they fit a supported schema field; do not replace a stated category or code with a near synonym or another value.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

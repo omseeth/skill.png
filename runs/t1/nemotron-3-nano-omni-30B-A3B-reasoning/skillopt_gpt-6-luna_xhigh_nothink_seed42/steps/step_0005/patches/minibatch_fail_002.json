@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle",
+      "count": 6,
+      "description": "Search or refinement results were not consistently bound and saved to cache."
+    },
+    {
+      "failure_type": "scope_and_cache_mismanagement",
+      "count": 3,
+      "description": "Agents treated a new constraint as a no-op, selected an unsupported cache key, or repeated unrelated work."
+    },
+    {
+      "failure_type": "mandatory_information_and_domain_completeness",
+      "count": 2,
+      "description": "Agents skipped an actionable domain when another domain lacked information, or failed to derive hotel checkout from a stated stay length."
+    },
+    {
+      "failure_type": "intent_and_argument_mapping",
+      "count": 3,
+      "description": "Agents changed a user-supplied category, confused a fitness preference, or encoded a round trip as one flight search."
+    },
+    {
+      "failure_type": "unsupported_tool_use",
+      "count": 2,
+      "description": "Agents imported tools instead of calling the provided functions directly."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most cache and tool-use failures already contradict explicit skill guidance, so repeating those instructions would not address a skill gap. The missing-information rule, however, currently blocks valid work in complete domains and omits deriving checkout from an explicit stay length. A separate clarification preserves user-supplied category values rather than normalizing them to near-synonyms.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "## Missing mandatory information\nBefore searching, check the full conversation for all mandatory inputs required by each requested tool. If any are missing, do not invent values, use defaults, or run a partial search. Make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+        "content": "## Missing mandatory information\nCheck mandatory inputs separately for each requested action and domain. If an action lacks required information, do not search that action; make one `seek_information` call asking only for its missing mandatory inputs. Still execute and cache other requested actions whose own mandatory inputs are complete. For a hotel stay with an exact check-in date and an explicitly stated length in nights, use `adjust_date` to derive checkout; do not ask for a checkout date that can be derived this way. Never invent values or use defaults, and do not treat vague timing as an exact date."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- Preserve user-supplied entity names and category values when passing tool arguments. Do not normalize, translate, or replace them with near-synonyms; use the schema to choose the argument field, not to rewrite the value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

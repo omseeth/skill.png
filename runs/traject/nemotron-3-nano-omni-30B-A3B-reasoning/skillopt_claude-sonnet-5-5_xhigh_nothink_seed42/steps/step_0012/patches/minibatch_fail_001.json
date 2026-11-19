@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "structure_error",
+      "count": 5,
+      "description": "Malformed JSON: list closed early with an extra `]` after the first object (T1), stray `]]` (T5), a duplicated trailing `\"optional parameters\": []` that erased filled params (T2, T7), and runaway repetition that truncated the answer (T8). T1, T5 and T8 parsed to 0 calls."
+    },
+    {
+      "failure_type": "over_calling_runaway",
+      "count": 1,
+      "description": "'15 most recent CS:GO matches from page 1' was emitted as hundreds of identical calls instead of one call with limit=15 and page=1."
+    },
+    {
+      "failure_type": "wrong_tool_or_missing_calls",
+      "count": 2,
+      "description": "Picked a generic or wrong-granularity sibling: 'japanese alphabet' instead of the kanji 'Kanji English meaning' and 'Onyomi reading' tools (one call dropped); 'Number of Schools in city' instead of 'List of School in Sub-District (Kecamatan)'."
+    },
+    {
+      "failure_type": "value_form",
+      "count": 3,
+      "description": "Locale or case errors: lang `en` instead of `en-US`, Pokedex `UK`/`Pikachu` instead of lowercase, Asos categories/list missing defaults, Card Draw defaults omitted, 'one card' not mapped to pageSize=1."
+    },
+    {
+      "failure_type": "unsolved_gold_artifact",
+      "count": 1,
+      "description": "Email query where gold spreads the 7 addresses across 4 different validators; this is not derivable from the query, so it is left alone."
+    }
+  ],
+  "patch": {
+    "reasoning": "Structure failures cost the most (5 of 8 tasks, three of them a full zero), and the existing prose rules are being ignored. The fix changes the form: one object per line with a mechanical line-ending check, plus the literal bad strings seen in this batch. A second edit stops the runaway repetition by mapping counts inside a clause to limit/count/pageSize parameters, with one call per distinct entity. A third edit covers sibling-endpoint selection by facet and granularity, which caused the wrong-tool and dropped-call failures. A fourth edit fixes locale and case value forms and the missing Asos categories/list defaults, using BAD/GOOD strings.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## FINAL SELF-CHECK (run on the finished answer, character by character)",
+        "content": "\n**LAYOUT RULE (always): write `<answer>` with ONE OBJECT PER LINE** so broken brackets are visible:\n```\n<answer>[\n{\"tool name\": \"A: x\", \"required parameters\": [], \"optional parameters\": [{\"name\": \"page\", \"value\": \"1\"}]},\n{\"tool name\": \"B: y\", \"required parameters\": [{\"name\": \"q\", \"value\": \"z\"}], \"optional parameters\": []}\n]</answer>\n```\nDecide ALL optional params for a call first, then write `\"optional parameters\": [ ... ]` exactly once. LINE CHECK: each line has `\"optional parameters\"` exactly once and ends with `]},` (the last line ends `]}`, and `]` sits alone on the next line). Real broken outputs from past runs: `...\"optional parameters\": [{\"name\": \"limit\", \"value\": \"50\"}]}], {\"tool name\"...` (extra `]` ended the list after call 1, so 0 calls parsed); `...[{\"name\": \"sort-by\", \"value\": \"value\"}]]}]` (stray `]`, 0 calls parsed); `\"optional parameters\": [{\"name\": \"wordLength\", \"value\": \"6\"}], \"optional parameters\": []` (the second key erased wordLength). If a line looks like any of these, fix it before answering.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "- A count or ordinal INSIDE one clause is a parameter, never a number of calls. 'My 15 most recent CS:GO matches from page 1' -> ONE `CSGO matches and tournaments: Played` call with `limit`=`15`, `page`=`1`. 'One Hearthstone card from page 1' -> ONE call with `page`=`1`, `pageSize`=`1`. '5 random words, 6 letters each' -> ONE call with `count`=`5`, `wordLength`=`6`. Only N distinct entities (different emails, IDs, markets) get N calls. Never emit the same object twice unless the query asks for a repeat. If you catch yourself writing identical objects in a row, stop and collapse them into one call with the count parameter. A typical answer has 3-10 objects, one per clause."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Never pick a tool just because a parameter value fits (e.g. a country code).",
+        "content": "- When one provider has many sibling endpoints (kanji lookups, school lists, Lost Ark, Helioviewer), pick the sibling that matches each clause's exact facet and granularity, and make one call per facet. 'Kanji related to the concept of parent' -> `Learn to read and write Japanese kanji: Kanji English meaning` (`kem`=`parent`). 'Kanji with onyomi reading シン' -> `...: Onyomi reading` (`on`=`シン`). These are two calls, and a generic alphabet tool is not a substitute. 'List of schools in a Sub-District (Kecamatan) with code X' -> `Indonesia School List: List of School in Sub-Disctrict (Kecamatan)` (`kode_wilayah_kecamatan_id`=X), not the 'Number of Schools in city/district' tool. For a parenthetical 'including X, Y and Z' (e.g. Helioviewer data sources), pass them in the tool's matching optional field (`enable`) if it has one."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+        "content": "- Locale and case anti-patterns seen in failures. BAD `lang`=`en` for 'US market in English'; GOOD `country`=`US`, `lang`=`en-US`. `Asos: categories/list` carries both `country` and `lang`, even when the query is silent. BAD Pokedex `country`=`UK`, `pokemon`=`Pikachu`; GOOD `country`=`uk`, `pokemon`=`pikachu`. 'Draw 5 random cards' also carries `suit`=`all`, `value`=`all`, `back`=`false` next to `pulls`=`5`. Keep a search keyword close to the query wording and its singular/plural (query 'glass coffee tables' -> `keyword` as written in the query)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

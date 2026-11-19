@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_persistence_omission",
+      "count": 7,
+      "description": "Searches and transformations were often called without saving their outputs to cache."
+    },
+    {
+      "failure_type": "current_turn_action_selection",
+      "count": 4,
+      "description": "Agents missed independent complete requests or failed to carry out newly affirmed categories and criteria."
+    },
+    {
+      "failure_type": "trip_interval_interpretation",
+      "count": 1,
+      "description": "Explicit outbound and return dates were treated as missing hotel dates despite an earlier hotel request."
+    },
+    {
+      "failure_type": "location_field_mapping",
+      "count": 2,
+      "description": "A state abbreviation was placed in the city field, and a stated neighborhood phrase was shortened."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains broad guidance on cache use, affirmations, and independent requests, but the trajectories show that agents need a clearer execution sequence: identify only current-turn actions, complete every independently actionable domain, and persist each generated result. Clarifying how affirmed categories differ from proximity requests and using refined results for nearest searches addresses the over-searching and missed-filter patterns. The date clarification covers the explicit round-trip lodging interval.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- For each turn, derive actions from the latest user request and its relevant context, including any affirmed proposal; do not replay unchanged past searches. Evaluate each requested domain and flight leg independently: use the latest compatible cached result and apply only new criteria, or search when no compatible result exists. If a domain lacks required inputs, seek only those missing values, while still performing every other requested action whose inputs are complete. For every newly generated search, filter, sort, or nearest result, assign the output to a variable and immediately save it under a unique cache key before using it downstream; save intermediate results too. Use “No planning needed” only when cached results satisfy every current request."
+      },
+      {
+        "op": "replace",
+        "target": "When hotel lodging is requested for a clearly stated trip interval, use its start and end as check-in and checkout unless the user provides distinct lodging dates.",
+        "content": "When hotel lodging has been requested, use a clearly stated trip interval as the hotel check-in and checkout dates unless distinct lodging dates are given. This includes explicit outbound and return travel dates for that trip: use the outbound date as check-in and the return date as checkout. Do not infer a hotel stay from dates if lodging was not requested."
+      },
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward exactly the proposed domain, entity, category, preference, or action. An affirmative answer to a question about visiting a category authorizes that category search; it does not request proximity unless the question or proposal was explicitly about proximity."
+      },
+      {
+        "op": "replace",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- For a recommendation near another result type, first apply all newly requested criteria to the compatible results for each domain and save those refined results; then call `search_nearest` using the refined results and save its output. Call it only when proximity is requested or affirmed. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

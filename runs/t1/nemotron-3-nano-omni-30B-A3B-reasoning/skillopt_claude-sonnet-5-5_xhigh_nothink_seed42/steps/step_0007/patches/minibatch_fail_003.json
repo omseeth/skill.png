@@ -1,0 +1,26 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "attraction_state_in_city_and_missing_assign_save",
+      "count": 1,
+      "description": "For 'trip to GA ... Guided and Historical attractions' the agent wrote a bare `search_attractions(city=\"GA\", ...)`. It put the state abbreviation in city instead of state, and it did not assign the result or call save_to_cache. Both mistakes are already covered by Rule 21, which sits near the end of a very long skill and was overlooked."
+    }
+  ],
+  "patch": {
+    "reasoning": "The agent broke a rule the skill already contains: Rule 21 says a state abbreviation goes in state= and every search must be assigned and saved. The rule is buried at the bottom of a long document. The fix is to put these two high-frequency, first-turn requirements at the top of the skill, in place of the empty placeholder. A one-line reminder is also added to the Quick decision order, which the agent reads every turn. No new rules are invented.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Always-on checks (apply before writing any code; details in the rules below)\n1. Every search_*, filter_*, sort_results and search_nearest call is assigned to a variable and followed by `save_to_cache`, even on the very first turn and even for a single attraction request. A bare `search_attractions(...)` with no assignment and no save is always wrong. Example: `attractions = search_attractions(state=\"GA\", type=[\"Guided\", \"Historical\"])` then `save_to_cache(key=\"attractions\", value=attractions)`.\n2. A US state name or abbreviation ('GA', 'Georgia', 'Texas') goes in `state=\"...\"`, never in `city=`. Use `city=` only for an actual city. If the user gives only a state, do not pass city at all. A state-only attraction request is complete and needs no seek_information.\n3. Use the user's attraction-type words exactly as stated (type=[\"Guided\", \"Historical\"]). Do not rename or add types."
+      },
+      {
+        "op": "insert_after",
+        "target": "4. Pass only the constraints the user literally stated. Never ask about optional details, and never seek information for a domain the user has not requested.",
+        "content": "5. Before emitting, re-read your code: each search/filter call must be `x = ...` followed by `save_to_cache(key=..., value=x)`. Any state ('GA', 'Georgia') must be passed as `state=`, not `city=`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

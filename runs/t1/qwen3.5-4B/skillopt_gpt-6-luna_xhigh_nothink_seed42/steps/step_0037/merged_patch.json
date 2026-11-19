@@ -1,0 +1,45 @@
+{
+  "reasoning": "Kept the distinct cache-compatibility, named-attraction, location-resolution, and terse-answer clarifications. Combined the overlapping location-resolution and restaurant-search additions into one edit. The protected section already states when to call search_nearest, so the unprotected duplicate was omitted; optional-argument details were also omitted as an unsupported schema edge case. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result.",
+      "content": " If the user explicitly replaces a category or entity criterion, treat the new value as superseding the conflicting old one rather than adding another filter. Do not filter results already restricted by the superseded value; retrieve the latest compatible result that is not so restricted, apply the new criterion while retaining still-applicable explicit criteria, and save it. If no compatible cached result exists, search anew for the replacement with those still-applicable criteria.",
+      "support_count": 8,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not filter unrelated results; search for a requested entity or category that the cached results do not cover.",
+      "content": "Match cached results at the granularity of the current request: a broad category result does not satisfy a request for a specifically named attraction. Search for and cache that named place rather than treating the category result as covering it.",
+      "support_count": 7,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Still perform every independent requested search or update whose own required inputs are complete in the same turn.",
+      "content": " Resolve explicit place references such as “there,” “that city,” or “the destination” to their unambiguous location antecedent in the conversation, including a stated trip destination, and use it in the matching domain field rather than asking again; if the antecedent is genuinely ambiguous, ask only for the missing location. When restaurants are explicitly requested alongside lodging in a named destination and no separate restaurant city is given, use the lodging destination city for the restaurant search. Run that restaurant search when its city is known even if hotel dates are missing, and seek only the missing hotel inputs.",
+      "support_count": 15,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name.",
+      "content": "For attraction searches, put category/type criteria in `type` and named places in `attraction_name`; if both are requested, populate both separate fields and never put a place name in `type`. Pass each explicitly provided city and state value to its matching schema field.",
+      "support_count": 8,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not encode a generic quality such as “kid-friendly” as an entity value when the schema has no matching criterion.",
+      "content": " When a reply gives terse values in response to a specific assistant question, assign each value according to the criterion asked about; do not reinterpret a code or abbreviation as a different field merely because it could also resemble that field’s value.",
+      "support_count": 8,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

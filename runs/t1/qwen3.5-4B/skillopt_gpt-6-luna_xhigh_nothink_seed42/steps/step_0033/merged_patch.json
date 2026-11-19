@@ -1,0 +1,45 @@
+{
+  "reasoning": "Kept the clarifications that address pending requests, newly stated criteria, and domain-specific date interpretation while limiting actions to the domains currently requested. Omitted repeated import and cache-retrieval instructions, as well as additional schema edge cases, because the current skill already covers related rules and the optimizer guidance favors avoiding repetitive or unsupported additions. All edits target content outside the protected section.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "Still perform every independent requested search or update whose own required inputs are complete in the same turn.",
+      "content": "\n- If a later reply supplies missing required inputs for a previously requested but not-yet-searched domain, perform that pending search in the same turn; do not rerun or transform domains whose criteria are unchanged. For a restaurant request tied to a trip, use the trip's stated destination as its city unless the user specifies another city. Continue only independent requested domains whose own required inputs are complete; do not ask again for known values or optional hotel occupancy or room details.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "For an explicitly requested round trip, make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg by setting `arrival_date` on the outbound search. Use an end date as the return-leg departure date only when return travel is requested or established by context; do not infer a return flight solely from a date interval.",
+      "content": "For an explicitly requested round trip, make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg by setting `arrival_date` on the outbound search. When a flight has already been requested and the user supplies a complete travel interval in response to a travel-dates question (for example, “from [start] to [end]”), treat the start and end as the outbound and return departure dates. An explicit “returning” or “getting back” date likewise establishes the return leg. Do not infer a flight request or return leg from a date interval that is not given in the context of a requested flight.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "When a hotel stay is given as a check-in date plus an unambiguous duration in nights rather than a checkout date, call `adjust_date(date=<check-in date>, delta_days=<number of nights>)` and use its returned date as checkout; do not treat the duration as missing.",
+      "content": " When a hotel is requested for the same trip and the user supplies the trip start plus an unambiguous number of nights, use that start as check-in and derive checkout with `adjust_date`, even if the date was first elicited as a flight departure, unless distinct lodging dates were stated.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+      "content": "- For recommendations based on proximity between result types, ensure compatible results for both requested domains are available. If the user adds criteria for a participating domain, apply only those new criteria to that domain's closest compatible current result and save the updated result before calling `search_nearest`; do not retrieve or modify unrelated domains. A request to stay in a named neighborhood is a location criterion, not a proximity request; filter it through the supported `neighborhood` field instead. Call `search_nearest` only when proximity is requested or affirmed, save its result, and set `groupBy` to the requested organizing base; when lodging is the base, group by hotel.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+      "content": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated. When a user answers a domain-specific follow-up question, treat the reply as an update to that pending domain and include all explicit, schema-supported criteria in the reply, not just the one asked about. Apply only new criteria to the compatible cached base and save the updated result. Assistant-suggested values are not user-provided unless explicitly confirmed.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

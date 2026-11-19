@@ -1,0 +1,34 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every clause, list item and narrated past-tense step in the query became its own call. Long queries produced 8-9 calls and none were dropped (parallel_education_simple:73, parallel_education_simple:29, parallel_gaming_simple:56).",
+    "When a single-value tool is asked about several entities, the same tool is called once per entity. Bangkok, Lisbon and Medellin gave three Auto Suggest calls (parallel_travel_simple:170).",
+    "The chosen endpoint literally mirrors the query's verb, object and scope. 'Today's insight' maps to /today and 'random' maps to /random. Sibling endpoints are picked by quantity or variant: Regular die, Custom dice, Regular dice rolls. Each kanji lookup (radical meaning, radical position, onyomi, kunyomi, study list) gets its own endpoint.",
+    "A provider or feature named in the query is mapped to exactly that endpoint (Blaze Verify 'Verify an email', 'Role Account', 'Email Address Validator'). Look-alike tools and helper tools (temp-mail, account info, batch verify, USDA/DEI/Leetcode) were ignored.",
+    "Parameter values were copied verbatim from the query (IDs, codes, search terms, numbers). Stated constraints were mapped to the schema's own parameter names: limit, per_page, pageSize, min_duration in seconds, from_record_date, category 'toysgames'. Optional parameters were mostly omitted when the query gave no value.",
+    "Tool names were copied exactly in 'Provider: API' form. Evaluation rewarded the correct set of tools, so tool selection and coverage mattered more than optional-parameter details. Some qualifiers were still missed: 'Steam' → platform, 'federal' → level_of_government."
+  ],
+  "patch": {
+    "reasoning": "Earlier large rule dumps (4 long sections each) lowered the score, so these edits are short and only encode behaviours seen in all 8 successful runs. Full match depended mainly on the correct tool set, so the rules cover coverage and tool choice first, then parameter mapping, then output hygiene. Several successes lost optional-parameter credit by missing query qualifiers (Steam, federal), so the parameter rule covers those.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## 1. Cover every clause, one call each\n- Before answering, list the atomic actions in the query: each sentence, each then/also/finally clause, each item in a list, each narrated past-tense step ('I looked up...', 'they ran...'), and each named provider or feature. Every action gets its own call. Hedges like 'possibly' do not make an action optional.\n- If a tool takes one value and the query names N entities (cities, emails, domains, ids), make N calls to that same tool, one per entity.\n- Before finalizing, compare the call count with the checklist and re-read the last sentence, since the final clause is the one most often dropped. Add no call that no clause asks for: no helper, search-then-detail, account, or bulk calls."
+      },
+      {
+        "op": "append",
+        "content": "\n## 2. Pick the endpoint that mirrors the query\n- Choose the tool whose name and description literally match the query's verb, object and scope. Examples: 'today's insight' -> `/today`; 'a random ...' -> `/random`; 'list schools in the sub-district (kecamatan) with code X' -> the Kecamatan endpoint; 'available language options' -> the `languages` endpoint; 'US states' -> a states download endpoint.\n- Use a dedicated endpoint over a generic search. Sibling endpoints of one provider map to different phrases, and each named phrase needs its own call (kanji by radical meaning, radical position, onyomi, kunyomi, study list; math fact vs trivia fact).\n- Match quantity and variant: one six-sided die -> 'Regular die'; N dice with S sides -> 'Custom dice'; N regular dice rolled M times -> 'Regular dice rolls'; one card -> 'Card'.\n- If the query names a provider, tool or feature ('Blaze Verify', 'Role Account feature', 'Email Address Validator', 'Booking.com'), use exactly that provider's endpoint.\n- The input type decides the tool: a bare domain needs a domain-level tool and a full email needs an email-level tool. Prefer tools whose required parameters can be filled from the query text.\n- Ignore look-alike tools from unrelated providers that only share a keyword."
+      },
+      {
+        "op": "append",
+        "content": "\n## 3. Parameters\n- Use only parameter names from the chosen tool's schema. Put each one in `required parameters` or `optional parameters` as the schema lists it. A tool with 'Required parameters: none' has an empty required list. Fill every required parameter.\n- Copy IDs, codes, terms, names, numbers and emails verbatim from the query. Never invent values.\n- Map every constraint or qualifier the query states to a matching parameter, and add nothing else. Examples:\n  - counts and paging: '3 questions' -> limit '3'; '15 results' -> pageSize '15'; 'first page' -> page '1'; '3 per page' -> per_page '3'\n  - dice: 'five 20-sided dice' -> dice '5', sides '20'\n  - durations and dates: 'longer than 5 minutes' -> min_duration '300' (seconds); 'since 2017' -> from_record_date '2017-01-01'\n  - filters: 'Steam giveaways sorted by popularity' -> platform 'steam', sort-by 'popularity'; 'active federal politicians' -> active 'true', level_of_government 'Federal'; 'JSON format with fragments' -> json 'true', fragment 'true'\n  - category with listed options: 'toys and games' -> `toysgames`\n- Do not add optional parameters the query does not state or imply, and never emit an empty or placeholder value."
+      },
+      {
+        "op": "append",
+        "content": "\n## 4. Output format\n- Give ONE flat JSON list inside `<answer>`. Each call has exactly the three keys `tool name`, `required parameters`, `optional parameters`. Use `[]` for an empty list, and never omit or repeat a key.\n- Each parameter is an object `{\"name\": \"x\", \"value\": \"y\"}`. Never emit bare lists like `[\"sort-by\", \"popularity\"]`. Quote every value as a string.\n- Copy `tool name` exactly from the tool heading, in the form `Provider: API`. Check that brackets are balanced."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,48 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "Endpoint and facet misrouting",
+      "count": 3,
+      "description": "Some requested facets were omitted or routed to adjacent endpoints, such as treating deal ratings as game reviews or dropping a search when only a discovery endpoint was available."
+    },
+    {
+      "failure_type": "Parameter and default handling",
+      "count": 5,
+      "description": "Agents misread flag polarity, missed required pagination or initial offsets, used noncanonical market values, or made unnecessary setup calls."
+    },
+    {
+      "failure_type": "Unrequested calls",
+      "count": 2,
+      "description": "Agents added unrelated or redundant calls, including auxiliary lookups not needed to populate a requested parameter."
+    },
+    {
+      "failure_type": "Malformed response structure",
+      "count": 1,
+      "description": "One response placed parameter arrays outside their call objects and failed JSON parsing."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits clarify how to cover distinct requested facets, when to use a search fallback, how to apply required paging and canonical values without helper calls, and how to interpret feature flags. A stricter final structure check addresses the malformed response.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n### Endpoint matching for searches and multiple facets\nChoose endpoints by the action and data they provide, not topic overlap: a deal's score is not a game's reviews or critic rating, and a similarity search is not a product lookup. Map each independently requested facet when distinct endpoints serve it. If the user explicitly requests a search and no dedicated search/list endpoint exists, use the closest documented query-driven discovery or autocomplete endpoint rather than silently omitting the search; do not use that fallback when a dedicated search endpoint is available."
+      },
+      {
+        "op": "append",
+        "content": "\n\n### Required defaults and direct-value mapping\nNever omit a parameter marked required because the user did not state it. For a required page parameter, use the documented first page (normally `1`, or the documented zero-indexed start); for an initial review batch with an offset parameter, use offset `0`. Convert a supplied storefront domain to a country/market code only when the field expects that code and the mapping is unambiguous; preserve the full hostname when the field expects a domain. Do not call auxiliary reference endpoints merely to resolve a value that is already supplied or unambiguously implied and supported by the requested endpoint."
+      },
+      {
+        "op": "append",
+        "content": "\n\n### Interpret feature flags by polarity\nFollow the documented polarity of boolean or numeric flags. A flag described as enabling or restricting results to a condition is on for its documented true/`1` value and off for false/`0`, unless the schema explicitly specifies otherwise. Translate negative requests accordingly; do not infer an inverted meaning from the flag name or guess a value when its polarity is undocumented."
+      },
+      {
+        "op": "replace",
+        "target": "- **Validate the final response.** Follow the required response format exactly, including tool names, call-object keys, and any requested call ordering. Return one list object per call, with that call's required and optional parameter arrays nested inside the object—not at the list level or shared across calls. Serialize each parameter as `{ \"name\": ..., \"value\": ... }`, and include empty arrays when a group has no parameters. Check that every requested operation is covered, no unrelated call was added, and the JSON parses. When the format requires only JSON, return no surrounding commentary.",
+        "content": "- **Validate the final response.** Follow the required response format exactly, including tool names and call ordering. Each list item must be one object with exactly the required call keys; both required and optional parameter arrays must be nested inside that same object, with `[]` for an empty group. Serialize each parameter as `{ \"name\": ..., \"value\": ... }`. Before sending, check braces and commas, confirm the JSON parses, verify that every requested operation is covered, and remove unrelated calls. When the format requires only JSON, return no surrounding commentary."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

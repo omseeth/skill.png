@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_turn_incompletion",
+      "count": 8,
+      "description": "Every trajectory missed at least one required action, such as applying a new criterion, completing both flight legs, or saving results."
+    },
+    {
+      "failure_type": "cached_result_refinement",
+      "count": 6,
+      "description": "Agents treated cached results as complete or repeated a nearest search instead of filtering the affected cached results."
+    },
+    {
+      "failure_type": "schema_or_itinerary_mapping",
+      "count": 3,
+      "description": "Some calls used the wrong location or amenity field, or represented a round trip as one flight search with an arrival date."
+    },
+    {
+      "failure_type": "runtime_namespace_violation",
+      "count": 1,
+      "description": "The agent imported tools from a nonexistent module instead of calling injected functions directly."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers many general workflow and runtime rules, so the edits focus on remaining concrete gaps: explicitly mapping room counts and fitness-center wording, making new criteria an unmistakable reason to update cached results, and distinguishing a new nearby search from a refinement of an existing nearest result.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "When party size is explicit for the hotel stay, pass it as `num_people` (use `1` for an explicitly solo trip), but do not infer `num_rooms`.",
+        "content": "When party size is explicit for the hotel stay, pass it as `num_people` (use `1` for an explicitly solo trip); when the room count is explicit, pass it as `num_rooms`. Do not infer either value."
+      },
+      {
+        "op": "replace",
+        "target": "Map ordinary-language descriptions to a supported schema criterion when the meaning is unambiguous (for example, map “laundry facilities” to `has_laundry_service` when that field is in the tool schema); if no field represents a preference, omit it rather than adding an unsupported argument.",
+        "content": "Map ordinary-language descriptions to a supported schema criterion when the meaning is unambiguous (for example, map “laundry facilities” to `has_laundry_service` and “fitness center” to `has_fitness_class` when those fields are in the tool schema); if no field represents a preference, omit it rather than adding an unsupported argument."
+      },
+      {
+        "op": "replace",
+        "target": "Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "Use “No planning needed” only when cached results already satisfy every current request. Any newly stated criterion or action in the latest user turn leaves its affected domain incomplete until the result is updated, assigned, and saved."
+      },
+      {
+        "op": "replace",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- For a new explicit request for recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the requested organizing base; when lodging is the base, group by hotel. If a compatible nearest result is already cached and the user adds criteria to one or both constituent types, retrieve and filter each affected result, save each filtered output, and do not rerun `search_nearest` unless refreshed proximity results are requested or otherwise needed."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

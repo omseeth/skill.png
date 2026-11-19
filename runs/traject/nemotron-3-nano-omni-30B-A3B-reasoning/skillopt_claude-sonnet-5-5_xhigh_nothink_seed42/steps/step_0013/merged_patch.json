@@ -1,0 +1,103 @@
+{
+  "reasoning": "Failure edits were kept in full and success edits were added only where they cover patterns the failure edits do not. Four overlaps were folded into single edits so no two edits share a target region. (1) Both groups inserted after `## Tool selection`; I merged them into one insert. It keeps the failure kanji facet rule, adds the success group's extra sibling examples (radical, grade, position, gas price, Booking currencies), and keeps the Asos/no-duplicate bullet. (2) The failure NUMBER AUDIT, SPLIT COMPOSITE and the success VALUE FORM and explicit-flag exception all hit the same 'Do not invent parameters' line, so they became one replace of that line. This avoids a substring-replace/insert-after collision. (3) The success VALUE MAPPING bullet restated the failure min/max-length example, so I dropped that item from it. (4) The success COMMENTARY bullet could be misread as permission to drop 'also checked X, though less relevant' clauses, which the existing skill says must still get calls. I added a clarifying counter-example so it does not undercut the missing-calls rule. The success edits for pagination pairs, coordinates+radius, provider sibling by input size, one-endpoint-many-nouns and the object-count sentence are kept as they stand. Nothing touches the SLOW_UPDATE block.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "6. Every tool name has `: ` and no ` — `, and is copied from a `### ` heading. The object count equals the number of distinct clauses, entities and markets in the query, last sentence included, with no padding calls.",
+      "content": "6. NAME EXACT-MATCH TEST. For every `tool name`, find the `### ` line in the tool list that is character-for-character identical. If none exists, rewrite the name from the heading. Misses seen: (a) a loose quote from the query or a missing provider prefix (`BestBuy Product Data` -> `BestBuy Product Data: BestBuyProductData`; `Zappos product detail by Product ID` -> `Zappos Realtime Data: Zappos product detail by Product ID`); (b) a truncated suffix (`National Weather Service: /alerts` -> `National Weather Service: /alerts?{parameters}`; keep `{verse}`, `(basic)`, `?{parameters}`); (c) a hybrid of one provider's name and another provider's endpoint (`Learn to read and write Japanese kanji: Get language by id` does not exist; search the list for the endpoint words and use the provider that has them, e.g. `thefluentme: Get language by id`). The name contains `: ` and no ` — `. The object count equals the number of distinct clauses, entities and markets in the query, last sentence included, with no padding calls.\n7. SCHEMA-ONLY PARAMS. Every `name` appears verbatim in the chosen tool's own Required/Optional list, and sits in the list the schema uses (BestBuy `page` is REQUIRED). No empty values (BAD `{\"name\": \"store\", \"value\": \"\"}`): omit the param, or fill the stated schema default. No invented names (BAD BestBuy `min_price`, `max_price`, `free_shipping`; BAD `start`=`0` when the query gives no start). If the tool cannot express a qualifier, switch to a sibling that can.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Tool selection",
+      "content": "\n- FACET AND SAME-THEME TESTS (past misses). (1) The facet word picks the endpoint among same-provider siblings. 'Kanji with exactly 16 strokes' -> `...: Kanji stroke number` (`ks`=`16`), never Onyomi, Kunyomi or Radical. 'Radical with 7 strokes' -> `Radical stroke number` (`rs`). 'Taught in grade 2' -> `Kanji grade level` (`grade`). 'Radical meaning X' -> `Radical English meaning` (`rem`). 'Radicals in the hen position' -> `Radical position` (`rpos`). 'Kunyomi reading oya' -> `Kunyomi reading` (`kun`). 'Study list ap:c3' -> the Study list tool whose name matches (AP exam vs Macquarie), `list` verbatim. If the value you would pass makes no sense for the parameter (`on`=`parent`), the tool is wrong. Likewise 'average gas prices across states' -> `Gas Price: allUsaPrice` (not the cities list), and 'exchange rates for travel bookings from Booking.com, in English' -> `Booking.com_v2: currencies` with `language_code`=`en-us`. (2) A topic clause beside a provider's theme ('today's Bible insight AND some information about faith') -> that provider's today endpoint plus its topic endpoint (`Uncovered Treasure: /today` + `Uncovered Treasure: /topic/{topic}`, `topic`=`faith`), never an unrelated provider such as `musicApp: track`. (3) 'Current weather' at a latitude/longitude -> `Easy Weather: Current conditions (basic)`; a city-name tool with a guessed city (`Cloud Cast`, `city`=`Miami`) is wrong. 'Active marine weather alerts at lat,lon' -> `National Weather Service: /alerts?{parameters}` with optional `active`=`1`, `zone_type`=`marine`, `point`=`lat,lon`.\n- ASOS SEARCH AND NO DUPLICATES. When the Asos tools offer no product-search endpoint, 'search/look up X on Asos' -> `Asos: v2/auto-complete` with `q`=X. `Asos: countries/list` is only for 'which countries Asos sells to'. 'Searching X on Wayfair and BestBuy' -> exactly one `Wayfair: products/search` plus one `BestBuy Product Data: BestBuyProductData`. Never add a second Wayfair search with the same keyword to cover another retailer's clause. Each call must trace to a distinct retailer, SKU or facet.\n",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "and a location field that accepts the given ID format).",
+      "content": "\n- QUALIFIER FIT. If a clause carries a price range, free shipping, rating or similar filter, pick the sibling whose schema has those fields, and never invent parameter names on a tool without them. 'iPhone 13 Pro between $600-$900 with free shipping' -> `Aliexpress DataHub: Aliexpress - Item Search 2` with `q`, `startPrice`=`600`, `endPrice`=`900`, `switches`=`freeShipping`, `region`=`US`, `currency`=`USD`, `page`=`1`. `BestBuy Product Data: BestBuyProductData` only takes `keyword` and `page`. When two siblings both fit, prefer the one not marked '(Deprecating)': 'detailed/common product information' for a Wayfair SKU -> `Wayfair: products/get-common-info`, not `products/v2/detail (Deprecating)`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "'Ran Python code to calculate orbital periods' is one `Safe Exam: judget0` call with the code in `code`.",
+      "content": "\n- COORDINATES + RADIUS. When the query itself gives lat/lng and a range ('near (4.1755, 73.5093) within 2000 meters'), use the lat/lng tool (`Airbnb listings: Count listings by lat lng`) with required lat, lng, range copied verbatim. Map 'N bedrooms' and 'host up to N guests' to optional `bedrooms` and `maxGuestCapacity`. This mirrors the admin-division rule: pick the tool whose fields match the input the query supplies.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "'generate a fake business email' -> `Email API: Get Fake Email Address`).",
+      "content": "\n- Within a named provider, pick the sibling by input size and action. One email 'valid?' -> `Blaze Verify: Verify an email` (not `Verify a batch of emails` or `Get account info`). Several emails in one list -> the batch endpoint. Do not add a second provider's validator to a clause that already names its tool.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Parameters",
+      "content": "\n- VALUE MAPPING (qualifier -> schema field): 'exactly 6 letters' -> wordLength/length `6`; 'begins with p' -> beginsWith `p`; 'ends with я' -> endsWith `я` (copy non-Latin text as written); 'June 21st' -> month `6`, day `21`; several items for one field ('Yohkoh, STEREO_A, STEREO_B') -> ONE comma-joined value; 'in English with Turkish subtitles' -> audio_lang `en` AND subtitle_lang `tr`.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- 'first page' -> page `1`; '10 per page' -> per_page `10`; 'first 20' -> pageSize `20`; '3 scores on page 1' -> per_page `3`, page `1`.",
+      "content": "\n  - A pagination phrase with a size gives BOTH fields: 'just the first page with 15 results' -> page `1` AND pageSize `15` (never only the size). A named platform or store gives the platform field: 'current Steam giveaways sorted by popularity' -> platform `steam`, sort-by `popularity`. 'Once' on a tool with a `rolls` or `times` field -> `1` ('rolled 5 dice once' -> dice `5`, rolls `1`).",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+      "content": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound) unless the query explicitly asks for them: 'in JSON format with fragments included' -> json `true`, fragment `true`; 'verbose output' -> verbose `true`. Never emit a parameter with an empty value.\n- NUMBER AUDIT (per call). List every number, range and count in the clause and map each to a parameter or the main input. An unused number means a missed parameter. '3 pronunciation scores on page 1' -> `per_page`=`3` AND `page`=`1` (BAD: page only). '10 random words between 5-8 letters' -> `count`=`10`, `minLength`=`5`, `maxLength`=`8` (BAD: `wordLength`=`8`, which means an exact length; never add `wordLength` alongside min/max). 'Between X and Y', 'at least X' and 'at most Y' -> the tool's min*/max* pair when it has one.\n- SPLIT COMPOSITE INPUTS INTO THE SCHEMA'S FIELDS. A tool with `username` + `domain` given 'testsender@marketing.ourstartup.com' -> `username`=`testsender` (before @) and `domain`=`marketing.ourstartup.com` (everything after @, subdomains kept). Never put the full address in `username` or trim the domain. For a book or topic search, pass the subject phrase without the category noun the tool name already implies: 'Japanese language learning books' with `GetBooksInfo: Search` -> `s`=`Japanese language learning`.\n- VALUE FORM FOLLOWS THE PARAM NAME. If the schema param is `email`, pass the full address from the query even when the clause says 'this email's domain' (`Email Existence Validator: Get the MX Records`: `email`=`sales@premiumwidgets.co`). If the param is `domain`, pass the bare domain (`fast Email verifier: Role Account`: `domain`=`premiumwidgets.co`). Copy values verbatim from the query.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Which calls to make",
+      "content": "\n- COMMENTARY IS NOT A CALL. A closing recap or opinion sentence with no fetch in it ('This combined approach gave me a broad overview...', 'This sequence suggests someone studying...') adds no call, no duplicate and no new tool. But a clause that names an action and adds an opinion ('also checked which countries Asos sells to, though this seems less relevant') still gets its call. Every sentence that names an action or tool ('Finally, they accessed a test template from dcj9') gets exactly one call, with the required and optional inputs the query states.",
+      "support_count": 2,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+      "content": "\n- DISTINCT EMAIL CHECKS = DISTINCT CALLS. 'Is it disposable', 'verify its deliverability status' and 'retrieve the MX records' are three clauses on the same email, so make three calls: a disposable checker (`Email Existence Validator: Check for Disposable emails`), a deliverability verifier (e.g. `Blaze Verify: Verify an email`) and the MX tool (`Email Existence Validator: Get the MX Records`). Do not fold deliverability into the disposable call. When the MX tool's provider also has a disposable endpoint, use it for the disposable clause rather than a generic 'validate domain or email' tool. 'Valid AND disposable' in ONE clause is still one email tool.\n- EMAIL TOOL FACETS. For a full address asked whether it is valid, deliverable, legitimate or disposable, use a dedicated verifier (`Email Address Validator: Validate Email Address`, `Alpha Email Verification: Email Checker`). These answer other questions, so use them only when the query asks that exact facet: `Email API: Check Free Email Providers` and `MailboxValidator.com: Free Email` (is the provider a free one like Gmail), `Email API: Check Valid Emails` (syntax only), `Email API: Validate Email By Service` (role-style prefixes). A bare domain goes to a domain-level tool.\n- SIBLING PAIRS (one call per clause, no spare call 'to be safe'). 'Looking up flight X between date A and date B' -> `Flightera Flight Data: flightSearch` (`flnr`, `dtFrom`, `dtTo`). 'Detailed information about flight Y on date D' -> `Flightera Flight Data: flightInfo` (`flnr`, `date`). Two flights means two calls, not three. 'Is domain X classified as disposable' -> `MailCheck: Domain` as its OWN call, even when a later clause validates an email. 'Key company overview metrics' for a ticker -> `Alpha Vantage: Customizable Endpoint` with required `function`=`OVERVIEW` and optional `symbol`. 'Product with its images and financing options' -> exactly `get-images` + `get-financing-offers`; add no `get-pricing` or other facet the query did not name. Never call Homepage, Help Page, Heartbeat, Create Email, Send Mail, List Domains or Rules endpoints unless the query asks for that action. 'Comprehensive checks on an email and its domain' = an email-level validator with the full address plus domain-level tools with the bare domain (`MailCheck: Domain`, `fast Email verifier: Role Account`, `fast Email verifier: disposable Domain and Suggest Domain`).",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Make a short checklist of the query's requests. Each request gets one call from the single tool that best matches it, and every call must trace to a clause.",
+      "content": "\n- ONE ENDPOINT, MANY NOUNS. If one endpoint's `Description:` already covers every item a clause lists, make a single call: 'Past events, news, key figures, and FAQs from the 2020 election, starting with page 1' -> ONE `Election2020 Smartable: GetPastEvents` (required `page`=`1`). Split a list into several calls only when the tool list has a separate endpoint for each item (e.g. `Lost Ark: get stats` / `get classes` / `get engravings`).",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "A typical answer has 3-10 objects; a long run of near-identical objects usually means a count was split into calls.",
+      "content": "A long run of near-identical objects usually means a count was split into calls. Do NOT trim distinct clauses to fit a 'typical' size: a 9-clause email audit or a 10-clause gaming session legitimately needs 9-11 objects. Ancillary clauses ('help documentation', 'generate a fake business email', 'is domain X available for registration') are real deliverables and each gets its own call.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "Add any missing call and delete any call that no clause asks for.",
+      "content": "\n- NAMED PLATFORMS ARE DELIVERABLES. In 'compare X across retailers including BestBuy, Wayfair, Zappos and Aliexpress', every named retailer that has a search or list tool in the tool list gets a call (BestBuy -> `BestBuyProductData`, Aliexpress -> `Aliexpress - Item Search 2`). The LAST name in such a list is the one most often dropped. A retailer for which the query already gives a specific SKU or ID gets only the detail calls named for it.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## FINAL SELF-CHECK (run on the finished answer, character by character)",
+      "content": "\n\n**KEY-COUNT CHECK.** The duplicate or missing key most often appears on tools whose schema says `Required parameters: none` and take their input as optional (Chess Puzzles `id`, Pokemon Unite `page`/`pageSize`, Card Draw `suit`/`value`, thefluentme `page`/`per_page`). BAD `{\"tool name\": \"Chess Puzzles: Puzzle by Id\", \"required parameters\": [], \"optional parameters\": [{\"name\": \"id\", \"value\": \"HxxIU\"}], \"optional parameters\": []}` (the second key wipes the id). GOOD the same object ending `...\"value\": \"HxxIU\"}]}`. BAD `{\"tool name\": \"Asos: countries/list\", \"required parameters\": []}` (no `optional parameters` key). Per line, `\"optional parameters\"` and `\"required parameters\"` each appear exactly once, and `}], \"optional parameters\"` never appears. Decide both lists first and write each object once in final form. End with `]</answer>`; the closing tag is required.\n",
+      "support_count": 1,
+      "source_type": "failure"
+    }
+  ]
+}

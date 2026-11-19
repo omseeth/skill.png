@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "round_trip_leg_mapping_and_schema_arguments",
+      "count": 3,
+      "description": "Round trips were represented as one outbound search, with return dates misused as arrival dates; some calls also included unsupported passenger counts or invented time bounds."
+    },
+    {
+      "failure_type": "missing_mandatory_input_gate",
+      "count": 1,
+      "description": "The agent invented flight and hotel dates instead of requesting missing mandatory dates while proceeding with the ready restaurant search."
+    },
+    {
+      "failure_type": "incremental_update_or_pending_action_omission",
+      "count": 4,
+      "description": "New filters or actions were omitted, applied incompletely, or repeated criteria already covered by compatible cached results."
+    },
+    {
+      "failure_type": "tool_result_binding_and_cache_persistence",
+      "count": 6,
+      "description": "Required tool results were not consistently bound and saved, or pending work was treated as complete without the required tool action."
+    },
+    {
+      "failure_type": "runtime_code_hygiene",
+      "count": 2,
+      "description": "Code imported tools or redefined models instead of using the runtime-provided functions directly."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make flight-leg construction and cache refinement more executable, explicitly resolve affirmative replies to specific actions, and guard against copying illustrative dates into required fields. The existing skill already covers direct tool use and result persistence, so those rules are not duplicated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.",
+        "content": "- Before coding, list every explicitly described flight leg. A round trip requires separate searches in each direction: outbound origin-to-destination on D1 and return destination-to-origin on D2, with each date in that leg’s `departure_date`. Never encode the return leg as `arrival_date` or combine both dates into one search. Bind and save each leg’s result separately. Include only explicitly stated, schema-supported criteria: do not invent time bounds or send traveler counts unless the flight schema supports them. Do not infer `flight_class` from trip purpose; apply a requested class to each applicable leg. Reuse a cached directional result only when it covers that leg and its criteria."
+      },
+      {
+        "op": "replace",
+        "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+        "content": "- For a refinement, compare the latest compatible result summary with all explicit criteria for that exact target and compute the full delta. Apply every uncovered criterion, including multiple criteria introduced in one turn, to the most refined compatible result; do not repeat covered constraints or refine a less-relevant base result. Bind the exact filter result and save it under a new key before marking the item complete."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "\n- An affirmative reply to a concrete assistant question offering a specific supported search or filter makes that action pending, even when the domain is new. Carry forward the offered target, type, and location, and perform the action when its mandatory inputs are available; do not treat “yes” as confirmation that no work remains."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not infer missing mandatory values or use defaults.",
+        "content": " Never substitute dates copied from tool examples, schema descriptions, or an assumed trip window for missing user-provided dates. Block calls that require those dates, request the missing inputs once, and proceed with other ready domains."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

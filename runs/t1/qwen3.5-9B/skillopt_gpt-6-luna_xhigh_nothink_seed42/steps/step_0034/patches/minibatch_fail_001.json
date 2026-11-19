@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_deliverable_or_new_delta_omitted",
+      "count": 5,
+      "description": "Skipped a newly supplied constraint or a still-pending requested domain, often treating cached results as complete."
+    },
+    {
+      "failure_type": "result_call_not_assigned_and_saved",
+      "count": 4,
+      "description": "Emitted result-producing searches or filters bare or nested instead of assigning and saving their complete results."
+    },
+    {
+      "failure_type": "round_trip_legs_not_processed_independently",
+      "count": 2,
+      "description": "Used one call or updated only one leg instead of handling outbound and return flights separately."
+    },
+    {
+      "failure_type": "nearest_group_target_mismatch",
+      "count": 1,
+      "description": "Grouped nearby restaurants rather than the requested hotels in a hotel-with-restaurants-nearby request."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers cache deltas and separate round-trip legs, so repeating those rules would add little. Recasting the save requirement as a literal code shape makes a commonly missed requirement more operational; clarifying the proximity grouping target resolves ambiguity in the existing anchor wording.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Write every result-producing search, filter, sort, or `search_nearest` call in two steps: assign its returned result to a variable, then save that exact, complete result object with `save_to_cache` under a fresh, descriptive key. Do not extract `.search_results`, rebuild, or merge tool output before saving. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save.",
+        "content": "For every result-producing search, filter, sort, or `search_nearest` call—including initial searches—emit the literal pattern `result = tool(...)` followed by `save_to_cache(key=\"<fresh descriptive key>\", value=result)`. Save the complete returned object unchanged; never leave the call bare, extract `.search_results`, rebuild, or merge its output. Use distinct keys for domains, itinerary legs, and updated results."
+      },
+      {
+        "op": "replace",
+        "target": "Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain.",
+        "content": "Use `search_nearest` only when the user asks about proximity, passing relevant results for both domains. Set `groupBy` to the domain the user wants recommended or grouped—not the nearby domain (for example, “a hotel with restaurants nearby” uses `groupBy=\"hotel\"`)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

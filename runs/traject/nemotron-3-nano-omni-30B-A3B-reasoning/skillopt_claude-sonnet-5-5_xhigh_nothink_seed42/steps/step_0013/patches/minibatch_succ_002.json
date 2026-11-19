@@ -1,0 +1,32 @@
+{
+  "batch_size": 4,
+  "success_patterns": [
+    "Each clause was mapped to exactly one narrow endpoint, in a clean one-object-per-call answer with all three keys. Optionals were included only when the query stated them (page, limit). Answer length matched the clause count.",
+    "A clause listing several items (past events, news, key figures, FAQs) was answered with ONE call, because the chosen endpoint's description already covers all of them. The agent did not split the list into four calls.",
+    "The closing recap sentence ('This combined approach gave me a broad overview...') was treated as commentary and added no calls.",
+    "When the query named a provider (Blaze Verify, fast Email verifier, Email Address Validator), the agent picked that provider's sibling endpoint matching the action and input. A single email went to 'Verify an email', not the batch or account-info endpoints. A domain went to Role Account.",
+    "The value form followed the schema's parameter name. The MX tool with an `email` param got the full address even though the query said 'email domain'. The Role Account tool with a `domain` param got the bare domain.",
+    "Three distinct checks on one email (deliverability, MX records, role account) became three calls, each on its own matching tool, with no extra validators stacked on."
+  ],
+  "patch": {
+    "reasoning": "All four successes were clean 3-call answers. Three patterns repeat and are not yet explicit in the skill. (1) The skill says to split comma lists into one call per item, but several enumerated nouns can belong to a single endpoint's description. That is the one-call-per-deliverable rule applied correctly, and an agent that splits mechanically would over-call. (2) Recap sentences must not generate calls. (3) Parameter value form should follow the schema param name (email vs domain), and single-entity clauses should use the single-item endpoint, not batch or account siblings. These edits add a short scoped clarification to the existing rules and do not restate them.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Make a short checklist of the query's requests. Each request gets one call from the single tool that best matches it, and every call must trace to a clause.",
+        "content": "\n- ONE ENDPOINT, MANY NOUNS. If one endpoint's `Description:` already covers every item a clause lists, make a single call. 'Past events, news, key figures, and FAQs from the 2020 election, starting with page 1' -> ONE `Election2020 Smartable: GetPastEvents` (required `page`=`1`). Split a list into several calls only when the tool list has a separate endpoint for each item (e.g. `Lost Ark: get stats` / `get classes` / `get engravings`).\n- RECAP SENTENCES ARE NOT CALLS. A closing sentence such as 'This combined approach gave me a broad overview of...' restates earlier clauses. Add no call for it, and do not let it add a duplicate or a new tool."
+      },
+      {
+        "op": "insert_after",
+        "target": "Never emit a parameter with an empty value.",
+        "content": "\n- VALUE FORM FOLLOWS THE PARAM NAME. If the schema param is `email`, pass the full address from the query even when the clause says 'this email's domain' (`Email Existence Validator: Get the MX Records`: `email`=`sales@premiumwidgets.co`). If the param is `domain`, pass the bare domain (`fast Email verifier: Role Account`: `domain`=`premiumwidgets.co`). Copy values verbatim from the query."
+      },
+      {
+        "op": "insert_after",
+        "target": "'generate a fake business email' -> `Email API: Get Fake Email Address`).",
+        "content": "\n- Within a named provider, pick the sibling by input size and action. One email 'valid?' -> `Blaze Verify: Verify an email` (not `Verify a batch of emails` or `Get account info`). Several emails in one list -> the batch endpoint. Do not add a second provider's validator to a clause that already names its tool."
+      }
+    ]
+  },
+  "source_type": "success"
+}

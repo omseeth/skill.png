@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 4,
+      "description": "Wrong slot type or unchecked clue detail. The agent answered a related entity from the clue or passages: the university instead of 'this state', a rival brand instead of what 'Digimon stands for', the joke's punchline item instead of 'this way' (an adverb), and a famous incumbent who never did the stated action (announcing a candidacy)."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "Verbatim archive answer 'Madge' was available and the 'do not append the role word' example already exists, but the agent still output 'Madge the Manicurist'."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "'this fruit' for a festival or crop needed the plural 'strawberries'; the agent gave the singular."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "Spoonerism clue. The answer is the full corrected phrase ('dear old queen'), not one swapped word."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "Gold key '(The People's Republic of) China' contains an optional parenthetical, so a bare 'China' cannot match. Not fixable by a general rule."
+    }
+  ],
+  "patch": {
+    "reasoning": "Five of eight failures are slot-type or detail-check errors where the agent grabbed a related entity. The existing type rules sit mid-document and are not applied, so I add a short mandatory Step 0 at the very top. It names the slot type for the relational patterns seen here: 'X of this state', 'this way', 'stands for', and role plus action. It also adds a final strip check for the Madge-style role-word error. Two small targeted edits cover the remaining gaps: plural produce in festival or crop clues, replacing a bullet instead of stacking a new one, and a spoonerism rule that was missing. The 'China' parenthetical key is not fixable by a general rule, so no edit targets it. No gold answers are embedded and Rule 3 is untouched.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Question Answering Skill",
+        "content": "\n## Step 0 (mandatory, before every answer): name the SLOT, then check the candidate\nWrite one line 'SLOT = <type>' naming exactly what the clue's 'this/these/it/this way' phrase stands for. Reject any candidate of a different type, even if the passages are full of it.\n- 'the <X> of this state/country/city' (university, team, river, capital of this state) -> the state/country/city itself, never X.\n- 'this way / in this manner / how' -> a single manner word or adverb ('upside down'), not the things that happen in a joke ('your dog returns').\n- 'X stands for these ...' / 'short for' / 'acronym' -> the spelled-out expansion of X ('National Aeronautics and Space Administration'), not a rival brand or another anchor from the clue.\n- Role + action ('this former first lady announced her candidacy in 1992') -> the person who satisfies BOTH the role and the action in the stated year. A famous incumbent or related figure who never did the action is wrong. Check each candidate against every verb, date and role word, and prefer the passage that names someone doing that exact thing.\nFinal strip before the tags: if the answer ends with the clue's own role noun ('the Manicurist', 'Party', 'University'), delete it. If a passage shows the clue followed by its answer ('clue | Madge. right:'), the bare archived answer is the final answer, with nothing added from other passages.\n"
+      },
+      {
+        "op": "replace",
+        "target": "- Use the singular form for a generic single object ('Well', not 'wells'), but keep the plural for crops, commodities and mass categories ('Bananas') or when the clue says 'these'/'ones'.",
+        "content": "- Number: use the singular for a generic single object ('Well', not 'wells'). Use the PLURAL for crops, produce, commodities and mass categories, and whenever the clue is about a festival, harvest, farming, industry or food made from 'this fruit/vegetable/grain/crop' ('Strawberries', 'Bananas'), or when the clue says 'these'/'ones'. Use the form the passages' event or trade names use."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 1: Questions are Jeopardy-style clues; always answer with the missing entity",
+        "content": "- Spoonerism / garbled-phrase clues ('Dr. Spooner once talked of his queer old dean', a toast or slip of the tongue): the answer is the FULL intended phrase with the swapped sounds put back, as the passages give it in brackets or quotes ('a well-boiled icicle' -> 'a well-oiled bicycle'). Give every swapped word of the corrected phrase, not just one word and not the garbled clue wording."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

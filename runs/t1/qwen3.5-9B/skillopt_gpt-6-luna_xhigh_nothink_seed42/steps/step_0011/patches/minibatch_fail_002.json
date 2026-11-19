@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool-result/cache-contract violation",
+      "count": 4,
+      "description": "Results were left unsaved or an extracted list rather than the complete tool result was passed to the cache."
+    },
+    {
+      "failure_type": "missed incremental follow-up",
+      "count": 3,
+      "description": "The agent returned no-planning even though the latest user turn added constraints that were absent from cached results."
+    },
+    {
+      "failure_type": "constraint-to-field mapping or inference",
+      "count": 3,
+      "description": "Some explicit location or party-size information was mapped incorrectly or an unstated hotel detail was inferred."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most repeated failures concern preserving and caching tool outputs, and treating cached base results as already satisfying newly added constraints. The edits make those two checks more operational. Existing skill rules already cover location and value mapping, so no duplicate mapping guidance is added.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Assign every result-producing call—search, filter, sort, or `search_nearest`—to a variable and save that exact result with `save_to_cache` under a fresh, descriptive key. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save.",
+        "content": "Write every result-producing call as two steps: `result = tool(...)`, then `save_to_cache(key=\"<fresh descriptive key>\", value=result)`. Keep and save the complete result object exactly as returned; never save an extracted `.search_results` list or manually rebuild or merge tool output. Use distinct keys for separate domains, itinerary legs, and updated results; do not leave a result-producing call bare or omit its save."
+      },
+      {
+        "op": "replace",
+        "target": "Return no-planning only when every requested or pending deliverable is already satisfied and the latest turn introduces no new request or constraint.",
+        "content": "Never return no-planning merely because a cache entry exists. Compare the cache summary with the current constraints; if a newly stated same-domain constraint is absent, retrieve the latest suitable cached result, apply that constraint with the appropriate filter, and save the update under a fresh key. If no suitable base exists, search when required inputs are available or seek missing required inputs. Return no-planning only when every requested or pending deliverable reflects all current constraints and the latest turn adds none."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

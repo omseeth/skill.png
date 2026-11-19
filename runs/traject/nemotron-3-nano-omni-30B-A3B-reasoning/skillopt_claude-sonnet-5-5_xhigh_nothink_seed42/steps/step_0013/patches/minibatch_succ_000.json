@@ -1,0 +1,37 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every clause in long enumerated or narrative queries got exactly one call, with the right sibling endpoint chosen by the facet noun in the clause (radical strokes vs kanji strokes, radical meaning vs radical position, study list vs kunyomi). The closing commentary sentence ('This sequence suggests...') was correctly ignored.",
+    "Qualifier phrases were mapped onto the schema's optional parameters: 'between 4-7 letters' -> minLength/maxLength, 'begins with'/'starts with'/'ends with' -> beginsWith/startsWith/endsWith, 'June 21st' -> month 6, day 21, 'longer than 5 minutes' -> min_duration 300, 'recorded since 2017' -> from_record_date.",
+    "'Both US and Germany' became one call per market with its own uppercase country code. Multi-page or limit qualifiers ('first page, 10 per page', 'limit 25') became page/pageSize/limit optionals.",
+    "Tool-description wording match picked the narrow endpoint: 'average gas prices across states' -> allUsaPrice, 'currency exchange rates for travel bookings' -> Booking.com_v2: currencies, 'convert slug to unique identifier' -> Hotel Slug convert.",
+    "Explicit flag words in the query ('verbose output', 'JSON format with fragments included') were turned into true-valued booleans, and a list of items for one parameter was joined into one comma-separated value.",
+    "Gaps in the successful answers: TED 'in English with Turkish subtitles' lost audio_lang=en, and one duplicate 'optional parameters' key erased a filled list (the code snippet)."
+  ],
+  "patch": {
+    "reasoning": "Several of these batch successes depended on value-mapping and sibling-facet rules the skill covers only partially. Length ranges, starts/ends-with, month names, multi-value lists, audio vs subtitle language, and flag words explicitly requested in the query all appeared more than once, and the 'Do not invent fragment/json' rule is ambiguous when the query does ask for them. Kanji-facet disambiguation recurred in 4 of 8 trajectories. A guard that closing commentary is not a call prevents over-calling in narrative queries. Edits are short and attach to existing sections.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Parameters",
+        "content": "- VALUE MAPPING (qualifier -> schema field): 'between 4-7 letters' -> minLength `4` + maxLength `7` (never add wordLength alongside them); 'exactly 6 letters' -> wordLength/length `6`; 'begins/starts with p' -> beginsWith/startsWith `p`; 'ends with я' -> endsWith `я` (copy non-Latin text as written); 'June 21st' -> month `6`, day `21` (1-indexed numerals); a list of items for one field ('Yohkoh, STEREO_A, STEREO_B') -> ONE comma-joined value in that field; 'in English with Turkish subtitles' -> audio_lang `en` AND subtitle_lang `tr`; a code snippet in the query -> `code` verbatim; 'recorded since 2017' -> from_record_date `2017-01-01`."
+      },
+      {
+        "op": "replace",
+        "target": "(random-fact ranges, max, fragment, json, notfound)",
+        "content": "(random-fact ranges, max, fragment, json, notfound) unless the query explicitly asks for them. 'In JSON format with fragments included' -> json `true`, fragment `true`; 'verbose output' -> verbose `true`; 'check availability in both US and Germany' -> one call per country code"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "- FACET NOUN PICKS THE SIBLING. Same-provider endpoints differ by what the clause measures: 'radical with 7 strokes' -> `Radical stroke number` (`rs`); 'kanji with 7 strokes' -> `Kanji stroke number` (`ks`); 'taught in grade 2' -> `Kanji grade level` (`grade`); 'radical meaning X / water radical' -> `Radical English meaning` (`rem`); 'radicals in the hen position' -> `Radical position` (`rpos`); 'kunyomi reading oya' -> `Kunyomi reading` (`kun`); 'study list ap:c3 / mac:c12' -> the Study list tool whose name matches (AP exam / Macquarie), `list` verbatim. Likewise 'average gas prices across states' -> `Gas Price: allUsaPrice` (not the cities list), and 'exchange rates for travel bookings from Booking.com, in English' -> `Booking.com_v2: currencies` with `language_code`=`en-us`."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Which calls to make",
+        "content": "- A closing commentary or summary sentence ('This sequence suggests someone studying...', 'which seems less relevant to the goal') names no fetch, so it adds no call. Every sentence that names an action or a tool ('Finally, they accessed a test template from dcj9') still gets exactly one call, with the required and optional inputs the query states (drill ID, list code, word-length range)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

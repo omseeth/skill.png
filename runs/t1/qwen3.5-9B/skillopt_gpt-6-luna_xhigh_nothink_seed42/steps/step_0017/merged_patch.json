@@ -1,0 +1,52 @@
+{
+  "reasoning": "Kept the targeted examples and follow-up clarifications while avoiding changes that merely repeat existing rules. The assistant-suggested-area clarification and the general proximity guidance address separate sections and are complementary; the proximity edit preserves the existing rule to refresh an affected nearest result. Each edit is supported by one of the three source patches. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "content": "Do not infer unspoken counts (for example, “family vacation” does not establish `num_people`) or pass traveler counts to flight tools.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Do not map vague amenity wording to a narrower tool flag without clear equivalence.",
+      "content": "Do not map vague amenity wording to a narrower tool flag without clear equivalence (for example, “kid-friendly” alone does not mean the user wants `has_kids_club=True`; set that flag only when a kids' club is requested).",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Preserve user-provided date strings unless conversion is required, and use `adjust_date` rather than importing date libraries or doing date arithmetic in Python.",
+      "content": "Pass user-provided date strings unchanged to date-taking tools unless the schema explicitly requires a different format; do not parse, reformat, or calculate dates in Python or import date libraries. Use `adjust_date` only to compute checkout from an explicit trip start date and stated number of hotel nights. Never infer a one-night stay or derive check-in by subtracting from checkout; use explicitly supplied stay boundaries or a clearly established itinerary start date, and seek any genuinely missing required date.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results. Do not pass the attraction name as a `neighborhood` value or approximate proximity with a neighborhood filter. If a later constraint changes an underlying domain result, such as filtering the hotel set, recompute and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call.",
+      "content": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results. Do not pass the attraction name as a `neighborhood` value or approximate proximity with a neighborhood filter. A new neighborhood or area preference is a location constraint, not by itself a request to run `search_nearest`: apply and save same-domain filters to each explicitly targeted domain independently, using the latest suitable cached result for each, including a combined nearest result when it is a suitable filter base. If the user says the area applies to both hotels and restaurants, update both. If a later constraint changes an underlying domain result used by a proximity result, refresh and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion. Retrieve the latest suitable cached result and apply the corresponding same-domain filter when needed. Use `search_nearest` only if the user requests proximity.",
+      "content": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion. For a named area, street, or district, use the full area phrase as a `neighborhood` filter on suitable same-domain cached results, preserving existing criteria such as attraction type; do not use `search_nearest` for area exploration. For a specifically identified attraction entity, use `attraction_name`. Use `search_nearest` only when the user requests proximity.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "append",
+      "content": "\n- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

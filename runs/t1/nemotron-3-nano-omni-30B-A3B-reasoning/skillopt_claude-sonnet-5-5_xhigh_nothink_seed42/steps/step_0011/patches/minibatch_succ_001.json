@@ -1,0 +1,25 @@
+{
+  "batch_size": 4,
+  "success_patterns": [
+    "When a hotel's mandatory args (city, check-in, check-out) are finally complete, the agent emits one straight-line search_hotels call and a save_to_cache. It carries optional values the user stated in earlier turns (num_rooms, num_people) and adds nothing else (Rule 14, already covered).",
+    "On an opening turn that gives only a destination, purpose and party size, the agent outputs only one short seek_information asking for the missing travel date. It does no searching and invents no values (Rule 6, partly covered).",
+    "On a flight-class reply with both 'flights' and 'filtered_flights' cached, the agent loads the most refined key, filters only the new class, and saves under a new key (Rules 2 and 17, already covered).",
+    "Budget, stars and amenity answers accumulate across turns without creating a hotels cache entry. The correct response is to check the CACHE for a real hotels key, and if none exists and dates are missing, ask for the dates (Rule 8, covered but easy to violate)."
+  ],
+  "patch": {
+    "reasoning": "Most observed behaviour is already encoded. Two gaps remain. First, an opening turn with no named domain (only destination, purpose and party size) succeeded with a single dates-only seek_information. Second, one trajectory loaded a 'hotels' key that was not in the CACHE and failed at runtime, because accumulated hotel preferences were mistaken for a cached hotel search. Both additions are short clarifications that reinforce Rules 6-8 and 14 without new sections.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- If the last turn only gives a preference for a domain that still lacks mandatory values (e.g. 'a hotel with a gym and wifi' but no dates), call seek_information for the missing values (Rules 6 and 7) instead of searching.",
+        "content": "- Preferences collected over several turns (budget, stars, party size, amenities) do NOT mean a hotel search has run. Before any get_results_from_cache or filter_hotels, confirm that the exact key (e.g. 'hotels') appears in the CACHE summary. If the CACHE holds only another domain (e.g. only 'attractions') and the hotel dates are still unknown, output only `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. Do not load a key that is not listed, do not filter, and do not re-load other domains' keys just to return them."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Keep it to one short sentence, e.g. seek_information(\"We need to ask for the check-in and check-out dates\") or seek_information(\"We need the departure date for the flight\").",
+        "content": "- Opening turn with context only (e.g. 'a business trip to Lexington for 2 people', no date, no clear domain): the cache is empty and no mandatory args are known. Output exactly one short seek_information asking for the missing travel date(s). Do not search any domain, do not guess dates, and do not ask about optional details such as class, budget or amenities."
+      }
+    ]
+  },
+  "source_type": "success"
+}

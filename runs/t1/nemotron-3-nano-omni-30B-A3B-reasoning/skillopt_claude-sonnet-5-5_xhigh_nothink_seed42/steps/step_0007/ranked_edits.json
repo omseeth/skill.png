@@ -1,0 +1,42 @@
+{
+  "reasoning": "I kept all 9 failure-driven edits unchanged because they are corrective and non-conflicting. They replace the empty placeholder with a top checklist, tighten the pure-retrieval rule, and add Rules 27-32. I kept all 5 success-driven edits because none of them overlaps the failure edits or conflicts with them. They cover multi-city per-city searches with an exception for bare agreement, trip descriptors that are not parameters, flights added after hotel dates, a missing origin in seek_information, and hotel requests with no dates. The success edits are consistent with Rule 29 (search_nearest) and Rule 31 (hotel dates from round-trip flights). Every target string was checked against the current skill and exists outside the protected markers. The success edits sit at anchors different from the failure edits, so ordering is deterministic. Failure edits come first in the output. [optimizer-ranked: selected 4/14 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "Do not search, and do not ask about class, airline, time, return date, or passenger count.",
+      "content": "\n- The same holds for hotels. A hotel request with a city plus amenities ('kids club', 'beach access'), a rating, stars, a purpose ('family vacation') or a party size, but no stated check-in/check-out dates, is still missing the dates. Output only `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. Never call search_hotels with invented, example or identical check-in/check-out dates, and never infer num_people from context. An amenity word is not always a valid kwarg ('kids club' is has_kids_club, never kids_club), but with no dates there is no search at all.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "  - Only a refusal or 'no preference' ('Not really', 'Anything is fine') with an existing cache entry means pure retrieval.",
+      "content": "\n  - Exception: if the CACHE summary of a `filtered_*` key already lists the assistant's proposal as applied (e.g. 'Additionally filtering for neighborhood(s): [Downtown Lexington]') and the user only agrees ('Okay, that sounds good', 'Sure'), there is nothing new to filter. Output only `x = get_results_from_cache(key=\"<that domain's key>\")`. Never re-filter, and never re-save under a key that already exists in the CACHE. A 'yes' to a proposal that is NOT yet listed as applied is still a new constraint.\n  - Multi-city itinerary (the CACHE has per-city or per-leg keys such as first_flights/second_flights or first_hotels/second_hotels, or the user named two destinations): a newly accepted attraction type or a newly requested restaurant/attraction domain gets ONE search per city. Use the same type or constraint in each call and save each under its own key that mirrors the existing naming. Example after 'Yes, that sounds amazing' to 'Would you like Sporting attractions?': `first_attractions = search_attractions(city=\"Tucson\", type=[\"Sporting\"])`, `save_to_cache(key=\"first_attractions\", value=first_attractions)`, `second_attractions = search_attractions(city=\"Anchorage\", type=[\"Sporting\"])`, `save_to_cache(key=\"second_attractions\", value=second_attractions)`. Never skip a city, never put two cities in one call, and do not re-filter the cached flights or hotels on that turn.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Search only the domain whose mandatory args just became complete. Leave other domains' existing cache entries untouched (e.g. restaurants already cached, now the hotel dates arrive: call search_hotels only).",
+      "content": "\n- Flights added after hotel dates are known ('yeah help me with flights too', CACHE has 'hotels' for May 22-25): the stay dates supply the flight dates (check-in = outbound departure, check-out = return). Only the origin is missing, so output just `seek_information(\"We need the departure city for the flight.\")`. If the origin is already known, search the outbound leg on the check-in date and the return leg on the check-out date (Rule 9). Never answer by re-filtering or re-saving the hotels key, and never write import lines.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Include optional details the user explicitly stated (num_rooms, num_people, budget, amenities, cuisine, ...) as keyword args in the search call, and nothing the user did not say.",
+      "content": "\n- Trip descriptors are not parameters. 'Suitable for a family with kids', 'weekend getaway', 'business trip' and 'special occasion' add no search kwargs. Only literal numbers or amenities (e.g. '3 people', 'with a gym') are passed. Example: the user wanted a hotel in Memphis suitable for a family with kids, and the last turn gave 'Check-in is January 16, 2026 and check-out is January 25, 2026'. Output `hotels = search_hotels(city=\"Memphis\", checkin_date=[\"January 16, 2026\"], checkout_date=[\"January 25, 2026\"])` + `save_to_cache(key=\"hotels\", value=hotels)` with no has_kids_club or num_people.",
+      "support_count": 7,
+      "source_type": "success"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "I ranked by support (how many failures each edit fixes), then by whether it fills a gap in the current rules, then by generality. Edits 9, 11, 12 and 13 each have support 8, and edit 10 has 7. Edit 0 has support 4, and Edit 3 has support 3. Edit 0 is a broad checklist but mostly repeats Rules 21, 13 and 17, and it points to Rules 27-31, which would not exist if those edits are not selected. Edit 3 helps but has lower support than the top group. Edit 13 extends the 'context is not a date' rule to hotels, so amenities, purpose or party size no longer trigger a search with invented dates. It is general and applies often. Edit 9 handles two recurring turn patterns: a user agreeing to a proposal already applied in the cache (pure retrieval), and multi-city itineraries needing one search per city. Edit 11 covers adding flights after hotel dates are known, deriving flight dates from the stay and asking only for the missing origin. Rule 14 does not cover this. Edit 10 states a general principle that trip descriptors ('family with kids', 'special occasion') are not parameters. It fixes spurious kwargs on first searches. Edit 12 is mostly covered by Rule 6, which already lists origin as mandatory, so it was left out. The remaining edits (1, 2, 4, 5, 6, 7, 8) have support of 1-2 or are narrow special cases.",
+    "selected_indices": [
+      13,
+      9,
+      11,
+      10
+    ]
+  }
+}

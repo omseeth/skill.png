@@ -1,0 +1,35 @@
+{
+  "batch_size": 6,
+  "success_patterns": [
+    "When a clue quotes only the tail word of a title ('his book about this \"Express\"'), the agent answered with the complete standard title ('The Polar Express') instead of stripping the quoted word.",
+    "When a clue counts steps along an ordered ladder ('rise 5 ranks from Tenderfoot'), the agent read the ordered list from the passages, counted, and answered with the title at that position ('Eagle Scout').",
+    "When a clue was a definition or a near-copy of a repeated passage sentence, the agent answered with the term that heads or titles those passages (Hydroponics, Ulee's Gold, Sidney Poitier), in the bare form the passages repeat.",
+    "When an archive page showed the clue but no answer (clue followed directly by the next category), the agent did not copy neighbouring text. It used the quoted phrase as a pun or hint plus passage and general knowledge to name the person (Lucille Ball)."
+  ],
+  "patch": {
+    "reasoning": "All six successes were short, well-supported clues, and the skill already covers most of what they did. Four behaviours are either missing or in tension with existing rules. (1) The DELETE-CLUE-WORDS test could wrongly strip a quoted title tail such as 'Express'. (2) Step-counting clues have no guidance. (3) Archive hits that lack the answer are not distinguished from hits that carry it. (4) Definition-style clues are best resolved by taking the passage's headword. Each edit is short and generalizes beyond these questions.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- For titles, give the standard title without quotation marks and keep internal punctuation as written in the context ('M*A*S*H', not 'MASH film').",
+        "content": "\n- Exception to the delete-clue-words test: when the clue shows only the tail of a title or name in quotes, directly after 'this' ('his book about this \"Express\"', 'this \"Gold\"'), that quoted word is part of the answer. Give the full standard title as the passages show it ('The Polar Express', \"Ulee's Gold\"), not just the missing front part ('Polar'). The test is for separate modifiers the clue states outside the title."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Clue lists its own options ('Of North Park, East Park, West Park or South Park, it's where...'): the answer is exactly one of the listed options, copied verbatim. Use the context to pick which.",
+        "content": "\n- Counting clues ('rise 5 ranks from Tenderfoot & you're one of these', 'the third king after X', 'two steps above Y'): find the passage that lists the ordered ladder or sequence, count exactly the stated number of steps from the named starting item, and answer with the item at that position, using its standard name ('Eagle Scout'). Check that you did not count the starting item itself."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Archive lines may also be formatted 'CATEGORY | clue text | answer'. Take the answer that follows the clue, even if the whole context is one short passage.",
+        "content": "\n- Some archive pages list clues WITHOUT answers (the clue is followed by the next category, e.g. 'A comedienne: \"Ball of Fire\" LOSING, LOSING, & MORE LOSING: ...'). Matching the clue there does not give the answer, and neighbouring text is another clue. Take the answer from the other passages and your own knowledge. For a 'Category: \"quoted phrase\"' clue, answer the member of that category the phrase points to (a nickname, film title or pun on a name: 'Ball of Fire' + comedienne -> Lucille Ball). Confirm it with passages that pair the person with the phrase."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Anchor on the clue's most specific unique detail (a named person, capital, rare term such as 'Helots' or 'Khartoum') and choose the entity the passages repeatedly tie to it.",
+        "content": "\n- Descriptive 'this <category noun> ...' clues ('This science of growing plants without soil was developed in the mid-19th century') often have a passage that repeats nearly the same sentence. The answer is the term that heads or titles those passages ('HYDROPONICS AS A HOBBY', 'Hydroponic Systems'), in its bare form. Copy the full name when passages repeatedly pair it with the clue's anchor ('Sidney Poitier', not 'Poitier')."
+      }
+    ]
+  },
+  "source_type": "success"
+}

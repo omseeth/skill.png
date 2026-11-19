@@ -1,0 +1,51 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "tool_and_cache_operation_errors",
+      "count": 7,
+      "description": "Agents used stale or unsuitable cache bases, omitted required saves or filters, copied results without updating them, or added unnecessary operations."
+    },
+    {
+      "failure_type": "incomplete_pending_domains",
+      "count": 2,
+      "description": "Agents handled only the latest domain-specific reply and omitted another explicitly requested deliverable that was ready to complete."
+    },
+    {
+      "failure_type": "location_and_date_mapping",
+      "count": 1,
+      "description": "An agent shortened a combined neighborhood-and-city phrase and recalculated a checkout date that was already explicit."
+    },
+    {
+      "failure_type": "rating_range_interpretation",
+      "count": 1,
+      "description": "An agent treated a colloquial requested x-star rating as exact when the expected filter treats it as a minimum."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch repeatedly shows that the core tool and cache rules need a more prominent, actionable audit, and that follow-ups must be checked against every pending domain rather than only the latest reply. The remaining edits clarify the observed location/date mapping and rating-language distinctions without changing unrelated planning rules.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Write every result-producing search, filter, sort, or `search_nearest` call in two steps: assign its returned result to a variable, then save that exact, complete result object with `save_to_cache` under a fresh, descriptive key. Do not extract `.search_results`, rebuild, or merge tool output before saving. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Retrieve cached results by assigning `get_results_from_cache(...)` to a variable before passing them to another tool; do not nest the retrieval call. Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+        "content": "- **Use runtime tools directly and audit each operation:** Do not import libraries, redefine schemas, or add helper code; use supported arguments and the required types. For each intended search, filter, sort, or `search_nearest` call, assign its exact returned object to a variable and save that complete object under a fresh, descriptive key. Retrieve a cached base by its exact key, assign it to a variable, and pass that variable to the next tool; never nest retrievals or rely on variables from earlier turns. Do not save a retrieval as a new result, copy an unchanged result just to create a cache entry, repeat an operation, or touch unrelated results. Use keyword arguments except for `seek_information`, and do not invent optional criteria or pass unsupported parameters."
+      },
+      {
+        "op": "replace",
+        "target": "On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns, then decide separately for every requested or clearly pending domain.",
+        "content": "At each turn, make a per-domain checklist from the full conversation and cache, not just the latest reply. Decide independently for every explicitly requested or still-pending deliverable, and complete each domain whose required inputs are available even if another domain still needs clarification."
+      },
+      {
+        "op": "replace",
+        "target": "For a location combining a neighborhood or district with its city (for example, Midtown Atlanta or Downtown St. Louis), use the city in `city` and the full provided area phrase in `neighborhood`. When only a state or region is given, including an abbreviation, use `state`, not `city`.",
+        "content": "For a location combining a neighborhood or district with its city, pass the city separately and preserve the entire provided area phrase in `neighborhood` (for example, use `neighborhood=[\"Downtown St. Louis\"]`, not `[\"Downtown\"]`). When only a state or region is given, including an abbreviation, use `state`, not `city`. For hotels, if both check-in and checkout dates are explicit in the itinerary, use those dates directly; do not recalculate a known checkout with `adjust_date`."
+      },
+      {
+        "op": "replace",
+        "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+        "content": "For review `rating`, treat a bare numeric rating or “exactly x” as exact `[x, x]`, and “at least x” as `[x, 5]`. When the user asks for a place “with an x-star rating” as a quality threshold, use `[x, 5]` unless they explicitly say the rating must be exactly x. For a hotel’s explicit star count, use the `stars` field with an exact range such as `[2, 2]`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

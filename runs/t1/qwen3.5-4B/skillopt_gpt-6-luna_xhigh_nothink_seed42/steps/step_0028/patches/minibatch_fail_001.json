@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "runtime_namespace_violation",
+      "count": 3,
+      "description": "Agents imported tools from a nonexistent module despite the direct-injected-tool instructions."
+    },
+    {
+      "failure_type": "unrequested_domain_actions",
+      "count": 2,
+      "description": "Agents repeated unrelated itinerary work or added actions beyond the immediately affirmed proposal."
+    },
+    {
+      "failure_type": "stateful_update_incompletion",
+      "count": 5,
+      "description": "Agents failed to apply or save new criteria, prematurely returned no-op, or used the wrong base for nearby results."
+    },
+    {
+      "failure_type": "location_mapping_error",
+      "count": 3,
+      "description": "Agents shortened a full neighborhood expression or put a state abbreviation in the city field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The runtime, cache persistence, and incremental-update requirements are already stated explicitly, so repeating them would not patch a skill gap. These edits clarify the remaining interpretation issues: the scope of affirmations, complete neighborhood expressions that include a city name, and the organizing anchor for nearby recommendations.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "A brief affirmation authorizes only the action in that immediately preceding proposal or question; do not reopen or repeat unrelated domains or completed itinerary legs unless the user separately asks."
+      },
+      {
+        "op": "insert_after",
+        "target": "Map location values by kind: put a named district or neighborhood in a supported `neighborhood` field while retaining its containing city in `city`, and put state names or standard postal abbreviations in `state`, not `city`.",
+        "content": "When the user gives a full neighborhood expression that includes its city (for example, “Downtown Lexington”), preserve that complete expression as the `neighborhood` value and pass the city separately; do not shorten the neighborhood to just “Downtown.”"
+      },
+      {
+        "op": "insert_after",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "Interpret “recommend X near Y” as organizing around Y unless the user explicitly requests another base: set `groupBy` to Y’s domain (for example, restaurants near a hotel means `groupBy=\"hotel\"`), not automatically to the recommendation domain."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

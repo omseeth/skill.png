@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection",
+      "count": 3,
+      "description": "Some calls used an endpoint that did not best match the requested capability, fanned one item out across unrelated catalogs, or named an endpoint absent from the available tools."
+    },
+    {
+      "failure_type": "requested_operation_omission",
+      "count": 1,
+      "description": "An explicitly described operation was omitted because it appeared as an earlier step in the narrative."
+    },
+    {
+      "failure_type": "value_serialization",
+      "count": 3,
+      "description": "Numeric and boolean parameter values were emitted as native JSON values instead of the required JSON strings."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify endpoint selection so it is applied per requested item and cannot lead to fabricated or tangential calls; explicitly treat narrated steps as operations unless their results are already provided; and make clear that tool parameter types do not override the answer-format string requirement. Do not encourage adding unrelated calls that appear only in noisy gold labels.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Break the request into distinct operations and match each to an endpoint by its documented capability and parameter schema—not merely by provider or broad topic. Use the exact full tool identifier from the available-tools list. Do not substitute a tangential endpoint or call several similar alternatives for the same requested result.",
+        "content": "- Break the request into distinct operations and, for each item, shortlist only endpoints whose documented capability returns the requested kind of result for that resource or category. Choose the single best-supported endpoint unless the user explicitly requests multiple sources or distinct facets require separate calls. Do not fan an item out across unrelated catalogs, treat suggestions as product listings, infer capabilities from a provider name, or invent an endpoint absent from the available-tools list. Use the exact full tool identifier and its documented schema."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Planning, tool selection, and validation",
+        "content": "- Count every explicitly described operation in the request, including steps phrased as earlier actions or a sequence. Treat an operation as already completed only when the prompt supplies its result or explicitly says not to repeat it; otherwise, include its appropriate call in the checklist."
+      },
+      {
+        "op": "replace",
+        "target": "- In this answer format, encode scalar `value` fields as JSON strings, including numeric and boolean-like parameter values, unless the task's response contract explicitly requires native JSON numbers or booleans.",
+        "content": "- In this answer format, serialize every scalar `value` as a JSON string, including numbers, booleans, codes, and identifiers. A tool schema's native type does not override the answer-format contract; use native JSON numbers or booleans only when the task explicitly requires them in the response."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_refinement_and_delta",
+      "count": 5,
+      "description": "Agents missed new constraints or treated them as already satisfied, and sometimes re-searched or refined using outdated criteria instead of the cached result."
+    },
+    {
+      "failure_type": "result_assignment_and_caching",
+      "count": 3,
+      "description": "Some result-producing calls were left unsaved or the wrong object was saved."
+    },
+    {
+      "failure_type": "tool_schema_or_execution",
+      "count": 2,
+      "description": "Agents made unnecessary or invalid calls, including an invalid time format and extra processing."
+    },
+    {
+      "failure_type": "missing_information_and_domain_coverage",
+      "count": 1,
+      "description": "An agent guessed missing hotel dates and omitted an independently actionable attraction search."
+    },
+    {
+      "failure_type": "flight_leg_representation",
+      "count": 1,
+      "description": "A return date was treated as an arrival date instead of a separate reversed flight leg."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers saving tool results, separate flight legs, schema validation, and missing inputs, so repeating those rules would not address the main gap. The most prevalent failures show agents treating requested criteria as proof that cached results already contain them. Clarifying that cache summaries are the evidence for coverage should help trigger the needed refinement without redoing unrelated work.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.",
+        "content": "- Treat the listed cache summary as evidence of which criteria a result actually covers: criteria requested in the conversation but absent from the summary remain unsatisfied. For each such follow-up preference, refine the latest compatible cached result with the matching filter and the new preference; apply flight preferences to every applicable cached leg separately. Do not re-search when a compatible cached base is available, or no-op while a new constraint remains uncovered."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

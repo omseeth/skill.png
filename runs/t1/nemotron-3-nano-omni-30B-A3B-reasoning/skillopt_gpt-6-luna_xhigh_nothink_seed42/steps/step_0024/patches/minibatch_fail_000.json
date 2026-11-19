@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_cache_refinement",
+      "count": 4,
+      "description": "Agents searched again despite compatible cached results or failed to apply all newly stated filters to them."
+    },
+    {
+      "failure_type": "contextual_proximity_resolution",
+      "count": 2,
+      "description": "Agents misread a contextual proximity request, searched the wrong target or domain, or grouped results by the wrong focal domain."
+    },
+    {
+      "failure_type": "result_lifecycle",
+      "count": 4,
+      "description": "Search or refinement results were not consistently bound and saved to cache."
+    },
+    {
+      "failure_type": "missing_input_and_domain_readiness",
+      "count": 1,
+      "description": "An agent invented missing hotel dates and omitted a ready restaurant search."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the cached-refinement decision explicit for newly added criteria, including separate cached flight legs, and clarify how affirmative replies to concrete proximity questions determine the target and focal domain. Missing-input handling and result saving are already covered by the skill, so they need no duplicate edits.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+        "content": "- For every new filterable criterion, compare it with the latest relevant listed cache result. If that result covers the same requested item or route and the earlier criteria, retrieve it and call the matching filter with `prior_results` and all criteria newly stated in the latest turn, omitting criteria already represented in the cached result. When a compatible cached base exists, a new airline, class, budget, or amenity is a reason to filter—not to repeat the search. For round trips, do this separately for each compatible directional leg. Search only if no compatible base result exists."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+        "content": "\n- An affirmative reply to a concrete assistant question about finding one domain near a named place is explicit proximity intent. Use the requested candidate domain as the focal domain in `groupBy`; do not assume the named reference is an attraction. Verify that the cache covers the exact named target and, if not, search for it in its actual domain using the schema-supported name field (such as `hotel_name`, `attraction_name`, or `restaurant_name`). If no compatible candidate result exists, search the requested domain in the established destination city when its mandatory inputs are available. Do not infer a different city from an unrelated flight leg or re-filter unaffected cached results."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

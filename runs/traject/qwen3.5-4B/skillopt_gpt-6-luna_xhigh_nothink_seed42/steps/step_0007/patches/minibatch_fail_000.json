@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_call_set",
+      "count": 7,
+      "description": "Selected endpoints that only partly matched the requested operation or constraints, substituted providers, or added redundant and unrelated calls."
+    },
+    {
+      "failure_type": "argument_mapping_and_normalization",
+      "count": 6,
+      "description": "Omitted or misbucketed supported parameters, used unsupported values, or changed requested values during mapping."
+    },
+    {
+      "failure_type": "response_format",
+      "count": 1,
+      "description": "Returned malformed call objects that did not parse in the required format."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers schema checks, minimal call sets, and final-format validation. These edits clarify how constraints scope across neighboring outcomes, how to select between standard and custom simulation operations, and how to size open-ended list requests when the endpoint exposes a count field.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Keep modifiers attached to the result they qualify.",
+        "content": "Keep modifiers attached to the result they qualify: a location, source, country, category, date, or unit in one clause does not automatically constrain a neighboring outcome unless the wording clearly scopes it across both. For each outcome, require a candidate endpoint to satisfy all compatible explicit constraints; do not add a partially matching call as a supplement when an endpoint covers the fully constrained outcome."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Deduplicate the call set: make one invocation per distinct requested operation and input unless the schema supports batching or the user requests repetition. Do not add related calls as extra checks. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint.",
+        "content": "\n- When multiple endpoints support a requested simulation, prefer the explicitly standard or regular operation for an ordinary standard request; use a custom operation when the user requests a custom configuration. For an unrestricted draw, use documented all/unrestricted options when available rather than leaving meaningful scope controls unspecified."
+      },
+      {
+        "op": "replace",
+        "target": "Include optional settings only when requested or clearly implied; use documented freshness controls for “recent” or “latest” and a modest supported result count for “some.”",
+        "content": "Include optional settings only when requested or clearly implied; use documented freshness controls for “recent” or “latest” and a modest supported result count for “some” or an open-ended list request (such as top headlines), when a count or limit field is available and the endpoint is not fixed-size."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

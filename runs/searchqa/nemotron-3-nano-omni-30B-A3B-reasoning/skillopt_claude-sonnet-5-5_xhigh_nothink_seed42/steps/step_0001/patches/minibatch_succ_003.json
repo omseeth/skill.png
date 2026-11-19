@@ -1,0 +1,32 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "All questions are Jeopardy-style clues, often with no question mark, where a demonstrative like 'this prison', 'this phrase' or 'this daughter of Hecuba' marks what to name. The agent answered with exactly that entity.",
+    "The context is a noisy set of search-result snippets. The agent found the answer in the entity or phrase repeated across many snippets, or in a snippet that restates the clue verbatim, such as Jeopardy archive pages with 'clue | answer'.",
+    "Answers were short and bare: just the name or term, with no sentence, no restated clue and no explanation. The surface form matched the context, e.g. 'Hit-and-run', 'the Bastille', '(Lou) Gehrig'.",
+    "When the snippets only partly supported the answer (e.g. Harpers Ferry → John Brown), the agent combined the weak evidence with background knowledge to pick the single best-fitting entity. It did not hedge or abstain."
+  ],
+  "patch": {
+    "reasoning": "Every successful trajectory used the same approach: treat the question as a trivia clue, find the entity that best fits it in noisy snippets, and return it in minimal form. The skill is empty, so encoding this reading strategy and answer-formatting discipline should help on similar clue-style questions.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Clue-Style Questions (Jeopardy-like)\n- Many questions are trivia clues, not full questions. The demonstrative phrase ('this prison', 'this phrase', 'this late drummer', 'this daughter of ...') names the answer type. Identify it first, then answer with exactly that kind of thing (a person, place, term or phrase)."
+      },
+      {
+        "op": "append",
+        "content": "## Reading Noisy Context\n- The context is usually a set of web-search snippets, many of them irrelevant. Skim for (a) a snippet that restates the clue almost verbatim, often a quiz or Jeopardy archive in the form 'clue | answer' or 'clue ... (Answer)', and (b) an entity that recurs across several independent snippets alongside the clue's key terms. Prefer these over a single stray mention.\n- Combine several clue facts (dates, roles, relationships, nicknames) to confirm one candidate. Ignore snippets that only share generic words with the clue."
+      },
+      {
+        "op": "append",
+        "content": "## Answer Formatting\n- Put only the bare answer in the answer tags: the name, term or phrase. Do not write a sentence, restate the clue, or add qualifiers or explanation.\n- Use the standard surface form found in the context, such as a full name, the common phrase ('Hit-and-run'), or 'the Bastille'. Do not append extra descriptors."
+      },
+      {
+        "op": "append",
+        "content": "## When Context Is Weak\n- If the snippets support the answer only partly or indirectly, use background knowledge to pick the single entity that best fits all the clue's constraints and commit to it. Do not abstain or give several alternatives."
+      }
+    ]
+  },
+  "source_type": "success"
+}

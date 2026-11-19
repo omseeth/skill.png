@@ -1,0 +1,31 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "parameter_schema_placement",
+      "count": 3,
+      "description": "Optional fields were placed in the required-parameter list, including puzzle IDs, dice counts, word length, and a postal code."
+    },
+    {
+      "failure_type": "tool_selection",
+      "count": 1,
+      "description": "Email verification calls did not consistently use endpoints matching the requested validation capability."
+    },
+    {
+      "failure_type": "operation_coverage",
+      "count": 1,
+      "description": "A Wayfair catalog search was omitted while the related item-specific checks were included."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most repeated error was misclassifying optional fields despite their placement being specified in each tool schema. Make the schema-classification rule explicit at serialization time; the other failures are isolated and the existing skill already covers operation decomposition and capability-based tool selection.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Use each endpoint's exact parameter names and required/optional placement. Bind every constraint only to the call it modifies; do not carry dates, limits, filters, or pagination across operations.",
+        "content": "Classify every argument from the selected tool's schema before serialization: put only fields marked required under `required parameters`, and put all fields marked optional under `optional parameters`, even when the user supplied the value or the field is needed to express a requested refinement. Never promote an optional field to required. Bind each constraint only to the call it modifies; do not carry dates, limits, filters, or pagination across operations."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

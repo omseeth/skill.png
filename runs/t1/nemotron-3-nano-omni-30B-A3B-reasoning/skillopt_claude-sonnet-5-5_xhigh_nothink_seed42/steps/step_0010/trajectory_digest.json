@@ -1,0 +1,65 @@
+{
+  "step": 10,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 27,
+  "failure_patterns": [
+    {
+      "pattern": "output_hygiene_errors: Code that cannot run or is malformed: `from cache import ...` (ModuleNotFoundError), `value=_` (NameError), a bare search_* with no assignment or save, `city=\"OR\"` instead of state=, and invented optional params (flight_class economy, num_layovers) that the user never stated.",
+      "count": 27,
+      "task_ids": [
+        "restaurant:train:1:60:0",
+        "flighthotel:train:1:7:1",
+        "flighthotelrestaurant:train:3:42:1",
+        "flighthotel:train:17:15:3",
+        "flighthotelrestaurant:train:23:52:0",
+        "restaurant:train:8:4:3",
+        "restaurant:train:19:56:0",
+        "attraction:train:11:29:0",
+        "hotel:train:2:25:3",
+        "flight:train:10:60:3",
+        "flight:train:23:12:2",
+        "restaurant:train:23:15:1",
+        "attraction:train:19:56:0",
+        "hotelrestaurant:train:15:3:1",
+        "attraction:train:21:15:2",
+        "restaurant:train:14:15:3",
+        "flighthotelattraction:train:7:34:1",
+        "hotelrestaurant:train:14:3:0",
+        "restaurant:train:8:21:3",
+        "hotel:train:22:44:2",
+        "restaurant:train:4:45:2",
+        "hotel:train:14:35:2",
+        "flighthotelrestaurant:train:24:43:1",
+        "hotelattraction:train:8:42:3",
+        "flighthotelrestaurant:train:21:58:1",
+        "hotelrestaurant:train:18:53:4",
+        "restaurant:train:8:56:0"
+      ]
+    }
+  ],
+  "score_before": 0.41,
+  "score_after": 0.345,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "  - A restaurant request that gives only a dietary need or allergy ('nightshade allergy'), an occasion ('birthday'), a cuisine or a 'don't know' reply, with no city anywhere in the conversation, is still missing the city. Output only `seek_information(\"We need the city for the restaurant.\")`. Do not search and do not ask about cuisine, budget or rating.",
+      "target": "  - search_restaurants: city."
+    },
+    {
+      "op": "insert_after",
+      "content": "- An assistant offer such as 'I can help you find a hotel near City Museum' does not by itself trigger search_nearest. If the user then answers with hotel amenities ('a gym and wifi') and the CACHE holds 'hotels' (plus 'attractions'), do exactly `hotels = get_results_from_cache(key=\"hotels\")`, `filtered_hotels = filter_hotels(prior_results=hotels, gym_present=True, free_wifi_included=True)`, `save_to_cache(key=\"filtered_hotels\", value=filtered_hotels)`. Do not re-search or reload attractions, and do not call search_nearest unless the user explicitly asks for results sorted by nearness.",
+      "target": "- Only refine domains the last turn actually talks about. Never invent filter values (e.g. a made-up cuisine list or budget) for another domain."
+    },
+    {
+      "op": "insert_after",
+      "content": "- The first search must carry EVERY optional constraint stated in ANY earlier turn, not just the last one (rating, amenities, neighborhood, budget, party size). Example: turn 1 'hotel in St. Louis, with a meeting room and business facilities, rating at least 4.5', last turn 'arriving December 12, 2025, leaving December 14, 2025, Downtown St. Louis' -> `x = search_hotels(city=\"St. Louis\", checkin_date=[\"December 12, 2025\"], checkout_date=[\"December 14, 2025\"], rating=[4.5, 5], has_meeting_rooms=True, has_business_center=True, neighborhood=[\"Downtown St. Louis\"])` + `save_to_cache(key=\"hotels\", value=x)`. 'Meeting room' -> has_meeting_rooms; 'business facilities/center' -> has_business_center; neighborhood copies the user's wording including the city.",
+      "target": "- Include optional details the user explicitly stated (num_rooms, num_people, budget, amenities, cuisine, ...) as keyword args in the search call, and nothing the user did not say."
+    },
+    {
+      "op": "replace",
+      "content": "## Pre-output checklist (apply to every answer)\n1. Every search_*, filter_*, sort_results and search_nearest call is written `x = tool(...)` and followed on the next line by `save_to_cache(key=\"...\", value=x)`, even on the very first turn of a one-domain request. A bare `search_restaurants(...)` / `search_attractions(...)` line is ALWAYS wrong. Never use `_` as a value (`value=_` raises NameError) and never re-save an unchanged loaded result. First-search keys are the plain domain names: \"flights\", \"hotels\", \"restaurants\", \"attractions\". Example: `restaurants = search_restaurants(city=\"Memphis\", cuisine=[\"Turkish\"], has_vegetarian_options=True)` then `save_to_cache(key=\"restaurants\", value=restaurants)`.\n2. Output only short tool calls inside <CODE>. Never write `import` or `from ... import` (not even `from cache import ...`; the tools are already defined). No if/else, no `is None` cache probes, no print, no placeholder variables, and at most a one-line comment.\n3. A US state name or abbreviation ('OR', 'GA') is `state=\"OR\"`, never `city=\"OR\"`.\n4. Every kwarg must come from something the USER literally said. `return_date` does not exist (a round trip is two searches, Rule 9). 'One-way', '2 travelers', 'for 5 people', 'wedding' add no flight kwargs. Only 'non-stop'/'direct' adds num_layovers=[0]. Never add flight_class, budget, stars, num_people, or any `False` value nobody asked for. Things only the assistant mentioned ('room service?') are not user constraints.\n5. Only load keys that literally appear in the CACHE summary. A domain with no key is searched, never loaded, and never invent keys (if the CACHE has 'flights' and 'return_flights', there is no 'departure_flights').\n6. On a refinement, first list what the loaded key's CACHE summary already shows (cuisine, dietary flags, neighborhood, amenities, budget, rating, dates, travelers) and pass only the new constraint from the last turn. Touch only the domain(s) the LAST turn answers.\n7. A flight class/time/airline/budget preference is applied to EVERY flight leg key: load the most refined key of each leg, filter it, and save it under a new key.\n8. seek_information names only a domain the user actually requested and only args not given in ANY turn (Rule 31). Never call it when the value is already written somewhere in the conversation.",
+      "target": "(No learned rules yet. Rules will be added through the reflection process.)"
+    }
+  ]
+}

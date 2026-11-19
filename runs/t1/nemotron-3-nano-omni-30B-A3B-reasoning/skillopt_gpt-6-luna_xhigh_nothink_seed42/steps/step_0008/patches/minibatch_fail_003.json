@@ -1,0 +1,41 @@
+{
+  "batch_size": 3,
+  "failure_summary": [
+    {
+      "failure_type": "conversation_scope_and_action_coverage",
+      "count": 3,
+      "description": "Agents missed requested work from the conversation, including a cached-result refinement, a return flight and hotel, or a restaurant search."
+    },
+    {
+      "failure_type": "cache_refinement_and_result_persistence",
+      "count": 3,
+      "description": "Agents failed to refine a compatible cached result and/or assign and save tool results."
+    },
+    {
+      "failure_type": "argument_and_date_grounding",
+      "count": 2,
+      "description": "Agents used an invalid time format or invented lodging dates and party details instead of grounding arguments in the conversation."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that missing inputs block only the action that needs them, and that an unambiguous trip interval can supply return-flight and hotel dates. Add a tool-format check for exact flight times. The skill already requires cache refinement, result saving, and avoiding invented values, so those existing rules are not duplicated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "## Missing mandatory information\nBefore searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+        "content": "## Missing mandatory information\nCheck mandatory inputs separately for each requested action and domain against explicit values in the full conversation; related context does not automatically satisfy a required field. Do not infer missing mandatory values or use defaults. If any action is incomplete, make one `seek_information` call asking only for its missing mandatory inputs, but still execute and cache other requested actions whose own mandatory inputs are available. For example, missing hotel dates do not block a restaurant search when its city is known. Optional preferences are not mandatory inputs.\n\nWhen the conversation gives an unambiguous trip start and end date for a stay at the same destination, and no separate lodging dates are supplied, use those dates as hotel check-in and check-out. If the dates or destination relationship is ambiguous, ask rather than infer."
+      },
+      {
+        "op": "replace",
+        "target": "## Represent flight legs separately\n- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip, search outbound and return separately, reversing the route for the return; do not use an unsupported `return_date` argument or treat the return date as another outbound date. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "## Represent flight legs separately\n- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. When a user gives a travel date span for a flight between two cities, treat the first date as outbound and the second as the return date unless the trip is explicitly one-way or multi-city. Search the return separately with the route reversed; do not use an unsupported `return_date` argument or treat both dates as outbound dates in one call. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- For time-valued arguments, check the target tool’s accepted format and examples, and preserve the user’s stated time and AM/PM. If an exact time is supplied for a field that requires a two-value range, use that time for both bounds. Do not add seconds or convert formats unless the tool accepts the converted format."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

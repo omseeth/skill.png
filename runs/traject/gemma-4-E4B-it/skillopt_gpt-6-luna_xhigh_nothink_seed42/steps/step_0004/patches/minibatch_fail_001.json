@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_coverage",
+      "count": 5,
+      "description": "Agents substituted a search or generic endpoint for a better-matched operation, missed a requested facet, or added unrelated calls."
+    },
+    {
+      "failure_type": "schema_and_value_mapping",
+      "count": 5,
+      "description": "Agents incompletely mapped market settings or requested optional parameters, or placed parameters in the wrong schema group."
+    },
+    {
+      "failure_type": "tool_name_mismatch",
+      "count": 2,
+      "description": "Agents used a provider description instead of the canonical Provider: endpoint tool name."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits make canonical tool-name construction explicit, reinforce routing identifier-based requests to matching detail endpoints and using the field's expected market representation, and clarify that established operation names are valid for intentionally open-ended selectors. These address recurring failures without restating the skill's broader selection and validation rules.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Choose the most directly fitting documented endpoint using its exact `Provider: endpoint` name.",
+        "content": "Choose the most directly fitting documented endpoint. In the call's tool-name field, construct the exact canonical `Provider: endpoint` from the concise provider name and API endpoint name shown in the inventory; do not copy the provider's long descriptive blurb or the API description, or invent an alternate endpoint label."
+      },
+      {
+        "op": "insert_after",
+        "target": "Match the representation expected by each field: use a canonical slug when the schema requires one and convert quantities to documented units (for example, 5 minutes to 300 seconds).",
+        "content": "\n- **Route identifiers and market values to matching fields.** When a request supplies an ASIN, SKU, product ID, or other entity identifier and an available endpoint retrieves that entity by identifier, use that lookup/detail endpoint and its matching identifier field; do not substitute keyword search or pass the identifier as a search term to another source. For market selectors, determine whether the field expects a URL/hostname or a canonical market code, and convert only when the endpoint's convention or an unambiguous mapping establishes the expected form."
+      },
+      {
+        "op": "insert_after",
+        "target": "Never invent enum tokens, identifiers, credentials, or empty placeholders.",
+        "content": "\n- **Use established operations in open-ended selectors.** If a documented parameter is intentionally free-form (such as `function`, `mode`, or `action`) and the API has an established token that directly names the requested operation, use that token rather than omitting the requested deliverable because the values are not enumerated. Do not guess unsupported operations or opaque codes."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

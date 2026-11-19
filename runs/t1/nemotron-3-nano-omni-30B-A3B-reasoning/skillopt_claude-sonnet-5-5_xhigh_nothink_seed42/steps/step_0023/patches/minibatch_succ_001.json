@@ -1,0 +1,27 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Single-domain routing on refinement turns: the agent loads only the key of the domain the reply answers, filters it, and saves under a new key (hotel budget with flights cached; flight class on filtered_flights; hotel budget plus balcony).",
+    "Minimal filters: only the last turn's new constraint is passed. The budget-only reply gets `budget=125` and no flight lines. Hotel amenities already shown in the cache summary (gym, air conditioning) are not re-passed.",
+    "Compound turn (amenity plus restaurant 'near the hotel'): filter every constrained domain first, save each as final_*, then call search_nearest on the filtered results.",
+    "A first turn with the mandatory restaurant city missing yields one short seek_information naming only that item.",
+    "A combined budget plus amenity reply maps to one filter_hotels call with exactly two kwargs (budget=900, has_balcony=True). Less common amenity words need the exact TOOL CONFIG name (has_balcony), which Rule 27's mapping list does not yet cover.",
+    "Three 'successes' (a hotel budget reply with only attractions cached; a flight reply with no date) were scored right only by cache_em and had tool_f1=0 against a seek_information gold. Those outputs broke existing rules by re-searching or retrieving attractions, or by inventing dates. They are not patterns to encode."
+  ],
+  "patch": {
+    "reasoning": "Most successes are already covered by CACHE GATE, Rule 17 and Strategic sections A and D, so new rules would only be accretion. Two gaps remain. (1) Rule 27's amenity-to-parameter list omits several hotel params (has_balcony, has_valet_parking, has_inroom_kitchen, has_beach_access, has_ocean_view_rooms_present, has_electric_vehicle_charging, has_skiing_lodging). It also wrongly implies is_wheelchair_accessible has a has_ prefix, which risks ValidationErrors. I fix this by editing the existing line instead of adding a section. (2) In the 'STL is our preferred choice' trajectory the agent invented dates and arrival_time instead of asking for the departure date. I attach a short positive trigger to the existing 'Context is not a date' bullet: an airport-code or other optional-detail reply with no date known still gets only seek_information.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "'city view' -> has_city_view_rooms_present=True. Only gym_present, pool_present, breakfast_included, free_wifi_included, smoking_allowed, air_conditioning_present, heating_present, airport_shuttle_present and is_pet_friendly lack the has_ prefix.",
+        "content": "'city view' -> has_city_view_rooms_present=True. 'ocean view' -> has_ocean_view_rooms_present=True. 'beach' / 'beach access' -> has_beach_access=True. 'balcony' -> has_balcony=True. 'valet parking' -> has_valet_parking=True. 'in-room kitchen' -> has_inroom_kitchen=True. 'EV charging' -> has_electric_vehicle_charging=True. 'skiing' -> has_skiing_lodging=True. 'wheelchair accessible' -> is_wheelchair_accessible=True. A loose budget in the same reply combines with these in ONE call ('around 900 per night, and a balcony would be nice' -> `filter_hotels(prior_results=x, budget=900, has_balcony=True)`). Only gym_present, pool_present, breakfast_included, free_wifi_included, smoking_allowed, air_conditioning_present, heating_present, airport_shuttle_present, is_pet_friendly and is_wheelchair_accessible lack the has_ prefix."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not search, and do not ask about class, airline, time, return date, or passenger count.",
+        "content": " A reply that only names an airport code or another optional detail ('STL is our preferred choice') while the conversation still has no departure date is not a date. Output only `seek_information(\"We need the departure date for the flight.\")`. Never write a search_flights call with invented dates or an arrival_time window. The airport goes into start_airport / end_airport only once the date is known."
+      }
+    ]
+  },
+  "source_type": "success"
+}

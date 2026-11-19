@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "refilter_cached_domain_instead_of_new_search",
+      "count": 3,
+      "description": "T1 and T5 re-filtered cached flight keys for 'business' instead of first-searching the requested hotel (T5 also loaded a missing 'hotels' key and used the invented kwarg has_free_wifi_included). T2 treated 'Yes' to 'any other Social attractions?' as a hotel num_people refilter instead of a fresh attraction search."
+    },
+    {
+      "failure_type": "state_code_passed_as_city",
+      "count": 2,
+      "description": "T6 and T8 wrote search_attractions(city=\"AZ\"/\"GA\") instead of state=, despite several existing rules."
+    },
+    {
+      "failure_type": "fabricated_dates_and_dropped_domain",
+      "count": 1,
+      "description": "T7 searched hotels with May 16/18, 2025 (copied from a skill example) when no dates were given, and dropped the requested restaurant search plus the closing seek_information."
+    },
+    {
+      "failure_type": "seek_information_after_dates_given",
+      "count": 1,
+      "description": "T4 answered a date-range reply with seek_information (and asked for hotel dates nobody requested) instead of two flight searches."
+    },
+    {
+      "failure_type": "wrong_dietary_flag_mapping",
+      "count": 1,
+      "description": "T3 mapped a nightshade allergy to has_gluten_free_options; gold uses has_tomato_allergy_options."
+    }
+  ],
+  "patch": {
+    "reasoning": "These edits target the failures that recur across the batch and add little text. (1) A short top-of-skill line for the state= vs city= trap (2 of 8 failures, despite deeper rules) plus a restaurant allergy-flag mapping. (2) A scope clarification on the SEARCH GATE, which currently pushes the model to filter whenever any key exists. A requested domain with no key must be searched, and 'Yes' to a new attraction type is a fresh search; the slow block already says this but the top rule contradicts it. (3) A fix to the Rule 7 example that primes seek_information even after the user has given dates. (4) Removal of the literal example dates in the St. Louis example, which the model copied into a no-date hotel search. No FLIGHT REPLIES (-1) block or 'only new constraints' wording is touched, since edits there were rejected in earlier steps.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n\n- KWARG TRAPS: (a) A state name or two-letter code ('Social attractions in AZ', 'a trip to GA', 'Georgia') is `state=\"AZ\"`; `city=\"AZ\"` or `city=\"GA\"` is always wrong. Use city= only for a real city name. (b) Restaurant allergy words each have their own flag: nightshade or tomato -> has_tomato_allergy_options=True, dairy -> has_dairy_allergy_options, nut -> has_nut_allergy_options, shellfish -> has_shell_fish_allergy_options, gluten -> has_gluten_free_options. Never substitute a different flag."
+      },
+      {
+        "op": "insert_after",
+        "target": "saved as filtered_attractions.",
+        "content": "\n  GATE SCOPE: the gate is per domain. (i) A domain requested anywhere in the conversation but with NO key (for example a hotel asked for in turn 1 and never searched, while only flight keys exist) is searched now, using the city and dates already in the conversation. A stay of 'N nights' means `adjust_date` from the known start date, and a solo trip means num_people=1. Cached flight keys are NOT re-filtered for a class their summary already lists, and a reply like 'don't need a return flight' adds no flight action. Never load a key that is not literally in CACHE. (ii) 'Yes' to an assistant offer of ANOTHER attraction type ('any other Social attractions?') is a fresh `search_attractions(city=<trip city>, type=[\"<offered type>\"])` saved under a new key such as attractions_2. It is not a filter, and not a hotel party-size refilter."
+      },
+      {
+        "op": "replace",
+        "target": "A flight-only opener with origin and destination ('large group booking from Atlanta to Tucson for a school trip') -> ask only for the departure date, and do not add hotel dates because no hotel was requested.",
+        "content": "A flight-only opener with origin and destination and NO date yet ('large group booking from Atlanta to Tucson for a school trip') -> ask only for the departure date, and do not add hotel dates because no hotel was requested. Once the user answers with a date or an 'X to Y' range, never ask again: write the two flight searches of Rule 9 (departure_flights and return_flights), and a hotel search only if a hotel was requested."
+      },
+      {
+        "op": "replace",
+        "target": "Example: CACHE holds only flight keys (depart May 16, 2025, return May 18, 2025, trip to St. Louis) and the turn says 'A 4 star hotel in Downtown St. Louis with business facilities and a gym. And I'm interested in Touristy attractions' -> `hotels = search_hotels(city=\"St. Louis\", checkin_date=[\"May 16, 2025\"], checkout_date=[\"May 18, 2025\"], stars=[4, 4],",
+        "content": "Example: CACHE holds only flight keys (outbound date X and return date Y, both written by the user earlier, trip to St. Louis) and the turn says 'A 4 star hotel in Downtown St. Louis with business facilities and a gym. And I'm interested in Touristy attractions' -> `hotels = search_hotels(city=\"St. Louis\", checkin_date=[\"<X exactly as the user wrote it>\"], checkout_date=[\"<Y exactly as the user wrote it>\"], stars=[4, 4],"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

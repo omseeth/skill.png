@@ -1,0 +1,1592 @@
+Your task is to generate a Python code based on a conversation between the user and the assistant, where the last turn is from the user.
+The code typically involves calling one or more tools (functions) to help the user in planning their travel request.
+In the Python code, you need to use the following tools:
+
+# TOOL CONFIG
+
+############# Tool Number: 1 #############  
+
+Tool Name:
+
+    search_flights
+
+Definition: 
+
+    Use this tool to search for flights based on several criteria such as preference of flight class, airlines, number of layovers, layover cities, departure time, arrival time, price of flight ticket, etc. Note - One of start_airport_city, start_airport or airport_code MUST be provided.
+
+Args: 
+
+    
+    start_airport_city: Optional[str] = Field(
+    default=None,
+    description=Starting airport city the user would like to fly out of.,
+)
+
+    end_airport_city: Optional[str] = Field(
+    default=None,
+    description=Ending airport city the user would like to fly out to.,
+)
+
+    departure_date: list[str] = Field(
+    description=List of the departure dates the user would like to fly out on. Date must be a string the formats: for example - 'January 1, 2025',
+)
+
+    departure_time: Optional[list[str]] = Field(
+    default=None,
+    description=List of the time range the user would like to fly out on. Consists of two values. The earliest and latest departure times for the user.,
+)
+
+    arrival_date: Optional[list[str]] = Field(
+    default=None,
+    description=List of the arrival dates the user would like to arrive to destination on. Date must be a string the formats: for example - 'January 1, 2025' ,
+)
+
+    arrival_time: Optional[list[str]] = Field(
+    default=None,
+    description=List of the time range the user would like to arrive at destination at. Consists of two values. The earliest and latest arrival times for the user.,
+)
+
+    start_airport: Optional[str] = Field(
+    default=None,
+    description=Starting airport the user would like to fly out of.,
+)
+
+    end_airport: Optional[str] = Field(
+    default=None,
+    description=Destination airport the user would like to fly to.,
+)
+
+    start_airport_code: Optional[str] = Field(
+    default=None,
+    description=Starting airport code.,
+)
+
+    end_airport_code: Optional[str] = Field(
+    default=None,
+    description=List of destination airport codes.,
+)
+
+    flight_id: Optional[list[str]] = Field(
+    default=None,
+    description=List of flight ids the user would like to fly with.,
+)
+
+    airline: Optional[list[str]] = Field(
+    default=None,
+    description=The list of possible airlines the user would like to fly with,
+)
+
+    budget: Optional[int] = Field(
+    default=None,
+    description=The maximum budget the user would like to spend for a ticket,
+)
+
+    flight_class: Optional[list[str]] = Field(
+    default=None,
+    description=List of the classes of the flight experience the user prefers. It could be business, economy or first,
+)
+
+    num_layovers: Optional[list[int]] = Field(
+    default=[0, 1],
+    description=Number of layovers user prefers. List consisting of 0, 1 or 2.,
+)
+
+    layover_1_city: Optional[list[str]] = Field(
+    default=None,
+    description=List containing options for the first layover city the user would prefer,
+)
+
+    layover_2_city: Optional[list[str]] = Field(
+    default=None,
+    description=List containing options for the second layover city the user would prefer,
+)
+
+    layover_1_duration_minutes: Optional[int] = Field(
+    default=60,
+    description=The maximum duration of the first layover,
+)
+
+    layover_2_duration_minutes: Optional[int] = Field(
+    default=60,
+    description=The maximum duration of the second layover,
+)
+
+    duration_minutes: Optional[int] = Field(
+    default=None,
+    description=Maximum duration of flight in minutes for the user,
+)
+
+Usage Examples: 
+
+    >>> # Usage Example:
+search_flights(start_airport_city="Key West",end_airport_city="Fayetteville",departure_date=["2025-08-03", "2025-08-04"])
+
+>>> # Usage Example:
+search_flights(start_airport_city="Los Angeles",end_airport_city="Seattle",departure_date=["2025-09-01"],airline=["AB", "AA"])
+
+>>> # Usage Example:
+search_flights(start_airport_city="San Francisco",end_airport_city="Boston",arrival_date=["2026-01-02"],arrival_time=["08:00:00", "12:00:00"],departure_date=["2026-01-01", "2026-01-02"],airline=["AA", "AB", "AC", "AD"])
+
+>>> # Usage Example:
+search_flights(start_airport_city="Phoenix",end_airport_city="Memphis",arrival_time=["00:00:00", "14:00:00"],departure_date=["2025-10-01", "2025-10-02", "2025-10-03"],airline=["AE"], num_layovers=[1], layover_1_city=["Chicago"])
+
+>>> # Usage Example:
+search_flights(start_airport_city="Boston",end_airport_city="Houston",departure_date=["2025-03-01", "2025-03-02", "2025-03-03", "2025-03-04"],airline=["AE"], num_layovers=[2], layover_1_city=["Chicago"], layover_2_city=["Detroit", "Dallas"])
+
+Returns:
+    SearchResultsOutputModel: Output object which contains the resulting flights as well as the summary.
+
+Output:
+
+    
+Pydantic class SearchResultsOutputModel object with the following schema.
+
+class SearchResultsOutputModel(BaseModel):
+    search_results: List[Dict] = Field(
+        default=None, description="List of search results."
+    )
+    query_summary: Optional[str] = Field(
+        default=None, description="Response to customer."
+    )
+    model_config = ConfigDict(extra="forbid")
+
+
+####################################################
+
+############# Tool Number: 2 #############  
+
+Tool Name:
+
+    filter_flights
+
+Definition: 
+
+    Use this tool to filter out flights based on several criteria such as preference of flight class, airlines, number of layovers, layover cities, departure time, arrival time, price of flight ticket, etc.
+
+Args: 
+
+    
+    prior_results: SearchResultsOutputModel = Field(
+    description=The results from the previous search query made by the customer,
+)
+
+    start_airport_city: Optional[str] = Field(
+    default=None,
+    description=Starting airport city the user would like to fly out of,
+)
+
+    end_airport_city: Optional[str] = Field(
+    default=None,
+    description=Ending airport city the user would like to fly out to.,
+)
+
+    departure_date: Optional[list[str]] = Field(
+    default=None,
+    description=List of the departure dates the user would like to fly out on. Date must be a string the formats: for example - 'January 1, 2025',
+)
+
+    arrival_date: Optional[list[str]] = Field(
+    default=None,
+    description=List of the arrival dates the user would like to arrive to destination on. Date must be a string the formats: for example - 'January 1, 2025',
+)
+
+    departure_time: Optional[list[str]] = Field(
+    default=None,
+    description=List consisting of start and end departure times the user would like to arrive to destination on,
+)
+
+    arrival_time: Optional[list[str]] = Field(
+    default=None,
+    description=List consisting of start and end arrival times the user would like to arrive to destination on,
+)
+
+    flight_id: Optional[list[str]] = Field(
+    default=None,
+    description=List of flight ids the user would like to fly with.,
+)
+
+    start_airport: Optional[str] = Field(
+    default=None,
+    description=Starting airport the user would like to fly out of.,
+)
+
+    end_airport: Optional[str] = Field(
+    default=None,
+    description=Destination airport the user would like to fly to.,
+)
+
+    start_airport_code: Optional[str] = Field(
+    default=None,
+    description=Starting airport code.,
+)
+
+    end_airport_code: Optional[str] = Field(
+    default=None,
+    description=List of destination airport codes.,
+)
+
+    airline: Optional[list[str]] = Field(
+    default=None,
+    description=The list of possible airlines the user would like to fly with,
+)
+
+    budget: Optional[int] = Field(
+    default=None,
+    description=The maximum budget the user would like to spend for a ticket,
+)
+
+    flight_class: Optional[list[str]] = Field(
+    default=None,
+    description=List of the classes of the flight experience the user prefers,
+)
+
+    num_layovers: Optional[list[int]] = Field(
+    default=[0, 1],
+    description=Number of layovers user prefers,
+)
+
+    layover_1_city: Optional[list[str]] = Field(
+    default=None,
+    description=List containing options for the first layover city the user would prefer,
+)
+
+    layover_2_city: Optional[list[str]] = Field(
+    default=None,
+    description=List containing options for the second layover city the user would prefer,
+)
+
+    layover_1_duration_minutes: Optional[int] = Field(
+    default=60,
+    description=The duration of the first layover,
+)
+
+    layover_2_duration_minutes: Optional[int] = Field(
+    default=60,
+    description=The duration of the second layover,
+)
+
+    duration_minutes: Optional[int] = Field(
+    default=None,
+    description=Preferred duration of flight,
+)
+
+Usage Examples: 
+
+    >>> # Usage Example:
+filter_flights(prior_results=search_results,airline=["AB", "AC"])
+
+>>> # Usage Example:
+filter_flights(prior_results=search_results, arrival_date=["2026-01-02"],arrival_time=["08:00:00", "12:00:00"],departure_date=["2026-01-01", "2026-01-02"],airline=["AA", "AB", "AC", "AD"], duration_minutes=240)
+
+>>> # Usage Example:
+filter_flights(prior_results=search_results,arrival_time=["00:00:00", "14:00:00"],departure_date=["2025-10-01", "2025-10-02", "2025-10-03"],airline=["AE"], num_layovers=[1], layover_1_city=["Chicago"])
+
+>>> # Usage Example:
+filter_flights(prior_results=search_results,start_airport_city="Phoenix",end_airport_city="Houston",departure_date=["2025-03-01", "2025-03-02", "2025-03-03", "2025-03-04"],airline=["AE"], num_layovers=[2], layover_1_city=["Chicago"], layover_2_city=["Detroit", "Dallas"])
+
+>>> # Usage Example:
+filter_flights(prior_results=search_results, budget=750, flight_class=["Economy", "Business"])
+
+Returns:
+   SearchResultsOutputModel: Output object which contains the resulting flights as well as the summary of the query.
+
+Output:
+
+    
+Pydantic class SearchResultsOutputModel object with the following schema.
+
+class SearchResultsOutputModel(BaseModel):
+    search_results: List[Dict] = Field(
+        default=None, description="List of search results."
+    )
+    query_summary: Optional[str] = Field(
+        default=None, description="Response to customer."
+    )
+    model_config = ConfigDict(extra="forbid")
+
+
+####################################################
+
+############# Tool Number: 3 #############  
+
+Tool Name:
+
+    search_hotels
+
+Definition: 
+
+    Use this tool to search for hotels based on several criteria such as city, whether amenities are present such as breakfast, gym, pool
+
+Args: 
+
+    
+    city: str = Field(
+    description=City the user would like to look for a hotel at.,
+)
+
+    checkin_date: list[str] = Field(
+    description=List of the check-in dates the user would like to check-in to a hotel. Date must be a string the formats: for example - 'January 1, 2025',
+)
+
+    checkout_date: list[str] = Field(
+    description=List of the check out dates the user would like to check out of a hotel. Date must be a string the formats: for example - 'January 1, 2025',
+)
+
+    num_rooms: Optional[int] = Field(
+    default=None,
+    description=Number of rooms the user would like to book at hotel.,
+)
+
+    num_people: Optional[int] = Field(
+    default=None,
+    description=Number of people the user would like to book at hotel.,
+)
+
+    neighborhood: Optional[list[str]] = Field(
+    default=None,
+    description=List of neighborhoods the user would look to look for a hotel at.,
+)
+
+    rating: Optional[list[float]] = Field(
+    default=None,
+    description=Consists of the minimum and maximum ratings the user is willing to consider for a hotel,
+)
+
+    stars: Optional[list[int]] = Field(
+    default=None,
+    description=Consists of the minimum and maximum star values of the hotel the user is interested in.,
+)
+
+    hotel_name: Optional[list[str]] = Field(
+    default=None,
+    description=List of hotel names the user would like to look at,
+)
+
+    budget: Optional[int] = Field(
+    default=None,
+    description=Maximum budget of the user for booking a hotel per night,
+)
+
+    gym_present: Optional[bool] = Field(
+    default=None,
+    description=Whether or not user wants a gym present in the hotel. True or False.,
+)
+
+    pool_present: Optional[bool] = Field(
+    default=None,
+    description=Whether or not user wants a pool present in the hotel. True or False.,
+)
+
+    breakfast_included: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel that includes breakfast. True or False.,
+)
+
+    smoking_allowed: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel that allows smoking. True or False.,
+)
+
+    air_conditioning_present: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel that includes air conditioning. True or False.,
+)
+
+    heating_present: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel that includes heating. True or False.,
+)
+
+    free_wifi_included: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel with free wifi. True or False.,
+)
+
+    airport_shuttle_present: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has an airport shuttle. True or False.,
+)
+
+    is_pet_friendly: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which is pet friendly and allows a pet. True or False.,
+)
+
+    has_spa_services: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has spa services. True or False.,
+)
+
+    has_room_service: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has room service. True or False.,
+)
+
+    has_beach_access: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has access to a beach. True or False.,
+)
+
+    has_business_center: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has a business center. True or False.,
+)
+
+    has_fitness_class: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has a fitness class. True or False.,
+)
+
+    has_laundry_service: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has a laundry service. True or False.,
+)
+
+    has_valet_parking: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has valet parking. True or False.,
+)
+
+    has_balcony: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel has a balcony. True or False.,
+)
+
+    has_rooftop_bar: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has a rooftop bar. True or False.,
+)
+
+    has_inroom_kitchen: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has an in-room kitchen. True or False.,
+)
+
+    has_kids_club: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has a kids club. True or False.,
+)
+
+    has_meeting_rooms: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has meeting rooms. True or False.,
+)
+
+    has_electric_vehicle_charging: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has electric vehicle charging. True or False.,
+)
+
+    has_hot_tub: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has a hot tub. True or False.,
+)
+
+    has_sauna: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has a sauna. True or False.,
+)
+
+    has_free_parking: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has free parking. True or False.,
+)
+
+    is_wheelchair_accessible: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which is wheelchair accessible. True or False.,
+)
+
+    has_skiing_lodging: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which is has skiing lodging. True or False.,
+)
+
+    has_ocean_view_rooms_present: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has rooms with a view of the ocean present. True or False,
+)
+
+    has_city_view_rooms_present: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has rooms present with a view of the city. True or False.,
+)
+
+Usage Examples: 
+
+    >>> # Usage Example:
+search_hotels(city="Key West",checkin_date=["2025-08-03", "2025-08-04"], checkout_date=["2025-08-11"], num_rooms=1)
+
+>>> # Usage Example:
+search_hotels(city="Los Angeles",checkin_date=["2025-09-01"],checkout_date=["2025-09-03", "2025-09-04"],num_rooms=2, rating=3, stars=[2,3,4])
+
+>>> # Usage Example:
+search_hotels(city="San Francisco",checkin_date=["2026-01-02"],checkout_date=["2026-01-05"], breakfast_included=True, smoking_allowed=False)
+
+>>> # Usage Example:
+search_hotels(city="San Jose",checkin_date=["2025-10-01", "2025-10-02"],checkout_date=["2025-10-08", "2025-10-09", "2025-10-10"], budget=350, breakfast_included=True, smoking_allowed=False, heating_present=True)
+
+>>> # Usage Example:
+search_hotels(city="Phoenix",checkin_date=["2025-10-21"],checkout_date=["2025-10-31"], budget=1000, breakfast_included=True, "smoking_allowed"=False, air_conditioning_present=True ,heating_present=True)
+
+Returns:
+    SearchHotelsOutputModel: Output object which contains the resulting hotels as well as the summary.
+
+Output:
+
+    
+Pydantic class SearchResultsOutputModel object with the following schema.
+
+class SearchResultsOutputModel(BaseModel):
+    search_results: List[Dict] = Field(
+        default=None, description="List of search results."
+    )
+    query_summary: Optional[str] = Field(
+        default=None, description="Response to customer."
+    )
+    model_config = ConfigDict(extra="forbid")
+
+
+####################################################
+
+############# Tool Number: 4 #############  
+
+Tool Name:
+
+    filter_hotels
+
+Definition: 
+
+    Use this tool to search for hotels based on several criteria such as city, whether amenities are present such as breakfast, gym, pool
+
+Args: 
+
+    
+    prior_results: SearchResultsOutputModel = Field(
+    description=The results from the previous search query made by the customer,
+)
+
+    checkin_date: Optional[list[str]] = Field(
+    default=None,
+    description=List of the check-in dates the user would like to check-in to a hotel. Date must be a string the formats: for example - 'January 1, 2025' ,
+)
+
+    checkout_date: Optional[list[str]] = Field(
+    default=None,
+    description=List of the check out dates the user would like to check out of a hotel. Date must be a string the formats: for example - 'January 1, 2025' ,
+)
+
+    num_rooms: Optional[int] = Field(
+    default=None,
+    description=Number of rooms the user would like to book at hotel.,
+)
+
+    num_people: Optional[int] = Field(
+    default=None,
+    description=Number of people the user would like to book at hotel.,
+)
+
+    neighborhood: Optional[list[str]] = Field(
+    default=None,
+    description=List of neighborhoods the user would look to look for a hotel at.,
+)
+
+    rating: Optional[list[float]] = Field(
+    default=None,
+    description=Consists of the minimum and maximum ratings the user is willing to consider for a hotel,
+)
+
+    stars: Optional[list[int]] = Field(
+    default=None,
+    description=Consists of the minimum and maximum star values of the hotel the user is interested in.,
+)
+
+    hotel_name: Optional[list[str]] = Field(
+    default=None,
+    description=List of hotel names the user would like to look at,
+)
+
+    budget: Optional[int] = Field(
+    default=None,
+    description=Maximum budget of the user for booking a hotel per night,
+)
+
+    gym_present: Optional[bool] = Field(
+    default=None,
+    description=Whether or not user wants a gym present in the hotel. True or False.,
+)
+
+    pool_present: Optional[bool] = Field(
+    default=None,
+    description=Whether or not user wants a pool present in the hotel. True or False.,
+)
+
+    breakfast_included: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel that includes breakfast. True or False.,
+)
+
+    smoking_allowed: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel that allows smoking. True or False.,
+)
+
+    air_conditioning_present: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel that includes air conditioning. True or False.,
+)
+
+    heating_present: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel that includes heating. True or False.,
+)
+
+    free_wifi_included: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel with free wifi. True or False.,
+)
+
+    airport_shuttle_present: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has an airport shuttle. True or False.,
+)
+
+    is_pet_friendly: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which is pet friendly and allows a pet. True or False.,
+)
+
+    has_spa_services: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has spa services. True or False.,
+)
+
+    has_room_service: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has room service. True or False.,
+)
+
+    has_beach_access: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has access to a beach. True or False.,
+)
+
+    has_business_center: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has a business center. True or False.,
+)
+
+    has_fitness_class: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has a fitness class. True or False.,
+)
+
+    has_laundry_service: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has a laundry service. True or False.,
+)
+
+    has_valet_parking: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has valet parking. True or False.,
+)
+
+    has_balcony: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel has a balcony. True or False.,
+)
+
+    has_rooftop_bar: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has a rooftop bar. True or False.,
+)
+
+    has_inroom_kitchen: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has an in-room kitchen. True or False.,
+)
+
+    has_kids_club: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has a kids club. True or False.,
+)
+
+    has_meeting_rooms: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has meeting rooms. True or False.,
+)
+
+    has_electric_vehicle_charging: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has electric vehicle charging. True or False.,
+)
+
+    has_hot_tub: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has a hot tub. True or False.,
+)
+
+    has_sauna: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has a sauna. True or False.,
+)
+
+    has_free_parking: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has free parking. True or False.,
+)
+
+    is_wheelchair_accessible: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which is wheelchair accessible. True or False.,
+)
+
+    has_skiing_lodging: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which is has skiing lodging. True or False.,
+)
+
+    has_ocean_view_rooms_present: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has rooms with a view of the ocean present. True or False,
+)
+
+    has_city_view_rooms_present: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a hotel which has rooms present with a view of the city. True or False.,
+)
+
+Usage Examples: 
+
+    >>> # Usage Example:
+filter_hotels(prior_results=hotel_results, gym_present=True)
+
+>>> # Usage Example:
+filter_hotels(prior_results=hotel_results,checkin_date=["2025-09-01"],checkout_date=["2025-09-03", "2025-09-04"],rating=3, stars=[2,3,4])
+
+>>> # Usage Example:
+filter_hotels(prior_results=hotel_results, breakfast_included="Yes", smoking_allowed=False)
+
+>>> # Usage Example:
+filter_hotels(prior_results=hotel_results,checkin_date=["2025-10-01"],checkout_date=["2025-10-08"], budget=350, breakfast_included=True, smoking_allowed=False, heating_present=True)
+
+>>> # Usage Example:
+filter_hotels(prior_results=hotel_results,checkin_date=["2025-10-21"],checkout_date=["2025-10-31"], budget=1000, breakfast_included=True, "smoking_allowed"=False, air_conditioning_present=True ,heating_present=True)
+
+Returns:
+    SearchResultsOutputModel: Output object which contains the resulting hotels as well as the summary.
+
+Output:
+
+    
+Pydantic class SearchResultsOutputModel object with the following schema.
+
+class SearchResultsOutputModel(BaseModel):
+    search_results: List[Dict] = Field(
+        default=None, description="List of search results."
+    )
+    query_summary: Optional[str] = Field(
+        default=None, description="Response to customer."
+    )
+    model_config = ConfigDict(extra="forbid")
+
+
+####################################################
+
+############# Tool Number: 5 #############  
+
+Tool Name:
+
+    search_restaurants
+
+Definition: 
+
+    Use this tool to search for restaurants based on several criteria such as city, cuisine as well as dietary restrictions.
+
+Args: 
+
+    
+    city: str = Field(
+    description=City the user would like to look for a restaurant at.,
+)
+
+    neighborhood: Optional[list[str]] = Field(
+    default=None,
+    description=List of neighborhoods the user would look to look for a restaurant at.,
+)
+
+    rating: Optional[list[float]] = Field(
+    default=None,
+    description=Consists of the minimum and maximum rating the user is willing to consider for a restaurant.,
+)
+
+    restaurant_name: Optional[list[str]] = Field(
+    default=None,
+    description=List of restaurant names the user would like to look at,
+)
+
+    budget: Optional[int] = Field(
+    default=None,
+    description=Maximum budget of the user for a restaurant per person,
+)
+
+    has_nut_allergy_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not user wants a restaurant with nut allergy options True or False.,
+)
+
+    has_dairy_allergy_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a restaurant with dairy allergy options. True or False.,
+)
+
+    has_shell_fish_allergy_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a restaurant with shell fish allergy options. True or False.,
+)
+
+    has_tomato_allergy_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a restaurant with tomato allergy options. True or False.,
+)
+
+    has_gluten_free_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a restaurant with gluten free options. True or False.,
+)
+
+    has_vegetarian_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a restaurant with vegetarian options True or False.,
+)
+
+    has_vegan_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a restaurant with vegan options. True or False.,
+)
+
+    has_kosher_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a restaurant with Kosher options True or False.,
+)
+
+    has_halal_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a restaurant with Halal options. True or False.,
+)
+
+    cuisine: Optional[list[str]] = Field(
+    default=None,
+    description=List of cuisines the user would like the restaurant to have.,
+)
+
+Usage Examples: 
+
+    >>> # Usage Example:
+search_restaurants(city="Dallas", has_vegetarian_options=True)
+
+>>> # Usage Example:
+search_restaurants(city="Los Angeles",cuisine=["Indian", "Chinese"])
+
+>>> # Usage Example:
+search_restaurants(city="San Francisco", cuisine=["Thai"], budget=300, rating=[3,5])
+
+>>> # Usage Example:
+search_restaurants(city="Boston",cuisine=["Mexican", "Ethiopian"], budget=40, has_vegan_options=True, has_dairy_allergy_options=True)
+
+>>> # Usage Example:
+search_restaurants(city="Phoenix",budget=1000, has_gluten_free_options=True)
+
+Returns:
+    SearchResultsOutputModel: Output object which contains the resulting hotels as well as the summary.
+
+Output:
+
+    
+Pydantic class SearchResultsOutputModel object with the following schema.
+
+class SearchResultsOutputModel(BaseModel):
+    search_results: List[Dict] = Field(
+        default=None, description="List of search results."
+    )
+    query_summary: Optional[str] = Field(
+        default=None, description="Response to customer."
+    )
+    model_config = ConfigDict(extra="forbid")
+
+
+####################################################
+
+############# Tool Number: 6 #############  
+
+Tool Name:
+
+    filter_restaurants
+
+Definition: 
+
+    Use this tool to search for restaurants based on several criteria such as city, cuisine as well as dietary restrictions.
+
+Args: 
+
+    
+    prior_results: SearchResultsOutputModel = Field(
+    description=The results from the previous search query made by the customer,
+)
+
+    city: Optional[str] = Field(
+    default=None,
+    description=City the user would like to look for a restaurant at.,
+)
+
+    neighborhood: Optional[list[str]] = Field(
+    default=None,
+    description=List of neighborhoods the user would look to look for a restaurant at.,
+)
+
+    rating: Optional[list[float]] = Field(
+    default=None,
+    description=Consists of the minimum and maximum ratings the user is willing to consider for a restaurant.,
+)
+
+    restaurant_name: Optional[list[str]] = Field(
+    default=None,
+    description=List of restaurant names the user would like to look at,
+)
+
+    budget: Optional[int] = Field(
+    default=None,
+    description=Maximum budget of the user for a restaurant per person,
+)
+
+    has_nut_allergy_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not user wants a restaurant with nut allergy options True or False.,
+)
+
+    has_dairy_allergy_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a restaurant with dairy allergy options. True or False.,
+)
+
+    has_shell_fish_allergy_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a restaurant with shell fish allergy options. True or False.,
+)
+
+    has_tomato_allergy_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a restaurant with tomato allergy options. True or False.,
+)
+
+    has_gluten_free_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a restaurant with gluten free options. True or False.,
+)
+
+    has_vegetarian_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a restaurant with vegetarian options True or False.,
+)
+
+    has_vegan_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a restaurant with vegan options. True or False.,
+)
+
+    has_kosher_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a restaurant with Kosher options True or False.,
+)
+
+    has_halal_options: Optional[bool] = Field(
+    default=None,
+    description=Whether or not the user wants a restaurant with Halal options. True or False.,
+)
+
+    cuisine: Optional[list[str]] = Field(
+    default=None,
+    description=List of cuisines the user would like the restaurant to have.,
+)
+
+Usage Examples: 
+
+    
+
+Output:
+
+    
+Pydantic class SearchResultsOutputModel object with the following schema.
+
+class SearchResultsOutputModel(BaseModel):
+    search_results: List[Dict] = Field(
+        default=None, description="List of search results."
+    )
+    query_summary: Optional[str] = Field(
+        default=None, description="Response to customer."
+    )
+    model_config = ConfigDict(extra="forbid")
+
+
+####################################################
+
+############# Tool Number: 7 #############  
+
+Tool Name:
+
+    search_nearest
+
+Definition: 
+
+    Use this tool to find the nearest attractions, hotels or restaurants.
+
+Args: 
+
+    
+    hotels: Optional[SearchResultsOutputModel] = Field(
+    default=None,
+    description=Search results for hotels,
+)
+
+    attractions: Optional[SearchResultsOutputModel] = Field(
+    default=None,
+    description=Search results for attractions,
+)
+
+    restaurants: Optional[SearchResultsOutputModel] = Field(
+    default=None,
+    description=Search results for restaurants,
+)
+
+    groupBy: DomainEnum = Field(
+    description=Which domain to group the results by in terms of nearest. Value will be either hotel, restaurant or attraction,
+)
+
+Usage Examples: 
+
+    >>> # Usage Example:
+search_nearest(hotels=searched_hotels, attractions=searched_attractions, groupBy="hotel")
+
+>>> # Usage Example:
+search_nearest(hotels=searched_hotels, attractions=searched_attractions, groupBy="attraction")
+
+>>> # Usage Example:
+search_nearest(restaurants=searched_restaurants, attractions=searched_attraction,groupBy="attraction")
+
+>>> # Usage Example:
+search_nearest(restaurants=searched_restaurants, attractions=searched_attraction,groupBy="restaurant")
+
+>>> # Usage Example:
+search_nearest(hotels=searched_hotels, restaurants=searched_restaurants, groupBy="restaurant")
+
+>>> # Usage Example:
+search_nearest(hotels=searched_hotels, restaurants=searched_restaurants, groupBy="hotel")
+
+Returns:
+    SearchResultsOutputModel: Output object which contains the resulting attractions as well as the summary.
+
+Output:
+
+    
+Pydantic class SearchResultsOutputModel object with the following schema.
+
+class SearchResultsOutputModel(BaseModel):
+    search_results: List[Dict] = Field(
+        default=None, description="List of search results."
+    )
+    query_summary: Optional[str] = Field(
+        default=None, description="Response to customer."
+    )
+    model_config = ConfigDict(extra="forbid")
+
+
+####################################################
+
+############# Tool Number: 8 #############  
+
+Tool Name:
+
+    seek_information
+
+Definition: 
+
+    Use this tool to seek for information as needed.
+
+Args: 
+
+    None
+
+Usage Examples: 
+
+    >>> # Usage Example:
+seek_information("We need the departure date of the flight.")
+
+>>> # Usage Example:
+seek_information("We need the departure date of the flight and check in and check out dates for the hotel")
+
+Output:
+
+    
+Pydantic class None object with the following schema.
+
+None
+
+####################################################
+
+############# Tool Number: 9 #############  
+
+Tool Name:
+
+    adjust_date
+
+Definition: 
+
+    Use this tool to adjust a date based on some number of days in the past or future.
+
+Args: 
+
+    
+    date: str = Field(
+    default=None,
+    description=Date provided as reference point. Must be in YYYY-MM-DD or MM DD, YYYY,
+)
+
+    delta_days: int = Field(
+    default=None,
+    description=Number of days to adjust date by. Can be positive or negative.,
+)
+
+Usage Examples: 
+
+    >>> # Usage Example:
+adjust_date(date="April 10, 2025", delta_days=16)
+
+>>> # Usage Example:
+adjust_date(date="January 10, 2025", delta_days=-30)
+
+>>> # Usage Example:
+adjust_date(date="Mar 1, 2024", delta_days=2)
+
+>>> # Usage Example:
+adjust_date(date="2025-04-17", delta_days=2)
+
+Returns:
+    str: The adjusted date
+
+Output:
+
+    
+Pydantic class str object with the following schema.
+
+<class 'str'>
+
+####################################################
+
+############# Tool Number: 10 #############  
+
+Tool Name:
+
+    search_attractions
+
+Definition: 
+
+    Use this tool to search for restaurants based on several criteria such as city, cuisine as well as dietary restrictions.
+
+Args: 
+
+    
+    city: Optional[str] = Field(
+    default=None,
+    description=City the user would like to look for an attraction at.,
+)
+
+    state: Optional[str] = Field(
+    default=None,
+    description=State the user would like to look for an attraction at.,
+)
+
+    neighborhood: Optional[list[str]] = Field(
+    default=None,
+    description=List of neighborhoods the user would like to look for an attraction at.,
+)
+
+    type: Optional[list[str]] = Field(
+    default=None,
+    description=List of attraction types the user would be interested in ,
+)
+
+    attraction_name: Optional[list[str]] = Field(
+    default=None,
+    description=List of attraction names the user would like to look at,
+)
+
+Usage Examples: 
+
+    >>> # Usage Example:
+search_attractions(city="Dallas", type=["Art", "Social"])
+
+>>> # Usage Example:
+search_attractions(city="Los Angeles", neighborhood=["Venice"],type=["Tourist"])
+
+>>> # Usage Example:
+search_attractions(city="San Francisco", attraction_name=["The Exploratorium"])
+
+>>> # Usage Example:
+search_attractions(city="Boston", type=["Scenery", "Art", "Tourist"])
+
+>>> # Usage Example:
+search_attractions(city="Phoenix", type=["Culture", "Historical", "Social"])
+
+Returns:
+    SearchResultsOutputModel: Output object which contains the resulting attractions as well as the summary.
+
+Output:
+
+    
+Pydantic class SearchResultsOutputModel object with the following schema.
+
+class SearchResultsOutputModel(BaseModel):
+    search_results: List[Dict] = Field(
+        default=None, description="List of search results."
+    )
+    query_summary: Optional[str] = Field(
+        default=None, description="Response to customer."
+    )
+    model_config = ConfigDict(extra="forbid")
+
+
+####################################################
+
+############# Tool Number: 11 #############  
+
+Tool Name:
+
+    filter_attractions
+
+Definition: 
+
+    Use this tool to search for restaurants based on several criteria such as city, cuisine as well as dietary restrictions.
+
+Args: 
+
+    
+    prior_results: SearchResultsOutputModel = Field(
+    description=Prior search results by the user.,
+)
+
+    city: Optional[str] = Field(
+    default=None,
+    description=City the user would like to look for an attraction.,
+)
+
+    state: Optional[str] = Field(
+    default=None,
+    description=State the user would like to look for an attraction,
+)
+
+    neighborhood: Optional[list[str]] = Field(
+    default=None,
+    description=List of neighborhoods the user would like to look for an attraction at.,
+)
+
+    type: Optional[list[str]] = Field(
+    default=None,
+    description=List of attraction types the user would be interested in ,
+)
+
+    attraction_name: Optional[list[str]] = Field(
+    default=None,
+    description=List of attraction names the user would like to look at,
+)
+
+Usage Examples: 
+
+    >>> # Usage Example:
+filter_attractions(prior_results=attractions_search, type=["Art", "Social"])
+
+>>> # Usage Example:
+filter_attractions(prior_results=attractions_search, neighborhood=["Venice"],type=["Tourist"])
+
+>>> # Usage Example:
+filter_attractions(prior_results=attractions_search, attraction_name=["The Exploratorium"])
+
+>>> # Usage Example:
+filter_attractions(prior_results=attractions_search, type=["Scenery", "Art", "Tourist"])
+
+>>> # Usage Example:
+filter_attractions(prior_results=attractions_search, type=["Culture", "Historical", "Social"])
+
+Returns:
+    SearchResultsOutputModel: Output object which contains the resulting attractions as well as the summary.
+
+Output:
+
+    
+Pydantic class SearchResultsOutputModel object with the following schema.
+
+class SearchResultsOutputModel(BaseModel):
+    search_results: List[Dict] = Field(
+        default=None, description="List of search results."
+    )
+    query_summary: Optional[str] = Field(
+        default=None, description="Response to customer."
+    )
+    model_config = ConfigDict(extra="forbid")
+
+
+####################################################
+
+############# Tool Number: 12 #############  
+
+Tool Name:
+
+    search_nearest
+
+Definition: 
+
+    Use this tool to find the nearest attractions, hotels or restaurants.
+
+Args: 
+
+    
+    hotels: Optional[SearchResultsOutputModel] = Field(
+    default=None,
+    description=Search results for hotels,
+)
+
+    attractions: Optional[SearchResultsOutputModel] = Field(
+    default=None,
+    description=Search results for attractions,
+)
+
+    restaurants: Optional[SearchResultsOutputModel] = Field(
+    default=None,
+    description=Search results for restaurants,
+)
+
+    groupBy: DomainEnum = Field(
+    description=Which domain to group the results by in terms of nearest. Value will be either hotel, restaurant or attraction,
+)
+
+Usage Examples: 
+
+    >>> # Usage Example:
+search_nearest(hotels=searched_hotels, attractions=searched_attractions, groupBy="hotel")
+
+>>> # Usage Example:
+search_nearest(hotels=searched_hotels, attractions=searched_attractions, groupBy="attraction")
+
+>>> # Usage Example:
+search_nearest(restaurants=searched_restaurants, attractions=searched_attraction,groupBy="attraction")
+
+>>> # Usage Example:
+search_nearest(restaurants=searched_restaurants, attractions=searched_attraction,groupBy="restaurant")
+
+>>> # Usage Example:
+search_nearest(hotels=searched_hotels, restaurants=searched_restaurants, groupBy="restaurant")
+
+>>> # Usage Example:
+search_nearest(hotels=searched_hotels, restaurants=searched_restaurants, groupBy="hotel")
+
+Returns:
+    SearchResultsOutputModel: Output object which contains the resulting attractions as well as the summary.
+
+Output:
+
+    
+Pydantic class SearchResultsOutputModel object with the following schema.
+
+class SearchResultsOutputModel(BaseModel):
+    search_results: List[Dict] = Field(
+        default=None, description="List of search results."
+    )
+    query_summary: Optional[str] = Field(
+        default=None, description="Response to customer."
+    )
+    model_config = ConfigDict(extra="forbid")
+
+
+####################################################
+
+############# Tool Number: 13 #############  
+
+Tool Name:
+
+    sort_results
+
+Definition: 
+
+    Use this tool to sort results based on the domain.
+    Sortable columns for flights: "economy_class_price", "business_class_price", "first_class_price", "num_layovers", "layover_1_duration_minutes", "layover_2_duration_minutes", "departure_date", "arrival_date", "departure_time", "arrival_time", "duration_minutes"
+    Sortable columns for hotels: "price_per_night", "rating_hotels", "stars", "max_occupancy", "num_rooms_available", "start_date_available", "end_date_available"
+    Sortable columns for restaurants: "price_per_person", "rating_restaurants"
+
+Args: 
+
+    
+    results: SearchResultsOutputModel = Field(
+    description=Search results that need to be sorted,
+)
+
+    column: str = Field(
+    description=Column of the dataset to sort on.,
+)
+
+    ascending: Optional[bool] = Field(
+    default=True,
+    description=Sorting order either ascending or descending. Defaults to True which is ascending.,
+)
+
+Usage Examples: 
+
+    >>> # Usage Example:
+sort_results(results=searched_hotels, column="price_per_night", ascending=True)
+
+>>> # Usage Example:
+sort_results(results=searched_restaurants, column="price_per_person", ascending=False)
+
+Returns:
+    SearchResultsOutputModel: Output object which contains the resulting attractions as well as the summary.
+
+Output:
+
+    
+Pydantic class SearchResultsOutputModel object with the following schema.
+
+class SearchResultsOutputModel(BaseModel):
+    search_results: List[Dict] = Field(
+        default=None, description="List of search results."
+    )
+    query_summary: Optional[str] = Field(
+        default=None, description="Response to customer."
+    )
+    model_config = ConfigDict(extra="forbid")
+
+
+####################################################
+
+############# Tool Number: 14 #############  
+
+Tool Name:
+
+    get_results_from_cache
+
+Definition: 
+
+    Use this tool to get items from the cache
+
+Args: 
+
+    
+    key: str = Field(
+    default=None,
+    description=The input key,
+)
+
+Usage Examples: 
+
+    >>> # Usage Example:
+get_results_from_cache(key=previous_flights)
+
+>>> # Usage Example:
+get_results_from_cache(key=previous_hotels)
+
+>>> # Usage Example:
+get_results_from_cache(key=previous_restaurants)
+
+>>> # Usage Example:
+get_results_from_cache(key=previous_attractions)
+
+Returns:
+    GetCacheOutputModel: Output object which contains the result of the cache query.
+
+Output:
+
+    
+Pydantic class SearchResultsOutputModel object with the following schema.
+
+class SearchResultsOutputModel(BaseModel):
+    search_results: List[Dict] = Field(
+        default=None, description="List of search results."
+    )
+    query_summary: Optional[str] = Field(
+        default=None, description="Response to customer."
+    )
+    model_config = ConfigDict(extra="forbid")
+
+
+####################################################
+
+############# Tool Number: 15 #############  
+
+Tool Name:
+
+    save_to_cache
+
+Definition: 
+
+    Use this tool to get items from the cache
+
+Args: 
+
+    
+    key: str = Field(
+    default=None,
+    description=The input key,
+)
+
+    value: SearchResultsOutputModel = Field(
+    default=None,
+    description=The resulting value of the key to put into the cache.,
+)
+
+Usage Examples: 
+
+    >>> # Usage Example:
+save_to_cache(key="previous_flights", value=previous_flights)
+
+>>> # Usage Example:
+save_to_cache(key="previous_hotels", value=previous_hotels)
+
+>>> # Usage Example:
+save_to_cache(key="previous_restaurants", value="previous_restaurants")
+
+>>> # Usage Example:
+save_to_cache(key="previous_attractions", value="previous_attractions")
+
+Output:
+
+    
+Pydantic class None object with the following schema.
+
+None
+
+####################################################
+
+# INSTRUCTIONS
+- Track content: Maintain the conversation state across turns and use all known information from earlier in the conversation.
+- As soon as the mandatory parameters (non-optional parameters) are all provided (refer to TOOL CONFIG to find mandatory parameters for each tool), generate the appropriate plan using Python code.
+- Do NOT modify entity values under any circumstances. Use them exactly as they appear in the conversation while populating attributes in the function during code generation.
+    For example, if the city is "new york" (lowercase), do not convert it to "New York" or "NYC".
+- Do not fill optional parameters unless they are explicitly provided in the conversation.
+- When generating seek_information, only mention mandatory parameters (non-optional parameters) that are missing. Never ask for optional parameters using seek_information. Refer to TOOL CONFIG to figure out what the mandatory parameters (non optional parameters) are and check CONVERSATION to know what parameters have been provided by the user. 
+    For example, "seek_information('<explain what mandatory parameters (non-optional parameters) are missing and must be gathered by the assistant>')"
+- Only generate the code for the domain which the customer has mentioned in the conversation. For example, if user mentioned only about attractions, don't generate the code with restaurants search. Only if the user mentioned searching for restaurant anywhere in the conversation, then only search for restaurants.
+- If a tool result from a previous turn is still valid and relevant, use get_results_from_cache(key="<cache_key>") to retrieve it. Use the cache summary to determine the most appropriate key to select from. If you have many keys in the cache for the same domain. Use the one which would be most relevant.
+- Save the result of every search, filter, sort_results and search_nearest call with save_to_cache(key="<key>", value=<result>). Ensure the cache key is unique and avoid naming collision with previously stored cache key name
+- If a result has already been stored in the cache for a conversation and no new result needs to be generated, do not regenerate the code. Instead, return the code as "print("No planning needed")"
+
+
+# OUTPUT FORMAT
+- You need to generate only the python code. The python code should be within the <CODE> </CODE> tags. Note while generating the python code, never have any markdown tags.
+- Every tool in TOOL CONFIG is already defined where the code runs. Call the tools directly: never import them, and never redefine them or their input models.
+- Except for seek_information, call every tool with keyword arguments only, for example save_to_cache(key="hotels", value=hotels).
+- Do not reference variables from earlier turns; read earlier results with get_results_from_cache.
+
+# CONVERSATION
+[{'assistant': " Hello, I'm here to help. What's on your mind today?"}, {'user': " I have a nightshade allergy and I'm looking for a restaurant that can accommodate me."}, {'assistant': " Don't worry, I'm here to help. What kind of cuisine are you interested in?"}, {'user': ' I love Indian.'}, {'assistant': ' I can look into Indian options that are nightshade-free. Are you looking for something in a specific city or neighborhood?'}, {'user': " I'm in Raleigh right now, and I'd love something in Downtown Raleigh."}]
+
+# CACHE
+{}
+
+Given the provided conversation and cache summary, generate a Python code for the last user turn.

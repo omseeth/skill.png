@@ -1,0 +1,31 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "Agent was distracted by a shared retrospective article profiling a neighbouring player. It answered that player, who never played for the team the clue names. Rule 3's 'satisfy ALL distinctive details (team, numbers)' was not applied as a hard constraint."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "The clue was in English ('this Florentine palace'). The agent gave the Italian form 'Palazzo Pitti' although the passages also used the English 'Pitti Palace', which the key uses. No rule says to pick the English-language form of a foreign name when the clue's type noun is English."
+    }
+  ],
+  "patch": {
+    "reasoning": "The two failures have different mechanisms, so there is one targeted edit for each. Both are small and conditional on a visible clue feature, to avoid regressing the stable passes (earlier large 'Step 0' rewrites were rejected). (1) The head-noun exception already says to keep 'palace' for 'this palace'. It does not say to prefer the English-language form over the foreign-language form. The new bullet sits right next to that exception and resolves the conflict. (2) Rule 3 already tells the agent to pick the candidate that fits every detail. The new bullet turns the clue's team, league and years into a hard exclusion test and warns that multi-profile articles and stat tables make the most-mentioned name unreliable.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "The 'do not repeat clue words' rule is for a separate modifier already stated in the clue ('hasty' + pudding).",
+        "content": "\n- ENGLISH FORM OF FOREIGN NAMES: when the clue is written in English and uses an English generic type noun for a landmark, building or institution ('this palace', 'this cathedral', 'this tower', 'this bridge', 'this square'), answer in the standard English-language form that contains that noun, with a leading 'the' if English usage runs that way ('the Pitti Palace', not 'Palazzo Pitti'). If the passages show both forms ('Palazzo Pitti, sometimes called the Pitti Palace'), choose the English one. Keep the foreign form only when the clue itself uses foreign words, or when the foreign name has no English equivalent in common use."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not choose one that fits only some.",
+        "content": "\n- SHARED-PAGE TRAP: retrospectives, Hall of Fame class pieces and stat tables often print several people's careers side by side, so the most-mentioned name in the passages may be the neighbour, not the answer. Attach each fact to the person it is printed under. Treat the clue's team, league, employer and years as hard constraints. Reject any candidate who never played or served for the team the clue names, even if his name appears in most snippets (a stat line for team A cannot belong to someone known only for team B). Prefer the career-record page whose totals match the clue's numbers exactly, and sanity-check the pick with your own knowledge of who spent that many years with that team."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

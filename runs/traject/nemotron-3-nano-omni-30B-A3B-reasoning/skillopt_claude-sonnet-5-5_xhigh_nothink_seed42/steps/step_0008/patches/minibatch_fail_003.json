@@ -1,0 +1,51 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "format_error_brackets_duplicate_keys",
+      "count": 2,
+      "description": "T2 closed the list mid-answer with a stray `]` so nothing parsed. T3 wrote a second empty `optional parameters` key in every call, which wiped the platform, sort-by, page and pulls values."
+    },
+    {
+      "failure_type": "param_wrong_list",
+      "count": 2,
+      "description": "Optional-schema parameters were placed in `required parameters` (T3: dice and sides; T4: country and language, which were also invented), so required/optional matching failed."
+    },
+    {
+      "failure_type": "missed_or_invented_optional_param",
+      "count": 3,
+      "description": "A named outlet was not mapped to the publisher param, and country=US was invented instead (T4). The Content-Type header was omitted (T5). type=game was omitted for 'free PC game giveaways' (T3)."
+    },
+    {
+      "failure_type": "over_calling",
+      "count": 1,
+      "description": "For 'valid AND disposable' on one email, two validators were stacked (T1), although one tool's description names both properties."
+    }
+  ],
+  "patch": {
+    "reasoning": "Steps 6 and 7 bundled many large edits and scored worse or no better, so these are four small, targeted edits for the failures seen here. Each states a specific wrong pattern and its fix: stray or mid-list `]` and duplicate `optional parameters` keys, optional parameters placed in `required parameters`, outlet/header/filter qualifiers dropped or turned into invented `country` values, and stacked validators.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not close the list early or leave stray brackets.",
+        "content": "\n- A `]` in the middle of the list ends the answer: writing `...}], {` or `...}]}, {` makes every later call unparseable (score zero). The only `]` after the last object comes right before `</answer>`. Likewise write `\"optional parameters\"` once per object. `\"optional parameters\": [{...}], \"optional parameters\": []` throws away the filled list. Merge every optional value (platform, sort-by, type, page, pulls, ...) into that one list."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not borrow a similar name from a sibling tool (use `region` if the tool has `region`, not `loc`).",
+        "content": "\n- Placement check, per call: reread the schema block. Only names printed under `Required parameters:` go in `required parameters`. If it says `Required parameters: none`, that list is `[]`. Every other name (e.g. `dice`, `sides`, `country`, `language`, `id`, `limit`, `page`, `publisher`) goes in `optional parameters`, even when it carries the query's main input. If a call has one required name (e.g. `q`) plus qualifiers (language, outlet, dates), the qualifiers still go in `optional parameters`, never in `required parameters`."
+      },
+      {
+        "op": "insert_after",
+        "target": "A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).",
+        "content": "\n  - A named outlet or source ('from CNN and BBC') -> the tool's publisher/sources-style parameter, comma-separated with no spaces (`publisher`=`cnn.com,bbc.com`), when the schema has one. Never turn an outlet into a `country` value, and do not add `country` unless the query names a place. 'In English' -> the language param (`en`).\n  - A header-style optional `Content-Type` -> include it as `application/json`. 'Free PC game giveaways' -> both `platform`=`pc` AND `type`=`game`. 'With free shipping' -> the filter/switches param whose description lists `freeShipping`. A '$600-$900' range -> startPrice `600`, endPrice `900` (plus `currency`=`USD` and `region`=`US` when the tool has them)."
+      },
+      {
+        "op": "insert_after",
+        "target": "Exception: the query names several distinct checks (e.g. deliverability, MX records and role account), which get one call each.",
+        "content": "\n- For 'valid AND disposable' on one address, pick the single tool whose description literally names both properties (e.g. an 'Email Checker' that says it checks validity and identifies disposable addresses) and make exactly one call to it. Do not also call a generic 'Validate Email Address' or 'Verify Email' tool on the same address."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

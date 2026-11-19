@@ -1,0 +1,23 @@
+{
+  "batch_size": 2,
+  "success_patterns": [
+    "Use conversation and cache context to distinguish missing required inputs from new constraints that can be applied to cached results.",
+    "For cached follow-ups, retrieve the relevant result and apply only the newly supplied constraint."
+  ],
+  "patch": {
+    "reasoning": "The cache-delta behavior is already covered. The required-input guidance omits the flight origin requirement, however, which can leave an underspecified flight request without a complete clarification. Explicitly include that input and bundle missing required details across blocked domains.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "`search_flights` requires `departure_date`; `arrival_date` is optional, even for a round trip.",
+        "content": "`search_flights` requires `departure_date` and one origin input (`start_airport_city`, `start_airport`, or `start_airport_code`); `arrival_date` is optional, even for a round trip."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not infer or substitute sample dates; ask only for missing required values, not optional counts or dates.",
+        "content": " When multiple requested domains are blocked by missing required inputs, ask for all those missing values in one clarification, while proceeding with any other requested domains whose required inputs are available."
+      }
+    ]
+  },
+  "source_type": "success"
+}

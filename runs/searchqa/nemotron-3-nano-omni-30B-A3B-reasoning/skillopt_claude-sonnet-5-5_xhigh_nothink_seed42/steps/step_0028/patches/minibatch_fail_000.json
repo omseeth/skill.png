@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Answer echoes an anchor already in the clue instead of the slot. 'this state's Sumter National Forest' got the forest, 'He recorded \"I Walk the Line\"' got the song, and 'this person, like Ben Bradlee' got the named person. These are an owner, a creator and a role slot respectively."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "The archive line '... | Rumsfeld. right: Eric. Wrong:' was read as if the contestant name 'Eric' were the answer."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 1,
+      "description": "The 'keep plural when the clue says these/ones' rule led to 'tsunamis' when the key was singular 'tsunami'."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "The company answer kept a product-line word ('Hallmark Cards' instead of 'Hallmark')."
+    },
+    {
+      "failure_type": "other",
+      "count": 2,
+      "description": "A specific example (witch hazel) was given for a definition clue whose key is the generic category (anti-perspirant). A noisy-context knowledge miss gave 'birdbath' for a 'watering hole' pun (key: Well)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of eight failures share one mechanism: the answer repeats a string already in the clue (forest, song title, named person) when the slot asks for the owner, creator or role. Earlier large top-of-skill preambles hurt the score, so I add one compact, pattern-based gate inside Rule 2 where the type rules already live, and it names the three resolutions. The archive-contestant misread is a clear Rule 3 gap, fixed by a one-clause clarification in place. The plural rule is actively wrong (keys are singular headwords even for 'these'), so I replace it and keep a carve-out for verbatim archive answers, so Rule 3 is not weakened. The corporate-suffix rule is extended to product-line words after a brand, in the existing bullet. Net length is roughly flat because three of the four edits replace existing text.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Use the singular form for a generic single object ('Well', not 'wells'), but keep the plural for crops, commodities and mass categories ('Bananas') or when the clue says 'these'/'ones'.",
+        "content": "- Default to the SINGULAR headword, even when the clue says 'these' or 'one of these' ('these nocturnal flying mammals' -> 'Bat', not 'bats'; 'Well', not 'wells'). Answer keys list the singular. Keep the plural only for crops, commodities and mass categories ('Bananas'), for names that are plural by nature (Great Lakes, Rockies), or when a verbatim archive answer (Rule 3) is printed in the plural."
+      },
+      {
+        "op": "replace",
+        "target": "(the answer is the text between '|' and '. right:'/'wrong:')",
+        "content": "(the answer is the text between '|' and '. right:'/'wrong:'. The name AFTER 'right:' or 'wrong:' is a CONTESTANT who buzzed in, never the answer, even when it is the only name-like token: 'CLUE | Hamlet. right: Dave. Wrong: Sue' -> 'Hamlet')"
+      },
+      {
+        "op": "insert_after",
+        "target": "Other named entities in the clue are anchors, never the answer.",
+        "content": "\n- ANCHOR-ECHO GATE (apply just before the answer tags): if your answer repeats a name, title or phrase that is already in the clue, it is almost certainly an anchor, not the answer. Resolve it by the clue's pattern: (a) \"this state's / country's / company's <thing named in the clue>\" -> the OWNER (the state, country or company), never the thing; (b) 'He/She' + a quoted song, album or book title -> the PERSON who made it, never the title; (c) '<quoted phrase> this person, like <Name>' or 'such as <Name>' -> the ROLE or job the named person holds, in its plain form (with 'the' if the quoted phrase implies it), never the person's name. Exception: word-level clues ('the adverb in ...') may reuse a clue word."
+      },
+      {
+        "op": "replace",
+        "target": "Drop corporate suffixes ('McCormick', not 'McCormick & Company').",
+        "content": "Drop corporate suffixes and product-line words that follow a brand name when the clue asks for 'this company / brand / maker' ('McCormick', not 'McCormick & Company'; 'Mattel', not 'Mattel Toys'; 'Ford', not 'Ford Motor Company'). A trivia key lists the bare brand."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

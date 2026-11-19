@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "date_reply_not_searched",
+      "count": 3,
+      "description": "The user answered the date question (a 'X to Y' range) but the agent re-asked with seek_information (hotel, 2 tasks) or ran one malformed one-way search with an invented 'kid-friendly' airline, a bare call and a nested save (flight, 1 task). No hotel search or round-trip pair was produced."
+    },
+    {
+      "failure_type": "wrong_domain_or_stale_key_on_refinement",
+      "count": 3,
+      "description": "The agent acted on an earlier turn's constraint or the wrong domain's key instead of the last message. It filtered the flights key with hotel stars/neighborhood when the user had just given a cuisine, loaded filtered_restaurants for a hotel gym/laundry reply and re-saved it unchanged, and re-filtered stale hotels2 with an old neighborhood and overwrote hotels3 when the reply was room/shuttle service."
+    },
+    {
+      "failure_type": "cross_domain_param_leak_and_missing_save",
+      "count": 1,
+      "description": "In a restaurant-near-hotel turn the hotel's per-night budget (30) went into search_restaurants, the stated 3.5 rating was dropped, and the restaurants search was never saved before search_nearest."
+    },
+    {
+      "failure_type": "search_instead_of_filter",
+      "count": 1,
+      "description": "An attractions entry was already cached and the user then named cities, but the agent ran a fresh search_attractions for one city instead of filtering the cached entry once per named city."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures come from the agent not reading the LAST user message. It either re-asks for information the user just gave, or reuses an earlier turn's hotel constraint or the wrong domain's key. E1 adds an override so a reply that supplies dates always triggers a search (this also covers the round-trip flight case). E2 adds a concise last-message routing rule: each domain keeps its own newest key, only last-message kwargs are passed, a loaded entry is never re-saved unchanged, and a cuisine reply with no restaurants key triggers a search. E3 patches the Rule 26 restaurant-near-hotel recipe so hotel values do not leak into the restaurant search and the search is saved first. E4 adds the missing positive trigger for cities named after a cached attractions entry. The edits are short and positively phrased, and avoid the long accretive blocks that caused earlier regressions.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\n- DATE-ANSWER OVERRIDE (beats every seek_information rule below): if the assistant just asked for dates and the user's reply contains a date or an 'X to Y' / 'from X to Y' range, search NOW. A second seek_information is wrong. Hotel requested: `hotels = search_hotels(city=<city from any turn>, checkin_date=[\"<X>\"], checkout_date=[\"<Y>\"], ...)` + `save_to_cache(key=\"hotels\", value=hotels)`. Copy the date strings as written, even when X and Y are the same day. Add a neighborhood if the user stated one. 'Solo trip' / 'just me' -> `num_people=1` (any other party size only from a stated number). Flight requested: two assigned and saved searches, outbound `departure_date=[\"<X>\"]` and return `departure_date=[\"<Y>\"]` with the cities swapped, saved as departure_flights and return_flights ('flights' + return_flights when a hotel is also requested). Add airline / class only if the user named one: 'kid-friendly', 'family' and 'cheap' are never airlines."
+      },
+      {
+        "op": "insert_after",
+        "target": "1. Copy the CACHE keys of each domain the LAST user turn touches (flights / hotels / restaurants / attractions, including filtered_*, nearest_*, hotels2, final_* names).",
+        "content": "\n   - LAST-MESSAGE ROUTING (before loading any key): find the domain words in the user's LAST message and touch only that domain's keys. Cuisine / restaurant / dining rating -> restaurants. No 'restaurants' key yet -> `restaurants = search_restaurants(city=<trip city>, cuisine=[...])` + save, then add a closing seek_information only if a requested hotel still lacks a date. A 'Yes' to a dining question is a restaurant request, never a reason to re-apply an earlier hotel star or neighborhood, and never a filter on a flight key. Amenity / service / stars / neighborhood words -> hotels. Every domain has its own newest key: in a hotel + restaurant chat take the most refined HOTELS key (hotels3 beats hotels2 beats hotels) even if a restaurant key was created later. Never load a restaurant or flight key for a hotel reply. Pass only kwargs found in the last message; a neighborhood or star rating from an earlier turn is not repeated. Save under a name that is not in CACHE (e.g. filtered_hotels or final_hotels, never an existing key such as hotels3). A load followed by a save of the same object is always wrong: the filter call must sit between them."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 26: Proximity requests ('near the hotel', 'near <attraction>') need search_nearest (overrides the 'do not touch the hotel cache' and 'type if stated' parts of Rule 10)",
+        "content": "\n- When the new restaurant search is needed, build it only from the restaurant words of the LAST message: city, cuisine=[...], and 'X rating' -> rating=[X, X] ('at least X' -> [X, 5]). The hotel's per-night budget, stars, amenities and party size never go into search_restaurants. Write `restaurants = search_restaurants(...)` then `save_to_cache(key=\"restaurants\", value=restaurants)` BEFORE search_nearest, and load the hotels key by its exact CACHE name."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 21: Output form and first-search keys",
+        "content": "\n- Attractions already cached (state-level or any earlier search) and the user now names one or more cities: do not search again. Load the cached key and write one `filter_attractions(prior_results=x, city=\"<city as stated>\")` per named city, each assigned to its own variable and saved under its own new key (filtered_attractions1, filtered_attractions2, ...). Re-pass no type; the cached entry already holds it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

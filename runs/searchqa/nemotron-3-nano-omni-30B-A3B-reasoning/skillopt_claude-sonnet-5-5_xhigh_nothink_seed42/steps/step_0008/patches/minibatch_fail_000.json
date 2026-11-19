@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "A passage held the clue next to the answer (the archive line '| Anchorage, Alaska.', or the answer-first flashcard line 'McCormick This spice company that owns Schilling...'). The agent trimmed it ('Anchorage') or lengthened it ('McCormick & Company') instead of copying it. The answer-first layout is not described in Rule 3."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 3,
+      "description": "Answer length did not match the answer key. Over-long: 'Studio 60 on the Sunset Strip' (key 'Studio 60') and 'Athens Classic Marathon' (key 'the marathon'). Truncated: 'Richard' (key 'Richard III')."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "Wrong referent type or wrong dimension. 'The energy from this is measured by a pyrheliometer' got 'direct solar radiation' instead of the source, the Sun. 'Smallest in size' got 'cent' (smallest denomination) instead of 'dime' (smallest physically)."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "Double-meaning clue ('international match, or what its players are put to'). The agent took a one-sided dictionary synonym ('trial') instead of the word that fits both senses ('the Test')."
+    }
+  ],
+  "patch": {
+    "reasoning": "Two failures had the answer in the context and the agent still dropped or padded it. The answer-first layout is not covered by Rule 3, and the verbatim form (including the state, the short company name) should override the shortest-form and full-name habits. Three failures were length calibration, so one compact rule covers corporate suffixes, show subtitles, event prefixes and regnal numerals. The remaining two are referent and dimension errors: source versus description of the energy, and size versus value. They get small, general rules, and so does the double-meaning clue pattern. None of these duplicates the existing text or repeats earlier rejected broad edits.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Before the answer tags, briefly quote the matched line.",
+        "content": "\n- ANSWER-FIRST layouts: list and flashcard pages often print the answer BEFORE the clue with no separator ('McCormick This spice company that owns Schilling is the largest producer of...', 'Garlic This relative of the onion is rarely grown from seed'). If the clue's text appears right after a short capitalized term, that term is the answer.\n- Copy a verbatim answer exactly as shown, including its qualifier (state, numeral, title), and do not pad or trim it ('Anchorage, Alaska', not 'Anchorage'; 'McCormick', not 'McCormick & Company'). The verbatim form beats both the shortest-form advice in Rule 4 and any fuller official name found in other passages."
+      },
+      {
+        "op": "insert_after",
+        "target": "Brief reasoning belongs before the tags.",
+        "content": "\n- Calibrate name length to a trivia answer key, using the short common form that the passages repeat. Drop corporate suffixes ('McCormick', not 'McCormick & Company'). Drop taglines or subtitles of shows and films when a short title is in common use ('Studio 60', not 'Studio 60 on the Sunset Strip'). Drop city, sponsor or year prefixes on a generic event when the clue says 'this <event>' ('the marathon', not 'Athens Classic Marathon'). Never cut a part that identifies the person: keep the regnal numeral of a king or of a play's title character ('Richard III', not 'Richard'; 'Henry V')."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "\n- 'The energy / light / heat / force from this', 'this is measured by <instrument>' or 'caused by this' asks for the underlying SOURCE or object itself, as a plain noun ('the Sun'). Do not answer with a technical description of the energy or measurement ('direct solar radiation').\n- Superlatives ('smallest in size', 'heaviest', 'oldest'): work out which dimension the clue asks about and compare ALL candidates on exactly that dimension. 'Smallest in size' means physical diameter, not denomination or value. The cent is worth the least, but the dime is physically the smallest U.S. coin in production. Do not answer with the item that is extreme in a different dimension."
+      },
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- Double-meaning clues ('Term for an international match, or what its players are \"put to\"', 'X, or Y'): the answer is ONE word that satisfies BOTH halves ('the Test': a Test match; 'put to the test'). Check every candidate against both halves. A dictionary synonym that fits only one half ('trial') is wrong. When passages are noisy, use your own knowledge of sports terms and idioms."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

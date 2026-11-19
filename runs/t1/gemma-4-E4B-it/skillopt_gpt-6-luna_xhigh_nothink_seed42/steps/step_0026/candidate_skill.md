@@ -1,0 +1,81 @@
+# Travel Planning Skill
+
+## Cache-aware tool workflow
+
+**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.
+```python
+prior = get_results_from_cache(key="<exact compatible cache key from summary>")
+filtered = filter_restaurants(prior_results=prior, cuisine=["<requested cuisine>"])
+save_to_cache(key="<descriptive filtered key>", value=filtered)
+```
+
+For a same-scope follow-up that adds a filterable preference such as budget or an amenity, retrieve the compatible result and filter it rather than repeating the base search. Pass only newly requested criteria and active criteria not already embodied in the retrieved result; save each filtered result under a new descriptive key. Repeat this for each affected leg, not for unaffected legs or domains. For example, when the budget and room-service preference are newly requested and not already embodied:
+```python
+prior_hotels = get_results_from_cache(key="<exact compatible hotel key>")
+filtered_hotels = filter_hotels(prior_results=prior_hotels, budget=<requested budget>, has_room_service=True)
+save_to_cache(key="<new filtered hotel key>", value=filtered_hotels)
+
+prior_outbound = get_results_from_cache(key="<exact outbound-flight key>")
+filtered_outbound = filter_flights(prior_results=prior_outbound, flight_class=["<requested class>"])
+save_to_cache(key="<new filtered outbound key>", value=filtered_outbound)
+prior_return = get_results_from_cache(key="<exact return-flight key>")
+filtered_return = filter_flights(prior_results=prior_return, flight_class=["<requested class>"])
+save_to_cache(key="<new filtered return key>", value=filtered_return)
+```
+
+- When the user asks about a place, category, or entity the assistant just suggested (for example, “What's there?”), treat it as a request to inspect that scope: retrieve a compatible cached result and filter it to that scope, or search if no compatible result can cover it. An assistant's proximity suggestion alone does not authorize `search_nearest`; use it only when the user explicitly requests or accepts proximity.
+- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.
+
+Maintain active supported constraints for each domain across the full conversation. When making a new search, include all still-active criteria the user has already supplied, even if the latest turn only supplies a location or another missing detail. When filtering, account for active criteria not already embodied in the cached result as well as newly supplied criteria. Drop or replace a constraint only when the user withdraws or changes it.
+- Identify only the domains or itinerary legs changed by the latest user turn. For each changed request, if a compatible cached result exists, retrieve it with `get_results_from_cache(key="<literal cache key shown in the summary>")` and assign the returned object to a local variable; cache keys and summaries are not Python result variables. Choose the most constrained cached result that still covers the request: its domain, location, dates or leg, and original scope must be compatible, and it must not be narrower than the requested scope. Prefer a result that already embodies the greatest number of still-active criteria, and retrieve it by its exact cache key. A result restricted to a different category or entity does not establish that a newly requested specific entity is included; search if the cached scope cannot cover it. Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result. A cached proximity result may also be used as filter input when its candidate set remains valid. Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no cached result can cover the changed scope.
+- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.
+
+## Tool results and constraints
+
+- Before finalizing tool code, verify that each `save_to_cache(value=...)` names the local variable assigned the corresponding tool result—not a guessed name derived from the domain or cache key. For example, assign `hotels = search_hotels(...)` and save with `value=hotels`.
+- Assign each search, filter, sort, and nearest-results call once to a named local variable, then immediately save that exact result with `save_to_cache` under a unique, descriptive key—even when it is the final call. For example, use `results = search_restaurants(...)` followed by `save_to_cache(key="restaurants", value=results)`. For a filter, use `filtered = filter_flights(prior_results=prior, flight_class=classes)` followed by `save_to_cache(key="filtered_flights", value=filtered)`. Do not call tools inline, repeat a call to obtain a value to save, print results instead of saving them, or save an assumed, undefined, or differently named variable. Pass the assigned result to later filters or nearest calls, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally.
+- Pass only criteria supported by the conversation and map each value to the field that expresses it. Preserve the user's entity text and supported category or filter values exactly; do not normalize or substitute a near synonym, including for an attraction `type`. For example, put a state abbreviation in `state`, not `city`. For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; do not treat a request to stay in a named district as a proximity search. Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed. For flight `departure_time` and `arrival_time`, use 12-hour strings with an AM/PM suffix (for example, `["12:00 AM", "04:33 AM"]`); represent midnight as `12:00 AM`, not `00:00:00`, and do not pass 24-hour `HH:MM:SS` strings to flight tools. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.
+
+For attractions, put the requested category in `type` with its exact value (for example, if the requested type is `Scenic`, pass `type=["Scenic"]`).
+
+For a specifically named attraction, use `attraction_name=[<exact user-provided name>]`; do not treat its name as an attraction `type` or assume a cached category-only result includes it. For hotel amenities, map “gym” to `gym_present=True`, “fitness center” to `has_fitness_class=True`, and an explicitly requested “business center” to `has_business_center=True`. Do not substitute between these fields or infer a specific amenity from a generic phrase such as “business facilities.”
+
+- Before each tool call, verify every keyword against that specific tool's declared arguments and ensure the user's preference semantically matches the field's supported values. Do not invent conversational aliases, pass unsupported fields, or put qualitative descriptors into categorical fields unless they name a valid option (for example, do not pass “kid-friendly” as an airline). Resolve terse replies using the preceding assistant question: a number supplied in response to a budget question is a budget, not a rating, and “business trip” alone does not request `flight_class=["business"]`. Do not equate “kid-friendly” or “family-friendly” with a kids club; set `has_kids_club=True` only when the user specifically requests a kids club. If no supported argument captures an optional preference, omit it and proceed with the supported request without inventing a substitute or asking for unsupported details.
+
+For restaurant ratings and hotel guest ratings, interpret an unqualified numeric score (for example, “3.5 rating”) as exact and use `[N, N]` in `rating`. Use `[N, 5]` only when the user states a minimum, such as “at least N” or “N or higher.” For hotel star classification, use `stars`, not guest `rating`: use `[N, N]` for an exact star class and `[N, 5]` for “at least N stars.”
+- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”
+
+## Flight itinerary legs
+
+Do not infer a return leg or ask for a return date solely because the user mentions a vacation, getaway, or destination. Request a return date only when the user explicitly asks for a round trip or return leg, or supplies a return date. For an established origin-destination route, treat a two-date travel span (for example, “from [date] to [date]”) as the outbound date and return date unless the conversation indicates otherwise.
+Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to every described leg. If a filterable preference is supplied after compatible per-leg flight results are cached, retrieve and filter each affected leg separately rather than repeating its base search. Do not combine distinct legs by repeating keyword arguments in one call.
+
+**Call pattern:** Make and save each leg separately, including all active criteria on each call:
+```python
+outbound = search_flights(start_airport_city=origin, end_airport_city=destination, departure_date=[outbound_date])
+save_to_cache(key="outbound_flights", value=outbound)
+return_flights = search_flights(start_airport_city=destination, end_airport_city=origin, departure_date=[return_date])
+save_to_cache(key="return_flights", value=return_flights)
+```
+If the outbound leg is already compatibly cached, search only the newly requested return leg.
+
+## Required-argument checks
+
+- Track each requested domain or flight leg deferred solely because mandatory information is missing as pending, retaining its established route, dates, and supported preferences. When a later user turn supplies the missing information, revalidate and execute each pending request that is now complete without requiring the user to restate it. Keep incomplete requests pending and seek only their missing mandatory details; do not rerun completed, unchanged domains.
+
+- If the user provides only general trip context (such as a destination, occasion, or party size) without specifying a travel domain or task, do not infer what to search or assume a hotel request, and do not return a no-op. Use `seek_information` to ask what they want help finding; ask for hotel dates only if a hotel search was actually requested. Once the domain is clear, gather only its missing mandatory details. Apply traveler counts only to domains whose tools support party size; flight tools do not accept a passenger-count field.
+
+- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs.
+
+- Use a date as a required travel date only when the conversation clearly ties it to the relevant flight leg or hotel stay; an event date alone does not establish a departure or stay date. Treat vague timing or occasion language (such as “last-minute,” “for my birthday,” “weekend getaway,” or “vacation”) as context, not as a calendar date or explicit stay length. Do not guess travel dates or duration; ask for any required date that remains missing or unclear.
+Before calling a travel tool, validate its mandatory parameters separately for each requested domain and itinerary leg using the full conversation and available context. If any are missing, do not call that incomplete tool or run a partial search; use one `seek_information` request listing only the missing mandatory details across incomplete requests. Continue with fully specified independent domains or legs, and save their results. Never invent values, pass `None`, or ask for optional preferences. For hotels, when the check-in date and an explicit stay length in nights are known but checkout is not, use `adjust_date` to calculate checkout. Do not infer a stay length; ask when a required date cannot be obtained or derived from explicit information.
+
+A no-op response is appropriate only when the latest turn adds no actionable request and compatible cached results already cover all active requests. If required information is missing for one domain or itinerary leg, ask for it while still searching and caching any independent requested domain or leg whose mandatory inputs are complete.
+
+<!-- SLOW_UPDATE_START -->
+Before calling any tool, make a short plan: resolve the latest turn against the preceding offer and full conversation, identify only the requested scopes that changed, and decide for each whether it is a genuinely new search or a constraint update to compatible cached results. For a constraint update such as a budget, amenity, cuisine, or rating, retrieve the compatible cached result and apply the matching filter; do not restart the base search. If the user accepts an offer, carry out the offered action only: search a newly offered scope when no compatible result covers it, and do not add unrelated searches or proximity work. When proximity is explicitly requested, first filter each domain for its own requested criteria, then pass both resulting datasets to the nearest tool.
+
+Treat every tool call as an executable transaction: assign its return value to a clearly named local variable, then immediately save that exact variable. Never save an assumed name, nest a search or filter inside another call, or use a result from a different scope. Before execution, check that each argument expresses the user's actual request: keep category labels literal, distinguish city from state and budget from rating, and do not add unsupported or unrelated criteria.
+
+For itineraries, write down each leg's direction and date before searching. Search every explicitly described leg separately, including a reverse-direction return leg, and keep independent completed searches even when another requested domain still needs information. Use only dates and stay details supported by the conversation; ask for unresolved mandatory hotel details rather than guessing or blocking fully specified independent work.
+<!-- SLOW_UPDATE_END -->

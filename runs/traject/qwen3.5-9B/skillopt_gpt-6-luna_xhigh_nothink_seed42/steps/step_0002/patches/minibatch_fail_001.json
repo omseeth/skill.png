@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_selection",
+      "count": 2,
+      "description": "Some trajectories called tangential endpoints or made redundant searches instead of matching each item to its relevant product-search endpoint."
+    },
+    {
+      "failure_type": "parameter_binding",
+      "count": 5,
+      "description": "Calls omitted or misplaced schema-supported filters, used noncanonical codes, or bound compound identifiers to the wrong fields."
+    },
+    {
+      "failure_type": "tool_identifier",
+      "count": 1,
+      "description": "A tool was named with its provider only, omitting the endpoint from the required full identifier."
+    },
+    {
+      "failure_type": "operation_coverage",
+      "count": 1,
+      "description": "The response omitted a dedicated current-weather call while requesting current conditions and a forecast."
+    },
+    {
+      "failure_type": "output_serialization",
+      "count": 1,
+      "description": "A malformed parameter entry made the complete JSON response unparsable."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers exact tool selection, full identifiers, and operation decomposition, so those instructions should not be duplicated. The edits make natural-language qualifiers easier to bind to documented fields, clarify how to split compound inputs across schema fields, and make the parameter-entry JSON shape explicit to prevent serialization failures.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Parameter binding",
+        "content": "- Map natural-language refinements to matching documented parameters even when the user does not name the field: for example, a request for helpful reviews or a particular market or postal area calls for the corresponding documented sort or location parameter. Keep each value in the required or optional list exactly as the schema declares, and use only documented codes or unambiguously derivable values. Normalize place names only when the endpoint's required code format calls for it.\n- If the schema separates a compound input into fields, decompose it only along the documented boundary. For example, when an endpoint has separate email `username` and `domain` fields, pass the local part as `username` and the domain as `domain`, not the full email address in either field."
+      },
+      {
+        "op": "replace",
+        "target": "- Return a parseable JSON list inside the required tags, with exactly the required keys (`tool name`, `required parameters`, and `optional parameters`) in each call object. Include no commentary or reasoning inside the JSON list.",
+        "content": "- Return a syntactically valid JSON list inside the required tags, with exactly the required keys (`tool name`, `required parameters`, and `optional parameters`) in each call object. Every entry in either parameter list must be an object shaped as `{\"name\": \"<exact schema parameter>\", \"value\": <value>}`. Check that braces, brackets, commas, and quotes are valid, and include no commentary or reasoning inside the JSON list."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,51 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "conversation_scope_and_domain_mapping",
+      "count": 5,
+      "description": "Agents missed follow-up constraints or earlier requested work, treated an affirmative reply as a no-op, or applied a constraint to the wrong domain."
+    },
+    {
+      "failure_type": "result_lifecycle_and_execution",
+      "count": 5,
+      "description": "Results were not consistently assigned and saved, or tool imports and extra output prevented the planned calls from executing correctly."
+    },
+    {
+      "failure_type": "flight_leg_modeling",
+      "count": 2,
+      "description": "Round-trip dates were combined into one outbound search or passed through an unsupported return_date argument."
+    },
+    {
+      "failure_type": "constraint_encoding_and_context",
+      "count": 2,
+      "description": "A minimum rating was encoded without both bounds, and an unambiguous hotel stay tied to a round trip was omitted."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states that flight legs should be separate and that results should be cached, so those rules need not be duplicated. The edits make execution and cache checks more verifiable, clarify how terse follow-ups and domain-specific filters are handled, fill a gap in range and facility interpretation, and allow unambiguous hotel dates and destination to be derived from a round trip.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- Call the provided tools directly; do not import them, alter module paths, or define or redefine tool functions or models. Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key before proceeding. Save refinements under new keys and do not substitute hand-built dictionaries or redefined models for tool result objects. Before finishing, verify that every result-producing call has a corresponding save. Do not print `No planning needed` after performing any planning operation."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "\n- Resolve brief or affirmative replies against the immediately preceding assistant question or offer; treat them as supplying or accepting the requested preference, not as a no-op. Keep earlier requested items active. Apply each new constraint to its intended item and domain, and use a filter only with a compatible cached result from that same domain (for example, `filter_hotels` requires hotel results as `prior_results`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- For a range-valued criterion, provide both bounds: a minimum-only request uses the stated minimum and the schema’s upper bound; an exact value uses equal bounds. Do not encode a minimum as a single-element list. Decompose explicit multi-part facility requests into all directly matching, supported fields; do not omit a separately named facility when another amenity is also requested."
+      },
+      {
+        "op": "replace",
+        "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+        "content": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs. Exception: when a hotel request is clearly for the stay at the single destination of an explicitly dated round trip, and no separate hotel location or dates are given, use that destination and the outbound and return dates as hotel city, check-in, and check-out. If the trip has multiple destinations or the hotel stay is ambiguous, ask instead."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

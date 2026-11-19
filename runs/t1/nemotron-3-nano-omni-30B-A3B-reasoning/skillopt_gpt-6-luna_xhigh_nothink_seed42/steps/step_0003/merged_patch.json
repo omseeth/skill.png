@@ -1,0 +1,60 @@
+{
+  "reasoning": "Consolidated overlapping cache guidance into one operational checklist and one result-saving rule. Combined the overlapping schema-mapping additions, while preserving their distinct rating and star-range cases. Kept flight-leg, proximity, missing-information, and direct-tool guidance in separate sections so no edits target the same text region. Support counts reflect how many of the four proposed patches support each merged edit.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+      "content": "- Treat the latest user turn as an update to the full trip plan. Before planning, inventory every requested action and item from the full conversation, including replies to assistant questions, distinct flight legs, and explicitly requested lodging destinations or stays. Check cache coverage separately for each item and constraint. For an affected item, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. When a cached result already represents earlier criteria, apply each newly introduced constraint using the appropriate supported filter argument and ensure the call actually includes it; search when a needed result is unavailable. Do not skip uncovered requested items, redo unaffected domains, or rely on variables from earlier executions.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "content": "- Never leave a search, filter, sort, or nearest-results call as a bare expression: assign its exact return value to a variable and save that object with `save_to_cache` under a unique, descriptive key, even when its `search_results` is empty. Save each refinement under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "## Represent flight legs separately\n- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip, search outbound and return separately, reversing the route for the return; do not use an unsupported `return_date` argument or treat the return date as another outbound date. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+      "content": "## Represent flight legs separately\n- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip, search outbound and return separately, reversing the route for the return; do not use an unsupported `return_date` argument or treat the return date as another outbound date. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.\n- Before finalizing flight calls, verify that every stated outbound and return segment has its own route/date pair, with the return date used as that leg’s `departure_date`. Do not encode a return date as an alternative outbound date or an `arrival_date`, and do not pass parameters absent from the flight tool schema.\n- If the user also requests a hotel for the same round trip and gives no separate lodging dates, use the outbound date as hotel check-in and the return date as check-out in the trip destination city. Do not omit the hotel search merely because the latest turn discussed flights.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "## Hotel proximity to attractions\n- If the user explicitly requests hotel access or proximity to an attraction, check whether relevant attraction results are available; search for any missing results, then call `search_nearest` with both the hotel and attraction result objects, grouped by the requested primary domain. Interest in visiting an attraction alone does not imply a request for proximity or require a nearest-results call.",
+      "content": "## Proximity between requested domains\n- If the user explicitly requests proximity between result types (for example, a restaurant near a hotel or a hotel near an attraction), check cache coverage for both relevant result objects, retrieve valid cached results or search for missing ones, then call `search_nearest` with both objects and group by the requested primary domain. Merely expressing interest in visiting or finding items in a domain does not imply a proximity request; do not call `search_nearest` without an explicit relationship.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Validate tool arguments and preserve user intent",
+      "content": "- Match location granularity to the schema: use `state` when the user gives a state or region rather than a city. For a named neighborhood within a city, use the containing city in `city` and the named area in `neighborhood`; preserve the user’s supplied entity text, including city qualifiers in compound neighborhood labels. For attraction searches, a state name or abbreviation supplied without a city belongs in `state`, not `city`.\n- When the schema represents a minimum-only rating preference as a range, use that minimum and the scale’s upper bound (for example, on a 1–5 scale, “at least 3” becomes `[3, 5]`). When `stars` is a minimum/maximum pair, encode an exact N-star request as `[N, N]`.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "## Missing mandatory information\nBefore searching, check the full conversation for all mandatory inputs required by each requested tool. If any are missing, do not invent values, use defaults, or run a partial search. Make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+      "content": "## Missing mandatory information\nBuild the requested actions from the full conversation, then check mandatory inputs separately for each requested domain. If information is missing for one or more domains, make one `seek_information` call asking only for those missing mandatory inputs; do not search a domain whose own mandatory inputs are incomplete. Still perform and cache searches for other requested domains whose mandatory inputs are complete. If the user gives an exact hotel check-in date and an explicit stay length in nights, use `adjust_date` to derive check-out; do not ask for a date that can be derived this way. Vague timing such as “a weekend” does not supply exact dates or a stay length. Do not invent values or use defaults; optional preferences are not mandatory inputs.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "append",
+      "content": "\n## Execute tools directly\n- Call the provided tool functions directly; do not import tools, alter module paths, or define or redefine tool functions or their models. Use `print(\"No planning needed\")` only when valid cached results already satisfy the entire request, and never append it after performing searches, filters, sorts, or nearest-results calls.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "batch_size": 1,
+  "success_patterns": [
+    "Split the multi-part query into atomic requests (snow conditions, weather alerts, hardiness zone) and emit exactly one call per request, with no helper or extra calls.",
+    "Chose the one endpoint whose name and description mirror each request (Current Snow Conditions for a resort, /alerts for alerts, Retrieve the Hardiness Zone for a ZIP code). Ignored the many look-alike weather tools: astronomy, time zone, current weather, daily forecast and historical data.",
+    "Mapped query phrases onto the tool's own parameter names. 'Active alerts' became active=1, 'coordinates 39.48,-106.04' went into the point parameter as 'lat,lon', and the ZIP code went verbatim into zipcode. A required parameter went in the required list. A parameter the schema lists as optional went in the optional list, even when the query supplied it as the main input.",
+    "Added an implied optional value (units='i' for a US resort) when the parameter description gave a reason to include it. Left optional parameters empty on tools that had none to fill."
+  ],
+  "patch": {
+    "reasoning": "The skill is empty, so these are the first rules. The trajectory shows a compact workflow that gave an exact match on a task with many distractor tools: decompose the query, pick the most specific matching tool per clause, map constraint words onto the tool's own parameters, and keep the output format strict. Each rule is stated generally and kept short, so it applies to any tool-calling task.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Rule 1: Decompose the query, one call per request\n- Before answering, split the query into atomic requests: each sentence, each 'Also / And / Then' clause, and each entity or item listed. Make exactly one call per request.\n- Check the list at the end. Dropping a clause is the most common failure. Do not add extra 'helper' calls (search-then-get, list-languages) that no clause asks for.\n- If a tool takes a single value and the query lists several, make one call per value."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 2: Pick the most specific matching tool\n- Many tool lists contain several look-alike tools from the same domain (e.g. a dozen weather tools: forecast, current, astronomy, time zone, historical). Choose the tool whose name and description mirror the query's verb and object. 'Snow conditions at a resort' -> the snow-conditions tool. 'Weather alerts' -> the alerts tool. 'Hardiness zone for a ZIP' -> the hardiness-zone tool.\n- Match the input type the query gives. A resort name needs a tool that takes a name. Coordinates need a tool that takes lat/lon or a point. A ZIP code needs a tool that takes a ZIP.\n- Ignore tools for topics the query never mentions, even when they share a keyword with it."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 3: Parameter mapping\n- Use only the parameter names the chosen tool lists. A parameter under 'Required parameters' goes in `required parameters`. A parameter under 'Optional parameters' goes in `optional parameters`, even when the query supplies it as the main input. Use `[]` for an empty list.\n- Copy names, IDs, ZIP codes and coordinates verbatim from the query. Use the format the parameter description gives (e.g. a `point` of latitude,longitude becomes \"39.48,-106.04\").\n- Turn query qualifiers into the matching filter parameter. 'Active alerts' -> active=\"1\". 'Current' -> a current-conditions endpoint or flag. Include an optional parameter only when the query states or clearly implies its value.\n- Include an implied value when the parameter description supports it, e.g. a US location with a units parameter -> imperial ('i'), especially when the description says it improves the response. Never invent identifiers."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 4: Output format\n- Give one flat JSON list inside <answer></answer>. Each call is an object with exactly the keys `tool name`, `required parameters` and `optional parameters`.\n- Copy `tool name` exactly from the tool heading, in the form `Provider: API`. Write every parameter as {\"name\": ..., \"value\": ...} with the value as a quoted string. Check that brackets are balanced and that no key is repeated."
+      }
+    ]
+  },
+  "source_type": "success"
+}

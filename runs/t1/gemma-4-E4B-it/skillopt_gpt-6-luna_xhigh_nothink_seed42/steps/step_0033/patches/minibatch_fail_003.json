@@ -1,0 +1,31 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "flight_leg_scope_and_date_mapping",
+      "count": 2,
+      "description": "Flight calls did not match the requested legs: one added an outbound leg despite a return-only request, and another put the return date in arrival_date instead of searching the reverse-direction leg."
+    },
+    {
+      "failure_type": "unsupported_preference_mapping",
+      "count": 1,
+      "description": "A qualitative request for a kid-friendly airline was passed as an airline value despite no supported mapping."
+    },
+    {
+      "failure_type": "unaffected_scope_overgeneration",
+      "count": 1,
+      "description": "The agent repeated work for an outbound flight and a cached restaurant result although the latest turn did not change those scopes."
+    }
+  ],
+  "patch": {
+    "reasoning": "The missing clarification is how to handle an explicit request for only the return flight. The existing skill already says not to encode a return leg as arrival_date, to omit unsupported preferences, and to leave unaffected cached scopes alone, so those instructions need no duplicate edits.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date.",
+        "content": "If the user explicitly requests only or just the return flight, search only the reverse-direction leg, using the established return date as that leg's `departure_date`; do not also search an outbound leg merely because an earlier turn established the route or gave a two-date span. For a requested round trip, search both legs separately: the outbound on the first date and the return in reverse on the second date."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

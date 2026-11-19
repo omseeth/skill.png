@@ -1,0 +1,49 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "malformed_code_structure",
+      "count": 3,
+      "description": "First searches emitted as bare calls with no assignment or save (T2, T6), or as a nested search inside save_to_cache with an invented kwarg `query_summary` (T5). One also put a state code in city= ('OR') and one added `import sys` and comments."
+    },
+    {
+      "failure_type": "wrong_cache_key_or_domain",
+      "count": 2,
+      "description": "T1 loaded a 'hotels' key that does not exist in CACHE, so filter_hotels got None. T7 applied cuisine and tomato-allergy params to filter_hotels instead of a first search_restaurants."
+    },
+    {
+      "failure_type": "missed_proximity_search_nearest",
+      "count": 2,
+      "description": "'Near <named place>' requests were answered with a plain filter or a neighborhood param instead of search_nearest. T3 skipped search_nearest after filtering hotels with an attraction cached. T8 treated PK2 as a neighborhood instead of a hotel_name."
+    },
+    {
+      "failure_type": "fabricated_mandatory_param",
+      "count": 1,
+      "description": "T4 searched hotels with a guessed checkout date and num_people, and re-searched and re-filtered flights and restaurants, when only seek_information for the checkout date was correct."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four recurring errors remain. (1) Code form: bare, nested or duplicated search calls, invented kwargs, and a state code in city. (2) Cache and domain routing: loading keys that are not in CACHE, and sending cuisine or allergy params to hotel tools. (3) 'Near X' requests need search_nearest. (4) A hotel amenity reply with only a one-way flight date must produce seek_information only. Earlier large checklist edits were rejected, so each edit here is short and example-driven. The form edit goes at the top of the skill where it is more likely to be read, and the rest are small additions or a bullet under the existing rule.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Output-form non-negotiables (check before every response)\n- Every search_*/filter_*/search_nearest call is `x = tool(...)` followed on the NEXT line by `save_to_cache(key=\"<key>\", value=x)`. A bare call, a search nested inside save_to_cache, or the same search written twice is wrong. Correct: `attractions = search_attractions(type=[\"Art\"], state=\"OR\")` then `save_to_cache(key=\"attractions\", value=attractions)`.\n- Pass only kwargs that exist in that tool's TOOL CONFIG arg list. `query_summary` is an OUTPUT field of results and is never an input kwarg.\n- A bare two-letter uppercase code after 'in' ('Art attractions in OR') is a US state: `state=\"OR\"`, with no city. Never put it in city=.\n- No `import`, no comment blocks, no reasoning in code, and no print(). Only plain tool calls inside <CODE></CODE>."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 8: Act on the latest turn and the cache",
+        "content": "- Hotel amenity or preference reply when CACHE has NO hotel key and only ONE hotel date is known (e.g. a one-way flight date with no checkout): the whole output is `seek_information(\"We need to ask for the checkout date\")`. Do not call search_hotels. Do not invent a checkout date or num_people, do not re-search or re-filter cached flights or restaurants, and do not invent restaurant params (e.g. cuisine=[\"Cultural\"])."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 30: Keys must exist in CACHE; route cuisine/dietary words to restaurants\n- Before writing `get_results_from_cache(key=...)` or any filter_*, find that exact key string in the CACHE dict. If the domain has NO key, do a first `search_*` (assigned and saved) carrying EVERY constraint stated for that domain in any earlier turn. Never load 'hotels' (or any key) that is not in CACHE.\n  - Example: CACHE holds only flight keys for a round trip (May 14 and May 20), and the last turn describes a hotel (2 star, Downtown, gym) -> `hotels = search_hotels(city=<destination>, checkin_date=[\"May 14, 2025\"], checkout_date=[\"May 20, 2025\"], stars=[2, 2], neighborhood=[\"Downtown <city>\"], gym_present=True, has_business_center=True)` then `save_to_cache(key=\"hotels\", value=hotels)`. Hotel dates come from the outbound and return flight dates.\n- Cuisine, dietary and allergy words are RESTAURANT params only: cuisine, has_tomato_allergy_options, has_nut_allergy_options, has_vegan_options, etc. Never pass them to hotel or flight tools. 'tomato allergy' means `has_tomato_allergy_options=True`, never False.\n- If no restaurants key is in CACHE and the user now describes restaurants, run `restaurants = search_restaurants(city=<destination city from the conversation>, cuisine=[...], has_..._options=True)` and save it as \"restaurants\". Do not touch hotel keys on that turn.\n- If a 'restaurants' key IS in CACHE and the reply only adds a cuisine or style ('Something formal, with a good Korean menu'), use load -> filter -> save: `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, cuisine=[\"Korean\"])`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`. Never re-run search_restaurants."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 31: 'Near X' requests use search_nearest, never a neighborhood param\n- Hotels near an attraction the user wants to visit: after any hotel filter, if an 'attractions' key (a named attraction) is in CACHE, also load it and compute proximity: `attractions = get_results_from_cache(key=\"attractions\")`, `nearest_hotels = search_nearest(hotels=<the filtered hotels variable>, attractions=attractions, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`. Use the filtered hotels variable you just created, and keep the filter and its save as well.\n- Restaurants near a named place that is not a city or neighborhood (e.g. 'something near PK2'): treat the name as a hotel: `hotels1 = search_hotels(city=<city>, checkin_date=[<known checkin>], checkout_date=[<known checkout>], hotel_name=[\"PK2\"])`, `save_to_cache(key=\"hotels1\", value=hotels1)`. Then `restaurants = search_restaurants(city=<city>)` and `filtered_restaurants = search_nearest(hotels=hotels1, restaurants=restaurants, groupBy=\"restaurant\")`, then `save_to_cache(key=\"filtered_restaurants\", value=filtered_restaurants)`. Take the dates from the cached flight or hotel summaries. Do not put the name in `neighborhood=` and do not re-search flights. Do not write a bare `search_restaurants(...)` without assignment."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_plan_or_result_persistence",
+      "count": 4,
+      "description": "Ready actions were omitted or tool results were not bound and saved, including hotel searches and round-trip legs."
+    },
+    {
+      "failure_type": "incremental_cache_scope_error",
+      "count": 3,
+      "description": "Agents rebuilt searches, reused an outdated base result, or added unrequested cross-domain actions instead of following the latest compatible cached result."
+    },
+    {
+      "failure_type": "contextual_update_omission",
+      "count": 2,
+      "description": "A follow-up asking what is available after a neighborhood suggestion was treated as requiring no action."
+    },
+    {
+      "failure_type": "hotel_dates_from_explicit_duration_not_derived",
+      "count": 2,
+      "description": "Hotel searches were omitted despite an explicit trip start date and stay length that determine check-in and checkout."
+    },
+    {
+      "failure_type": "schema_or_tool_access_error",
+      "count": 2,
+      "description": "Agents used an unsupported flight argument or imported unavailable tool modules."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already covers cache refinement, result persistence, flight-leg handling, supported arguments, and avoiding unrequested proximity calls, so those rules should not be duplicated. These edits make the two less operationally specified cases actionable: neighborhood follow-ups must refine the relevant cached attractions, and a hotel checkout can be calculated from an explicit stay duration and trip start date.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "asking what is available after an area is suggested makes that area an actionable search target.",
+        "content": "For an attraction request in this context, retrieve the compatible cached attraction result and apply the named area as `neighborhood=[<area verbatim>]` with `filter_attractions`, preserving prior criteria such as attraction type. Save the refined result; a citywide result alone does not answer what is in the suggested area."
+      },
+      {
+        "op": "replace",
+        "target": "Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood.",
+        "content": "A hotel search needs a check-in date and checkout date. If the conversation clearly places the hotel stay at the trip destination and gives the trip start date plus an explicit number of nights, use that start date as check-in and call `adjust_date(date=<check-in>, delta_days=<nights>)` to derive checkout. Do not infer hotel dates from a flight date alone when the hotel stay is not tied to that trip, or infer a stay length from vague labels such as “weekend getaway” or “last-minute”; ask for missing dates or duration when they cannot be established."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

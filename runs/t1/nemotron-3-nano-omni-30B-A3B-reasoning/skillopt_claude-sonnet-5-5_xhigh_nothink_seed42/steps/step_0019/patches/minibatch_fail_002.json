@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "malformed_code_structure",
+      "count": 4,
+      "description": "Searches emitted as bare calls with the search duplicated inside save_to_cache, with a stray </parameter> tag, with both round-trip dates in one departure_date list, with an invented cuisine=['Halal'], or save_to_cache called on never-assigned variables (T2, T4, T6, T8)."
+    },
+    {
+      "failure_type": "dropped_requested_domain",
+      "count": 2,
+      "description": "The hotel requested in turn 1 was omitted when flight dates arrived: no adjust_date hotel for '6 nights', and no neighborhood hotel search for 'Downtown Memphis' (T6, T7)."
+    },
+    {
+      "failure_type": "wrong_domain_cache_use",
+      "count": 1,
+      "description": "CACHE held only 'attractions' and the agent ran filter_hotels on it instead of a first search_hotels when the hotel dates arrived (T5)."
+    },
+    {
+      "failure_type": "missing_optional_param_from_context",
+      "count": 2,
+      "description": "'non-stop' was not mapped to num_layovers=[0] because an existing rule forbids num_layovers, and 'solo trip' was not mapped to num_people=1 (T7, T3)."
+    },
+    {
+      "failure_type": "over_asking_seek_information",
+      "count": 1,
+      "description": "The agent asked for hotel dates that were never requested and ignored tentative but concrete flight dates ('around May 21 possibly ... returning May 31') (T1)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures are code-shape mistakes in first searches or refinements, plus dropped hotel domains and a few missing parameter mappings. Step 12, the only accepted edit that changed these shape rules, did not stop the bare, nested and stray-tag outputs. Rejected large checklist edits did not help either. Four compact edits are proposed. (1) Concrete WRONG/RIGHT pairs placed at the very top, taken directly from observed errors (bare plus nested search, stray tag, two dates in one list, dietary word as cuisine, save_to_cache on an unassigned variable). (2) Fix the existing rule that forbids num_layovers so it no longer blocks 'non-stop', and add the home-airport mapping. (3) A domain-ownership check so an attractions key is never used to filter hotels, and a hotel mentioned earlier is always searched in the same block as the flight searches. (4) Rule 24 additions for tentative dates, 'solo' mapping to num_people=1, a stay length overriding 'weekend getaway', and not inventing hotel requests.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- WRONG/RIGHT pairs for the most common code-shape errors (copy the RIGHT form):\n  WRONG: `search_flights(...)` on its own line followed by `save_to_cache(key=\"flights\", value=search_flights(...))` (bare call plus a second nested search). RIGHT: `flights = search_flights(...)` then `save_to_cache(key=\"flights\", value=flights)`.\n  WRONG: ending the block with a stray `</parameter>` or any tag other than `</CODE>`.\n  WRONG: `departure_date=[\"May 16, 2025\", \"May 25, 2025\"]` for 'travel from May 16 to May 25' between two cities. RIGHT: two assigned and saved searches, the outbound one saved as \"departure_flights\" and the reverse one (departure_date=[\"May 25, 2025\"]) saved as \"return_flights\".\n  WRONG: `cuisine=[\"Halal\"]`. Dietary words (halal, kosher, vegan, vegetarian, gluten free, nut or dairy allergy) are `has_*_options=True` flags, never a cuisine. RIGHT: 'a halal restaurant in St. Louis' -> `restaurants = search_restaurants(city=\"St. Louis\", has_halal_options=True)` then `save_to_cache(key=\"restaurants\", value=restaurants)`.\n  WRONG: `save_to_cache(key=\"filtered_departure_flights\", value=filtered_departure_flights)` with no assignment in the same block (NameError). RIGHT for a flight refinement such as 'just something affordable under 325': for EACH cached leg, `f = get_results_from_cache(key=\"<leg key>\")`, `f2 = filter_flights(prior_results=f, budget=325)`, `save_to_cache(key=\"<new key>\", value=f2)`.\n"
+      },
+      {
+        "op": "replace",
+        "target": "Never add default time windows, flight_class, budget, num_layovers or num_people on flights.",
+        "content": "Never add default time windows, budget, num_people or invented flight_class on flights. Add num_layovers only when the user literally says so: 'non-stop' or 'direct' -> `num_layovers=[0]` on EVERY flight leg. A stated home airport ('I normally fly from LAS') -> `start_airport=\"LAS\"` on the outbound leg and `end_airport=\"LAS\"` on the return leg."
+      },
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\n- Pre-check (domain ownership): a CACHE key only counts for ITS OWN domain. CACHE holding only 'attractions' (or only flight keys) means hotels are NOT cached. When hotel dates or details arrive and there is no hotels key, write a first `hotels = search_hotels(city=<trip city>, checkin_date=[...], checkout_date=[...], ...)` then `save_to_cache(key=\"hotels\", value=hotels)`. It carries EVERY hotel constraint from earlier turns: budget, stars, neighborhood, amenities, and num_people from a stated headcount such as 'for 3 people'. Never run filter_hotels on an attractions, restaurants or flights key. In a flight + hotel conversation, a turn that supplies flight dates must emit the flight search(es) AND the hotel search together (check-in = outbound date, check-out = return date, or adjust_date with the stated nights). A stated area ('hotel in Downtown Memphis') goes in `city=\"Memphis\", neighborhood=[\"Downtown Memphis\"]`. Never drop the hotel because the latest turn only talks about flight dates or class.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 24: Dates, stay length and domain completeness (supplements Rules 6, 7, 9, 14)",
+        "content": "- Tentative wording ('we're thinking of going around May 21, 2025 possibly and returning May 31, 2025', 'looking at May 15') still states concrete dates. If origin and destination appeared in any earlier turn (including 'a trip from Atlanta to San Antonio for 4 people'), run the two round-trip flight searches. Do not call seek_information. A party size in a flight-only conversation is ignored. Never ask for hotel dates when no hotel was requested anywhere in the conversation.\n- 'Weekend getaway' never cancels a stated stay length. 'flight and a hotel in Memphis for 6 nights weekend getaway' + 'traveling May 15, 2025' -> flights saved as \"flights\", then `checkout_date = adjust_date(date=\"May 15, 2025\", delta_days=6)`, `hotels = search_hotels(city=\"Memphis\", checkin_date=[\"May 15, 2025\"], checkout_date=[checkout_date])`, `save_to_cache(key=\"hotels\", value=hotels)`, all in the same block.\n- 'solo trip', 'just me' or 'by myself' with a hotel request means `num_people=1` on search_hotels (e.g. 'solo trip to Raleigh, need a hotel' + 'June 3, 2025 to June 7, 2025' -> `search_hotels(city=\"Raleigh\", checkin_date=[\"June 3, 2025\"], checkout_date=[\"June 7, 2025\"], num_people=1)`). Only explicit solo wording counts; never infer a headcount from other context.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

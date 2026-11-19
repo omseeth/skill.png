@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_namespace_import",
+      "count": 7,
+      "description": "Agents imported tools from a nonexistent module despite the skill explicitly requiring direct calls to injected functions."
+    },
+    {
+      "failure_type": "location_field_mapping",
+      "count": 2,
+      "description": "Agents treated the state abbreviation AZ as a city instead of passing it unchanged in the attraction search state field."
+    },
+    {
+      "failure_type": "cache_noop_misuse",
+      "count": 1,
+      "description": "An agent returned “No planning needed” even though the user added hotel criteria absent from the cached results."
+    },
+    {
+      "failure_type": "cached_result_reuse",
+      "count": 1,
+      "description": "An agent reran a flight search rather than filtering the compatible cached result for the newly requested class."
+    }
+  ],
+  "patch": {
+    "reasoning": "The import and cache-handling failures are already directly addressed by the skill, so repeating those instructions would duplicate existing content. The attraction guidance does not explicitly tell agents how to classify state abbreviations; clarifying that gap addresses the repeated AZ location-mapping error while preserving the user's value.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+        "content": "For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. Treat an unambiguous state name or postal abbreviation as a state value, not a city, and pass it unchanged in `state`. A state alone is usable when the tool supports state-level search; do not ask for a city when it does."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

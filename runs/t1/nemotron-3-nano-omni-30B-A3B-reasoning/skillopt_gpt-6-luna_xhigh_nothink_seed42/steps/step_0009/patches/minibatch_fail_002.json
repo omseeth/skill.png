@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "conversation_scope_and_delta",
+      "count": 4,
+      "description": "Agents missed a context-dependent follow-up, failed to act on an accepted offer or new constraint, or repeated work already satisfied by cache."
+    },
+    {
+      "failure_type": "cache_and_result_lifecycle",
+      "count": 4,
+      "description": "Agents left results unsaved or used an invalid cache key and omitted the requested refinement."
+    },
+    {
+      "failure_type": "flight_itinerary_interpretation",
+      "count": 1,
+      "description": "A date span was treated as multiple outbound dates instead of separate outbound and return legs, and a qualitative airline attribute was passed as an airline name."
+    },
+    {
+      "failure_type": "missing_mandatory_inputs_and_partial_execution",
+      "count": 1,
+      "description": "An agent invented hotel dates and skipped an independently executable restaurant search despite having its required city."
+    },
+    {
+      "failure_type": "tool_argument_semantics",
+      "count": 2,
+      "description": "Agents mismapped a state abbreviation to a city or failed to supply both bounds for an exact hotel star rating."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly requires saving result-producing calls, using listed cache keys, and including new filter criteria, so repeating those instructions would not patch a content gap. The edits clarify unresolved ambiguities revealed here: mapping elliptical follow-ups to assistant-offered items, continuing independent actions when another domain lacks required inputs, interpreting a date span as a round trip, and encoding exact values for range fields.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "- Resolve elliptical replies against the immediately preceding assistant question or offer and the full active plan. A direct affirmative accepts the offered action or preference; a question such as asking what is at an assistant-named place refers to that place and should update or refine the relevant domain using its name. Such a reply does not cancel earlier active requests or justify repeating work already satisfied by valid cached results."
+      },
+      {
+        "op": "replace",
+        "target": "## Missing mandatory information\nBefore searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+        "content": "## Missing mandatory information\nCheck mandatory inputs separately for each requested action and domain against explicit values in the full conversation; related context does not automatically satisfy a required field. Do not infer missing values or use defaults. If any action is incomplete, make one `seek_information` call asking only for its missing mandatory inputs. Do not search that incomplete action, but still execute and cache other independently requested actions whose own mandatory inputs are available. For example, missing hotel dates do not prevent a restaurant search when its city is known. Optional preferences are not mandatory inputs."
+      },
+      {
+        "op": "replace",
+        "target": "## Represent flight legs separately\n- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip, search outbound and return separately, reversing the route for the return; do not use an unsupported `return_date` argument or treat the return date as another outbound date. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "## Represent flight legs separately\n- Treat each explicitly described one-way flight segment as its own search, using that leg’s origin, destination, and departure date. When a trip between two cities is given as a start-to-end date span, treat the first date as outbound and the second as return unless the user explicitly describes a one-way or multi-city trip. Search the return separately with the route reversed; do not combine the dates into one outbound search or use an unsupported `return_date` argument. Apply preferences that are not direction-specific to every applicable leg; if directional results are cached, retrieve and refine each leg independently.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates. Pass values to `airline` only when they identify a specific airline; do not treat qualitative descriptions such as kid-friendly as airline names or invent a matching airline."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- For fields whose schema represents a minimum/maximum range, supply both bounds. An exact N-star hotel request uses `stars=[N, N]`, not a single-value list."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

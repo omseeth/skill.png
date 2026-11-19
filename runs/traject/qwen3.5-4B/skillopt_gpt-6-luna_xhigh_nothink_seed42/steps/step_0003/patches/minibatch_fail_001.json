@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_outcome_coverage",
+      "count": 8,
+      "description": "Calls were omitted, replaced by neighboring or unrelated operations, or added without serving a requested outcome or source."
+    },
+    {
+      "failure_type": "schema_and_constraint_mapping",
+      "count": 7,
+      "description": "Explicit filters or identifiers were omitted or mapped incorrectly, with errors in ranges, accepted values, and required-versus-optional parameters."
+    },
+    {
+      "failure_type": "output_format_atomicity",
+      "count": 1,
+      "description": "Multiple endpoint calls were combined into one malformed call object, alongside an unsupported extra call."
+    }
+  ],
+  "patch": {
+    "reasoning": "General selection, coverage, and schema rules already exist, but failures show that agents need a concrete final audit in both directions: every outcome must have a suitable call, and every call must serve an outcome. A field-by-field check can also catch omitted constraints, unsupported extras, range mistakes, duplicate parameters, and bundled calls.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Check that every requested outcome is covered, each call uses the exact listed tool name, and each call object follows the active answer format exactly. Use the required keys, parameter buckets, types, and wrappers; include empty arrays when required. Do not merge calls, duplicate keys, or add explanatory text outside the required format.",
+        "content": "- Before responding, perform a two-way audit: map each requested outcome to the call or calls that fulfill it, checking the endpoint's actual operation, source, and result granularity; then check that every planned call serves at least one requested outcome and remove any unmatched call. For each remaining call, compare its arguments field-by-field with that endpoint's schema and the request: include every compatible explicit constraint once in the correct bucket and accepted form, omit unsupported or unrequested values, and use both bounds for a range without setting an exact-value field. Emit one call object per endpoint invocation, using the active format's exact keys, buckets, types, wrappers, and required empty arrays; do not bundle calls, duplicate parameters, or add text outside the required format."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

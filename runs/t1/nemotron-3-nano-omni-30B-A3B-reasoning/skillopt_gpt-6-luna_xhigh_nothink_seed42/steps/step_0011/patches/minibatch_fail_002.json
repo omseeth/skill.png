@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_cache_workflow",
+      "count": 7,
+      "description": "Agents often ignored compatible cached results, repeated existing criteria or searches, and/or failed to save refined results."
+    },
+    {
+      "failure_type": "intent_and_domain_mapping",
+      "count": 3,
+      "description": "Agents missed newly requested domains or relations, or failed to resolve a brief answer using the surrounding conversation."
+    },
+    {
+      "failure_type": "entity_value_or_schema_mapping",
+      "count": 2,
+      "description": "Agents changed user-provided values or placed a region in the wrong schema field."
+    },
+    {
+      "failure_type": "tool_invocation",
+      "count": 1,
+      "description": "An agent imported tools instead of calling the tools already supplied by the runtime."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits make conversational shorthand and cross-domain updates harder to miss, reinforce exact preservation of user-supplied values, make cache refinement and persistence steps explicit, and prevent runtime failures from importing tools.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- For every search, filter, sort, or `search_nearest` call, bind the exact returned object to a local variable and save it with `save_to_cache` under a new, descriptive key. For a refinement, retrieve the compatible cached result into a local variable, pass it as `prior_results`, apply only the newly requested criteria, then bind and save the refined result under a new key. Do not nest cache retrievals inside tool calls, omit saves, or repeat searches for unchanged domains. Do not substitute hand-built dictionaries or redefined models for tool result objects."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context.",
+        "content": "- Resolve short replies against the immediately preceding assistant question or proposal: an answer such as “yes,” “that sounds great,” or a cuisine preference can accept or specify a concrete domain, criterion, or proximity relation. Treat that as an outstanding request unless a valid cached result already covers that exact criterion. Audit every affected domain and requested cross-domain relation; do not let an already-planned domain replace a newly introduced one."
+      },
+      {
+        "op": "insert_after",
+        "target": "Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases.",
+        "content": "- Preserve user-provided entity values, labels, and identifiers verbatim, including airline codes, attraction-type terms, and state abbreviations. Select the schema field by semantic role (for example, put a state abbreviation in `state`, not `city`); do not autocorrect, translate, or replace a value with a guessed equivalent."
+      },
+      {
+        "op": "append",
+        "content": "\n## Tool execution environment\n- Call the tools provided by the runtime directly. Do not import them, redefine them, or redefine their input or result models."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

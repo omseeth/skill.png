@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Hotel refinement with a 'hotels' key cached: load that key, call filter_hotels with only the last turn's values ('around 750 per night' -> budget=750, 'fitness center' -> has_fitness_class=True), and save as filtered_hotels. Two trajectories matched the gold exactly, with no flight lines and no re-passed stars, shuttle or parking.",
+    "Restaurant rating reply with a 'restaurants' key cached: 'at least 3.0' -> rating=[3.0, 5] only, as a three-line load/filter/save block. Cuisine and city are not re-passed.",
+    "A hotel-only opener with a city and amenities but no dates (CACHE {}) produced a lone seek_information for check-in and check-out dates, with no search_hotels call.",
+    "A flight reply that only adds an arrival-time wish ('arrive before 06:36 PM') while no departure date exists still produced a lone seek_information for the departure date, with no filter or search.",
+    "In three trajectories the agent emitted search_flights/search_hotels with a literal '<date>' placeholder. The first-turn openers were 'one-way ... family reunion', 'for 3 people ... and a hotel' and 'a layover in San Antonio'. The gold in each case was a lone seek_information, and the placeholders caused a ValidationError. The context words (party size, purpose, layover city, one-way) were mistaken for dates."
+  ],
+  "patch": {
+    "reasoning": "The clean wins in this batch are filter-only-new-constraint turns and seek_information-only turns, and both are already covered. The remaining weakness is that the agent still writes searches with a '<date>' placeholder on first-turn flight or flight+hotel openers that carry only context words (party size, 'family reunion', 'layover in X', 'one-way'). This is the highest-value gap. I edit the existing DATE GATE bullet and the Rule 6 context list rather than adding a new rule. The edit pairs a prohibition (no placeholder dates) with a positive trigger (the whole output is one seek_information line naming the missing dates). It does not suppress the restaurant/attraction partial-search behaviour in 4b, because the gate text still defers to it.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Not found -> that domain gets `seek_information(...)` naming only the missing date(s) and NO search call.",
+        "content": "Not found -> that domain gets `seek_information(...)` naming only the missing date(s) and NO search call. A placeholder such as `departure_date=[\"<date>\"]` or `checkin_date=[\"<date>\"]` is never allowed (it raises a ValidationError). So a first-turn opener with origin/destination (or hotel city) but no written date ('one-way', 'for 3 people', 'family reunion', 'layover in X', 'a flight and also a hotel') is exactly one line, `seek_information(\"We need the departure date for the flight[, and the check-in and check-out dates for the hotel].\")`, naming the hotel dates only if a hotel was requested, with no search_* call for that domain."
+      },
+      {
+        "op": "replace",
+        "target": "or a home-airport habit ('I normally fly from LEX')",
+        "content": "a layover city ('layover in San Antonio'), an arrival-time wish ('arrive before 6:36 PM', even as the answer to the assistant's time question), or a home-airport habit ('I normally fly from LEX')"
+      }
+    ]
+  },
+  "source_type": "success"
+}

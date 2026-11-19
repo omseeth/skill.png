@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_noop_handling",
+      "count": 2,
+      "description": "Replies declining more preferences were treated as a reason to repeat the attraction search instead of retrieving the still-relevant cached result."
+    },
+    {
+      "failure_type": "cache_incremental_filtering",
+      "count": 2,
+      "description": "New hotel constraints prompted fresh searches rather than retrieving and filtering the existing hotel results."
+    },
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 3,
+      "description": "Some searches were not saved, or the save call used the tool function instead of the variable holding its result."
+    },
+    {
+      "failure_type": "criteria_mapping_and_entity_fidelity",
+      "count": 3,
+      "description": "Some requests used the wrong location field or altered the user's attraction-type or neighborhood text."
+    },
+    {
+      "failure_type": "flight_leg_direction",
+      "count": 1,
+      "description": "An explicit return date was encoded as an arrival-date constraint instead of a separate reverse-direction flight leg."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already directly covers incremental filtering, saving assigned results, preserving criteria, and searching flight legs directionally, so repeating those instructions is unwarranted. It does not explicitly state what to do when a follow-up declines additional preferences without adding a supported constraint; clarify that this is a cache-only retrieval when prior results remain relevant.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint.",
+        "content": " If a follow-up declines additional preferences or adds no new supported filterable criterion, the existing search scope is unchanged: when its cached result remains relevant, retrieve it by exact key only; do not rerun or filter the search. Treat vague comments such as “something fun” as no new constraint unless they map to a supported criterion."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,26 @@
+{
+  "reasoning": "Kept all failure edits, since they take priority, and made small trims and fixes in line with the meta-skill (shrink, de-conflict, no new gates). (1) Both groups edited the SEARCH GATE sentence 'A search_* call is allowed only for a domain with NO key', so I merged them into one replace. That edit keeps the failure group's one-triple-per-flight-leg rule and the success group's narrow exception for a NEW accepted attraction type, which proximity and city replies do not trigger. (2) In the DATE GATE edit, 'Never compute dates in code' would have conflicted with the adjust_date stay-length rules (Rules 6/24), so I reworded it to 'never guess dates from vague words'. (3) In the 'Conversely' flight edit, 'write ZERO flight lines' could have blocked flight searches for newly given dates, so it now says 'no flight load/filter lines'. I also removed the number-reply example, per the meta-skill. (4) I tightened the Rule 26 proximity insert from the failure group (support 3) and kept all four cases. (5) From the success group I kept the placeholder/restaurant-city sentence, the shortened version of which keeps only the restaurant-city clause that is new. I also kept the layover-city context example, the 'no comments' simplification (which resolves a contradiction with the hard output rules), the filter_attractions(city=...) exception, and the one-date hotel exception to 'never ask again'. These edits touch distinct sentences from the failure edits, so there are no overlaps. (6) I did not add any edits outside the two groups. No edits touch the SLOW_UPDATE block. [optimizer-ranked: selected 2/13 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Conversely, when the last message is about hotels or restaurants, write no flight line.",
+      "content": "Conversely, when the user's LAST message has no flight word (class word, airline code, flight time or flight-price wording) - e.g. an amenity, stars, neighborhood, hotel budget, rooms or party size, a restaurant or attraction request, or a bare 'Yes' answering a non-flight offer - write NO flight load/filter lines. A class or date named in an earlier turn is already in the flight keys' summaries; never re-apply it and never invent a flight_class.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "A search_* call is allowed only for a domain with NO key. Examples:",
+      "content": "A search_* call is allowed only for a domain with NO key. Sole exception: the assistant's last message offered a NEW attraction type, the user accepts it, and no cached attractions summary lists that type -> `attractions = search_attractions(city=<trip city>, type=[\"<offered type>\"])` + `save_to_cache(key=\"attractions\", value=attractions)`; a proximity or city reply is not this case. A flight class, airline, time or price reply refines EVERY flight key in CACHE: one load/filter/save triple per leg with the same kwarg, stopping only after the last leg. Examples:",
+      "support_count": 2,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Per the meta-skill, the first priority is rewriting the cause of the last regression: the -1 flight block that leaked flight lines onto hotel/number replies. Edit 3 replaces its loose sentence with a trigger-word rule (class word, airline code, flight time or price wording). Edit 0 is the best complement: it resolves the SEARCH GATE vs slow-block conflict on new attraction types (and says proximity or city replies are not that case), and it fixes the one-leg under-fire by requiring one load/filter/save triple per flight key. Together they cover both the over-fire and the under-fire of the flight rule. Edit 4 resolves a real contradiction but also adds a hotel clause Rule 9 already has. Edit 7 is a long addition, which conflicts with the 'shrink, don't add' guidance. Edits 1, 2, 5, 8, 9 and 12 mostly duplicate existing rules or add text, and 10 and 11 are low-impact cleanups.",
+    "selected_indices": [
+      3,
+      0
+    ]
+  }
+}

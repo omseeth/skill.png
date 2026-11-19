@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every clause of the query, last one included, became exactly one call. Repeated entities got repeated calls with shared qualifiers copied into each (4 Alpha emails, 2 Blaze emails with smtp+timeout, 2 SMTP domains with username 'info', 3 Airline-by-Country codes). Answers had 3-9 objects and no padding calls.",
+    "Counts and limits in a clause were mapped to the schema's optional fields (limit=100, pulls=5, sides=20, page=1 with pageSize=20 or 10, offset=0 in required). Required-vs-optional placement followed each tool's own schema, e.g. Chess `id` and Hearthstone `page` in optional.",
+    "The narrow endpoint whose description matched the clause's verb and facet was chosen over broader siblings: Recent 50, month's top articles, Custom die vs Regular die, Create Weapon vs Weapon (delete), Miza Song search for 'across music platforms', Spotify _v2 Get user Playlists for a user id. Endpoints with no params got `[]` for both lists.",
+    "Output layout was one object per line, with `optional parameters` written once per object, full `Provider: Endpoint` names, and no dash names. All 8 answers parsed.",
+    "The few partial misses were value-form problems: a rank range written as 'top 10' instead of '1-10', a UK market given only `lang` without `country`=`GB`, and a category phrase that should be the schema's enum token."
+  ],
+  "patch": {
+    "reasoning": "All 8 trajectories parsed cleanly and chose the right tools, so the layout, completeness and sibling-selection rules should stay as they are. The skeleton pass stays too, since the last attempt to replace it made things worse. The remaining losses were optional-value form: a rank range, an enum token, and a locale given only as `lang`. A fourth gap is that endpoint names already fix certain qualifiers, so no param should be added for them. Each of these is one concise rule with an example. I also add one fully-filled canonical object line to imitate, as recommended for the duplicate-optional-key bug, without touching the existing layout instructions.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "'at least 5 minutes' -> min_duration `300` (seconds).",
+        "content": "'at least 5 minutes' -> min_duration `300` (seconds).\n  - Use the schema's own token, not the query's phrase: 'toys and games' -> category `toysgames` (copy it from the allowed-values list in the description); 'top 10' on a `range` param -> `1-10`; 'British English' -> `en-GB`."
+      },
+      {
+        "op": "replace",
+        "target": "Each Asos call carries its own market values (UK -> `country`=`GB`, `lang`=`en-GB`).",
+        "content": "Each Asos call carries its own market values: 'UK market, British English' -> BOTH `country`=`GB` AND `lang`=`en-GB` (never `lang` alone). A language phrase plus a market phrase fills every locale field the tool lists."
+      },
+      {
+        "op": "replace",
+        "target": "Never emit a parameter with an empty value.",
+        "content": "Never emit a parameter with an empty value. If the endpoint's own name already fixes a qualifier (`Dice Roll Simulator: Regular die` = six-sided, `Gas Price: canada`, `Moka News: Recent 50`, 'month's top articles'), add no param for it and leave the lists `[]`."
+      },
+      {
+        "op": "insert_after",
+        "target": "If a line looks like any of these, rewrite the whole object instead of splicing.",
+        "content": "Imitate this fully-filled line (both lists non-empty, `optional parameters` written once, line ends `]},`): `{\"tool name\": \"Blaze Verify: Verify an email\", \"required parameters\": [{\"name\": \"email\", \"value\": \"support@company-domain.com\"}], \"optional parameters\": [{\"name\": \"smtp\", \"value\": \"true\"}, {\"name\": \"timeout\", \"value\": \"10\"}]},`"
+      }
+    ]
+  },
+  "source_type": "success"
+}

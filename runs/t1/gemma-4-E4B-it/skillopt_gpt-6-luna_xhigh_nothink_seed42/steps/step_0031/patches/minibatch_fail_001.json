@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_decision_error",
+      "count": 4,
+      "description": "A new flight-class or restaurant-budget constraint triggered a fresh base search instead of retrieving and filtering the compatible cached result."
+    },
+    {
+      "failure_type": "cache_scope_compatibility",
+      "count": 1,
+      "description": "A cached attraction result limited to one named entity was filtered for a broader category instead of searching that category."
+    },
+    {
+      "failure_type": "cross_domain_context_resolution",
+      "count": 2,
+      "description": "Explicit hotel requests accompanying flight itineraries were either deferred despite usable trip context or omitted without resolving their missing details."
+    },
+    {
+      "failure_type": "schema_mapping_and_persistence",
+      "count": 1,
+      "description": "A state abbreviation was mapped to the attraction city field and the search result was not saved."
+    }
+  ],
+  "patch": {
+    "reasoning": "The top-level decision rule needs clearer precedence and an explicit cache-breadth test to address both re-searching for filter-only updates and filtering an entity-restricted result for a broader category. A focused hotel rule clarifies when round-trip dates and destination can define a stay while keeping ambiguous multi-city hotel dates pending. The schema and save failure is already explicitly covered by the skill, so it does not warrant another edit.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "**Turn triage—apply in order:** Resolve the latest turn using the full conversation and the preceding assistant question or offer, then identify only the domains, legs, and scopes it changes. For each changed scope, use the most constrained cached result that is still compatible and broad enough to cover the full request. If the scope is covered and the turn only adds or changes a filterable preference, retrieve that result by its exact cache key, apply the matching filter with active constraints preserved, and save the filtered result; do not run a new base search. A result restricted to one named entity cannot cover a broader category request, just as a result restricted to a different category cannot establish that a newly requested entity is included. Search with all active supported criteria only for a genuinely new scope or when no compatible cached result covers the request. Leave unaffected domains and legs untouched."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Required-argument checks",
+        "content": "\n- Resolve hotel dates and city from itinerary context only when the conversation makes them clear. If a user requests a hotel as part of a round trip and gives the outbound and return dates as the trip span, use the destination as the hotel city and those dates as check-in and check-out unless the user specifies otherwise. For a multi-city itinerary with hotels in multiple cities, do not assume hotel dates or neighborhoods from flight-leg dates; keep each requested hotel task pending and seek only the missing mandatory hotel details. Do not silently omit an explicitly requested hotel domain."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

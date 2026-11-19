@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 4,
+      "description": "Agent answered with a word or entity named in the clue, or a sub-item or process tied to it, instead of the category the 'this <noun>' pointer asks for. Examples: 'Coonawarra' for 'this country', 'King Fahd Causeway' for 'this Persian Gulf nation', 'Devereux Tower' for 'this British site', 'transpiration' for 'this part of the tree'. Rule 2 already covers this."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "Naming problems: the agent gave the altered Stooges title instead of the original Shakespeare title the clue asks for, and the Italian form 'Palazzo Pitti' instead of the English 'Pitti Palace' that matches the clue's English 'palace'."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "'speech balloon' given for a 'Term for ...' clue; the rule already says to drop passage modifiers such as 'speech' and give plain 'balloon'."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "'Curate' for 'An Anglican parish priest'; the passages gloss the parish priest as 'vicar or rector', and a curate is an assistant."
+    }
+  ],
+  "patch": {
+    "reasoning": "Half the failures are slot-type errors. The agent grabbed a salient named entity, component or process from the passages instead of the container or category the clue's 'this <noun>' points to. Rule 2 states the principle but gives no concrete test, so I add an explicit category check with these contrasts: country vs region, nation vs causeway, site vs building, part vs process. Two further gaps are naming conventions. The first is that altered or parody titles should resolve to the original. The second is that the English form of a name should be used when the clue uses an English type noun. Last, a short rule for definition-style clues makes the agent pick the term the passages gloss with the clue's own words, in its bare generic form. The edits are generic and avoid repeating earlier rejected edits.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "\n- CATEGORY CHECK (do this before answering any 'this <noun>' clue): write down the noun after 'this/these' ('country', 'nation', 'site', 'part of the tree'). The answer must itself be an instance of that noun. Reject any candidate that (a) is a name or word already in the clue, (b) is a component, product or feature that the clue says is IN, ON or PART OF the answer, or (c) is a process or abstract term when the noun asks for a thing. The answer is usually the CONTAINER or WHOLE that the clue describes. 'Many of this country's finest red wines come from the Coonawarra region' -> 'Australia' (not 'Coonawarra'). 'A 15 1/2-mile causeway connects this Persian Gulf nation to the Saudi mainland' -> 'Bahrain' (not the causeway's name). 'One of the buildings at this British site is named for Robert Devereux, held there before his execution' -> 'Tower of London' (not 'Devereux Tower'). 'Water is lost to the atmosphere through this part of the tree' -> 'Leaves' (a part; 'transpiration' is the process). Repeated passage phrases such as 'King Fahd Causeway' or 'Devereux Tower' only show which facts the clue is built on; they are not the answer."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For titles, give the standard title without quotation marks and keep internal punctuation as written in the context ('M*A*S*H', not 'MASH film').",
+        "content": "\n- Altered or parody titles: when the clue says a spoof, episode or short 'changed X to Y in this <work/title>' ('changed \"All\" to \"Oil\" in this Shakespeare title'), the answer is the ORIGINAL work ('All's Well That Ends Well'), not the altered title that the passages mention ('Oil's Well That Ends Well'). Undo the substitution the clue describes and give the full original title.\n- English form of names: when the clue is in English and uses an English type noun ('this Florentine palace', 'this cathedral', 'this bridge'), answer with the English-language name ('Pitti Palace', not 'Palazzo Pitti'; 'Tower of London'), even if many passage titles use the native form. A leading 'the' is optional."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Honor qualifiers when the context offers several names for the same thing: 'Greek god of erotic love' -> 'Eros' (not Roman 'Cupid').",
+        "content": "\n- Definition-style clues with no 'this' ('An Anglican parish priest', 'Term for the circle that encloses a comic strip character's dialogue'): answer with the single standard term that the passages gloss with the clue's own words ('parish priest ... usually called a vicar or rector' -> 'Vicar'). Do not pick a related but different rank or role ('Curate' is an assistant, not the parish priest). Give the bare generic head word without a modifier that the passages add ('balloon', not 'speech balloon'). When several synonyms appear, choose the one named first or most often beside the clue's key words."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

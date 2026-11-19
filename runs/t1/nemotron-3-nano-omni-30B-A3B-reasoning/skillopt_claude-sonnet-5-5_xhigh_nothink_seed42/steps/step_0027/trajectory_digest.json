@@ -1,0 +1,54 @@
+{
+  "step": 27,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 26,
+  "failure_patterns": [
+    {
+      "pattern": "filter_kwargs_not_matching_last_message: Filters re-passed earlier-turn or summary values (stars, kids club, num_layovers) and dropped values stated in the last message (Bengali cuisine). One filter used an undefined variable. One filtered hotels when the reply was about restaurants plus 'near the hotel'.",
+      "count": 26,
+      "task_ids": [
+        "attraction:train:8:50:2",
+        "flighthotel:train:20:16:1",
+        "flight:train:23:16:2",
+        "flighthotelrestaurant:train:21:58:1",
+        "hotelattraction:train:3:9:3",
+        "flight:train:3:60:3",
+        "flighthotel:train:4:50:2",
+        "hotelattraction:train:1:13:2",
+        "flighthotel:train:19:39:4",
+        "hotelrestaurant:train:14:10:3",
+        "flight:train:3:8:2",
+        "flight:train:17:8:3",
+        "flighthotelattraction:train:11:26:1",
+        "flighthotel:train:3:57:5",
+        "flighthotelrestaurant:train:1:59:3",
+        "hotelattraction:train:12:9:0",
+        "flighthotel:train:23:29:1",
+        "flighthotelrestaurant:train:18:42:1",
+        "flighthotel:train:25:15:3",
+        "flighthotelrestaurant:train:3:4:1",
+        "attraction:train:7:50:2",
+        "flight:train:18:47:2",
+        "flight:train:2:35:1",
+        "flighthotelattraction:train:6:24:1",
+        "attraction:train:13:2:0",
+        "hotelrestaurant:train:17:53:3"
+      ]
+    }
+  ],
+  "score_before": 0.535,
+  "score_after": 0.48,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "\n- DOMAIN SWEEP + KEY GATE (do this before the SEARCH GATE). List every domain requested in ANY turn (flight, hotel, restaurants, attractions). This turn's code has one block per domain, chosen by that domain's OWN key in CACHE:\n  - Key literally present + the last message adds a constraint for it -> load that key, filter, save.\n  - Key missing (or CACHE `{}`) + all mandatory args known anywhere in the conversation -> first `x = search_*(...)` + save, carrying every constraint stated in any turn. A missing key returns None, so never write get_results_from_cache or filter_* for it, and never apply a reply to another domain's key, even for a bare 'Yes'.\n  - Key missing + a mandatory arg missing -> one closing seek_information naming only the missing items. Example: CACHE holds only 'attractions' + 'Yes, we need a hotel with a pool and room service' with no hotel dates -> the whole output is `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. If another requested domain is searchable (hotel + restaurants with a city known but no hotel dates), search it first, then the single seek_information.\n  - Only an explicit refusal or 'no preference' adds nothing. A 'Yes' is the assistant's proposal as a new constraint on its domain. filter_flights is written only when the last message is about flight class, airline, time or ticket price. A check-out date, cuisine or amenity reply is never a flight reply, and a class shown in a flight summary is already applied.\n- HOTEL TRIGGER: hotel requested in any turn + no 'hotels' key + check-in and check-out both determinable -> `hotels = search_hotels(...)` + `save_to_cache(key=\"hotels\", value=hotels)` in THIS block, even when the last message is mostly about something else (a check-out date, a cuisine, a flight class, '4 nights'). Check-in = the stated check-in, else the outbound flight date. Check-out = the stated check-out, else the return flight date, else for 'N nights' `checkout_date = adjust_date(date=\"<check-in>\", delta_days=N)` (even beside 'weekend getaway'). Carry every hotel constraint stated in any turn ('gym' -> gym_present=True, 'wifi' -> free_wifi_included=True, stars, neighborhood, budget). num_people only from a stated number. Any other domain the same message touches still gets its own block in the same output. A flight search (with any user-stated class) comes first when flights still have no key.",
+      "target": "## HARD OUTPUT RULES (check before EVERY response)"
+    },
+    {
+      "op": "replace",
+      "content": "- KWARG AUDIT (every filter_* call; this overrides the 'plus earlier-stated constraints the summary does not list' wording of Rules 2, 17 and 22). Step 1: write `x = get_results_from_cache(key=\"<exact key>\")` first, because a variable this block never assigned is a NameError. Step 2: split the user's LAST message into its values and pass one kwarg per value. 'Around 105.' after a hotel-budget question -> `budget=105` only. 'Bengali, and a rating of at least 4.0' -> `cuisine=[\"Bengali\"], rating=[4.0, 5]`. Every value the last message states is passed. Values from earlier turns and numbers copied from a CACHE summary (num_layovers, layover minutes, stars range) are not. A cuisine or restaurant-rating reply never touches hotels, and 'near the hotel' means search_nearest, not a hotel filter. Step 3: if the last message has no filterable value and accepts no assistant proposal ('There are 4 of us' with no hotel requested, 'Okay'), write no filter_* and no save.",
+      "target": "- KWARG TRACE (every filter_* call): each kwarg must come from a word in the user's LAST message."
+    }
+  ]
+}

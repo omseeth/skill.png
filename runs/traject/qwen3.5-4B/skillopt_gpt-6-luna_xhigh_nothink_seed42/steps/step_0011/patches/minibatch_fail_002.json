@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "schema_argument_mapping",
+      "count": 6,
+      "description": "Calls omitted compatible constraints or misassigned, duplicated, or fabricated parameters despite the endpoint schema."
+    },
+    {
+      "failure_type": "endpoint_or_tool_identity_mismatch",
+      "count": 4,
+      "description": "Some calls used an unsuitable or credential-incomplete endpoint, omitted a requested operation, or failed to use the tool's exact catalog identifier."
+    },
+    {
+      "failure_type": "outcome_coverage_and_extraneous_calls",
+      "count": 3,
+      "description": "Some responses missed requested outcomes while adding unrelated calls or unsupported settings."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers outcome ledgers and schema checks, but the trajectories show recurring lapses in applying them. A more compact final audit makes exact tool identity, per-outcome coverage, and schema placement explicit; broadening selector guidance helps preserve qualifiers like platform or item type when phrased as descriptors rather than filter commands.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before responding, perform a two-way audit: map every requested outcome to the call or calls that fulfill it, checking each endpoint's operation, source, and requested result granularity; then ensure every call serves at least one requested outcome and remove unmatched calls. For each remaining call, compare its arguments field by field with that endpoint's schema and the request: use exact parameter names and declared types, place each parameter exactly once in the required or optional bucket specified by the schema, and include each compatible explicit constraint in its accepted form. When supported, preserve both bounds of a range rather than using an exact-value field. Omit unsupported or unrequested values, and do not fabricate missing required values. Emit one call object per endpoint invocation. Finally, validate the complete response as valid JSON in the exact active format and wrapper, with exact tool names, allowed keys, required empty arrays, and well-formed parameter objects; check for duplicate keys, malformed wrappers, bundled calls, or extra text.",
+        "content": "- Before responding, audit the call set both ways: every requested outcome must be covered by a fitting operation, and every call must serve a requested outcome. Check each endpoint's own operation, source, entity/property, granularity, and compatible constraints. Copy the exact tool identifier from the tool list; do not construct it from provider descriptions or API labels. For every call, verify exact schema field names, declared types and accepted values; put each parameter exactly once in its schema-defined required or optional bucket, including requested or clearly implied selectors and exact-match controls. Preserve supported range bounds; omit unsupported or unrequested values, and never fabricate a missing required value or use blank/null placeholders. Emit one object per invocation and validate the final response against the exact required wrapper, keys, ordering, and JSON format."
+      },
+      {
+        "op": "replace",
+        "target": "- For optional search-mode or entity-type selectors, use the documented choice that matches an entity class or mode clearly identified in the request, even if the user did not phrase it as a filter. Do not choose an arbitrary restrictive value for another selector dimension the user left unspecified; omit it, or use a documented all/any value only when needed to express the requested scope.",
+        "content": "- For optional search-mode, entity-type, platform, category, or format selectors, use the documented choice matching a class, mode, platform, or format clearly identified by the requested result—even when expressed as a descriptor rather than as “filter by” (for example, “PC game giveaways”). Do not choose an arbitrary restrictive value for another selector dimension the user left unspecified; omit it, or use a documented all/any value only when needed to express the requested scope."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

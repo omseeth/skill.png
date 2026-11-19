@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Quoted lyric or phrase cut off mid-line ('...from white' to this color). The agent copied the continuation exactly as the many passages print it ('rosy red'), keeping both words and not trimming to 'red'.",
+    "A bare single-word clue ('Timonium') where every passage is local listings for one small place. The agent answered the larger containing entity that all the passages tie it to (Maryland), not a business, the county or a description.",
+    "Archive-style hit 'Jeopardy Question: CATEGORY - clue' with no answer attached. The agent used a sibling Q&A passage that repeats the clue ('What group that first met in 1942...') and states the answer in its text, then copied that name.",
+    "Clues with a standard compound term or role noun as the slot ('raw milk', 'center', 'Mary Had a Little Lamb'). The agent gave the bare term as the passages repeat it, without extra modifiers or descriptors.",
+    "A fact buried in an off-topic list or trivia page (Pennsylvania misspelled on the Liberty Bell) was found by scanning all passages for the clue's distinctive words, and the agent answered the entity of the asked type."
+  ],
+  "patch": {
+    "reasoning": "Most successes were already driven by existing rules (verbatim archive hits, type-checking, bare-term answers). Three small gaps are visible and low risk. (1) A bare one-word place clue with no 'this' is not covered, and the agent succeeded by answering the containing state. (2) Cut-off quote or lyric continuations need an explicit instruction to copy the full continuation phrase, not a trimmed word. (3) The 'Jeopardy Question: CATEGORY - clue' layout, where the answer sits in a sibling Q&A passage, is not listed among the archive layouts. All three edits go in Rules 1 and 3, outside the protected block, and none touch the stable Rule 3 override.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Give the bare name ('Ronald Reagan'), not the event, the place or the date.",
+        "content": "\n- BARE single-name clue (just 'Timonium', no 'this', no verb): every passage is about one small place, person or thing. Answer the larger entity the passages repeatedly tie it to under the usual category link. A town or neighbourhood -> its state or country (Maryland), not the county, a business listed there, or a description. Confirm that most passages name the entity you chose."
+      },
+      {
+        "op": "insert_after",
+        "target": "A phrase repeated across independent passages is strong evidence.",
+        "content": "\n- QUOTE / LYRIC CONTINUATION: when the clue is a quoted line cut off before its end ('\"...can change my complexion from white\" to this color'), find the passages that print the full line and copy the words that come right after the cut-off, exactly as they repeat them and no more ('rosy red', not 'red' and not the whole line). Do not paraphrase or swap in a synonym."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Archive lines may also be formatted 'CATEGORY | clue text | answer'. Take the answer that follows the clue, even if the whole context is one short passage.",
+        "content": "\n- A line like 'Jeopardy Question: CATEGORY - clue text.' may show the clue with no answer. Then look for a sibling passage that repeats the clue words (a Q&A page headed by the clue) and states the answer in its text ('...The Joint Chiefs of Staff was originally formed...'). Answer with that entity in the name form the passages use."
+      }
+    ]
+  },
+  "source_type": "success"
+}

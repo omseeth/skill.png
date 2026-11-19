@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "Tool namespace/import misuse",
+      "count": 5,
+      "description": "Agents imported tools from a nonexistent module instead of calling the injected functions directly."
+    },
+    {
+      "failure_type": "Round-trip itinerary handling",
+      "count": 2,
+      "description": "Agents failed to make separate searches for the outbound and return legs, sometimes using the return date as an outbound arrival date."
+    },
+    {
+      "failure_type": "Location field mapping",
+      "count": 2,
+      "description": "Agents put a state or region in the attraction city field or incorrectly treated it as missing."
+    },
+    {
+      "failure_type": "Cache result lifecycle",
+      "count": 2,
+      "description": "Attraction search results were not saved to cache, despite the skill’s existing save requirement."
+    },
+    {
+      "failure_type": "Conversational context resolution",
+      "count": 1,
+      "description": "An agent missed that a follow-up question referred to the assistant’s proposed attraction and should refine the cached search."
+    },
+    {
+      "failure_type": "Stay-duration date inference",
+      "count": 1,
+      "description": "An agent asked for hotel dates even though the stated check-in date and stay length determine checkout."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the frequently violated direct-call and round-trip instructions more operational, clarify state-versus-city mapping for attraction searches, and cover contextual follow-ups and determinable checkout dates. The cache-save omission is already explicitly covered by the skill, so it does not need a duplicate rule.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Tool functions are injected directly into the execution namespace; there is no `tools` module. Call provided tools by name without importing, redefining, or wrapping them. Use keyword arguments except for `seek_information`, and return code in the required format.",
+        "content": "- Tool functions are injected directly into the execution namespace. Call them by name without imports, wrappers, or redefinitions; do not emit `import tools` or `from tools import ...`. Use keyword arguments except for `seek_information`, and return code in the required format."
+      },
+      {
+        "op": "replace",
+        "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, search each leg separately, reverse the outbound route for the return, and use the return leg’s departure date. Ask for an unknown endpoint rather than assuming a route.",
+        "content": "- Preserve user-provided dates, entity values, and casing. For a round trip, make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg by setting `arrival_date` on the outbound search. Ask for an unknown endpoint rather than assuming a route."
+      },
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve brief affirmations and follow-ups against the immediately preceding assistant question or proposal, carrying forward the referenced entity or category. If the assistant proposed a named place and the user asks what is there, use that place to refine compatible cached results; a statement about not having visited it does not negate the request to explore it."
+      },
+      {
+        "op": "insert_after",
+        "target": "# Reliable travel planning and tool use",
+        "content": "\n- Map locations to matching schema fields. For an attractions request that gives only a state or region, use the `state` field rather than `city`; do not ask for a city when the tool supports a state-level search.\n- If the user gives a definite hotel check-in date and an unambiguous stay length in nights, derive checkout by adding that number of days with `adjust_date`. Treat this as a provided, determinable date; ask only when the date or duration is genuinely ambiguous."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

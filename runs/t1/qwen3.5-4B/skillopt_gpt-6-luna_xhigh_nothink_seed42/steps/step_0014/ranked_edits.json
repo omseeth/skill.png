@@ -1,0 +1,37 @@
+{
+  "reasoning": "Combined overlapping attraction guidance into one edit, preserving the state-mapping, exact-name/category, and full-neighborhood clarifications. Kept the distinct multi-city date-span and proximity-search clarifications, and expanded affirmation handling to cover newly accepted criteria and location-specific filters. Omitted instructions already covered by the skill, such as tool imports and general cache handling. [optimizer-ranked: selected 3/4 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+      "content": "For attraction searches, use each provided location field (`city` and/or `state`) in its matching schema field along with the requested category or name. Treat an unambiguous state name or standard two-letter U.S. postal abbreviation used as a location as a state value, not a city, and pass it unchanged in `state`. When the user names a specific attraction or landmark, pass its exact name in `attraction_name`; use `type` only for a requested category, not as a substitute inferred from the name. Pass neighborhood values in full as stated, including any city qualifier. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+      "content": "- Resolve each reply against the immediately preceding assistant question or proposal. Treat an answer that specifies or accepts a city, neighborhood, rating, amenity, or other filterable preference as a new active criterion, including brief affirmations accepting criteria proposed by the assistant. If a compatible cached result does not already satisfy that criterion, retrieve the closest compatible result, filter on only the newly added criteria, and save the update; do not use “No planning needed.” If the user names multiple locations to narrow a broad cached result, create a separate filter result for each location from that compatible result rather than starting a new search.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+      "content": "- Call `search_nearest` only when the user requests a proximity relationship between result types, such as asking for restaurants near attractions or attractions near a hotel. Merely requesting results from multiple domains for the same trip is not a proximity request. When proximity is requested, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 0 has the strongest support and adds actionable attraction-query guidance. Edit 2 improves follow-up handling across many criteria and locations, though some behavior overlaps existing cache rules. Edit 3 clarifies when proximity searches are appropriate; edit 1 is a narrower multi-city itinerary case and is excluded.",
+    "selected_indices": [
+      0,
+      2,
+      3
+    ]
+  }
+}

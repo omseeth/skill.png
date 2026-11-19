@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "under_coverage_one_triple_for_multi_target_reply",
+      "count": 3,
+      "description": "Reply needed one load/filter/save per leg or domain but only one was written. Business class was applied to the departure leg only (T2). 'Downtown X for both' was applied to hotels only, not restaurants (T3). The multi-city flight+hotel request got two flight searches and no hotels (T5)."
+    },
+    {
+      "failure_type": "first_search_drops_or_invents_constraints",
+      "count": 2,
+      "description": "First search omitted constraints stated across turns: budget and neighborhood (T1), num_people and attraction_name (T8). It added an assistant-only neighborhood, re-filtered cached flights and wrote comments (T8)."
+    },
+    {
+      "failure_type": "wrong_action_on_date_reply",
+      "count": 1,
+      "description": "A dates reply for a hotel near a cached named attraction was applied as filter_attractions(city=...) instead of search_hotels plus search_nearest (T7)."
+    },
+    {
+      "failure_type": "hygiene_state_vs_city_and_unsaved_search",
+      "count": 2,
+      "description": "state abbreviation 'MO' passed as city= (T4). A bare search_restaurants(...) with no assignment or save_to_cache (T6)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the eight failures come from the top SEARCH GATE wording ('Write exactly' one triple). That wording makes the model stop after one triple, even when the reply covers two flight legs or two domains. A short in-place clarification, triggered only by flight words or an explicit 'both', fixes this without loading flight lines onto hotel replies. Two more failures drop stated constraints from a first search. A placeholder-based bullet in Rule 14, where first-search params are defined, addresses this without example leakage. The date-reply-with-cached-attraction case (T7) and the multi-city case (T5) each get one compact rule placed next to the rule they refine. Hygiene errors (T4, T6) are already covered by existing rules and look like sampling noise, so no more text is added there, in line with the shrink-first guidance.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "A search_* call is allowed only for a domain with NO key.",
+        "content": " The triple is per cached key you refine, not per reply. When the last message holds a flight class/airline/time/price word and CACHE has two or more flight keys (departure_flights + return_flights, or flights + flights2), write one triple per leg's most refined key with identical kwargs. When one answer covers two cached domains ('<neighborhood> would be ideal for both' with hotels and restaurants keys), write one triple per domain: the neighborhood on the most refined hotels key AND on the most refined restaurants key (a nearest_restaurants key is the latest if it exists). Stopping after the first triple is wrong. A reply about only one domain still gets only that domain's triple."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Include optional details the user explicitly stated (num_rooms, num_people, budget, amenities, cuisine, ...) as keyword args in the search call, and nothing the user did not say.",
+        "content": "\n- COLLECT FROM EVERY USER TURN. A first search carries every constraint the USER stated in any turn, including the last message. Example with placeholders: `search_restaurants(city=\"<city>\", cuisine=[\"<cuisine from turn 1>\"], budget=<n from a later turn>, neighborhood=[\"<neighborhood from the last message>\"])`. A stated headcount ('for N people') becomes `num_people=N` on search_hotels only. A named attraction becomes `attraction_name=[\"<exact name>\"]` together with `type=[...]` when a type was also stated. A neighborhood that only the assistant mentioned in a question, and that the user's reply did not repeat or accept, is not a user constraint. When flight keys are already cached and the turn adds hotel/attraction requests, write zero flight lines and no comments."
+      },
+      {
+        "op": "insert_after",
+        "target": "Never load another domain's key and re-save it as a stand-in for the missing search.",
+        "content": "\n-2b. HOTEL NEAR A CACHED ATTRACTION + DATES. If CACHE holds an 'attractions' key for a named attraction, the user wanted a hotel near it, and there is no hotels key, a dates reply is the hotel's first search, never a filter on attractions: `hotels = search_hotels(city=\"<city>\", checkin_date=[\"<X>\"], checkout_date=[\"<Y>\"], <other stated constraints>)` + `save_to_cache(key=\"hotels\", value=hotels)`, then `a = get_results_from_cache(key=\"attractions\")`, `nearest_hotels = search_nearest(hotels=hotels, attractions=a, groupBy=\"hotel\")` + `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`. Never call filter_attractions(city=...) for a date reply."
+      },
+      {
+        "op": "insert_after",
+        "target": "A multi-city trip needs one search per leg. If the user offers several candidate dates for ONE leg, put them all in that leg's departure_date list.",
+        "content": "\n  MULTI-CITY CHECK: when each date attaches to a different leg and the second leg does not return to the origin (A->B on date 1, B->C on date 2), it is NOT a round trip. Save the legs as \"flights\" and \"flights2\", not departure_flights/return_flights. If hotels were requested anywhere ('hotels in each city'), add one search_hotels per destination city (B and C), saved as \"hotels\" and \"hotels2\". Each takes check-in = the first flight date and check-out = the last flight date, copied as written, with only user-stated extras. Write all of it (2 flight + 2 hotel searches, each saved) in the same block."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

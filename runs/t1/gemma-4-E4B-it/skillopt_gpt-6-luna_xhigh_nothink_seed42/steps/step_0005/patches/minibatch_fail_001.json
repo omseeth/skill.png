@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_result_persistence",
+      "count": 8,
+      "description": "Trajectories skipped cache retrieval or filtering, repeated searches, failed to save results, or passed unfiltered results downstream."
+    },
+    {
+      "failure_type": "itinerary_and_required_argument_handling",
+      "count": 2,
+      "description": "One trajectory omitted a required hotel checkout date; another represented a round trip as an arrival date instead of a separate return leg."
+    },
+    {
+      "failure_type": "constraint_mapping_and_context",
+      "count": 3,
+      "description": "Agents altered a requested attraction category, missed an implied solo traveler count, or failed to resolve a short follow-up in conversation context."
+    }
+  ],
+  "patch": {
+    "reasoning": "The dominant cache, flight-leg, required-argument, and entity-preservation failures are already directly addressed by the skill, so repeating those instructions would not patch a content gap. The skill does not explicitly explain how to map an unambiguous traveler descriptor to the hotel guest-count field.",
+    "edits": [
+      {
+        "insert_after": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+        "content": "\n- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

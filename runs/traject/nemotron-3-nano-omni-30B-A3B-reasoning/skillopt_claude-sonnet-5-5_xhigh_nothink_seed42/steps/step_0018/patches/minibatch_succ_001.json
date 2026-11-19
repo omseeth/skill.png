@@ -1,0 +1,32 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every listed deliverable got exactly one call, including no-parameter tools in long comma lists (gaming:31), and N entities crossed with M named providers gave N×M calls (email:95, 3 emails × 2 tools = 6 calls).",
+    "When the query named a provider or tool (Alpha Email Verification, Email Existence Validator, Uncovered Treasure, Urban Dictionary), the agent used that provider's endpoint and passed the schema's value form (full email into `email`).",
+    "A qualifier in the clause picked the sibling tool or the optional field: a postal code picked `Wayfair: products/get-home-services` (`postalCode`), timestamps filled `startTime`/`endTime`, and coordinates filled `lat`/`lon`.",
+    "Stated counts and units were mapped to schema names: 7-day -> `num_of_days`=7, 'since 2017' -> `from_record_date`, 'at least 5 minutes' -> `min_duration`=300.",
+    "One-object-per-line `<answer>` layout with full `Provider: Endpoint` names and a single `optional parameters` key per object.",
+    "Optional-field misses on otherwise correct answers: a named entity such as 'Bitcoin' or 'Steam' left unmapped (`baseCoin`=BTC; `platform`=steam, `type`=game), and an invented `page`=1 on 'most recent reviews' where the schema's sort field (`sort_order`=DATE_DESCENDING) was the right fit."
+  ],
+  "patch": {
+    "reasoning": "Successful runs already depend on the rules the skill states. The remaining optional-parameter misses across the batch (Bybit `baseCoin`, GamerPower `platform`/`type`, Wayfair reviews `sort_order`) share one cause: a word in the clause was not mapped to the schema field that names it, and a filler such as `page`=1 was invented instead. Three small edits extend existing bullets rather than adding sections. They cover entity-to-field mapping, recency-to-sort-field mapping, and picking the sibling whose schema holds the qualifier (postal code).",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "'sorted by date' -> the sort field.",
+        "content": "'sorted by date' -> the sort field. 'Most recent / latest / newest' on a reviews or list tool that has a sort field -> that field set to its newest-first value (`Wayfair: reviews/list`: `sort_order`=`DATE_DESCENDING`), never an invented `page`=`1` in its place."
+      },
+      {
+        "op": "replace",
+        "target": "A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).",
+        "content": "A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`). A named coin, symbol, platform or store in the clause fills the optional field that names it, even if the tool would default to it: 'Bitcoin volatility between two timestamps' on `Bybit: Query historical volatility` -> `baseCoin`=`BTC`, `startTime`, `endTime`; 'free Steam game giveaways' on `GamerPower: Live giveaways by platform & type & sorted` -> `platform`=`steam`, `type`=`game`."
+      },
+      {
+        "op": "insert_after",
+        "target": "'Artist data for this ID' -> `Spotify: Get artists` (`ids`), not `Spotify: Search`.",
+        "content": " A product-detail clause that states a postal code or other location -> the sibling whose optional list has that field (`Wayfair: products/get-home-services` carries `postalCode`), even when its name sounds unrelated to 'details'."
+      }
+    ]
+  },
+  "source_type": "success"
+}

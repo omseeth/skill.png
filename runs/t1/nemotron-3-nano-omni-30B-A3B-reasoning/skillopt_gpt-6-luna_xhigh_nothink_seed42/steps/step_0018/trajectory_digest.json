@@ -1,0 +1,63 @@
+{
+  "step": 18,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 30,
+  "failure_patterns": [
+    {
+      "pattern": "incremental_cache_and_conversation_scope: Plans searched again, used unlisted cache keys, repeated completed work, or missed a newly requested domain instead of applying the latest turn to compatible cached results.",
+      "count": 30,
+      "task_ids": [
+        "hotel:train:8:33:2",
+        "restaurant:train:23:15:1",
+        "hotel:train:14:17:4",
+        "flighthotelrestaurant:train:8:34:3",
+        "attraction:train:9:34:1",
+        "hotelattraction:train:5:30:2",
+        "hotelrestaurant:train:14:10:3",
+        "attraction:train:24:59:0",
+        "hotel:train:9:25:3",
+        "flighthotelattraction:train:3:40:1",
+        "hotelrestaurant:train:18:53:4",
+        "flight:train:10:18:3",
+        "hotelattraction:train:9:38:3",
+        "flighthotelrestaurant:train:15:1:3",
+        "restaurant:train:8:56:0",
+        "restaurant:train:4:45:2",
+        "flight:train:9:16:3",
+        "flighthotelattraction:train:10:53:3",
+        "flight:train:10:60:3",
+        "attraction:train:16:10:0",
+        "restaurant:train:13:41:2",
+        "flighthotel:train:16:1:1",
+        "hotelattraction:train:19:7:2",
+        "flighthotelattraction:train:8:9:1",
+        "flight:train:22:18:2",
+        "flighthotel:train:20:16:1",
+        "flighthotel:train:9:39:6",
+        "hotelrestaurant:train:2:51:2",
+        "flighthotelattraction:train:12:30:3",
+        "flight:train:2:56:3"
+      ]
+    }
+  ],
+  "score_before": 0.26,
+  "score_after": 0.23,
+  "rejected_edits": [
+    {
+      "op": "append",
+      "content": "\n\n## Runtime tool usage and code output\n- Travel tools and cache helpers are provided as runtime bindings. Call them directly; do not import, wrap, redefine, or shadow them, or replace their models or signatures. Use the provided `get_results_from_cache` and `save_to_cache` functions rather than importing a cache module.\n- Before output, check that the code is valid Python and contains only executable tool code—no XML or other markup tags, and no explanatory prose.",
+      "target": ""
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- If the cache listing contains multiple results for an affected domain, choose the most-refined compatible result whose summary covers all still-valid earlier criteria; among equally refined compatible results, prefer the latest. Do not default to a generic base result. Apply only the latest unmet constraint. If no compatible result covers the needed prior criteria, use an appropriate compatible base or search as required.",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- Preserve pending requests across updates: answering a question about one domain, or narrowing it (for example, requesting only a return flight), does not cancel other explicitly requested domains. Remove an earlier request only when the user explicitly retracts it. Keep each criterion scoped to the item and domain it was given for; for example, a rating supplied in response to a dining question applies to restaurants, not hotels. Continue all other still-pending actions.",
+      "target": "- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. Interpret replies in the context of the assistant's concrete question or suggestion, not only their literal wording: a direct answer can supply the asked-for amenity or preference, and asking what is available after an area is suggested makes that area an actionable search target. A direct answer can also introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the reply says a criterion applies to “both,” apply it independently to every still-pending domain referenced in context (for example, hotels and restaurants), using each domain’s appropriate filter and latest compatible cached result; do not apply it only to the last-mentioned domain. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each."
+    }
+  ]
+}

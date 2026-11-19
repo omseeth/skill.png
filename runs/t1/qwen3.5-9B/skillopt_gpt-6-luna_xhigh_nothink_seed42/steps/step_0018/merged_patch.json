@@ -1,0 +1,69 @@
+{
+  "reasoning": "The proposals add distinct clarifications to existing rules, so each is merged at its own text location without duplicating established cache or tool-use guidance. The edits distinguish hotel room counts from party size, scope clarification answers to the question asked, clarify proximity grouping and per-leg flight updates, distinguish hotel stars from ratings, cover exact and deadline flight times, add explicitly sequenced multi-stop flights, and reuse trip dates already provided. Each edit is supported by one of the three source patches.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "content": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. For hotel searches and filters, map an explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`) and an explicitly stated room count to `num_rooms`. If a follow-up supplies either or both counts, apply all newly supplied count fields together in one same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion.",
+      "content": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. Scope a yes/no or restrictive clarification answer to the domain and question asked: for example, “no, only the return flight” changes which flight leg is requested, but does not cancel separately requested hotel or restaurant planning unless the user explicitly withdraws it. An affirmative answer accepting an offered domain or option is a request to proceed. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain.",
+      "content": "Use `search_nearest` only when the user asks about proximity. Pass exactly two distinct result-domain arguments (`hotels`, `attractions`, or `restaurants`), one for the anchor and one for the requested nearby targets, and set `groupBy` to the target domain the user wants grouped (for example, hotels near attractions uses `groupBy=\"hotel\"`).",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "For updates affecting multiple results, such as outbound and return legs, retrieve, filter, and process each independently.",
+      "content": "For a new itinerary-wide flight preference, such as airline or class, retrieve the latest suitable cached result for each applicable leg, apply the preference to each leg independently, and save each update under a fresh key. Apply a leg-specific constraint only to its corresponding leg. Process other updates affecting multiple results independently as well.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+      "content": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`. For hotel star-count requests, use `stars` instead: “exactly x stars” is `[x, x]`, “at least x stars” is `[x, 5]`, and a stated range uses its stated bounds.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X” uses `[\"12:00 AM\", X]`, and “after X” uses `[X, \"11:59 PM\"]`, preserving the stated AM/PM value.",
+      "content": "- For flight times, treat “at X” as an exact time range `[X, X]`. For an upper bound such as “by X,” “no later than X,” or “before X,” use `[\"12:00 AM\", X]`; for “after X,” use `[X, \"11:59 PM\"]`. Preserve the stated AM/PM value.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+      "content": "- **Search round-trip and multi-leg flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. For a simple round trip, search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. For an explicitly sequenced multi-stop itinerary, search each stated consecutive route leg and any explicitly stated final return to the origin; use each leg's stated travel date as its `departure_date`. Cache each leg separately. Do not treat a later leg's departure date as an `arrival_date` constraint on an earlier leg unless the user explicitly states it as one. Do not infer a return flight from hotel stay duration alone. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "When lodging is requested for an explicitly planned trip and both trip dates are known, use the trip start and end dates as hotel check-in and check-out.",
+      "content": "When lodging is requested for an explicitly planned trip and both trip dates are known, use the trip start and end dates as hotel check-in and check-out, including when those dates were supplied earlier in response to flight planning. Do not ask for the same dates again unless the user indicates different hotel stay dates.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

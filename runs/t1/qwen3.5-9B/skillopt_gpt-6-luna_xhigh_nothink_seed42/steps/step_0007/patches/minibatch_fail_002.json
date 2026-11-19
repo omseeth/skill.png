@@ -1,0 +1,56 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "geographic field or value mapping",
+      "count": 3,
+      "description": "State abbreviations were passed as cities, or a complete neighborhood phrase was shortened."
+    },
+    {
+      "failure_type": "missed follow-up constraint",
+      "count": 2,
+      "description": "A new budget or neighborhood supplied in response to a question was treated as requiring no action."
+    },
+    {
+      "failure_type": "cache persistence omission",
+      "count": 3,
+      "description": "Initial searches or a return-leg search were not all saved as separate results."
+    },
+    {
+      "failure_type": "round-trip leg handling",
+      "count": 1,
+      "description": "A return date was used as an outbound arrival-date constraint instead of triggering a separate return search."
+    },
+    {
+      "failure_type": "unrequested operations",
+      "count": 1,
+      "description": "The code retrieved unrelated cached flight results and added imports and print statements."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits make geographic role and full-value mapping more explicit, ensure conversational answers introduce actionable constraints, and add a practical completeness check for saved results and unnecessary code. The round-trip clarification makes the two-leg procedure harder to misapply.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value.",
+        "content": "Map each location by its geographic role: city to `city`, state or region—including state abbreviations such as `CO` and `CA`—to `state`, neighborhood to `neighborhood`, and airport code to the corresponding airport-code field. Preserve the complete provided value: if the user identifies a neighborhood as “Downtown Portland,” pass that full phrase as the neighborhood rather than shortening it to “Downtown.” Never pass a state abbreviation as `city`."
+      },
+      {
+        "op": "replace",
+        "target": "Search afresh only when no suitable cached base exists; do nothing only when the cached results satisfy all current constraints.",
+        "content": "Search afresh only when no suitable cached base exists. On a follow-up, treat any newly supplied answer to a planning question—including an approximate budget, amenity, or area—as an explicit constraint. For an approximate amount, use the corresponding scalar `budget` value where supported. Compare each new constraint with the relevant cache summary; if it is not reflected there, retrieve the latest suitable same-domain base, apply the new constraint, and save the updated result. Do nothing only when every explicit constraint in the latest request is already satisfied by the relevant cached results."
+      },
+      {
+        "op": "replace",
+        "target": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Assign every result-producing call—search, filter, sort, or `search_nearest`—to a variable and save that exact result with `save_to_cache` under a fresh, descriptive key. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+        "content": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Treat every result-producing call—search, filter, sort, or `search_nearest`—as a paired operation: assign its result to a variable and save that exact result with `save_to_cache` under a fresh, descriptive key. Use distinct keys for separate domains, itinerary legs, and updated results. Before finalizing, check that every produced result has been saved and that the code contains no unrelated cache reads, imports, or diagnostic output. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria."
+      },
+      {
+        "op": "replace",
+        "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+        "content": "- **Search round-trip flights as separate legs:** When the conversation establishes outbound and return dates, make two flight searches: outbound from origin to destination with the first date as `departure_date`, then return from destination to origin with the return date as the return leg's `departure_date`. Assign and save each leg separately under a distinct key. Do not represent the return date as the outbound search's `arrival_date`; use `arrival_date` only when the user explicitly states an arrival-date constraint for that leg. Do not infer a return flight from hotel stay duration alone. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

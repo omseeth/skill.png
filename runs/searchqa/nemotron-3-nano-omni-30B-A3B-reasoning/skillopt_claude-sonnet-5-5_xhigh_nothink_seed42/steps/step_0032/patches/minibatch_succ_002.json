@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Where a passage reproduces the clue from a trivia archive or flashcard site (Sherbet, Lou Gehrig, King Lear), the agent copied the attached answer. One snippet showed the clue without the answer, and the agent took the answer from the other flashcard passage.",
+    "The agent copied the archive answer exactly as written, including the parenthesised optional part '(Lou) Gehrig', and did not normalise it.",
+    "When the clue names a work, award, character or work-title (Bharat Ratna, Goneril, Uncle Remus, 'I Can't Explain'), the agent answered with the entity the passages repeatedly tie to it (India, King Lear, Joel Chandler Harris, Jimmy Page). The category noun after 'this' fixed the type, and the named item was treated as an anchor.",
+    "For a clue that lists its own options (North/East/West/South Park), the agent picked one option verbatim.",
+    "The agent gave bare short answers (jicama, Sherbet, India) with no descriptors or clue words."
+  ],
+  "patch": {
+    "reasoning": "The batch passed because the agent applied Rule 3 (verbatim archive copy), the slot-type rules and the bare-answer rules. Two small gaps remain. First, the Person Names rule in the strategic block says 'first + last, no middle initial', which could tempt the agent to reformat a verbatim archive answer such as '(Lou) Gehrig'. Rule 3 should state explicitly that the archive form wins, parentheses included. Second, the 'named item + this <category>' mapping (award -> country, character -> play, book -> author) succeeded repeatedly. A one-line reinforcement in Rule 2 should make this behaviour more reliable without adding length elsewhere.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Archive lines may also be formatted 'CATEGORY | clue text | answer'. Take the answer that follows the clue, even if the whole context is one short passage.",
+        "content": "- Copy the archive answer character for character, including parenthesised optional parts ('(Lou) Gehrig') and a surname-only or short form. Do not strip parentheses, add a first name or drop a middle initial. Name-normalisation rules apply only when no archive answer exists. If one snippet shows the clue without the answer (a truncated list page), look for the same clue in another passage (flashcards, J! Archive) that includes the answer."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Example pattern: a clue about a region 'in this country' wants the country, not the region. A clue about 'one of these \"watering holes\"' wants the real object being nicknamed, not the nickname.",
+        "content": "- A named item plus 'this <category>' ('this country's Bharat Ratna', 'Goneril in this play', 'this creator of Uncle Remus', 'this Led Zeppelin guitarist') asks for the owner, source or creator of that item. Treat the item as an anchor. Answer with the entity of the stated category that the passages repeatedly pair with it, in its short standard form (India, King Lear, Joel Chandler Harris, Jimmy Page)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

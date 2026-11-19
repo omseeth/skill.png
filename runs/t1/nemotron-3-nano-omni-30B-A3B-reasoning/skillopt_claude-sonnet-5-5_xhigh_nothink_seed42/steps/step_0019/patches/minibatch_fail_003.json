@@ -1,0 +1,35 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "fabricated_mandatory_args_and_malformed_code",
+      "count": 1,
+      "description": "Opening turn 'hotel in Lexington with a good restaurant nearby that serves Mediterranean' with no dates. The agent invented check-in/check-out dates and num_people, wrote a bare search_hotels call, nested a duplicate search inside save_to_cache, and skipped the searchable restaurant domain and the seek_information for the missing dates."
+    },
+    {
+      "failure_type": "refinement_repeats_cached_constraints",
+      "count": 1,
+      "description": "CACHE 'restaurants' already lists neighborhood, cuisine and the gluten-free/vegan flags. The last turn was only 'around 70', yet the filter re-passed cuisine and both dietary flags instead of budget=70 alone."
+    }
+  ],
+  "patch": {
+    "reasoning": "Both failures break rules the skill already states, but the rules sit deep in a long document. The fixes are short, high-visibility reinforcements near the top and bottom. (1) A kwarg-count check in the CACHE GATE, with an example where the cache summary lists dietary flags, stops the agent re-passing cached constraints. (2) A hotel-date gate with the 'hotel plus restaurant nearby, no dates' opener tells the agent to search the restaurant, ask for the dates, and never call search_hotels with guessed values. (3) A short recency-position final check restates the assigned-and-saved call form, the no-invented-values rule and the last-turn-only filter rule. A long checklist was rejected earlier, so the three additions stay small.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Flights stay untouched.",
+        "content": "\n   - FILTER KWARG CHECK: count the constraints in the user's LAST message. The filter call carries exactly those kwargs and nothing else. Everything the CACHE summary lists is already applied and must NOT be re-passed: neighborhood, cuisine, rating, budget, city, dates, and every dietary flag such as has_gluten_free_options / has_vegan_options / has_vegetarian_options. Example: CACHE 'restaurants' = 'neighborhood(s): [Downtown Tucson], cuisine(s): [Bangladeshi], has_gluten_free_options, has_vegan_options' + last message 'I'm looking to spend around 70' -> `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, budget=70)`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`. A one-number reply gives a filter with exactly ONE kwarg (budget=70). It must not contain cuisine=, has_*_options or neighborhood=."
+      },
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- HOTEL DATE GATE: write `search_hotels` only if you can quote an explicit check-in date AND check-out date from the user's own messages. Never use dates from TOOL CONFIG examples (e.g. 2025-08-03) and never add num_people/num_rooms the user did not state. Opening turn with a hotel but no dates plus a restaurant need ('a hotel in Lexington with a good restaurant nearby that serves Mediterranean') -> the restaurant domain is complete (city + cuisine) and the hotel is not. Output exactly: `restaurants = search_restaurants(city=\"Lexington\", cuisine=[\"Mediterranean\"])`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. No search_hotels call and no search_nearest, because there is no hotels key yet. Use the same pattern when the restaurant (or attraction) request carries cuisine/type but the hotel lacks dates."
+      },
+      {
+        "op": "append",
+        "content": "\n## FINAL CHECK (re-read just before answering)\n- Every search_*/filter_*/sort_results/search_nearest line starts with `name = ` and is followed by its own `save_to_cache(key=..., value=name)` line. No bare calls, no search inside save_to_cache, no duplicated search.\n- Every date, city and count in the code appears in the user's own messages. Nothing is copied from TOOL CONFIG examples.\n- A filter on a cached domain contains only the LAST message's new constraints. Anything the CACHE summary already lists (cuisine, dietary flags, neighborhood, budget, stars) is dropped.\n- A requested domain whose mandatory args are complete gets its search in this block. A domain with missing mandatory args goes into the one closing seek_information."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

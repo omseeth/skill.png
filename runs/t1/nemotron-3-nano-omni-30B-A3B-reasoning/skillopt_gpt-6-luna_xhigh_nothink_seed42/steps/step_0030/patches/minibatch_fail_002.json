@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_selection_and_domain_scope",
+      "count": 5,
+      "description": "Agents refined an older base result, reprocessed an unchanged domain, or applied a criterion to the wrong domain."
+    },
+    {
+      "failure_type": "contextual_intent_and_proximity",
+      "count": 3,
+      "description": "Agents missed a criterion supplied in response to a question, inferred proximity from a visit alone, or failed to target the named attraction."
+    },
+    {
+      "failure_type": "mandatory_input_and_value_inference",
+      "count": 2,
+      "description": "Agents invented hotel dates or inferred optional party, room, or amenity details instead of respecting supplied information."
+    },
+    {
+      "failure_type": "schema_argument_mismatch",
+      "count": 3,
+      "description": "Agents used unsupported or semantically incorrect amenity and sort arguments."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make cache choice and domain scope explicit at the point of refinement, distinguish an answer to a proximity question from standalone visit interest, and reinforce the hotel-date hard gate. Add a few canonical amenity mappings for recurring schema mistakes.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For each affected domain, choose the most-refined compatible listed result whose summary covers the target and all still-valid earlier criteria; when both a base and a refinement are listed, retrieve the refinement rather than reapplying old filters to the base. A nearest result is a usable prior for further filtering only when it still contains candidates for the same focal domain and target. Retrieve the selected entry by its exact key into a local variable and pass it as `prior_results` when required. Apply only newly introduced constraints; search if no compatible result exists and mandatory inputs are available. Do not redo unaffected domains or transfer criteria across domains or units (for example, a hotel per-night budget is not a restaurant per-person budget). Do not rely on variables from earlier executions."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+        "content": "- Conversely, when the immediately preceding assistant asks whether a hotel should be near a specific attraction or asks which attraction, the user's direct answer naming an attraction supplies the proximity target. Treat it as a proximity request, search for that exact attraction if no compatible result covers it, and rank hotels with `groupBy=\"hotel\"`; a generic attraction-category result does not cover the named target."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Missing mandatory information",
+        "content": "- Treat missing hotel stay dates as a hard gate: if check-in or check-out is not explicit and no compatible cached hotel result already covers the requested stay, do not search or filter hotels, copy dates from tool examples, or perform proximity work that depends on those hotel candidates. Ask once for the missing date or dates. This does not block independent ready actions; cached results that already satisfy their requests need no new work."
+      },
+      {
+        "op": "replace",
+        "target": "- Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`.",
+        "content": "- Disambiguate hotel amenity fields using the tool schema and phrase-to-field semantics rather than casual synonym matching. Map “fitness center” to `has_fitness_class`, a literal “gym” to `gym_present`, “room service” to `has_room_service`, “sauna” to `has_sauna`, and “hot tub” to `has_hot_tub` when those fields are supported; use `has_spa_services` only for a request for spa services."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

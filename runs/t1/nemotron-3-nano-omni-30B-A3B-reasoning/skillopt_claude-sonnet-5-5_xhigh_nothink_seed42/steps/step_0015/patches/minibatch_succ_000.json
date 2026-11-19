@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Opening turns for a restaurant or hotel request that gives only context (allergy, birthday or anniversary, cuisine, amenities, view) and no city or dates are answered with ONE short seek_information naming only the missing mandatory item (city, or check-in and check-out dates). Trajectories 5, 6 and 7 did this correctly.",
+    "A flight request with origin and destination but only an arrival-time constraint ('arrive before 01:17 AM') is still missing departure_date, so the answer is a single seek_information for the departure date. Trajectory 8 did this correctly.",
+    "A neighborhood reply ('Yes, near Downtown Anchorage') is handled as load -> filter -> save. It loads the most refined key (filtered_hotels2), passes only the new neighborhood constraint, and saves under a fresh key (filtered_hotels3). Trajectory 4 did this correctly, matching the existing Rules 17 and 23.",
+    "A restaurant refinement (rating plus budget) passes only the new constraints and saves to filtered_restaurants. It correctly leaves out the Turkish cuisine and the city, which the cache summary already lists. Trajectory 3 did this, though it nested get_results_from_cache inside filter_*.",
+    "Trajectories 1 and 2 scored on cache_em but were semantically wrong. In trajectory 1 a bare search_restaurants call used an invented city ('Phoenix') after a cuisine follow-up. In trajectory 2 cached flight keys were re-loaded and re-saved for a party-size-only reply, when the gold output was empty."
+  ],
+  "patch": {
+    "reasoning": "Most successful patterns (single seek_information for the missing mandatory arg, refinement load -> filter -> save with the newest key) are already covered. Two gaps remain. First, trajectory 1 invented a city (Phoenix, copied from a tool example) after the user only answered a cuisine follow-up, so a restaurant city must be re-checked on every turn. Second, trajectory 2 emitted six redundant calls (load plus re-save of cached flight keys) for a reply that adds no usable constraint ('There are 4 of us' in a flight-only conversation, where the gold output was empty). The arrival-time edit makes explicit what trajectory 8 already did correctly: an arrival time or deadline is not a departure date.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- A round-trip request still needs the departure date. Ask for it; do not assume a return date.",
+        "content": "- A restaurant city is never inferred, defaulted or copied from a tool example (e.g. 'Phoenix', 'Dallas'). A reply that only gives cuisine, dietary needs, allergies (including unusual ones such as 'nightshade'), rating, budget or an occasion ('birthday') does not supply the city. If no city appears anywhere in the conversation, output only `seek_information(\"We need the city for the restaurant.\")`, with no search_restaurants call, even after several follow-up answers. Re-check the city every turn."
+      },
+      {
+        "op": "replace",
+        "target": "a timing worry ('make sure we arrive on time')",
+        "content": "a timing worry ('make sure we arrive on time'), an arrival deadline or time ('we need to arrive before 01:17 AM'; arrival_time is optional and never replaces departure_date)"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 8: Act on the latest turn and the cache",
+        "content": "- Exception for replies that add nothing any requested tool can use: if the last turn only gives a party size ('There are 4 of us') and the conversation is flight-only (flights already cached, no hotel requested anywhere), no tool takes it (search_flights and filter_flights have no party-size parameter). Output `print(\"No planning needed\")`. Do not reload the cached flight keys, and never re-save a value you just retrieved with save_to_cache. If a hotel was requested, the party size goes in as num_people on the hotel tool only (Rules 22 and 24)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

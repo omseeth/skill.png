@@ -1,0 +1,45 @@
+{
+  "reasoning": "Consolidated the overlapping cache guidance into one stronger persistence-and-refinement rule, and combined both proximity proposals at their shared insertion point. Kept the distinct hotel-field mappings, schema mappings, and per-domain missing-input check. Existing flight-leg guidance is already explicit, and no edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+      "content": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Map an explicitly stated hotel traveler count to `num_people` when supported, not `num_rooms`; do not infer counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. Map an explicit hotel Wi-Fi requirement to `free_wifi_included=True` and a meeting-room requirement to `has_meeting_rooms=True` when those fields are supported. A traveler count is not a flight-search parameter unless the schema provides one.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "content": "- Treat result persistence and cache refinement as mandatory steps. Never emit a bare search, filter, sort, or nearest-results call: bind its exact return value to a variable and immediately save that object with `save_to_cache` under a unique, descriptive key. Do this separately for every flight leg and every refined result. When a compatible listed cache result needs a new criterion, retrieve it using its exact listed key, pass it as `prior_results` to the appropriate filter with only the new criterion, and save the refinement under a new key. Do not repeat the base search or save an unchanged cached object as a refinement; search only when no compatible cache result is available. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+      "content": "\n- For U.S. attraction searches, a state name or postal abbreviation belongs in `state`, not `city`. For categorical values, use the documented schema label rather than an inflected form from the user (for example, map “touristy” to `type=[\"Tourist\"]` when that is the supported label). Tools are defined in the execution environment: call them directly and do not import tools, modules, or models.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness independently for each requested domain and, where applicable, each city or leg: proceed with searches or refinements for domains whose required inputs are available even if another domain is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across blocked domains. Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood. Optional preferences are not mandatory inputs.",
+      "content": "Before searching, check required-input slots separately for every requested domain and, where applicable, each city and flight leg, using explicit values from the full conversation. Related context does not automatically satisfy a required field: for example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Hotel searches require explicit check-in and check-out dates; do not borrow them from flight dates or infer a neighborhood. Complete every requested search or refinement whose required inputs are available even if another domain is blocked—for example, search restaurants when their city is known despite missing hotel dates. Make one `seek_information` call asking only for the missing mandatory inputs across blocked domains; optional preferences are not mandatory inputs.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+      "content": "\n- Treat a lodging request for “access to” an attraction category as a proximity request. Also treat a named attraction supplied in direct response to a question about which attraction the lodging should be near as the exact proximity target. Search for the requested category or named attraction if no compatible cached result covers it, then call `search_nearest` with the lodging results and `groupBy=\"hotel\"`. Interest in visiting or dining at a place alone still does not imply proximity. After a proximity result has been created, a later change to one domain’s own criteria does not by itself renew the proximity request: refine only the changed domain, and do not re-filter the unchanged partner domain or rerun `search_nearest` unless the user changes or renews the proximity request. Use a nearest result as the prior input for a domain filter only when it contains candidates for that same focal domain and target; otherwise use the compatible domain-specific result.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

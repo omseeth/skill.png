@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "parameter_representation_or_canonicalization",
+      "count": 7,
+      "description": "Several calls passed display labels or noncanonical values where the endpoint expected a code, slug, token, normalized value, or different value encoding."
+    },
+    {
+      "failure_type": "endpoint_selection_or_redundant_calls",
+      "count": 4,
+      "description": "Some trajectories split facets across overlapping tools, added an unrequested call, or failed to use the endpoint that matched the requested operation."
+    },
+    {
+      "failure_type": "schema_grouping_or_serialization",
+      "count": 4,
+      "description": "Some arguments were put in the wrong required/optional group, output fields were omitted, or values did not follow the expected serialization convention."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch repeatedly shows confusion between user-facing labels and endpoint-specific parameter representations, so the value-mapping rule should make that decision more operational. A second recurring issue is splitting multiple checks for one target even when one endpoint explicitly covers them all; clarifying the existing broad-endpoint rule addresses this without adding a general fan-out rule. Schema grouping and serialization guidance is already explicit in the skill, so it does not need another edit.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "For a broad request, prefer a documented broad or all-scope endpoint when it fully provides the requested output; do not choose a narrower endpoint merely because it has fewer required arguments. Conversely, cover separately requested outputs when they require distinct endpoints rather than assuming one broad or multi-capability lookup covers every facet.",
+        "content": "For multiple facets on the same target, first check whether one documented endpoint explicitly satisfies them all; if so, use it once rather than combining narrower or alternative checks. Otherwise, cover separately requested outputs with distinct endpoints rather than assuming one broad or multi-capability lookup covers every facet. Prefer the broadest documented endpoint that fulfills the request without sacrificing its scope."
+      },
+      {
+        "op": "replace",
+        "target": "Preserve query values and their entity associations, converting them only to documented formats such as API codes, list syntax, or canonical enum spelling. Match the representation expected by each field: use a canonical slug when the schema requires one and convert quantities to documented units (for example, 5 minutes to 300 seconds).",
+        "content": "Preserve query values and their entity associations, but treat the field schema and endpoint documentation as authoritative about representation. Before passing a user-facing label, check whether the field expects a canonical code, slug, enum token, normalized case, marketplace identifier, list syntax, or converted unit; map to that form only when a documented mapping, reference endpoint, or standard unambiguous API convention establishes it. Do not put display text into a code/slug/token field or guess an opaque value. When a field accepts free text and no canonical representation is specified, retain the user's value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

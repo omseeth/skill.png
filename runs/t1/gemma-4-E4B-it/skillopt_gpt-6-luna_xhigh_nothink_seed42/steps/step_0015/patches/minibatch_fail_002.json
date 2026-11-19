@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_filtering",
+      "count": 3,
+      "description": "Agents repeated base searches instead of retrieving compatible cached results and filtering them for new criteria."
+    },
+    {
+      "failure_type": "result_binding_and_cache_persistence",
+      "count": 4,
+      "description": "Agents omitted required result caching, printed results inline, or saved undefined variables instead of the returned tool results."
+    },
+    {
+      "failure_type": "request_scope_or_parameter_mapping",
+      "count": 2,
+      "description": "Agents mis-mapped a state abbreviation or failed to represent a round trip as separate directional flight legs."
+    },
+    {
+      "failure_type": "non_actionable_turn_handling",
+      "count": 1,
+      "description": "An unsupported traveler-count detail triggered unnecessary cache reads and writes despite no change to the completed flight request."
+    }
+  ],
+  "patch": {
+    "reasoning": "The recurring cache, filtering, saving, state-mapping, and itinerary errors are already explicitly covered by the skill, so duplicating those rules is not warranted. Clarify that information with no supported parameter for the affected domain is not an actionable change; this addresses the unnecessary cache operations in the no-op case.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "A no-op response is appropriate only when the latest turn adds no actionable request and compatible cached results already cover all active requests.",
+        "content": "Treat a new detail as actionable only if it requests a supported operation or maps to a supported parameter for the affected domain. A detail with no supported field for that domain (for example, passenger count when the flight tools have no passenger-count parameter) does not justify retrieving, saving, or repeating completed results; use a no-op if nothing else changed."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

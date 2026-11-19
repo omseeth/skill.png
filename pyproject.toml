@@ -1,0 +1,148 @@
+[project]
+name = "skillpng"
+version = "0.1.0"
+description = "Gradient-optimized guidance images for frozen local vision-language models"
+requires-python = ">=3.11"
+license = "MIT AND Apache-2.0"
+license-files = ["LICENSE", "src/skillpng/benchmarks/t1/upstream/LICENSE"]
+dependencies = [
+    "torch==2.9.1",
+    "torchvision==0.24.1",
+    "transformers>=4.45",
+    "pydantic>=2.7",
+    "typer>=0.12",
+    "pillow>=10.0",
+    "pyyaml>=6.0",
+    "numpy>=1.26",
+    "datasets>=2.14",
+    "wandb>=0.18",
+    # The vllm backend's only dependency: it talks to a vLLM server over its
+    # OpenAI-compatible API, so vLLM itself is never installed in this env.
+    "httpx>=0.27",
+    "timm>=1.0",
+    "einops>=0.7",
+    "open_clip_torch>=2.24",
+    "librosa>=0.10",
+    # The T1 adapter's vendored tools read the ontology with pandas and render
+    # their tool config with jinja2. Both already arrive through datasets and
+    # torch; declared here because the adapter uses them directly.
+    "pandas",
+    "jinja2",
+    # The figures under analysis/.
+    "matplotlib>=3.8",
+    # Qwen3.5's linear attention runs FLA's chunked gated delta rule when it
+    # imports, and otherwise transformers' torch implementation, whose
+    # backward holds every chunk's intermediates. Triton kernels only, so
+    # Linux only; without extras it asks for nothing beyond einops and
+    # cannot move the cu128 torch.
+    "fla-core>=0.5.2; sys_platform == 'linux'",
+    # torch 2.9.1 pins Triton 3.5.1, whose gated chunk_bwd_dqkwg FLA refuses
+    # on Hopper (fla #640), so FLA routes that backward to TileLang instead.
+    # TileLang JIT-compiles with the nvcc its extra brings; see
+    # tool.uv.constraint-dependencies for the CUDA cap.
+    "tilelang[nvcc]>=0.1.15; sys_platform == 'linux'",
+]
+
+# The GPU nodes' 580 driver runs CUDA 13.0, so TileLang's nvcc toolchain
+# stays on 13.0 rather than the newest 13.x.
+[tool.uv]
+constraint-dependencies = [
+    "nvidia-cuda-nvcc>=13.0,<13.1",
+    "nvidia-cuda-cccl>=13.0,<13.1",
+    "nvidia-cuda-crt>=13.0,<13.1",
+    "nvidia-nvvm>=13.0,<13.1",
+    "nvidia-cuda-runtime>=13.0,<13.1",
+]
+
+# Take torch from the cu128 index rather than PyPI, whose default wheel tracks
+# the newest CUDA. explicit=true keeps every other package on PyPI.
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu128" }]
+torchvision = [{ index = "pytorch-cu128" }]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-PyYAML",
+]
+# The SkillOpt baseline. Upstream's code is vendored under
+# baselines/skillopt/upstream at a pinned commit (see its VENDORED.md); this is
+# the one third-party package that code imports. anthropic serves
+# train.py --provider anthropic.
+skillopt = [
+    "openai>=1.30.0",
+    "anthropic>=1.0",
+]
+# The LoRA baseline in baselines/lora. Training only: vLLM serves the
+# adapters from its own environment.
+lora = [
+    "peft>=0.17",
+]
+
+[project.scripts]
+skillpng = "skillpng.cli:app"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/skillpng"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: requires real model weights, network, or a GPU (excluded by default)",
+]
+addopts = "-m 'not integration' -q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+# Vendored upstream T1 and SkillOpt code stays byte-close to upstream; see
+# each VENDORED.md.
+extend-exclude = ["src/skillpng/benchmarks/t1/upstream", "baselines/skillopt/upstream"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ANN", "RUF"]
+ignore = ["ANN401"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN"]
+
+[tool.mypy]
+# No python_version pin: numpy's stubs require the running interpreter's syntax level.
+files = ["src", "tests", "baselines/llmskill", "baselines/skillopt", "baselines/lora", "baselines/ultrabreak"]
+# The vendored SkillOpt package, imported by baselines/skillopt.
+mypy_path = "baselines/skillopt/upstream"
+strict = true
+warn_unused_ignores = false
+disallow_untyped_decorators = false
+# torch and transformers ship large untyped surfaces (Tensor.backward, every from_pretrained);
+# requiring annotations on their functions would only mean ignore comments at every call site.
+disallow_untyped_calls = false
+# Vendored upstream T1 and SkillOpt code is not ours to annotate; see each
+# VENDORED.md.
+exclude = ["src/skillpng/benchmarks/t1/upstream/", "baselines/skillopt/upstream/"]
+
+[[tool.mypy.overrides]]
+module = ["transformers.*", "PIL.*", "yaml.*", "datasets.*", "pandas.*"]
+ignore_missing_imports = true
+
+# Followed through the T1 adapter's imports even though excluded above.
+[[tool.mypy.overrides]]
+module = ["skillpng.benchmarks.t1.upstream.*"]
+ignore_errors = true
+
+# Followed through baselines/skillopt's imports even though excluded above.
+[[tool.mypy.overrides]]
+module = ["skillopt", "skillopt.*"]
+ignore_errors = true

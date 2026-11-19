@@ -1,0 +1,31 @@
+{
+  "batch_size": 3,
+  "failure_summary": [
+    {
+      "failure_type": "coverage_and_operation_decomposition",
+      "count": 2,
+      "description": "The agents missed distinct requested results: a topic-filtered influencer list and province-level data, and a Wayfair product search separate from SKU-specific lookups."
+    },
+    {
+      "failure_type": "optional_parameter_binding",
+      "count": 3,
+      "description": "The agents omitted optional fields that expressed requested scope or selectors; one also placed an optional postal-code field among required parameters."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already requires a coverage ledger and schema-correct parameter placement, so these edits make those checks more operational: distinguish broad results from filtered or separate search results, and explicitly audit optional fields rather than stopping after required arguments. They avoid prescribing unsupported defaults or values.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Before selecting calls, make a coverage ledger: list each requested result and its explicit constraints and facets (for example, geographic levels, time horizon, price or shipping filters, and requested metrics). Map each entry to the endpoint and schema field that provides it. Count an entry as covered only when the endpoint documents that exact result and scope; related or adjacent data do not suffice. If no single endpoint covers every entry, use separate appropriate calls. In the final audit, verify that every ledger entry is covered and every requested constraint is bound to a supported field.",
+        "content": "\n- Treat a requested search or list and a later lookup of a specific item as separate results when both are requested. Likewise, a general list does not satisfy an explicitly topic-filtered list, and data for one administrative level does not satisfy another requested level. Give each distinct result its own ledger row and call unless the schema documents that one call returns both."
+      },
+      {
+        "op": "replace",
+        "target": "- Include an optional parameter whenever it directly encodes a requested facet, even if the user phrases it in prose or the endpoint has a default. For an unfiltered, random, or full/standard result, use a documented “all” or unfiltered selector when needed to preserve that scope. Do not add options that are neither requested nor needed to express it, or invent values. For missing required values, use only a documented default or a value unambiguously derivable from the query.",
+        "content": "- After choosing an endpoint, audit its optional fields against the coverage ledger; do not stop after filling required parameters. Include each optional field that directly encodes a requested facet, even when phrased in prose or when the endpoint has a default, and place it in the optional-parameter list. For an unfiltered, random, or full/standard result, use documented “all” or unfiltered selectors for applicable dimensions when omission would not preserve that scope. Do not add options that are neither requested nor needed, or invent values. For missing required values, use only a documented default or a value unambiguously derivable from the query."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "unsupported_inference_or_schema_semantic_mismatch",
+      "count": 4,
+      "description": "Broad descriptions or exact rating requests were mapped to guessed amenities, counts, or rating ranges instead of their stated meaning."
+    },
+    {
+      "failure_type": "incremental_scope_and_cache_coverage",
+      "count": 5,
+      "description": "Plans re-applied criteria already covered by cache, processed unrelated domains, or omitted the latest requested refinement."
+    },
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 4,
+      "description": "A result-producing call was not consistently bound to a variable and saved under a new cache key."
+    },
+    {
+      "failure_type": "missing_mandatory_information",
+      "count": 1,
+      "description": "A new flight request lacked a required departure city, but the agent did not ask for the missing information."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers result persistence, cache deltas, and missing mandatory inputs, so repeating those instructions is unlikely to help. This edit clarifies recurring interpretation gaps: qualitative suitability is not a specific amenity or numeric threshold, explicit counts map independently, affirmations accept the specific criterion asked about, and exact ratings should not be broadened into minimum thresholds.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+        "content": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters and do not infer preferences: broad descriptions such as “family” do not specify exact party or room counts; “kid-friendly” does not by itself mean `has_kids_club`; and “good restaurant” does not specify a numeric rating. When traveler and room counts are explicitly stated, map each independently to its supported field; do not infer one from the other. Treat “solo” as one traveler only when a supported traveler-count field is available, and a traveler count is not a flight-search parameter unless the schema provides one. A direct affirmative answer to a question about a named amenity or constraint accepts that specific criterion. For range-valued ratings, represent an exact requested rating x as `[x, x]`; do not reinterpret it as a minimum."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

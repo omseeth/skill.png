@@ -1,0 +1,17 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "For explicitly linked flight-and-hotel requests, reuse clear destination and trip-date context across domains instead of asking the user to repeat it; ask only for mandatory details that remain missing."
+  ],
+  "patch": {
+    "reasoning": "The skill already covers required-argument validation and flight legs, but does not explicitly explain how to reuse unambiguous context between linked domains. Two trajectories show this matters: a hotel destination and stay dates help complete a newly accepted flight request, while a flight destination identifies the hotel city in a combined request.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs.",
+        "content": "\n- For explicitly linked flight-and-hotel requests on the same single-destination trip, reuse unambiguous context across domains: use the flight destination as the hotel city, or the requested hotel city as the flight destination when that is clearly the trip's endpoint. When flight help is added to an already dated hotel trip, use its explicit check-in and check-out dates as the trip's outbound and return flight dates unless the conversation indicates different flight timing. Do not infer a flight origin from the hotel location; ask only for any remaining mandatory flight details. Do not apply this across ambiguous or multi-city itineraries, or create a domain the user did not request."
+      }
+    ]
+  },
+  "source_type": "success"
+}

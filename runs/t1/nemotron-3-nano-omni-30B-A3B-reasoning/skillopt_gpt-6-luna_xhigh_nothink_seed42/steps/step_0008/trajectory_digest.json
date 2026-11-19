@@ -1,0 +1,65 @@
+{
+  "step": 8,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 27,
+  "failure_patterns": [
+    {
+      "pattern": "result_lifecycle: Every trajectory left at least one result-producing call without assigning and saving its result to cache.",
+      "count": 27,
+      "task_ids": [
+        "flighthotelrestaurant:train:1:52:1",
+        "attraction:train:15:12:0",
+        "hotelattraction:train:16:52:3",
+        "hotel:train:15:31:1",
+        "flighthotel:train:12:7:1",
+        "attraction:train:21:12:0",
+        "hotel:train:10:15:3",
+        "restaurant:train:21:8:1",
+        "hotelrestaurant:train:11:24:0",
+        "attraction:train:14:32:0",
+        "hotelrestaurant:train:3:10:0",
+        "flight:train:10:18:3",
+        "flighthotelattraction:train:23:27:1",
+        "restaurant:train:1:42:2",
+        "restaurant:train:10:42:2",
+        "flight:train:2:35:1",
+        "flighthotelrestaurant:train:16:13:3",
+        "attraction:train:16:57:0",
+        "hotelattraction:train:2:10:4",
+        "flighthotelattraction:train:8:59:1",
+        "hotel:train:8:21:1",
+        "flighthotelrestaurant:train:18:42:1",
+        "restaurant:train:1:28:2",
+        "hotelattraction:train:4:42:2",
+        "attraction:train:16:32:0",
+        "flight:train:2:40:4",
+        "hotelattraction:train:5:52:1"
+      ]
+    }
+  ],
+  "score_before": 0.235,
+  "score_after": 0.225,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "\n- Before planning, enumerate all still-active requested actions from the full conversation, including each requested domain and item, and each flight leg. Treat replies to follow-up questions as supplying or updating a detail for the item and domain under discussion, not as replacing earlier requests. Interpret a brief affirmative reply as accepting the immediately preceding offer and requesting its offered action or preference; retain other active requests. For each checklist entry, identify valid cache satisfaction, a needed refinement or search, or missing mandatory information. Do not leave any requested action or constraint uncovered. Apply direction-neutral flight preferences to each applicable leg separately.",
+      "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results."
+    },
+    {
+      "op": "replace",
+      "content": "- For a newly introduced constraint on a cached result, retrieve the most refined compatible result under an actual listed key into a local variable and pass that exact object as `prior_results` to the matching filter. Include every newly introduced, schema-supported constraint as its named filter argument; passing only `prior_results` does not apply the constraint. Do not resend criteria already represented in the cached result. Save refined results under a new key. If no compatible base exists, search when mandatory inputs are complete.",
+      "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter."
+    },
+    {
+      "op": "replace",
+      "content": "Check mandatory inputs separately for each requested action and domain against explicit values in the full conversation; related context does not automatically satisfy a required field. Do not infer missing mandatory values or use defaults. If any requested action lacks mandatory information, make one `seek_information` call asking only for the missing mandatory inputs across the incomplete actions. Still execute and cache other independently requested actions whose own mandatory inputs are available. Optional preferences are not mandatory inputs. For example, missing hotel dates do not block a restaurant search when its city is known; a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city.\n\nWhen the conversation gives an unambiguous trip start and end date for a stay at the same destination, and no separate lodging dates are supplied, use those dates as hotel check-in and check-out. If the dates or their relationship to the destination are ambiguous, ask rather than infer.",
+      "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs."
+    },
+    {
+      "op": "replace",
+      "content": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a flight between two cities with a stated travel-date span, treat the first date as outbound and the second as return unless the trip is explicitly one-way or multi-city. Search the return separately with the route reversed; do not use an unsupported `return_date` argument or treat both dates as outbound dates in one call. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+      "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip, search outbound and return separately, reversing the route for the return; do not use an unsupported `return_date` argument or treat the return date as another outbound date. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates."
+    }
+  ]
+}

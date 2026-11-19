@@ -1,0 +1,39 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 4,
+      "description": "Agents returned a salient phrase, modifier, related building, or artwork instead of resolving the requested slot or referent."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "A bare quoted clue was treated as a category label, and a numerical clue was matched to the wrong ethnic group."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 2,
+      "description": "Semantically valid answers used a noncanonical surface form, including an added place-name suffix or plural inflection."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the existing type rule more actionable by requiring the agent to identify and test the exact grammatical slot, not just the topic. Add a targeted check for numerical qualifiers, and encourage canonical answer forms to reduce avoidable exact-match failures.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "## Type the Unknown Before Answering\nFor a clue-like prompt, identify the semantic type of the requested answer before retrieving it. Preserve the head noun in phrases such as “this phenomenon”: answer with a phenomenon, not an associated personification. In “a person like X” constructions, treat X as an example and give the relevant shared role or category. If a declarative clue describes an entity using a pronoun, resolve the pronoun’s referent rather than treating the statement as a request to judge its truth. Reject candidates that are associated with the answer but are not the requested kind of thing.",
+        "content": "## Identify the Answer Type and Slot Before Answering\nFor a clue-like prompt, identify both the semantic type requested and the exact slot to fill (for example, a person, place, season, or expansion of an abbreviation). In a full sentence or fragment, distinguish the clause expressing the requested relation from rhetorical lead-ins, modifiers, and nearby descriptive facts; do not return one of those merely because it is salient. Preserve the head noun in phrases such as “this phenomenon”: answer with a phenomenon, not an associated personification. In “a person like X” constructions, treat X as an example and give the relevant shared role or category. If a declarative clue describes an entity using a pronoun, resolve the pronoun’s referent rather than judging the statement’s truth. Test a candidate by substituting it into the requested slot, and reject candidates that are merely associated with the answer or do not fit the requested relation."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Verify Numerical Qualifiers Against Evidence\nWhen a clue gives a number, proportion, date, or range, compare candidate evidence to that qualifier directly. Check which entity or subgroup the figure describes, and do not transfer a nearby statistic from a related but different candidate."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Prefer Canonical Answer Forms\nWhen equivalent surface forms are available, use the concise conventional form supported by the context. Avoid unnecessary generic suffixes in proper names and use the standard singular lemma for a category or concept unless the question requires a plural to distinguish multiple instances."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

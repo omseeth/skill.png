@@ -1,0 +1,67 @@
+{
+  "reasoning": "Preserved all eight failure-driven edits. The success-driven flight-origin edit duplicates the failure edit that explicitly requires an origin, so it was omitted. Kept the distinct success-driven clarification guidance to request missing required inputs across blocked domains together, while proceeding with searches that have sufficient inputs.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value.",
+      "content": "Map each location by its geographic role: city to `city`, state or region—including state abbreviations such as `CO` and `CA`—to `state`, neighborhood to `neighborhood`, and airport code to the corresponding airport-code field. Preserve the complete provided value: if the user identifies a neighborhood as “Downtown Portland,” pass that full phrase as the neighborhood rather than shortening it to “Downtown.” Never pass a state abbreviation as `city`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+      "content": "For numeric `rating` requests, a bare single value is exact `[x, x]` unless the user says “at least” or otherwise clearly requests a threshold, which is `[x, 5]`. Phrases such as “an x-star rating” or “rated x stars” without “exactly” mean a minimum `[x, 5]`; “exactly x” means `[x, x]`. Preserve explicit ranges.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Assign every result-producing call—search, filter, sort, or `search_nearest`—to a variable and save that exact result with `save_to_cache` under a fresh, descriptive key. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+      "content": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Treat every result-producing call—search, filter, sort, or `search_nearest`—as a paired operation: assign its result to a variable and save that exact result with `save_to_cache` under a fresh, descriptive key. Use distinct keys for separate domains, itinerary legs, and updated results. Before finalizing, verify that every produced result has been saved. Do not add result printing, summaries, or diagnostic output unless requested, and avoid unrelated cache reads. Tool outputs are typed result models, not dictionaries: pass them directly to subsequent tools and cache functions; do not subscript them. If inspection is genuinely needed, use declared model attributes. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Search afresh only when no suitable cached base exists; do nothing only when the cached results satisfy all current constraints.",
+      "content": "Search afresh only when no suitable cached base exists. Treat any newly supplied answer to a planning question—including an approximate budget, amenity, or area—as an explicit constraint. For an approximate amount, use the corresponding scalar `budget` value where supported. Compare each new constraint with the relevant cache summary; if it is not reflected there, retrieve the latest suitable same-domain base, apply the new constraint, and save the updated result. Do nothing only when every explicit constraint in the latest request is already satisfied by the relevant cached results.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+      "content": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. If a requested return leg's date is missing, seek it rather than inventing it. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Format flight time ranges as required:** For `departure_time` and `arrival_time`, use the validator's accepted 12-hour format with AM/PM (for example, `12:00 PM`), not `HH:MM:SS`. Choose a supported interval for vague time periods.",
+      "content": "\n- **Disambiguate flight preferences and require an origin:** When replying to a question about airline or class, interpret a short uppercase code-like token as an airline (for example, `airline=[\"AM\"]`), not a morning time preference; interpret it as a time only when context clearly refers to time of day. Use the lowercase flight-class values `economy`, `business`, or `first`. A flight search requires both a departure date and an origin in a supported origin field. A known hotel city or destination does not establish the origin; ask for any missing required origin rather than inventing a route.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. Do not approximate proximity by extracting a neighborhood and using it as a filter.",
+      "content": "- **Use proximity tools only for proximity requests:** Resolve the nearby-item domain from the latest user turn and immediate assistant context (for example, accepting a dining suggestion means restaurants), and reuse an established destination when it clearly applies. Identify the target from the full conversation and cache; use only results that actually represent that target. If a named target has no suitable cached result, search its domain by its complete name using available required inputs, then search for items in the requested nearby domain. Call `search_nearest` with those results and set `groupBy` to the domain of the options the user wants (for example, restaurants near a hotel means `groupBy=\"restaurant\"`), not the target's domain. If the target domain is unclear, clarify rather than substitute an unrelated domain or treat the target as a neighborhood.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "append",
+      "content": "\n- **Map allergy requests narrowly:** Set only the supported allergy-options field that matches the user's stated allergen; do not enable unrelated allergy or dietary flags. If the exact allergen has no field, use another allergen field only when it clearly covers the request (for example, a nightshade allergy may map to tomato allergy options); otherwise, do not invent a proxy.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not infer or substitute sample dates; ask only for missing required values, not optional counts or dates.",
+      "content": " When multiple requested domains are blocked by missing required inputs, ask for all those missing values in one clarification, while proceeding with any other requested domains whose required inputs are available.",
+      "support_count": 2,
+      "source_type": "success"
+    }
+  ]
+}

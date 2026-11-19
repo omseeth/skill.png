@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_calls",
+      "count": 4,
+      "description": "A requested data type or platform got no call. Missed: Air Quality forecast (48-hour), Wayfair common-info, Wayfair v2/detail alongside similar-items, and Asos auto-complete from 'both ASOS and Wayfair'."
+    },
+    {
+      "failure_type": "tool_name_format",
+      "count": 3,
+      "description": "Tool name lost its provider prefix ('email Check SMTP'), was invented ('Priceline com Provider: Search locations'), or the Zappos search tool was picked where the query gave a product ID and needed the detail-by-ID tool."
+    },
+    {
+      "failure_type": "json_format",
+      "count": 4,
+      "description": "Malformed JSON: bare parameter names (['offset']), duplicated 'optional parameters' keys, missing 'optional parameters' key, stray ']]' that broke parsing."
+    },
+    {
+      "failure_type": "param_placement_and_values",
+      "count": 4,
+      "description": "Wrong list or value: Aliexpress q put in required where the schema has none, BestBuy page put in optional where it is required, en_US instead of en-US, missing country/lang for Asos, ident instead of iata for JFK, offset value left out, search_type invented."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four small, targeted edits aimed at the recurring failures: exact tool-name copying, strict JSON shape, enumerating a call for every distinct data type or platform, and schema-driven parameter placement and value conventions. Earlier long edits were rejected, so these are short and carry concrete wrong/right pairs drawn from this batch. They avoid repeating existing skill text.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+        "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely. Never drop the provider prefix (wrong `email Check SMTP`; right `fast Email verifier: email Check SMTP`). Never invent, shorten or paraphrase an endpoint (`Priceline com Provider: Search locations` does not exist; the heading is `Priceline com Provider: Search hotels locations`). Before answering, find each call's name verbatim as a `### ` heading in the tool list. Keep its spelling and case, lowercase first letters, suffixes such as `(Deprecating)` and numbers such as `Item Search 3`."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not close the list early or leave stray brackets.",
+        "content": "\n- Every entry in `required parameters` / `optional parameters` is a `{\"name\": ..., \"value\": ...}` object, never a bare name (wrong `\"required parameters\": [\"offset\"]`; right `[{\"name\": \"offset\", \"value\": \"0\"}]`; 'first result with offset 0' -> value `\"0\"`). Every call has all three keys even when it has only required or only optional parameters (never omit `\"optional parameters\": []`). `\"optional parameters\"` appears exactly once per object, never `\"optional parameters\": [...], \"optional parameters\": []`. The answer ends with `}]</answer>`, never `]]` or `}]}`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+        "content": "\n- Count calls by kind of request, not by platform: each distinct data type asked for gets its own endpoint. 'Current pollution' + '48-hour forecast' + 'sun position' = three tools (current-data tool, forecast tool with hours `48`, sun tool). 'Pricing, warranty services, reviews and common product information' = four Wayfair endpoints (get-pricing, get-warranty-services, reviews/list, get-common-info). 'Detailed information about item X, including similar items' = the detail tool (e.g. `products/v2/detail`) AND the similar-items tool. 'On both ASOS and Wayfair' = one call per platform (Asos auto-complete AND Wayfair auto-complete). A product ID given for 'details' -> the lookup-by-ID tool (e.g. `Zappos product detail by Product ID` with `product_id`), not a keyword-search tool."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not borrow a similar name from a sibling tool (use `region` if the tool has `region`, not `loc`).",
+        "content": "\n- Placement comes from the schema, not from how central the value is. If a tool says `Required parameters: none`, every value (e.g. Aliexpress `q`, `page`, `storeId`; Asos `lang`) goes in `optional parameters` and `required parameters` is `[]`. If `keyword` and `page` are listed under Required (e.g. BestBuy), both go in `required parameters`, even for 'page 1'.\n- Value conventions: 'US English' -> lang `en-US` (hyphen, never `en_US`), and when the tool has `country`, add country `US` (an 'Asos US English catalog' call carries both). A 3-letter airport code like JFK -> `iata` (4-letter -> `icao`), not `ident`. When the query asks generally for locations or 'everything' and the tool has a type or enum field, use the catch-all value (`ALL`) rather than inventing one such as `travel`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

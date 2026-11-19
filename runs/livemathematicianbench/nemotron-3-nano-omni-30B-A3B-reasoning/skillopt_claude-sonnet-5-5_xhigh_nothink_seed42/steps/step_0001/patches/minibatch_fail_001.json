@@ -1,0 +1,43 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "strength_mismatch",
+      "count": 4,
+      "description": "In 'strongest statement' items the agent picked a weaker but true option (T4 existence of a finitely generated subalgebra instead of membership; T8 bare trapezoidal instead of the log-concave refinement), or an over-strong or over-elaborate option with unsupported extras (T3 eliminate λ; T7 adds a counterexample clause for p>2)."
+    },
+    {
+      "failure_type": "option_confusion",
+      "count": 2,
+      "description": "Near-identical options differing in constant dependence or equivalent congruence form were treated as cosmetic (T2 'C>0' vs 'C=C(p,q,n)'; T1 'm=2' vs 'm≡2 mod n')."
+    },
+    {
+      "failure_type": "condition_miss",
+      "count": 2,
+      "description": "The agent did not test candidate iff-conditions on minimal cases, or check necessity as well as sufficiency (T6 chose 'exponent 2' without testing A=Z2×Z2 or A=Z2). In T5 it accepted an invented 'extra integrable mode' rather than the rigid classification."
+    }
+  ],
+  "patch": {
+    "reasoning": "All eight failures were single-shot guesses with no systematic comparison of options. The agent did not split options into atomic claims, did not rank true options by logical strength, and did not sanity-check extra clauses or minimal examples. The edits add (1) a decomposition-and-ranking procedure for 'strongest' questions, (2) rules for spotting corrupted distractors and unsupported extras, (3) a test-both-directions and small-example procedure for equivalence questions, and (4) a rule that quantifier, constant-dependence, and range differences matter.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Core procedure: compare options exactly, do not pick by gist\n1. Before choosing, split EVERY option into atomic claims: quantifiers (for all / exists / for every a), parameter ranges, dependence of constants (C>0 vs C=C(p,q,n)), hypotheses used or dropped, exponents, strict vs weak inequalities, and any 'moreover / but / only / even without' clause.\n2. Mark each atomic claim TRUE / FALSE / UNSURE, using a quick derivation, a limiting case, or a small example. Discard any option with a FALSE claim.\n3. For 'strongest valid statement' questions: among options whose claims are all true, choose the one that logically implies the others. Do not settle for a bare true statement when a refined option is also true. Example: 'trapezoidal' vs 'trapezoidal + strict log-concavity off the plateau'. Likewise 'all periods lie in algebra S' implies 'some finitely generated subalgebra of S contains them', so the first is stronger. Do not choose an option that overreaches, e.g. it claims a dependence can always be eliminated, or that a universal bound fails somewhere, unless you can justify that claim."
+      },
+      {
+        "op": "append",
+        "content": "## Recognising corrupted distractors\n- Distractors are usually a true theorem with one targeted corruption: dropped or added hypothesis ('even without the hypothesis'), shifted exponent or index, strictness imposed where equality must occur (e.g. strict inequality on a plateau), a restricted range plus an invented counterexample clause, an 'only asymptotic' downgrade, or a swapped necessary/sufficient direction.\n- An extra clause is acceptable only if it is internally consistent and plausible. If it contradicts an equality case, or asserts a failure or new phenomenon you cannot justify, treat it as the corruption. Prefer the clean statement that covers the full stated range (e.g. all p, all knots) over a variant that restricts the range and adds a counterexample.\n- A 'complete classification' or rigidity-style question often has a simple answer (e.g. 'exactly the obvious/Killing ones'). Do not choose an option that invents extra modes, families, or larger kernels unless a dimension or eigenvalue count supports it.\n- If a refined option and a bare option share the same opening claim, check whether the refinement is self-consistent. If exactly one refined variant survives that check, it is likely the intended 'strongest' answer."
+      },
+      {
+        "op": "append",
+        "content": "## Equivalence / 'iff' questions\n- Verify BOTH directions for each candidate condition. Reject conditions that are only sufficient (e.g. 'order is odd' when the property also holds in some even cases) or only necessary.\n- Test minimal discriminating examples before committing: the smallest cases that separate the options (e.g. Z_2, Z_4, Z_2×Z_2, Z_3 for conditions on a finite abelian group; the smallest n, m for congruence conditions). If one option's condition would classify a small example differently from another's, settle that example by direct reasoning. Do not just guess among plausible-looking number-theoretic conditions."
+      },
+      {
+        "op": "append",
+        "content": "## Quantifier, constant-dependence, and range details are not cosmetic\n- Options that differ only in 'there exists C>0' vs 'C=C(p,q,n)', in 'for every a>1' vs a fixed a, or in a restricted vs full parameter range are different statements. Match the dependence and scope stated in the likeliest theorem: explicit dependence on only the listed parameters is usually the exact form, and a vaguer 'some C' is usually a weakened distractor in an equivalence question.\n- If two options look logically equivalent under the stated ranges (e.g. 'm=2' vs 'm≡2 mod n' when 0≤m<n), re-read for a subtle difference. If they are truly equivalent, prefer the one phrased in the problem's native modular or structural language. Do not choose the more ad hoc rephrasing."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

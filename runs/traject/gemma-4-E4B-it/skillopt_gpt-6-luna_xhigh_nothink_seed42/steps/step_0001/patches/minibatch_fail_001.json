@@ -1,0 +1,38 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "parameter_schema_mismatch",
+      "count": 6,
+      "description": "Calls omitted requested options, placed parameters in the wrong required/optional group, or used values in a format that did not match the endpoint."
+    },
+    {
+      "failure_type": "intent_and_entity_mapping",
+      "count": 4,
+      "description": "Calls were added for keyword overlap, omitted or mismatched for the requested operation, or attached to the wrong entity."
+    },
+    {
+      "failure_type": "output_contract_violation",
+      "count": 1,
+      "description": "The response used incomplete tool names and did not follow the required call-object structure, so no calls were parsed."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch repeatedly shows difficulty decomposing multi-part requests into correctly scoped operations, following each endpoint's parameter schema, and preserving the required response contract. These additions provide a compact planning and validation checklist without prescribing task-specific values.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Map requests to calls\nBreak a multi-part query into atomic operations. For each one, record the requested action, its specific subject or entity, and its constraints before choosing an endpoint. Keep each action attached to the entity named for it; do not transfer a nearby clause's value to another entity. Choose the endpoint that directly performs the requested operation, and do not add overlapping or unrelated calls just because their descriptions share a keyword. Make separate calls for distinct requested checks; bundle items only when the endpoint supports bundling and the same endpoint is appropriate for all of them."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Build arguments from the endpoint schema\nFor every selected endpoint, use its exact parameter names and keep required and optional parameters in their respective groups. Pass every explicitly requested filter or option, including optional flags, but do not add unrelated options. Use the parameter types and accepted formats indicated by the tool description, including API codes or list syntax where applicable. If a request implies a count or page and the endpoint exposes that parameter, use the smallest conventional value needed to fulfill it (for example, one result for a singular random request or the first page when pagination is needed)."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Validate the final response\nBefore answering, check that every call uses the exact `Provider: endpoint` tool name and contains exactly the required call-object keys and parameter groups from the requested format. Confirm that all planned operations are present, no extra calls were introduced, and the JSON is valid; return no surrounding commentary when the format requires only the tagged JSON answer."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

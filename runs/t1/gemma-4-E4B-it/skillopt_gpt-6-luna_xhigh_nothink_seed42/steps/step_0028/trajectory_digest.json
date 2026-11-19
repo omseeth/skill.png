@@ -1,0 +1,57 @@
+{
+  "step": 28,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 29,
+  "failure_patterns": [
+    {
+      "pattern": "cache_scope_and_follow_up_misclassification: Agents repeated base searches or reprocessed unchanged results for filter-only updates, while one filtered a cached named attraction even though the requested category required a broader search.",
+      "count": 29,
+      "task_ids": [
+        "flighthotel:train:18:2:3",
+        "flighthotelattraction:train:10:53:3",
+        "restaurant:train:14:15:3",
+        "restaurant:train:22:42:2",
+        "flight:train:2:18:3",
+        "flighthotelrestaurant:train:19:35:2",
+        "flight:train:23:57:2",
+        "attraction:train:24:59:0",
+        "restaurant:train:8:21:3",
+        "attraction:train:19:56:0",
+        "hotelrestaurant:train:2:51:2",
+        "flighthotel:train:12:7:1",
+        "flighthotelrestaurant:train:15:1:3",
+        "flighthotelattraction:train:7:36:4",
+        "flighthotelrestaurant:train:4:1:2",
+        "flighthotelattraction:train:6:59:4",
+        "attraction:train:1:27:1",
+        "hotelrestaurant:train:23:41:2",
+        "attraction:train:20:56:0",
+        "hotelrestaurant:train:9:27:1",
+        "flighthotel:train:3:7:2",
+        "hotelrestaurant:train:13:9:2",
+        "hotelrestaurant:train:7:37:4",
+        "hotelrestaurant:train:3:1:4",
+        "flighthotelrestaurant:train:25:52:1",
+        "flighthotelattraction:train:6:36:1",
+        "flight:train:7:30:4",
+        "hotelattraction:train:25:10:4",
+        "flight:train:22:18:2"
+      ]
+    }
+  ],
+  "score_before": 0.505,
+  "score_after": 0.5,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "\nFor filter-only updates to cached flights or hotels, retrieve the exact compatible result, apply the new supported filter, and save the assigned result. Do this separately for each affected flight leg, and do not rerun an unchanged compatible leg. For a hotel result with a compatible city and stay, newly supplied supported budget, amenity, `num_rooms`, or `num_people` criteria are filter updates, not reasons to repeat `search_hotels`. For an explicit proximity request, reuse an unchanged compatible counterpart as-is and filter only the domain whose criteria changed.\n```python\noutbound_prior = get_results_from_cache(key=\"<exact outbound key>\")\noutbound_filtered = filter_flights(prior_results=outbound_prior, budget=<requested budget>)\nsave_to_cache(key=\"<new filtered outbound key>\", value=outbound_filtered)\nreturn_prior = get_results_from_cache(key=\"<exact return key>\")\nreturn_filtered = filter_flights(prior_results=return_prior, budget=<requested budget>)\nsave_to_cache(key=\"<new filtered return key>\", value=return_filtered)\n\nhotel_prior = get_results_from_cache(key=\"<exact compatible hotel key>\")\nfiltered_hotels = filter_hotels(prior_results=hotel_prior, amenities=[\"<requested amenity>\"])\nsave_to_cache(key=\"<new filtered hotel key>\", value=filtered_hotels)\n```",
+      "target": "```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```"
+    },
+    {
+      "op": "replace",
+      "content": "**Follow-up decision boundary:** Decide independently for each changed domain or itinerary leg by comparing the requested domain, location, dates or leg, and category/entity scope with cache summaries. If no compatible cached candidate set covers that scope—including a replaced category or entity not covered by a broader result—make a base search with all active supported criteria. If the scope is unchanged and the user adds or changes only filterable constraints, such as budget, amenity, cuisine, rating, flight class, or time, retrieve the exact compatible key, apply newly supplied constraints and any active constraints not already embodied in that result, and save the filtered result. Filters can narrow candidates but cannot broaden them. Do not repeat a base search for filter-only updates or reprocess unchanged domains or legs; repeat retrieve-filter-save separately for each affected leg.",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg."
+    }
+  ]
+}

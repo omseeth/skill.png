@@ -1,0 +1,51 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "The answer repeated a word the clue already supplies. 'third Dalai Lama' repeats the ordinal in 'third leader', and 'Grandpa Zeb' repeats the given name 'Zeb'. The DELETE-CLUE-WORDS test is buried and does not name ordinals or given names, so the agent skipped it."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "A specific variety ('Sea lamprey') was given for a clue describing the whole class ('this freshwater ... fish'). The modifier even contradicts 'freshwater'. The plain-common-noun rule exists but does not cover species or variety prefixes."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "'this organization's Hall of Fame' needs the owner (LPGA). The agent answered the possessed thing the clue already names (World Golf Hall of Fame), which repeats 'Hall of Fame'."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "A multi-part clue defines one word several ways, with a quoted 'town' of them hinting at a compound. The agent grabbed an unrelated headword from a slang glossary that fits none of the parts."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four of the five failures are over-specification or echo errors: the answer contains a clue word (ordinal, given name, 'Hall of Fame') or an extra modifier ('Sea'). The fifth is a drift to an unrelated word on a multi-part clue. Earlier large 'Step 0' insertions were rejected, so these edits are small. Each replaces or extends an existing bullet (DELETE-CLUE-WORDS, plain-common-noun, quoted-word hint), or adds one short owner-slot bullet next to the existing slot-type rules. Net length stays almost flat, and Rule 3 (verbatim archive copy) is untouched.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- DELETE-CLUE-WORDS TEST: before answering, strike from your candidate every specific word or phrase the clue already states, and keep only the remaining head.",
+        "content": "- DELETE-CLUE-WORDS TEST (mandatory; name the struck words in your reasoning line): before answering, strike from your candidate every specific word or phrase the clue already states, including ordinals and numbers ('the THIRD leader ... was the first to bear this title' -> 'Dalai Lama', not 'third Dalai Lama') and any given name the clue supplies ('his name was Zeb, but the others called him this' -> 'Grandpa', not 'Grandpa Zeb'). Keep only the remaining head. For 'called / known as / nicknamed this' clues, the answer is ONLY the alternate name or title, never the alternate plus the original name."
+      },
+      {
+        "op": "replace",
+        "target": "Modifiers copied from passages (hot air, synthetic, funeral, speech) are usually wrong unless part of the standard proper name.",
+        "content": "Modifiers copied from passages (hot air, synthetic, funeral, speech) are usually wrong unless part of the standard proper name. This includes species and variety prefixes (Sea, Common, Atlantic, Great): for 'this freshwater eellike, jawless fish' answer 'Lamprey', not 'Sea lamprey' (and 'Sea' even contradicts 'freshwater'). Passages that discuss one particular variety do not make that variety the answer when the clue describes the whole class."
+      },
+      {
+        "op": "insert_after",
+        "target": "- 'One of these <role/title>' ('the 14th one of these spiritual leaders') asks for the title or category noun itself (Dalai Lama), not the individual named in the clue.",
+        "content": "- POSSESSIVE OWNER: in 'X & Y are in this organization's Hall of Fame, founded in 1967', 'this country's capital', 'this company's founder', the slot is the OWNER (organization, country, company). It is not the possessed thing the clue already names, so a candidate repeating 'Hall of Fame' is wrong. Pick the owner whose own facts match the clue's other details (the body that founded or runs that hall in that year) and give its short common name or acronym."
+      },
+      {
+        "op": "replace",
+        "target": "- A word in quotation marks inside the clue (a 'drag', a nickname) is usually a pun or hint tied to the answer. Look for passages where that word appears next to a candidate and answer with that candidate.",
+        "content": "- A word in quotation marks inside the clue (a 'drag', a nickname) is usually a pun or hint tied to the answer. Look for passages where that word appears next to a candidate and answer with that candidate. A quoted word plus 'of them' ('a \"city\" of them') signals a compound: search the passages for 'X-town', 'X city', 'X-ville' and similar, and answer X ('tent' from 'tent city'). A clue with several parts ('Slang for a pub, it's also a shack; ...') defines ONE word several ways. The answer must fit EVERY part, so never take an unrelated headword from a slang or glossary list just because it appears there."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

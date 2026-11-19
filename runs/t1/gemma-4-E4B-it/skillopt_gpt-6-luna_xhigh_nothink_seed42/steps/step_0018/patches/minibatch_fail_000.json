@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_result_and_changed_scope_misuse",
+      "count": 4,
+      "description": "Agents repeated searches instead of filtering compatible cached results or acted on an unchanged domain while missing the latest request."
+    },
+    {
+      "failure_type": "tool_result_binding_and_persistence",
+      "count": 3,
+      "description": "Agents omitted result saving, saved an undefined variable, or called a search again instead of saving the first result."
+    },
+    {
+      "failure_type": "parameter_grounding",
+      "count": 4,
+      "description": "Agents mapped state abbreviations to city, added an unrequested attraction category, or inferred business class from trip purpose."
+    },
+    {
+      "failure_type": "itinerary_and_hotel_context_interpretation",
+      "count": 2,
+      "description": "Agents failed to carry trip context into a hotel request or to act correctly on a return-only flight clarification."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already explicitly covers cache reuse, result saving, state-versus-city mapping, and avoiding unsupported criteria, so repeating those rules would not address a skill gap. The edits clarify two unresolved context ambiguities: when a hotel request inherits an unambiguous destination and trip dates, and why trip purpose alone does not specify flight class.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs.",
+        "content": "\n- When a hotel is explicitly requested for the same trip as a single-destination flight itinerary, use that destination as the hotel city if no other lodging city is indicated. If the user gives the trip's start and end dates for that stay, use them as check-in and checkout dates. Do not apply this inference to a multi-destination itinerary or when the conversation indicates a different hotel location; seek any still-missing mandatory details."
+      },
+      {
+        "op": "insert_after",
+        "target": "Treat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to every described leg. If a filterable preference is supplied after compatible per-leg flight results are cached, retrieve and filter each affected leg separately rather than repeating its base search. Do not combine distinct legs by repeating keyword arguments in one call.",
+        "content": "\n- A phrase such as “business trip” describes the purpose of travel, not the cabin or service class. Set `flight_class` only when the user explicitly specifies a flight class or cabin."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

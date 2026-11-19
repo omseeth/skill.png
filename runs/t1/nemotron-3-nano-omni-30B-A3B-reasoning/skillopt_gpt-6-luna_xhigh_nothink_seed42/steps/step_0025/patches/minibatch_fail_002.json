@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "pending_action_and_cache_lifecycle",
+      "count": 8,
+      "description": "Plans omitted, duplicated, or misrouted required actions, failed to use compatible cached results, or failed to save tool outputs."
+    },
+    {
+      "failure_type": "unsupported_or_unrequested_work",
+      "count": 5,
+      "description": "Calls added criteria or domain work not requested, or repeated criteria already represented in results."
+    },
+    {
+      "failure_type": "flight_leg_interpretation",
+      "count": 2,
+      "description": "Flight plans failed to cover every required leg, including a return implied by a trip date range."
+    },
+    {
+      "failure_type": "runtime_environment_misuse",
+      "count": 1,
+      "description": "Generated code imported dependencies and redefined a result model instead of using the preconfigured tools directly."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already gives repeated guidance on cache refinement, complete action coverage, saving results, and avoiding unrequested work; prior attempts to expand those rules were rejected, so repeating them is not warranted. The clearest remaining gaps are explicit protection against redefining the preconfigured tool environment and clarification that an unspecified one-way trip with a start-to-end date range requires separate outbound and return legs.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Represent flight legs separately",
+        "content": "- When a flight request gives a trip date range from D1 to D2 and does not specify that the trip is one-way, treat it as a round trip: search the stated outbound route departing D1 and the reversed route departing D2. Keep the two legs separate."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Use the preconfigured tool environment\n- The execution environment already defines the tools and their input/result models. Generate direct tool calls only: do not import modules, define or instantiate replacement tool models, or redefine tool names."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

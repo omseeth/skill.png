@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_follow_up_action_omission",
+      "count": 5,
+      "description": "Follow-up criteria were ignored or incompletely applied to compatible cached results, often with no saved update or required proximity result."
+    },
+    {
+      "failure_type": "pending_travel_input_misresolution",
+      "count": 2,
+      "description": "Dates and duration already supplied in the conversation were treated as missing or were not mapped to the requested flight and hotel fields."
+    },
+    {
+      "failure_type": "explicit_hotel_preference_omission",
+      "count": 1,
+      "description": "An explicitly solo hotel stay was not passed as the party size."
+    },
+    {
+      "failure_type": "runtime_contract_violation",
+      "count": 1,
+      "description": "The agent imported a nonexistent tools module despite the injected-tool runtime contract."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent cached follow-up failures are already addressed explicitly in the skill and protected slow-update section, so repeating that guidance would not patch a gap. The flight trajectory exposes a narrower ambiguity: a date interval in a direct flight-booking request can express round-trip travel, and an arrival deadline needs an upper-bound time range. Clarifying those semantics addresses that gap without weakening the rule against inferring return travel from a general date interval.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "For an explicitly requested round trip, make two separate flight searches: one outbound and one with the route reversed for the return.",
+        "content": " Treat a direct request to book a flight “from” one date “until” or “to” another as an explicit round-trip request: use the first date for the outbound and the second for the reversed return leg. This does not make a general trip or event date interval a return-flight request. For an arrival deadline phrased “arrive by” a time, set `arrival_time` from `12:00 AM` through the stated time."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

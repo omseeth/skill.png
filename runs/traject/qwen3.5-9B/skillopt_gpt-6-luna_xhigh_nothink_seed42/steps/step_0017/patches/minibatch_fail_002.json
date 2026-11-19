@@ -1,0 +1,46 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "response serialization and parameter-schema violations",
+      "count": 2,
+      "description": "One call list was unparseable because a parameter entry was malformed; another put a schema-optional field in required parameters and emitted a numeric value without quotes."
+    },
+    {
+      "failure_type": "tool identifier mismatch",
+      "count": 1,
+      "description": "The selected currency endpoint was named without its full provider-qualified identifier."
+    },
+    {
+      "failure_type": "endpoint operation mismatch",
+      "count": 1,
+      "description": "A retailer category-list endpoint was used where the request called for finding matching products."
+    },
+    {
+      "failure_type": "canonical token casing",
+      "count": 1,
+      "description": "A source name was passed with display-name capitalization rather than the expected lowercase token."
+    },
+    {
+      "failure_type": "benchmark/gold inconsistency",
+      "count": 1,
+      "description": "The expected calls included unrelated news feeds despite the request asking only for a constrained news search."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add a precise structural check for parameter-array entries, which addresses the unparseable response. Clarify the distinction between product discovery and category-list endpoints. The remaining issues are already covered by the skill’s full-identifier, schema-binding, and canonical-token rules, or conflict with its instruction to avoid unrelated calls.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Planning, tool selection, and validation",
+        "content": "- When asked whether a retailer carries products matching a description, use a product search or autocomplete endpoint that accepts a product query when available. Use category-list or taxonomy endpoints only when the user asks for categories or a category hierarchy."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Final response check",
+        "content": "- Each entry in either parameter array must be a complete object with `name` and `value` keys; do not flatten parameter fields across array entries. Check balanced braces and brackets and verify the JSON is parseable before sending."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

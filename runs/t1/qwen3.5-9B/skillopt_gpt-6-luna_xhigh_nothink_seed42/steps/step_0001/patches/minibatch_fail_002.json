@@ -1,0 +1,35 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_aware_incremental_planning",
+      "count": 7,
+      "description": "Agents skipped needed filters on cached results, omitted required cache saves, or repeated work for domains whose results were already valid."
+    },
+    {
+      "failure_type": "constraint_fidelity",
+      "count": 4,
+      "description": "Agents inferred unsupported preferences, used an irrelevant proxy, missed an unambiguous party size, or added an unstated flight-arrival constraint."
+    },
+    {
+      "failure_type": "entity_value_mutation",
+      "count": 2,
+      "description": "Agents converted user-provided date strings instead of passing the values as stated."
+    },
+    {
+      "failure_type": "tool_execution_contract_violation",
+      "count": 1,
+      "description": "An agent imported and redefined tool models, causing a runtime NameError before the intended plan could run."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill is empty, so one compact addition can clarify the recurring gaps: how to handle later-turn refinements and cache saves, how to map user constraints without invention, and how to keep generated code executable using the supplied tools.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Learned Rules\n- **Handle updates incrementally:** If a later turn adds or changes a constraint and relevant results are cached, retrieve the best matching result with `get_results_from_cache` and apply the appropriate filter. Do not say “No planning needed” merely because base results exist; use that only when cached results already satisfy the current request. Avoid repeating searches or filtering unchanged domains.\n- **Maintain the cache lifecycle:** Assign each new search, filter, sort, or nearest result to a variable and save it with `save_to_cache` under a fresh, relevant key. For multi-leg trips, handle each leg separately and save each result.\n- **Map constraints faithfully:** Pass user-provided values as written, including date strings; do not reformat dates. Supply only stated preferences and clear quantities (for example, “solo” means one traveler). Do not invent amenities or use proxies such as vegetarian options for “family-friendly.” For flights, use stated leg dates as departure dates; add an arrival-date constraint only when the user explicitly specifies one.\n- **Keep code executable:** Call the tools already provided directly. Do not import, redefine, or wrap tools or their input models, and do not add unrelated output or code."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

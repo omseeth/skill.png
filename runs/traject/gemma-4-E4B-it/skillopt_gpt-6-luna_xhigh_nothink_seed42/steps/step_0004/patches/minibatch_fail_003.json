@@ -1,0 +1,29 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "optional_parameter_omission_or_grouping",
+      "count": 2,
+      "description": "Both trajectories missed relevant optional arguments; one also placed optional filters in the required-parameter group."
+    },
+    {
+      "failure_type": "workflow_intent_coverage",
+      "count": 1,
+      "description": "A stated product-discovery search was treated as background rather than a distinct requested operation."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already gives general schema and scope rules, but the agents did not consistently apply them to summarized workflows, selectors for requested settings, or regional context shared across related calls. These additions make those checks explicit without relaxing the instruction not to guess undocumented values or add unrelated calls.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Additional coverage checks\n\n- **Preserve workflow steps in task summaries.** Treat stated searches, discovery steps, and follow-up lookups as separate requested operations even when the task describes them in past tense or as background. A later lookup by item identifier does not replace an explicitly stated discovery search unless the task makes clear that the search is already completed and does not request its results.\n- **Audit relevant optional parameters individually.** For each selected endpoint, check whether its optional fields can express a requested or clearly implied scope, setting, or result size. Include applicable fields using the endpoint's documented values, and place every argument in the required or optional group specified by the schema. For an unbounded collection request with a page-size control, use a documented default or established endpoint convention when available; do not invent a value when neither is established. If a settings request names a particular facet and the endpoint provides a documented selector for it, select that facet rather than leaving the request unscoped."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Carry clear market context to related regional calls.** When a task provides an unambiguous geographic clue, such as a postal code, use it to populate documented regional fields on related calls even if they are for another provider. Apply only mappings established by the schema or an unambiguous standard mapping, and keep clearly separate market-specific requests isolated rather than transferring one market's settings to them."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

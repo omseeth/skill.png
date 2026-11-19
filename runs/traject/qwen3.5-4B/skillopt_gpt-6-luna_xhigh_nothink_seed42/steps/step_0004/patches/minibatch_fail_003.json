@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_outcome_coverage",
+      "count": 5,
+      "description": "Selected an endpoint matching the topic but not the requested operation, result properties, or time horizon, or omitted a distinct discovery outcome."
+    },
+    {
+      "failure_type": "argument_and_schema_fidelity",
+      "count": 5,
+      "description": "Misapplied location hierarchy, dropped or invented constraints, used an unrequested value, or placed parameters in the wrong schema bucket."
+    },
+    {
+      "failure_type": "unmatched_calls_and_response_structure",
+      "count": 3,
+      "description": "Added unnecessary lookup or validator calls, included a placeholder, or produced malformed/failed-to-parse call output."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already covers general endpoint matching, constraint preservation, schema buckets, and JSON validation. These additions address narrower recurring gaps: distinguishing endpoints by all requested output properties and forecast horizon, using autocomplete only as a discovery fallback, and correctly handling hierarchical location schemas.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Plan tool calls",
+        "content": "- Match an endpoint's full output semantics, not just its topic: for a compound result (such as format validity plus disposable classification), prefer an endpoint documented to provide all requested properties. Match the requested time horizon too, and map it to a supported forecast-duration field; a current/hourly or shorter-horizon endpoint is not equivalent to a multi-day forecast.\n- For explicit find/search/list/browse requests, use a documented search/list operation when available. If none is listed and the same provider's only discovery operation is autocomplete or suggestions, use that operation for discovery rather than substituting item details or omitting the outcome; still make separate calls for separately requested details."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Ground arguments in the request and schema",
+        "content": "- For hierarchical location schemas, map a named place to the matching documented level and supply required ancestors using canonical API codes or names; do not repeat the country as an administrative region or place a city in a parent-level field. Use an administrative-division lookup only when needed to resolve canonical values, and only with all required inputs; do not add an unpopulated lookup call alongside the actual count or search."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

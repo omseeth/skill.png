@@ -1,0 +1,31 @@
+{
+  "batch_size": 3,
+  "success_patterns": [
+    "In all three trajectories the agent invented dates (e.g. '2025-08-03', '2025-08-04', '2025-08-11') copied from the tool usage examples, even though the user never gave them. The gold action was seek_information for the missing mandatory date parameters. This is a shared failure hiding behind a 'success' label: the cache-state match was 1.0, but tool_f1 was 0.",
+    "In a multi-domain request (flight + hotel, hotel + attraction) the mandatory parameters of each requested domain must be checked separately. Flight departure_date and hotel checkin_date/checkout_date are the usual gaps.",
+    "The agent passed a parameter that is not in the tool schema (num_people to search_flights), and this caused a validation error. Only schema-defined arguments should be used.",
+    "In trajectory 2 the agent re-ran search_flights even though flights were already cached and the last user turn was about hotels. The latest turn's domain and the cache summary should decide which tool gets called."
+  ],
+  "patch": {
+    "reasoning": "All three trajectories show the same gap: the agent hallucinated mandatory date values from the tool examples instead of calling seek_information. The gold answer in each case was seek_only. The skill currently has no rules, so these should be encoded as concrete guardrails. The related lessons are schema-valid parameters only, domain-aware seeking in multi-domain requests, and using the latest turn and the cache to choose the tool.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "## Mandatory Parameters: Never Invent Values\n- Mandatory (non-optional) arguments must come from the user's words in the conversation. Dates in the tool usage examples (e.g. '2025-08-03', '2025-08-11') are illustrations only. Never copy them into generated code.\n- Mandatory-parameter checklist: `search_flights` needs departure_date plus an origin. `search_hotels` needs city, checkin_date and checkout_date. `search_restaurants` needs city. If any needed value is missing from the conversation, the whole output is `seek_information(\"...\")` and no search call is made.\n- Do not guess a date, and do not derive one with adjust_date unless the user gave a reference date and an offset.\n- Budgets, neighborhoods, party size, amenities and flight class are optional. They never replace a missing mandatory value and are never a reason to call seek_information."
+      },
+      {
+        "op": "append",
+        "content": "## Multi-Domain Requests: Check Each Domain Separately\n- When the user asks for several domains (flight + hotel, hotel + attraction, etc.), list the mandatory parameters of each requested domain and check each one against the conversation.\n- If any domain is missing a mandatory value, produce one `seek_information` call that names every missing item (e.g. \"We need the departure date of the flight and the check-in and check-out dates for the hotel\"). Do not run a partial search with made-up values for the other domain.\n- Reuse dates the user has already given. For example, a stated flight departure date can serve as hotel check-in on a one-way trip, in which case only the checkout date needs asking. If the conversation gives no dates at all for a hotel, ask for both check-in and check-out.\n- Keep the seek_information text short and name only the missing mandatory parameters."
+      },
+      {
+        "op": "append",
+        "content": "## Use Only Schema-Defined Arguments\n- Pass only arguments that appear in that tool's Args list. Extra arguments raise a validation error (extra_forbidden) and fail the whole call.\n- `search_flights` has NO passenger-count parameter, so 'for 3 people' must not become `num_people=3`. `num_people` and `num_rooms` exist only on the hotel tools.\n- Before writing each call, check every keyword you use against the Args of that specific tool."
+      },
+      {
+        "op": "append",
+        "content": "## Act on the Latest Turn and the Cache\n- Decide what to call from the LAST user turn and the cache summary, not from the whole conversation history.\n- If a domain already has a cache entry (e.g. 'flights' with results for the same route and dates) and the last turn is about another domain (e.g. hotel amenities), do not re-run the cached domain's search. Retrieve it with get_results_from_cache if it is needed, or leave it alone.\n- When the last user turn only supplies a preference for a domain that still lacks mandatory values (e.g. 'a hotel with a gym and wifi' but no dates), call seek_information for those missing values instead of searching."
+      }
+    ]
+  },
+  "source_type": "success"
+}

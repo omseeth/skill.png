@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_routing_in_refinement",
+      "count": 2,
+      "description": "With several domains cached, the agent applied the reply to the wrong domain. It filtered restaurants with a per-night hotel budget, or re-filtered restaurants when the user asked for hotel services. It also loaded a stale hotel key instead of the most refined one."
+    },
+    {
+      "failure_type": "fabricated_mandatory_params_or_neighborhood",
+      "count": 1,
+      "description": "No dates were given, yet the agent invented check-in and check-out dates and a neighborhood ('downtown') from vague words like 'luxurious'. It should have output only seek_information."
+    },
+    {
+      "failure_type": "missing_partial_search_in_multidomain_turn",
+      "count": 1,
+      "description": "Hotel dates were missing but the restaurant city was known. The agent output only seek_information and skipped search_restaurants. Rule 6 ('output ONLY seek_information') conflicts with the decision order."
+    },
+    {
+      "failure_type": "hotel_dates_not_derived_from_flight_or_stay_length",
+      "count": 2,
+      "description": "Hotel dates are derivable from the cached flight date plus a stated stay length ('2 nights') or a stated checkout. The agent re-ran search_flights, or asked for a check-in date it already had, and dropped num_people and the neighborhood."
+    },
+    {
+      "failure_type": "wrong_param_mapping",
+      "count": 1,
+      "description": "'sauna' was mapped to has_spa_services, plus an extra amenity param. The exact has_* parameter for each amenity word must be used."
+    },
+    {
+      "failure_type": "label_noise_or_ambiguous",
+      "count": 1,
+      "description": "User said 'business' but the gold used 'first'. Nothing generalizable."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three recurring errors remain despite earlier rules. (1) Rule 6's 'output ONLY seek_information' contradicts the per-domain logic of the decision order, so a completable domain such as restaurants is never searched. (2) In flight+hotel conversations the model neither derives hotel dates from the flight date, stay length or stated checkout, nor reuses traveler count and neighborhood. It re-searches flights or over-seeks instead. (3) In multi-domain refinements the model sends hotel-only phrases ('per night', room service, shuttle) to the wrong domain and picks a stale key. The edits fix the Rule 6 contradiction, add a date-derivation rule, add a domain-routing and key-selection rule, and add an exact amenity-to-parameter mapping.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- If any mandatory arg is missing, output ONLY a seek_information(...) call that names what is missing. Do not also emit a search call with placeholders.",
+        "content": "- Check mandatory args PER DOMAIN. A domain with a missing mandatory arg gets NO search call, only a seek_information(...) naming what is missing. Never put placeholder or invented values into a search call. A domain whose mandatory args are all known is still searched and saved in the same block. Example: 'hotel in St. Louis for 2, budget 80 per night, also restaurants in the city' has no hotel dates, so output `restaurants = search_restaurants(city=\"St. Louis\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. If every requested domain is missing something, output only seek_information.\n- Hard stop for hotels: if the conversation contains no literal check-in and check-out dates (and none can be derived under the date-derivation rule below), do not call search_hotels. Output only seek_information. Style words ('luxurious', 'anniversary', 'city view') never justify inventing dates, and never invent a neighborhood such as 'downtown' that the user did not say. Call seek_information as a bare statement, without `x = `."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 20: Hotel dates in flight+hotel trips (derive, do not re-ask, do not re-search flights)\n- If a hotel is requested together with a flight, the hotel check-in date is the outbound flight departure date the user gave. Never ask for a check-in date in that case.\n- A stay length ('2 nights', 'for a week') is a reference date plus an offset, so derive checkout with adjust_date: `checkout_date = adjust_date(date=\"May 19, 2025\", delta_days=2)`, then `hotels = search_hotels(city=<destination>, checkin_date=[\"May 19, 2025\"], checkout_date=[checkout_date])` and `save_to_cache(key=\"hotels\", value=hotels)`. If the user states a checkout date, use it exactly as written, even if it looks odd.\n- Carry over everything already stated for the hotel: neighborhood in the user's wording (e.g. neighborhood=[\"Midtown Atlanta\"]), traveler count from the flight ('2 travelers' -> num_people=2), and amenities the user agreed to (e.g. 'free breakfast' -> breakfast_included=True).\n- A turn such as \"don't need a return flight\" or a stay-length answer gives hotel info. If 'flights' is already cached, do NOT call search_flights again. Search only the hotel (and any other newly completed domain).\n\n## Rule 21: Multi-domain follow-ups - pick the domain from the wording, and the most refined key\n- Domain cues in the last turn. Hotel: 'per night', nightly budget, travelers/guests/'for 2', stars, amenities and services (room service, shuttle, wifi, gym, pool, parking), neighborhood of the hotel. Restaurant: 'per person', cuisine, dietary needs, restaurant rating. Also read the assistant's LAST question. A reply to a hotel question is a hotel refinement only.\n- When both hotels and restaurants are cached, filter ONLY the domain the reply is about. Never copy a hotel budget ('around 55 per night'), party size or hotel amenity onto filter_restaurants, and never re-apply a restaurant filter that the restaurant cache summary already lists (cuisine, rating).\n- Several keys for one domain (hotels, hotels2, hotels3, final_hotels...): load the key whose summary lists the MOST 'Additionally filtering for ...' items for that domain, normally the latest or highest-numbered one. Example: 'Room service and shuttle service would be helpful' with hotels3 holding stars and neighborhood -> `h = get_results_from_cache(key=\"hotels3\")`, `h2 = filter_hotels(prior_results=h, has_room_service=True, airport_shuttle_present=True)`, `save_to_cache(key=\"final_hotels\", value=h2)`. Nothing for restaurants.\n- A reply 'N and around X per night' with a cached hotels key -> `filter_hotels(prior_results=h, num_people=N, budget=X)` only, then save under a new key.\n\n## Rule 22: Exact amenity-to-parameter mapping (one parameter per phrase)\n- sauna -> has_sauna; hot tub -> has_hot_tub; spa -> has_spa_services; room service -> has_room_service; shuttle / airport shuttle -> airport_shuttle_present; city view -> has_city_view_rooms_present; ocean view -> has_ocean_view_rooms_present; rooftop bar -> has_rooftop_bar; fitness classes -> has_fitness_class; gym -> gym_present; free breakfast -> breakfast_included; free wifi -> free_wifi_included; free parking -> has_free_parking; business center -> has_business_center.\n- Do not substitute a neighbouring amenity (sauna is not spa) and do not add an amenity the user did not name."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

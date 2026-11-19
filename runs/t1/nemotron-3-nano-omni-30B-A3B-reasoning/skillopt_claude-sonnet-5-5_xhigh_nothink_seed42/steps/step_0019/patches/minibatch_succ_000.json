@@ -1,0 +1,20 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Refinement turns on a cached domain were written as three straight-line statements: load the most refined key, filter with only the new constraint (neighborhood, gym and wifi, airline and class), and save under a new key. These succeeded in trajectories 1, 3 and 6, and the skill already covers this.",
+    "When mandatory args were complete and the domain had no key, the first search was assigned to a variable and saved under a simple domain key, carrying every stated optional detail (rooms, people, cuisine, halal). The skill already covers this (trajectories 4 and 5).",
+    "Vague stay purpose ('special occasion') with only a city and no dates produced a single short seek_information for check-in and check-out, with no search (trajectory 7). The skill already covers this.",
+    "When a hotel was requested in turn 1 and only a one-way flight date arrived later, the flight search ran but the closing seek_information for the missing hotel checkout date was left out (trajectory 8, tool_f1 0.8). The skill states the pieces separately but gives no concrete example of this exact combination."
+  ],
+  "patch": {
+    "reasoning": "Most observed successes already match existing rules, so only one small edit is proposed. Trajectory 8 passed cache_em but missed a gold seek_information, because the agent searched the flight and silently dropped the pending hotel. This is a flight-plus-hotel turn where only the check-in date is known. The skill has the pieces (the checkout rule, the 'search complete domains, then ONE seek_information' rule) but no worked example, so one compact example is added.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "do not re-filter them with a budget or other constraint their CACHE summary already lists.",
+        "content": "\n  - Flight + hotel where only a one-way flight date is known and CACHE has no flights key (e.g. turn 1 'one-way flight from San Jose to Atlanta and a hotel', reply 'It's May 15, 2025'): the block is the flight search `flights = search_flights(start_airport_city=\"San Jose\", end_airport_city=\"Atlanta\", departure_date=[\"May 15, 2025\"])` plus `save_to_cache(key=\"flights\", value=flights)`, FOLLOWED BY one `seek_information(\"We need the check-out date for the hotel.\")`. Do not drop the seek_information just because the flight search ran, and do not call search_hotels."
+      }
+    ]
+  },
+  "source_type": "success"
+}

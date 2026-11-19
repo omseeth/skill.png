@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Answer did not match the slot type. 'All Aboard! stamps' was given for 'these' (Trains). The film and TV titles were given for 'She' (Angela Bassett). The quoted title 'West Side Story' was repeated for 'A 1961 classic: \"West Side Story\"' (Romeo and Juliet)."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "Definition-style and 'this type of X' clues. The agent gave a related or narrower term ('Body double', 'synthetic') instead of the headword or named variety the passages tie to the clue ('look-alike', 'bubble gum')."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "A truncated flashcard hit repeated the clue. The agent picked a side-mentioned entity (Agua de Valencia) instead of the entity the passages define by the clue's exact descriptors (sangria)."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 1,
+      "description": "'Give only the MISSING part' made the agent answer 'Funk' for '___ & Wagnalls' under the category 'Publishing partners'. The gold answer is the full pair name."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "'Hydroelectric power' was given where the key word 'hydroelectric' was expected. The agent added a generic tail word the clue already supplies."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three failures share one cause: the agent answered a thing named in the clue or passages (a series name, work titles, the quoted title) instead of the category noun, person or related entity the slot asks for. Two more picked a related or narrower term for definition and 'type of' clues. One chose an entity mentioned in passing over the one the passages define with the clue's exact words. The last two are formatting problems around fill-in-the-blank pairs and added tail words. The edits are phrased as general patterns and avoid repeating the earlier rejected generic 'verify' and number rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "\n- 'These' / 'those' with named examples: the answer is the category noun that the examples belong to. 'A series on these of the '30s & '40s features the Daylight & the 20th Century Limited' -> 'Trains', not the series or product name ('All Aboard! stamps').\n- 'She / he / this actor' followed by a list of roles or works: the answer is the PERSON (the name that recurs in the passages' titles), never the titles of the films, shows or songs listed in the clue or passages ('played Tina Turner on screen & Rosa Parks on TV' -> 'Angela Bassett').\n- A clue that is only a descriptor plus a quoted title ('A 1961 classic: \"West Side Story\"') asks for something CONNECTED to that title, such as the source work it adapts, its author or its star. It never asks for the quoted title itself. Find the related entity the passages state next to the title ('a modern retelling of Shakespeare's Romeo and Juliet') and answer with it."
+      },
+      {
+        "op": "insert_after",
+        "target": "Take the answer that follows the clue, even if the whole context is one short passage.",
+        "content": "\n- Definition-style clues ('A double that visually resembles another') want the term whose dictionary or thesaurus gloss matches the clue almost word for word. A thesaurus line like 'noun someone closely resembling another' -> 'look-alike'. Do not answer with a narrower or merely related term ('Body double'), and do not add a qualifier. For 'this type/kind of X' clues, answer with the named variety that a passage ties to the clue's detail ('I knew they put rubber in bubble gum' -> 'bubble gum'). Keep its normal compound name. Do not answer with an adjective describing the material or composition ('synthetic')."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not talk yourself out of a well-supported entity.",
+        "content": "\n- If one passage holds only the clue's own wording cut off before the answer (e.g. a flashcard 'IT'S THE SPANISH NAME FOR A POPULAR PARTY DRINK MADE WITH RED WINE...'), the answer is the entity that the other passages DEFINE with those same descriptors ('made with red wine, fruit juices' -> Sangria). It is not a neighbouring entity that is mentioned only in passing or differs on one descriptor (Agua de Valencia). Count how often each candidate is tied to ALL the clue's descriptors, and take the most frequent one."
+      },
+      {
+        "op": "insert_after",
+        "target": "do not append that role word to the answer.",
+        "content": "\n- Blank that is one half of a '&' pair under a category such as 'Publishing partners', 'Duos', 'Law firms' or 'Comedy teams' ('___ & Wagnalls'): the category asks for the whole pair, so give the full name as written ('Funk & Wagnalls'). For a blank that is a single missing word inside an ordinary phrase, give only that word.\n- Do not add generic tail words ('power', 'energy', 'system') that the clue's own noun already supplies after the slot ('a plant for this' -> 'hydroelectric', not 'hydroelectric power')."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

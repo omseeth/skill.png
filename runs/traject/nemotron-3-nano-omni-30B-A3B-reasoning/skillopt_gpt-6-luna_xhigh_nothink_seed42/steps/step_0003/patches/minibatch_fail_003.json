@@ -1,0 +1,31 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_output_mismatch",
+      "count": 3,
+      "description": "Selected an endpoint based on topic or provider similarity rather than the specific output requested, such as country data versus airport data or current conditions versus a broader weather endpoint."
+    },
+    {
+      "failure_type": "parameter_schema_and_value_mismatch",
+      "count": 4,
+      "description": "Parameters were missing values, serialized with the wrong JSON type, used noncanonical casing, or included an unrequested option."
+    },
+    {
+      "failure_type": "request_coverage",
+      "count": 1,
+      "description": "A distinct requested result—store information for price comparison—was not covered by any selected call."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch shows that general tool-selection guidance needs a concrete output-matching check, while parameter errors call for explicit schema-level validation. The edits focus on those checks and on verifying coverage without encouraging unrelated calls.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Match endpoints to requested outputs\n- Break the request into concrete outputs or actions. For each one, compare the endpoint's documented returned data and operation—not just its provider or topic—and ask whether that call directly supplies the requested result at the requested scope. Similar endpoints can return different artifacts (for example, a country catalog versus an airport catalog, or current conditions versus a broader weather feed). Verify that every distinct requested output is covered, including side requests; do not count a related result as coverage or add unrequested calls.\n\n## Validate parameter values\n- Supply every required parameter with both its exact documented name and a value from the request; do not emit a bare parameter name or leave a required value unset. Serialize values using the documented JSON type (for example, numbers as numbers, not strings).\n- Include optional parameters only when requested, and use the endpoint's canonical casing for case-insensitive search inputs and codes; when no casing convention is specified, lowercase ordinary search text and alphabetic codes. Preserve opaque IDs and case-sensitive values exactly."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

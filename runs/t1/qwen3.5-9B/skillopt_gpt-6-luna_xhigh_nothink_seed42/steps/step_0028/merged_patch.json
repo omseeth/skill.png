@@ -1,0 +1,53 @@
+{
+  "reasoning": "The existing skill already covers the proposed persistence, cache, date, and location guidance, so those edits would be redundant. I kept the distinct schema and interpretation clarifications, merged the duplicate lowercase flight-class guidance, and left the protected section untouched.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X” uses `[\"12:00 AM\", X]`, and “after X” uses `[X, \"11:59 PM\"]`, preserving the stated AM/PM value.",
+      "content": "\n\nWhen the user specifies an exact flight time as “at X” without a range or one-sided qualifier, use `[X, X]` for the corresponding time field; do not interpret it as an “after X” bound.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+      "content": " For hotel star-count criteria, map the requested count to `stars`: an exact count uses `[x, x]`, while “at least x stars” uses `[x, 5]`.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+      "content": "\n\n- **Map flight preferences to schema values:** Put explicitly stated airline names or codes in `airline` (including codes that resemble time abbreviations). Use lowercase `flight_class` values `economy`, `business`, or `first`, matching the user's stated class, in searches and filters.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "A result summary satisfies a request only when it reflects all current constraints.",
+      "content": " If the user explicitly replaces an earlier categorical preference, treat the replacement as current and do not carry the superseded category forward. Do not use a cached result restricted to the superseded category to discover the replacement; use a broader suitable cached base if available, otherwise search afresh with the current location, replacement category, and other explicit criteria.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Preserve complete names, categories, criteria, and date strings unless a tool requires a format conversion.",
+      "content": "Preserve complete names, criteria, and date strings unless the tool requires a format conversion. For enum or category fields, use a supported canonical label that matches the user's intent; normalize grammatical variants (for example, “cultural” to a supported label such as `Culture`) rather than passing an unsupported literal or substituting a different category.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not map vague amenity wording to a narrower tool flag without clear equivalence.",
+      "content": " Map an explicit request for a hotel pool to `pool_present=True`, not an unsupported alias such as `has_pool`. “Kid-friendly” alone does not request a kids' club or restaurant filter.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

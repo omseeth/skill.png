@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "answer_format",
+      "count": 4,
+      "description": "Returned an expanded phrase or mismatched number instead of the shortest context-supported answer form."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Misread the requested relation or favored a salient candidate or incidental phrase over the clue's full identifying cues."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "Gave the person referred to by a Spoonerism instead of the reconstructed phrase."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers concise answers, clue relations, and Spoonerisms, but these failures show the guidance needs more operational checks. A slot-substitution test targets both overlong answers and relation misreads; sharpening the Spoonerism and conjunctive-cue rules addresses the remaining recurring errors. The single number mismatch is already covered by the existing number guidance and does not warrant a special case.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "When the clue already supplies the category or type, return the distinguishing value alone: do not append a generic category noun, institution label, explanatory wording, or unnecessary title, subtitle, or suffix unless needed for disambiguation.",
+        "content": "Use a slot-substitution test: identify the exact unknown requested by the clue's grammar (entity, name part, expansion, property, or manner), mentally substitute a candidate, and return only that slot. If the clue identifies a target through an associated institution or already supplies its category or descriptor, do not return the institution or repeat supplied words. When an opening idiom or wordplay phrase is followed by an explicit answer relation, such as asking what a name stands for, answer that relation rather than a dictionary meaning of the framing phrase."
+      },
+      {
+        "op": "replace",
+        "target": "For a Spoonerism clue, identify the swapped sounds and restore them to recover the intended expression. Return that expression rather than the person or entity it refers to, unless the question explicitly asks for that entity.",
+        "content": "For a Spoonerism clue, swap the relevant sounds in the Spoonerized phrase to reconstruct the intended wording, then return that reconstructed phrase in its lexical form. Do not replace the phrase with the person or entity it refers to."
+      },
+      {
+        "op": "replace",
+        "target": "Before answering, parse the requested answer slot and all identifying relations or properties, then test the candidate against the complete clue. When snippets compete, prefer factual evidence that fits those details; keyword overlap in a title or heading, prominence, or a similar name alone is not enough. Do not substitute a related entity, example, remedy, or mechanism for the requested answer.",
+        "content": "Before answering, identify the requested slot and treat every explicit qualifier—such as date, role, action, and location—as a required constraint. A candidate must fit all of them; reject a prominent or related candidate if even one identifying cue conflicts. When snippets compete, prefer evidence that directly connects a candidate to the complete relation, not evidence based only on keyword overlap or prominence."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

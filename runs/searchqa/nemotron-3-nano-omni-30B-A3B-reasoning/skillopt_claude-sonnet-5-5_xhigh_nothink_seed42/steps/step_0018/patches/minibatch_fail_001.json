@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 5,
+      "description": "Agent answered with an entity or phrase already named in the clue ('San Francisco', 'Ben Bradlee', 'University of Guam', the alliance's own name) instead of the category the 'this/these' pointer asks for. Two cases (liver, San Francisco) also ignored a verbatim archive hit that gave the answer."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "No guidance for multi-definition or compound-word clues ('shanty': pub slang, shack, 'shanty town'). Also none for acronym clues that need the spelled-out expansion ('PIP' -> 'Picture in Picture'). The agent echoed a clue word ('poor') or took a stray forum phrase."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "Gold keeps the generic noun 'Forbes magazine'. Agent gave the bare 'Forbes'. Idiosyncratic, so no edit."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures share one root: the agent answers with something the clue already states, or with a loosely related snippet, instead of the referent. Edit 1 adds a short echo-guard check against the clue text, with examples of the common sub-patterns: 'X of this <noun>', 'this person, like X', 'these <plural noun>' with an organization named alongside, and category-line words. Edit 2 makes the verbatim archive lookup an explicit audit step, covering both the '| answer. right:' layout and the all-caps flashcard layout. This addresses two cases where a visible archive answer was overridden by a guess or a clue word. Edits 3 and 4 fill two missing rule types, acronym expansion and multi-definition word clues. All edits are short and generalizable, since earlier long, bundled edits were rejected.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "\n- ECHO GUARD: after drafting an answer, compare it with the clue text. If your candidate (or a longer form of it) is a name, place or word the clue itself states, reject it: the clue names anchors, not the answer. 'In 1579 this English circumnavigator put the Golden Hind in for repairs at an inlet north of San Francisco' -> the circumnavigator (Drake), not 'San Francisco'. 'A \"letter to\" this person, like Ben Bradlee, ...' -> 'like X' gives an example of the role, so answer the role ('The editor'), not X. 'The university of this U.S. territory is home to the Micronesian Area Research Center' -> 'Guam', not 'University of Guam' (the pattern 'the <thing> of this <noun>' asks for the <noun> alone). 'The alliance of these Chinese businesses became a civil rights group' -> 'laundries', the plural members the pointer stands for, not the alliance's own name. A page or archive CATEGORY word ('SORRY YOU'RE POOR') is not the answer either."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "\n- Verbatim-hit audit: before using your own knowledge, find any passage containing a long run of the clue's words and read what comes right after it: the text after '|' up to '. right:', or the last item after the final comma of an all-caps flashcard line ('...AN INLET NORTH OF SAN FRANCISCO, DRAKE.'). That text is the answer even if you 'know' a different one (clue 'organ meat, sometimes known as gossip's fate' + archive '| tongue. right: Leah.' -> 'tongue', not 'liver'). Never substitute a word from the clue when such a hit exists."
+      },
+      {
+        "op": "insert_after",
+        "target": "A dictionary synonym that fits only one half ('trial') is wrong. When passages are noisy, use your own knowledge of sports terms and idioms.",
+        "content": "\n- Multi-definition and compound-word clues ('Aussie slang for a pub, it's also a shack; poor people may live in a \"town\" of them') join several senses with ';' or 'also', often with a quoted '<word> town/house/...' compound. The answer is ONE word that fits every part ('shanty': pub slang, a shack, shanty town). If the passages are only search hits for the clue's words, solve it from your own vocabulary. Never answer with a word from the clue itself ('poor') or with a page's category label."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Jokes, asides and filler in the clue",
+        "content": " (Acronym note: if the clue contains a capitalized abbreviation and asks for 'this feature/term/thing' ('If your TV has PIP, it has this feature'), the answer is usually the spelled-out expansion that passage titles give ('Picture in Picture'). Do not use a loose phrase from one forum snippet such as 'second out of set tuner'.) Jokes, asides and filler in the clue"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

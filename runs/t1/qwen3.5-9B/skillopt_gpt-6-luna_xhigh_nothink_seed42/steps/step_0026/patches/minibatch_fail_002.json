@@ -1,0 +1,51 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "pending_deliverable_omission",
+      "count": 2,
+      "description": "Agents skipped a ready restaurant search or a newly requested budget update even though other requested work remained incomplete."
+    },
+    {
+      "failure_type": "required_input_validation",
+      "count": 1,
+      "description": "An agent called a hotel search without the required check-in and check-out dates instead of requesting them."
+    },
+    {
+      "failure_type": "flight_time_bound_interpretation",
+      "count": 1,
+      "description": "An arrival-time “by” deadline was mapped to the wrong side of the time range."
+    },
+    {
+      "failure_type": "schema_label_substitution",
+      "count": 1,
+      "description": "An accepted attraction category was changed to a similar but different label."
+    },
+    {
+      "failure_type": "tool_call_compliance",
+      "count": 2,
+      "description": "Agents omitted result persistence or included unnecessary imports and cache retrievals."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already covers missing required inputs, per-domain cache reconciliation, exact category labels, and result persistence, so those rules should not be duplicated. These edits address uncovered mappings: hotel–restaurant proximity when a domain is not yet searchable, qualitative quality requests, and one-sided arrival-time bounds.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results.",
+        "content": "The same applies when the requested proximity is between hotels and restaurants. Search each requested domain independently; if one lacks required inputs, ask only for those inputs while completing the other ready search. Run `search_nearest` only when results for both sides are available."
+      },
+      {
+        "op": "insert_after",
+        "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+        "content": "Treat qualitative requests such as “good,” “best,” or “highest-rated” as a ranking preference: sort restaurant results by `rating_restaurants` descending, or hotel results by `rating_hotels` descending when applicable, and save the sorted result. Do not invent a numeric rating threshold."
+      },
+      {
+        "op": "replace",
+        "target": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X” uses `[\"12:00 AM\", X]`, and “after X” uses `[X, \"11:59 PM\"]`, preserving the stated AM/PM value.",
+        "content": "- For a one-sided flight-time bound, complete the range to the day boundary: “by” or “before X” uses `[\"12:00 AM\", X]`, and “after X” uses `[X, \"11:59 PM\"]`, preserving the stated AM/PM value. Apply this to both `departure_time` and `arrival_time`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

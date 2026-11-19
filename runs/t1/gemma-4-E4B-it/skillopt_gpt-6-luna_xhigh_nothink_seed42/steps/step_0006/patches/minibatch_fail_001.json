@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_incremental_reuse",
+      "count": 6,
+      "description": "Follow-up constraints triggered fresh or broad searches instead of using compatible cached results, or caused unaffected domains to be searched again."
+    },
+    {
+      "failure_type": "tool_result_binding_and_persistence",
+      "count": 5,
+      "description": "Results were not assigned and saved correctly, including inline calls, missing cache writes, undefined variables, or saving a tool function instead of its result."
+    },
+    {
+      "failure_type": "unsupported_inference_or_field_mapping",
+      "count": 4,
+      "description": "Agents inferred unspecified party sizes or mapped criteria to the wrong field, such as treating a state abbreviation as a city."
+    },
+    {
+      "failure_type": "flight_leg_modeling",
+      "count": 1,
+      "description": "A round-trip return was encoded as an outbound arrival date instead of a separate reverse-direction flight search."
+    },
+    {
+      "failure_type": "out_of_scope_tool_calls",
+      "count": 3,
+      "description": "Agents added searches or nearest-result calls for domains not changed or requested by the latest turn."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed errors already violate explicit cache, argument-mapping, flight-leg, and save-the-result instructions, so repeating those rules would not patch a skill gap. The proximity guidance does not clarify how to handle a newly named anchor when the cache contains only broad category results; the added rule makes that scope distinction explicit while preserving valid cached results from other domains.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- When the user requests proximity, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "- If the user names a specific attraction, restaurant, or hotel as the proximity target, make sure the results passed to `search_nearest` are scoped to that named entity. Reuse cached results only when their query scope or summary establishes that they include the target; a general city- or category-level result is not sufficient evidence. Otherwise, run a focused search using the exact name in the appropriate name field, assign and cache its result, and reuse any already-compatible results from the other domain."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

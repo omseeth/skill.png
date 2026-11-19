@@ -1,0 +1,31 @@
+{
+  "batch_size": 3,
+  "failure_summary": [
+    {
+      "failure_type": "schema_argument_fidelity",
+      "count": 3,
+      "description": "Calls misclassified required versus optional fields or used argument names and values that did not match the endpoint’s expected representation."
+    },
+    {
+      "failure_type": "source_and_endpoint_selection",
+      "count": 2,
+      "description": "A call ignored an explicitly named source or domain, either substituting a related endpoint or adding an unrelated provider’s endpoint."
+    }
+  ],
+  "patch": {
+    "reasoning": "The trajectories repeatedly failed to follow schema-defined argument placement and API-native value conventions. They also show that the existing endpoint-matching guidance needs a stronger rule for explicitly named providers, which can prevent both cross-provider substitutions and unnecessary related calls.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Turn the query into a checklist of distinct requested outcomes, including each subject, action, and explicit constraint. Keep modifiers attached to the result they qualify. Match each outcome to an available endpoint by its actual operation and schema, not just a shared keyword; distinguish similar operations and prefer an explicitly named endpoint when available.",
+        "content": "- Turn the query into a checklist of distinct requested outcomes, including each subject, action, and explicit constraint. Keep modifiers attached to the result they qualify. Match each outcome to an available endpoint by its actual operation and schema, not just a shared keyword. When the user names a platform or provider, treat it as a source constraint: use a matching endpoint from that source when one fulfills the request; do not substitute or add another provider’s generic endpoint merely because it shares a subject keyword."
+      },
+      {
+        "op": "replace",
+        "target": "- Represent parameters in the schema's required form and types. Put each in the declared required or optional bucket, and do not duplicate parameters across buckets. Include optional settings only when requested or clearly implied; use documented recency or freshness controls for requests such as “recent” or “latest,” and a modest supported result count when wording such as “some” calls for one. Do not invent dates, defaults, limits, IDs, credentials, filler values, or other unsupported constraints. If a required value is missing, do not fabricate it.",
+        "content": "- Use the exact parameter names and types in the tool schema. Determine placement from the schema alone: only declared required fields go in the required bucket; declared optional fields go in the optional bucket, even when the task makes their values necessary. Encode values in the endpoint’s documented or established API-native form (including canonical codes, symbols, and casing), while preserving identifiers and free-text search wording. Keep unspecified filter dimensions broad; use an all/any value only when the endpoint supports that representation. Include optional settings only when requested or clearly implied, and do not invent unsupported values or fabricate a missing required value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

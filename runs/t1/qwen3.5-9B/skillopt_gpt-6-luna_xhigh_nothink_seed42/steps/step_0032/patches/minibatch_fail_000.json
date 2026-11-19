@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_follow_up_not_applied",
+      "count": 4,
+      "description": "Follow-up filters used a stale or unsuitable base, repeated a search, or failed to apply and save only the new constraint."
+    },
+    {
+      "failure_type": "tool_call_fidelity_and_persistence",
+      "count": 6,
+      "description": "Calls were duplicated, omitted, unrelated to the pending request, or not saved with the result needed for the deliverable."
+    },
+    {
+      "failure_type": "location_field_or_value_mapping",
+      "count": 3,
+      "description": "Locations were assigned to the wrong field, inherited an unrelated state, or had the provided area phrase shortened."
+    },
+    {
+      "failure_type": "rating_range_interpretation",
+      "count": 1,
+      "description": "A requested restaurant rating was treated as an exact score instead of the expected minimum threshold."
+    },
+    {
+      "failure_type": "clarification_context_not_carried_forward",
+      "count": 1,
+      "description": "A concrete party size embedded in the assistant's clarification question was not retained when the user answered with another requested value."
+    }
+  ],
+  "patch": {
+    "reasoning": "The recurring cache failures call for a short, executable decision template that makes the correct base, delta, and fresh save explicit. The remaining edits address two interpretation gaps evidenced by the batch: rating phrasing that denotes a minimum and accepted details embedded in a clarification question.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- **Handle follow-ups incrementally through the cache:**",
+        "content": "\n**Follow-up call template:** If the cache has a suitable same-domain result reflecting the earlier criteria and this turn adds a filterable constraint, retrieve the latest matching key into `base`, call the corresponding `filter_*` with `prior_results=base` and only the new constraint(s), then save that exact returned object under a fresh key. For multiple newly requested locations, filter and save each result separately. Search only when no suitable cached base exists."
+      },
+      {
+        "op": "replace",
+        "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5].`",
+        "content": "For ratings, a bare numeric score is exact `[x, x]`, as is “exactly x.” Treat wording that asks for a place “with an x-star rating” as a minimum `[x, 5]`, as with explicit “at least x” language."
+      },
+      {
+        "op": "replace",
+        "target": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion.",
+        "content": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion. Also retain concrete values embedded in the assistant’s question when the user answers without correcting them—for example, if asked about rooms for 4 people and the user gives a room count, carry forward `num_people=4` as well as the supplied `num_rooms`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

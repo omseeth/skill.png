@@ -1,0 +1,66 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_write_omission",
+      "count": 3,
+      "description": "Search or filter results were generated without being saved for reuse."
+    },
+    {
+      "failure_type": "runtime_import_violation",
+      "count": 2,
+      "description": "Generated code imported a nonexistent tools module despite the runtime contract."
+    },
+    {
+      "failure_type": "hotel_interval_inference",
+      "count": 2,
+      "description": "Hotel checkout was guessed as the following day instead of using the explicit return date."
+    },
+    {
+      "failure_type": "date_format_normalization",
+      "count": 2,
+      "description": "Dates from cache summaries were used in place of the user's original date wording."
+    },
+    {
+      "failure_type": "new_domain_intent_missed",
+      "count": 1,
+      "description": "A concrete answer to an assistant's restaurant-preference question was treated as requiring no action."
+    },
+    {
+      "failure_type": "location_input_underuse",
+      "count": 1,
+      "description": "The agent asked for a city even though the supplied state was supported for attraction search."
+    },
+    {
+      "failure_type": "unrelated_cache_retrieval",
+      "count": 1,
+      "description": "Cached flights were retrieved during a hotel-only update."
+    },
+    {
+      "failure_type": "prior_turn_party_size_omission",
+      "count": 1,
+      "description": "An explicitly established party size from earlier conversation context was omitted from the hotel search."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that explicitly requested outbound and return dates establish the lodging interval, and that original conversation wording—not normalized cache summaries—is the source for date formatting. Also make clear that answering an assistant's explicit domain-specific preference question with criteria authorizes that domain's search. Other observed errors are already directly covered by the skill, so repeating those instructions is unlikely to help.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "When hotel lodging is requested for a clearly stated trip interval, use its start and end as check-in and checkout unless the user provides distinct lodging dates.",
+        "content": " An explicitly requested outbound flight date and return-leg departure date for the same trip establish that interval for hotel lodging requested anywhere in the conversation; absent distinct lodging dates, use them as check-in and checkout. Do not substitute an assumed one-night stay."
+      },
+      {
+        "op": "insert_after",
+        "target": "Preserve user-provided dates exactly as written, including their textual format; preserve entity values and casing.",
+        "content": " When using a date from earlier conversation turns, use its original wording from the conversation; cached summaries may normalize date formats and must not override that wording."
+      },
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated. When the assistant explicitly asks for preferences or criteria for a search domain and the user answers with concrete criteria, treat that answer as authorization to search or update that domain, even if the user did not independently name the domain earlier."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

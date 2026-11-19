@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_mismanagement",
+      "count": 6,
+      "description": "Agents repeated searches or processed unaffected cached domains instead of retrieving and filtering compatible results, retrieving an unchanged result only, or searching a newly offered domain."
+    },
+    {
+      "failure_type": "itinerary_leg_modeling",
+      "count": 1,
+      "description": "A cached round trip was searched again and the return date was incorrectly attached as an arrival date rather than handled as a separate reverse-direction departure."
+    },
+    {
+      "failure_type": "constraint_and_schema_fidelity",
+      "count": 2,
+      "description": "Agents added an unconfirmed party-size constraint or changed an attraction category and state value, and one omitted saving its search result."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent failures concern choosing the wrong cache action at follow-up turns, so the first edit makes the outcomes explicit for new domains, filter updates, and unchanged cached scopes. A per-leg flight filtering pattern targets the recurrent round-trip mistake. The remaining edits clarify literal attraction mappings and prevent treating an assistant's suggested party size as user-confirmed.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+        "content": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Classify the latest turn per domain or leg: if the assistant invited preferences for an additional domain and the user supplies them, treat that as a request for the domain and use established trip context; retrieve and filter a compatible cached result if one exists, otherwise make a base search. If only a filterable preference changes for an already covered scope, retrieve the exact compatible cache key, apply the matching `filter_*` tool, and save the filtered result—never repeat the base search. If the user declines to narrow a scope and a cached result already covers it, retrieve that result once only; do not search, filter, or save it again. Do not search, retrieve, or save unaffected domains or legs. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested."
+      },
+      {
+        "op": "insert_after",
+        "target": "If the outbound leg is already compatibly cached, search only the newly requested return leg.",
+        "content": "\n\nFor a filterable follow-up such as a flight-class change on an already cached round trip, retrieve and filter each affected leg separately; do not call `search_flights` again or overwrite the base cache entries. The return leg uses the reverse route and its date as `departure_date`, never as `arrival_date` on the outbound leg:\n```python\noutbound_prior = get_results_from_cache(key=\"<exact outbound cache key>\")\nfiltered_outbound = filter_flights(prior_results=outbound_prior, flight_class=[\"<requested class>\"])\nsave_to_cache(key=\"<new filtered outbound key>\", value=filtered_outbound)\nreturn_prior = get_results_from_cache(key=\"<exact return cache key>\")\nfiltered_return = filter_flights(prior_results=return_prior, flight_class=[\"<requested class>\"])\nsave_to_cache(key=\"<new filtered return key>\", value=filtered_return)\n```"
+      },
+      {
+        "op": "replace",
+        "target": "For attractions, put the requested category in `type` with its exact value (for example, if the requested type is `Scenic`, pass `type=[\"Scenic\"]`).",
+        "content": "For attractions, preserve the user's literal category string in `type`, including adjectival or inflected forms; do not replace it with a more familiar near-synonym merely because tool examples use that value. Map an explicit state abbreviation to `state`, not `city`. Assign each attraction search to a variable and immediately save that exact result, including when it is the final call."
+      },
+      {
+        "op": "replace",
+        "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+        "content": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use party sizes the user directly states or confirms, but do not infer an exact count from vague terms such as “family.” A count included only in an assistant's leading question is not user confirmation; do not pass it as `num_people` unless the user confirms it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

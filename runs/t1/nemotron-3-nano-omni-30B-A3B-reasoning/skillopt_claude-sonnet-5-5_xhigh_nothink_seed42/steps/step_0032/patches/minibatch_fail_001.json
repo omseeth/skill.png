@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_refilter_or_load",
+      "count": 3,
+      "description": "A hotel request or reply was applied to a cached flights or attractions key. The agent re-ran an earlier flight class or budget, or filtered attractions by a hotel neighborhood. The correct output was a first hotel search or a seek_information for the missing hotel dates (trajectories 3, 4, 7)."
+    },
+    {
+      "failure_type": "fabricated_or_placeholder_mandatory_arg",
+      "count": 2,
+      "description": "The agent searched instead of calling seek_information. It wrote city=\"<city>\" for a restaurant request with no city. It invented dates (May 16/18, 2025, copied from the skill's own examples) for a round trip with no dates (trajectories 6, 8)."
+    },
+    {
+      "failure_type": "dropped_requested_domain",
+      "count": 1,
+      "description": "On a flight+hotel first turn the dates and '2 nights' arrived, but the agent searched flights only and dropped the hotel requested in turn 1 (trajectory 5)."
+    },
+    {
+      "failure_type": "hygiene_and_invented_params",
+      "count": 2,
+      "description": "The agent put a state abbreviation in city= for an attractions search (trajectory 2). It wrote a bare search plus a nested search inside save_to_cache, and invented stars and num_people for a hotel search (trajectory 1)."
+    }
+  ],
+  "patch": {
+    "reasoning": "The first rule in the skill says 'if a domain's key is present ... write exactly load/filter/save', and it never asks which domain the last message is about. This pushes the agent to filter whatever is cached. That explains the wrong-domain refilters in trajectories 3, 4 and 7, and the earlier 24-task wrong-domain batch. Edit 1 rewrites only that opening sentence of the SEARCH GATE so the agent first names the domain(s) the last message touches. Untouched cached domains get no lines. A touched domain with no key is searched, or gets seek_information if any mandatory arg is missing. Domains requested in earlier turns that still have no key count as touched, which also fixes the dropped hotel in trajectory 5. Edit 2 widens the date-only gate into a mandatory-arg gate that includes the restaurant city and bans guessed or bracketed placeholder values. Edit 3 removes the literal example dates from the date rule, because the agent copied exactly those dates. Edit 4 adds a short hotel-parameter guard (rating vs stars, no party size from 'family'), next to the existing 'pass only literal values' rule. These are small replacements of existing sentences with no new gates or sibling examples, consistent with the guidance to de-conflict rather than add. They do not touch the previously rejected Rule 2/17 or -1 flight-rule rewrites.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- SEARCH GATE (do this first): read the CACHE dict. If a domain's key is present, search_* is forbidden for that domain, whatever the reply adds",
+        "content": "- SEARCH GATE (do this first): (a) Name the domain(s) the LAST user message is about (hotel: hotel/stay/stars/neighborhood/amenity/per-night budget/rooms; flight: flight/class/airline/time/ticket price; restaurant; attraction), plus any domain requested in an earlier turn that still has no key. (b) A cached domain the last message does not touch gets NO lines: a hotel request or reply with only flight or attractions keys cached never loads, filters or re-saves those keys, and never re-applies an earlier turn's class, budget or neighborhood. (c) A touched domain with NO key is a first search when every mandatory arg is literally known (hotel dates may be the flight dates); otherwise the output is seek_information for the missing args (hotel with only one known date: ask for the other; hotel with no dates: ask for both). (d) A touched domain whose key is present: read the CACHE dict; search_* is forbidden for that domain, whatever the reply adds"
+      },
+      {
+        "op": "replace",
+        "target": "- DATE GATE (before any search_flights / search_hotels): find the date the user literally wrote in the conversation (e.g. 'May 16, 2025'). Found -> search with it. Not found -> that domain gets `seek_information(...)` naming only the missing date(s) and NO search call.",
+        "content": "- MANDATORY-ARG GATE (before ANY search_*): flight = origin + departure date; hotel = city + check-in + check-out; restaurant = city. Each value must be literally in a user message. A value you would have to guess, infer from an occasion or trip type ('birthday', 'weekend getaway', 'round-trip', 'family vacation'), or write as a bracketed placeholder is MISSING: that domain gets `seek_information(...)` naming only the missing items and NO search call. DATE GATE: find the date the user literally wrote in the conversation. Found -> search with it. Not found -> that domain gets `seek_information(...)` naming only the missing date(s) and NO search call."
+      },
+      {
+        "op": "replace",
+        "target": "(May 16/18/19/26, 2025 and similar)",
+        "content": "(any date the user did not type is invented)"
+      },
+      {
+        "op": "replace",
+        "target": "- Pass only values the user literally stated. Never invent an airline from words like 'kid-friendly'.",
+        "content": "- Pass only values the user literally stated. Hotel params: 'customer rating' / 'rating' -> rating=[..] only; stars only when the user says 'star'; 'family', 'vacation', 'kids club' never produce num_people, num_rooms or stars. Never invent an airline from words like 'kid-friendly'."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

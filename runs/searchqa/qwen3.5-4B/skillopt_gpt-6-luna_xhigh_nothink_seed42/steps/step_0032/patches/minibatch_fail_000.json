@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "answer_format",
+      "count": 5,
+      "description": "The answer was semantically related but mismatched the expected answer boundary or wording, such as omitting a name component, expanding a surname, or choosing a narrower term."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 1,
+      "description": "A bare pair of named entities was overread as asking for their shared category, yielding a different relation than the expected shared place."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "The agent chose a salient but less-supported snack despite context directly matching the clue to another item."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "The agent named the real-world referent of a Spoonerism instead of supplying the intended phrase."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most answer-form mismatches are already addressed by the skill's shortest-label and requested-scope guidance, so adding another generic concision rule would duplicate existing content. Tighten the shared-completion rule to prevent inferring a category from a bare list, and add a focused rule for clues that ask for the intended wording behind a Spoonerism or similar phrase distortion.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "## Check for Shared Completions in Parallel Clues\nWhen a clue presents alternatives or examples in parallel, check whether one word completes or classifies them both. The target may be that shared word rather than a full phrase inferred from just one part of the clue. Return the minimal shared completion unless the clue asks for a full phrase.",
+        "content": "## Check for Shared Completions in Parallel Clues\nUse a shared completion when the clue's syntax establishes one—for example, a blank or an explicit question about what parallel examples have in common. A bare comma-separated list of named entities does not by itself ask for their shared category. Determine the relation and answer slot from the full clue and context; the target may be a place or other relation, not a category label. Return the minimal shared completion only when the clue actually calls for it."
+      },
+      {
+        "op": "insert_after",
+        "target": "When a clue includes a distinctive quotation, epithet, or slogan, use it as an identifying cue and determine the relation requested: the entity it describes, the person who said or coined it, or the referent it alludes to. Follow the clue's wording and contextual attribution rather than returning the quoted phrase itself.",
+        "content": "\nFor clues built around a Spoonerism or other deliberately distorted wording, distinguish the altered phrase from its intended wording and from the person or thing it refers to. If the answer slot asks for the intended or corrected phrase, return that phrase—not the real-world referent."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

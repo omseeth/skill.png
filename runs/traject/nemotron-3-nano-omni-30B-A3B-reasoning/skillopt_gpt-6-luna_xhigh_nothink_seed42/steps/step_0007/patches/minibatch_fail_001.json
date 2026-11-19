@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection",
+      "count": 6,
+      "description": "Calls used a related but incorrect endpoint or tool label, confusing similar actions or entities such as author versus player lookup and current weather versus forecast."
+    },
+    {
+      "failure_type": "parameter_mapping",
+      "count": 7,
+      "description": "Explicit filters, scope, units, or pagination were omitted, mapped to the wrong field, or given in a noncanonical form."
+    },
+    {
+      "failure_type": "overcalling",
+      "count": 2,
+      "description": "Additional calls were inferred from contextual mentions rather than directly requested operations."
+    },
+    {
+      "failure_type": "serialization",
+      "count": 2,
+      "description": "Calls were combined into a malformed object or the final JSON was invalid, preventing correct parsing."
+    }
+  ],
+  "patch": {
+    "reasoning": "The recurring errors involve disambiguating nearby endpoints, preserving explicit constraints, avoiding inferred calls, and keeping each invocation parseable. The edits make those decision points concrete without adding task-specific values.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Match the requested operation\n- Choose an endpoint by the requested action and output, not by a shared topic or entity name. For example, an author search is not a player-profile lookup, and current conditions are not a forecast. Use separate endpoints for distinct requested deliverables when needed.\n- Call only operations directly requested; explanatory context or a coincidental name match does not justify another call.\n- Copy the complete tool label exactly as listed, including provider and endpoint; do not abbreviate it to the endpoint name.\n\n## Preserve constraints in the arguments\n- Carry every explicit filter and qualifier into the appropriate supported search term or parameter. Match each parameter to that endpoint's documented meaning and accepted value form; do not assume the same country, unit, or pagination code applies across providers.\n- Keep required and optional parameters in their respective fields. Do not invent identifiers, credentials, or defaults to fill gaps.\n\n## Keep calls atomic and parseable\n- Represent each invocation as its own object with the required keys and parameter lists. Before returning, check that the JSON is valid and that no call's fields have been merged into another call or duplicated."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

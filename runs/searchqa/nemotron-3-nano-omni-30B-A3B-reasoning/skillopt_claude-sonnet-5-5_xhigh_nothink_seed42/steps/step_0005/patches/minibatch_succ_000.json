@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Three clues were answered in the full proper-name form, including generic words that belong to the name: 'Hundred Years' War', 'Great Expectations', 'The Stand'. Stripping the category noun would have broken these.",
+    "Where the clue gives a real name and asks for a 'moniker' or nickname (William Marcy Tweed -> 'Boss'), the agent answered with only the nickname as the passages repeat it. It did not return the real name or 'Boss Tweed'.",
+    "For a parody clue ('Hemlock Jones'), the agent treated the spoof name as an anchor and answered with the original it parodies, 'Sherlock Holmes'.",
+    "The agent answered the category noun the clue asked for ('this state' -> Montana, not Hardin or Crow Agency; 'this talk show host' -> Oprah Winfrey, not Rosie Daley). It picked the entity that recurred across passage titles and snippets together with the clue's distinctive details.",
+    "Archive hits of the form 'CATEGORY | clue | answer' ('Punxsutawney Phil') were copied directly. Truncated hits ('Answer: Hundred...') were completed from the other passages."
+  ],
+  "patch": {
+    "reasoning": "All 8 trajectories succeeded under the current rules. Three gaps in the skill are worth closing so these behaviours stay reliable. First, Rule 4 tells the agent to strip descriptor words, but the answer must keep generic words that are part of a proper name (Hundred Years' War). Second, the skill covers nickname -> real name but not the reverse, real name -> 'moniker'. Third, nothing says that a parody or spoof name in the clue is an anchor and the answer is the original.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "e.g. 'The New York Times', 'The Divine Comedy').",
+        "content": "\n- Strip descriptor words only when they are NOT part of the entity's standard name. Keep generic words that belong to a proper name: a clue about 'this 1337-1453 conflict' -> 'Hundred Years' War' (not 'Hundred Years'); 'this book' -> 'Great Expectations'; 'this miniseries' -> 'The Stand'. Test: would the answer key list the entity with that word? If yes, keep it."
+      },
+      {
+        "op": "insert_after",
+        "target": "Still apply the person-name rule above.",
+        "content": "\n- The reverse case: when the clue gives the real name and asks for the person's 'moniker / nickname / better-known name / alias' ('William Marcy Tweed's better known moniker'), answer with only the nickname as the passages repeat it, in its shortest standard form ('Boss'). Do not return the real name, and do not add the surname unless the clue asks for the full alias."
+      },
+      {
+        "op": "insert_after",
+        "target": "Other named entities in the clue are anchors, never the answer.",
+        "content": "\n- Parody, spoof or disguised-name clues ('A Bret Harte tale parodied this detective as Hemlock Jones'): the altered name in the clue is only an anchor. The answer is the original figure or work that is being parodied ('Sherlock Holmes'), in its full, standard name."
+      }
+    ]
+  },
+  "source_type": "success"
+}

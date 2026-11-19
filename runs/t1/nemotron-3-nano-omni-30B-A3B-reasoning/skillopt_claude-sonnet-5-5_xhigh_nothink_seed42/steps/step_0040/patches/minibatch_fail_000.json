@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "round_trip_flight_malformed",
+      "count": 2,
+      "description": "A date range (or depart/return pair) was written as ONE search_flights call using return_date= or return_flights=departure_date. This raised a NameError or ValidationError and dropped the second leg. In one case the hotel in the same turn was also dropped."
+    },
+    {
+      "failure_type": "first_search_param_hygiene",
+      "count": 3,
+      "description": "'AZ' and 'GA' were passed as city= (one even became the TOOL CONFIG example city 'Dallas'). 'halal restaurant' became cuisine=['Halal'] instead of has_halal_options=True and was left unassigned and unsaved."
+    },
+    {
+      "failure_type": "flight_reply_one_leg_only",
+      "count": 1,
+      "description": "A flight budget reply with departure_flights and return_flights both cached filtered only the departure leg. The 'exactly three lines' template in the search gate seems to anchor the agent on one triple."
+    },
+    {
+      "failure_type": "yes_to_proximity_offer_resaved_copy",
+      "count": 1,
+      "description": "'Yes, that would be great' to an offer of hotels near the cached attractions was handled as a filter with no kwarg. The agent re-saved the attractions entry unchanged instead of calling search_nearest(groupBy='hotel')."
+    },
+    {
+      "failure_type": "time_format_and_stale_key",
+      "count": 1,
+      "description": "departure_time was passed as ['00:00:00','04:39:00'], which raises 'Unrecognized time format'. The agent also loaded the raw departure_flights key instead of filtered_departure_flights and re-passed the already-applied class."
+    }
+  ],
+  "patch": {
+    "reasoning": "The failures are mostly hygiene errors that already have rules, and those rules are buried deep in the document. I do not add a new gate. Instead I patch four places the agent actually reads. (1) The date-answer item (-2) fires on exactly the failing turns, so I replace its vague flight sentence with a literal two-search template. This also keeps the hotel in the same block and forbids return_date and return_flights. (2) I rewrite the existing 'use only kwargs' hard-rule bullet in place so it carries three corrections: two-letter codes go in state= and never in a TOOL CONFIG example city, dietary words are boolean flags, and no return_ kwargs. (3) I extend the SEARCH GATE sentence the agent obeyed ('Yes' means filter, 'write exactly three lines'). It now says a flight reply gets one triple per flight key and that a 'Yes' to hotels near cached attractions means search_nearest. (4) I add 12-hour time strings and the most-refined-key reminder to the flight-reply item, replacing the single misleading example. Each edit changes text the agent already follows instead of adding a new section.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Flight requested: outbound `departure_date=[\"<X>\"]` saved as \"flights\" and return `departure_date=[\"<Y>\"]` with the cities swapped saved as \"return_flights\" (each assigned and saved).",
+        "content": "Flight requested and the user gave two dates ('X to Y', 'depart X and return Y', also inside a first or compound turn with a hotel): write exactly TWO searches, `departure_flights = search_flights(start_airport_city=\"<origin>\", end_airport_city=\"<dest>\", departure_date=[\"<X>\"])`, `save_to_cache(key=\"departure_flights\", value=departure_flights)`, `return_flights = search_flights(start_airport_city=\"<dest>\", end_airport_city=\"<origin>\", departure_date=[\"<Y>\"])`, `save_to_cache(key=\"return_flights\", value=return_flights)`. A `return_date=` or `return_flights=` kwarg, or any variable not defined in the block, is wrong. If a hotel is also requested, the same block continues with `hotels = search_hotels(city=\"<dest>\", checkin_date=[\"<X>\"], checkout_date=[\"<Y>\"], <'3 rooms' -> num_rooms=3, amenity words via the Rule 27 table, stated party size>)` + `save_to_cache(key=\"hotels\", value=hotels)`."
+      },
+      {
+        "op": "replace",
+        "target": "Use only kwargs listed in TOOL CONFIG. search_flights has NO return_date: a round trip is two search_flights calls.",
+        "content": "Use only kwargs listed in TOOL CONFIG. search_flights has NO return_date and NO return_flights kwarg: a round trip is two search_flights calls (see item -2). 'AZ', 'GA', 'NV' and every other two-letter code is `state=`, never `city=`; never use a TOOL CONFIG example city (Dallas, Boston...) that the user did not say. Restaurant dietary words are boolean flags, never cuisines: halal -> `has_halal_options=True`, kosher -> `has_kosher_options=True`, vegan -> `has_vegan_options=True`, vegetarian -> `has_vegetarian_options=True`, gluten-free -> `has_gluten_free_options=True`, nut / dairy / shellfish / tomato allergy -> `has_nut_allergy_options` / `has_dairy_allergy_options` / `has_shell_fish_allergy_options` / `has_tomato_allergy_options`; `cuisine=` only for a real cuisine name ('Persian'). 'a halal restaurant in St. Louis' -> `restaurants = search_restaurants(city=\"St. Louis\", has_halal_options=True)` then `save_to_cache(key=\"restaurants\", value=restaurants)`."
+      },
+      {
+        "op": "insert_after",
+        "target": "A search_* call is allowed only for a domain with NO key.",
+        "content": " Two replies are NOT a single filter triple: (a) a flight class / airline / time / price-cap reply gets one load-filter-save triple for EVERY flight key in CACHE (departure_flights and return_flights = two triples with the same kwargs); (b) a 'Yes' to an offer of hotels near/close to the cached attractions, with hotels and attractions keys both in CACHE, is `h = get_results_from_cache(key=<most refined hotels key>)`, `a = get_results_from_cache(key=<most refined attractions key>)`, `n = search_nearest(hotels=h, attractions=a, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=n)`, with no filter and no re-save of the attractions entry."
+      },
+      {
+        "op": "insert_after",
+        "target": "Conversely, when the last message is about hotels or restaurants, write no flight line.",
+        "content": " Flight times are always 12-hour 'HH:MM AM/PM' strings: 'anytime before 04:39 AM' -> `departure_time=[\"12:00 AM\", \"04:39 AM\"]`, 'afternoon' -> `[\"12:00 PM\", \"5:00 PM\"]`; the '00:00:00' style raises 'Unrecognized time format'. Load each leg's MOST REFINED key (filtered_departure_flights beats departure_flights) and pass only the new kwarg; a class already shown in its summary is not passed again."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

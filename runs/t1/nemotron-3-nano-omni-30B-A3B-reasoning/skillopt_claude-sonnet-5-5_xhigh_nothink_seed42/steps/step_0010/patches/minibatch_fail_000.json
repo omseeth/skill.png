@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "output_hygiene_errors",
+      "count": 4,
+      "description": "Code that cannot run or is malformed: `from cache import ...` (ModuleNotFoundError), `value=_` (NameError), a bare search_* with no assignment or save, `city=\"OR\"` instead of state=, and invented optional params (flight_class economy, num_layovers) that the user never stated."
+    },
+    {
+      "failure_type": "missing_partial_search_in_multidomain_first_turn",
+      "count": 2,
+      "description": "Restaurant city was known (the hotel city, or the flight destination 'there') but the agent output only seek_information. It skipped the restaurant search that the gold output runs before asking for the missing hotel/flight dates."
+    },
+    {
+      "failure_type": "cache_not_reused_or_over_refinement",
+      "count": 2,
+      "description": "With a 'restaurants' key already cached, a cuisine reply triggered a fresh search_restaurants instead of load, filter, save. On a hotel-only answer the agent also re-saved the unchanged restaurant result under a new key."
+    },
+    {
+      "failure_type": "incomplete_round_trip_and_unmapped_constraints",
+      "count": 2,
+      "description": "A return date completed a round trip, but only one flight was searched. The earlier non-stop and hotel neighborhood constraints were not carried over. 'for 2 nights' was not turned into a checkout date with adjust_date."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains rules covering these cases, but they sit deep in a long document and the agent still breaks them. Four of eight failures are plain output-format errors (import, `_`, bare search, city=state, invented params). I add a short hygiene block at the very top, which is where the unused placeholder line is. The other three edits put concrete examples next to the rules that keep being missed: partial searches in multi-domain first turns, the key-exists test before searching, and round-trip, N-nights and non-stop mapping.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Output hygiene (check before every answer)\n- Output only tool calls inside <CODE>. Never write `import` or `from ... import` (not even `from cache import ...`). The tools are already defined, and `cache` is not a module.\n- Every search_*, filter_*, sort_results and search_nearest call is assigned and then saved: `x = search_*(...)` followed by `save_to_cache(key=\"...\", value=x)`. Never write a bare `search_*(...)` line. Never use `_` as a value (`value=_` raises NameError). Never re-save an unchanged loaded result.\n- A US state name or abbreviation ('OR', 'GA') is `state=\"OR\"`, never `city=\"OR\"`.\n- Pass only what the user literally said. 'one-way', '2 travelers' and 'for 5 people' add no flight kwargs. Never add flight_class, num_layovers, budget or stars on your own, and never write 'assuming economy'. Only 'non-stop' or 'direct' adds num_layovers=[0].\n- No explanatory comment blocks and no placeholder variables."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Reuse values the user has actually stated and ask only for what is still missing.",
+        "content": "- Multi-domain first turn: a restaurant request is its own domain even when it is phrased relative to another domain ('a hotel with a good restaurant nearby that serves Bangladeshi', 'also show me vegan restaurants there'). If the restaurant city is known from ANY domain (hotel city, flight destination, attraction city), ALWAYS emit the restaurant search first, then ONE seek_information for the missing flight/hotel dates. Never output seek_information alone in that case.\n  - 'Hotel in Colorado Springs with a good restaurant nearby that serves Bangladeshi', no dates -> `restaurants = search_restaurants(city=\"Colorado Springs\", cuisine=[\"Bangladeshi\"])`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need the check-in and check-out dates for the hotel.\")`.\n  - Round-trip Atlanta -> Tucson plus a hotel with a fitness center, and the user says 'I don't know the details, show me vegan restaurants there' -> `restaurants = search_restaurants(city=\"Tucson\", has_vegan_options=True)`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then one seek_information naming the flight departure date and the hotel check-in/check-out dates. 'I don't know the details' never cancels the domain that can already be searched. Do not call search_hotels or search_flights."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 2: Refinement turns load from the cache and filter (never re-search, never use undefined variables)",
+        "content": "- Key-exists test comes first. If the CACHE has a key for the domain the last turn talks about, the answer is load -> filter -> save. This holds even when that CACHE entry is only a bare city search and the reply is just a cuisine or a style phrase. Example: CACHE {'restaurants': 'Restaurant search results in Colorado Springs.'}, user: 'Something professional, with a good Latvian menu.' -> `restaurants = get_results_from_cache(key=\"restaurants\")`, `filtered_restaurants = filter_restaurants(prior_results=restaurants, cuisine=[\"Latvian\"])`, `save_to_cache(key=\"filtered_restaurants\", value=filtered_restaurants)`. Never call search_restaurants again, and 'professional' adds no param.\n- A one-domain answer emits that domain's statements only. Example: hotels2 and filtered_restaurants are cached and the user says 'Downtown Portland is where we'd like to stay.' -> load hotels2, `filter_hotels(prior_results=..., neighborhood=[\"Downtown Portland\"])`, save as hotels3, and NOTHING else. Do not also load or re-save the restaurant keys (`save_to_cache(key=\"restaurants2\", value=restaurants)` is wrong)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use date strings exactly as the user wrote them (e.g. \"May 15, 2025\").",
+        "content": "- A reply that supplies a return date ('returning on May 28, 2025') completes a round trip, even if the flight was first described as 'non-stop' and a hotel was requested earlier. Emit BOTH flight legs plus the hotel in one block, carrying every earlier-stated constraint. 'Non-stop' -> num_layovers=[0] on BOTH legs. A hotel neighborhood in the user's words -> neighborhood=[\"Downtown San Antonio\"]. Hotel check-in = outbound date, checkout = return date. Never search only one leg, and never save with `value=_`.\n- 'For N nights' with a known check-in or departure date gives the checkout by offset: `checkout_date = adjust_date(date=\"May 17, 2025\", delta_days=2)`, then `hotels = search_hotels(city=\"Lexington\", checkin_date=[\"May 17, 2025\"], checkout_date=[checkout_date], num_people=5)` and `save_to_cache(key=\"hotels\", value=hotels)`. A stated party size ('5 of us') maps to num_people on the hotel only. The flight search in the same block gets no party-size, flight_class or layover kwargs unless the user stated them."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

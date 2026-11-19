@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "round_trip_flight_mishandled",
+      "count": 2,
+      "description": "A date pair ('May 16 to May 25', 'depart May 18 and return May 28') was put into one departure_date list (T2) or as a nested search_flights inside search_flights (T5, which crashed). The home-airport code was ignored, and the hotel requested in turn 1 was dropped (T5)."
+    },
+    {
+      "failure_type": "output_form_and_param_mapping",
+      "count": 2,
+      "description": "A first attraction search was emitted bare, with no assignment or save_to_cache, and with the state code placed in city= ('trip to NV', 'trip to CO')."
+    },
+    {
+      "failure_type": "cross_domain_leakage",
+      "count": 2,
+      "description": "A hotel reply triggered filter_flights. In T8 'business facilities' re-applied business class to both cached legs. In T6 a budget filter was re-applied to flights instead of seek_information for the missing checkout date."
+    },
+    {
+      "failure_type": "invented_parameters",
+      "count": 1,
+      "description": "A one-way flight search for '2 travelers' invented num_layovers=[0] and flight_class=['economy']."
+    },
+    {
+      "failure_type": "proximity_request_wrong_branch",
+      "count": 1,
+      "description": "With 'restaurants' and 'hotels2' cached, 'Persian ... 3.5 rating near the hotel' produced a filter on an undefined variable. It had no cuisine, no cache load and no search_nearest, because Rule 26 only describes the search branch."
+    }
+  ],
+  "patch": {
+    "reasoning": "Five of the eight failures are first-search shape errors: attraction state in city= with a bare call, both dates in one list, a nested search, and invented flight kwargs. A short block of positive, copyable shapes at the very top addresses those, plus the dropped hotel and airport code in T5 and T2. Two failures are flight leakage on hotel replies. A FLIGHT LOCK in the cache gate, plus replacing Rule 2's permissive 'handle every domain and leg affected' bullet, targets that cause directly. The last failure came from Rule 26 covering only the search branch even though SEARCH GATE forbids searching a cached domain, so the replacement makes it branch on whether the domain key exists. The edits state positive triggers alongside prohibitions and avoid new sibling examples elsewhere.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- SHAPES FIRST (copy these shapes; a call that matches none of them is wrong):\n  1. Attractions in a state ('a trip to NV', 'attractions in CO'): `attractions = search_attractions(state=\"NV\", type=[\"Sporting\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. A two-letter code or state name is ALWAYS `state=`, never `city=\"NV\"`. A call with no `attractions =` and no save line is never allowed.\n  2. One-way flight with a date: `flights = search_flights(start_airport_city=\"A\", end_airport_city=\"B\", departure_date=[\"May 28, 2025\"])` + save. Pass only origin, destination, the date and values the user literally said (class, airline, airport code, time window, budget). '2 travelers', 'one-way' and 'last-minute' add no kwarg. num_layovers is never written, and flight_class only when the user said a class.\n  3. Round trip or date pair ('May 16, 2025 to May 25, 2025', 'depart May 18 and return May 28'): TWO separate top-level statements, each assigned and saved. Outbound has `departure_date=[\"<first date>\"]`. Return has the cities swapped and `departure_date=[\"<second date>\"]`. Each departure_date list holds ONE date. A search call is never a kwarg of another call (no `return_flights=search_flights(...)` inside search_flights). A home airport ('I normally fly from LAS') -> `start_airport=\"LAS\"` on the outbound leg and `end_airport=\"LAS\"` on the return leg.\n  4. A hotel requested in ANY turn plus known flight dates: the same block also writes `hotels = search_hotels(city=\"<flight destination>\", checkin_date=[\"<first date>\"], checkout_date=[\"<second date>\"], <stated rooms/amenities>)` + save. '2 rooms' -> num_rooms=2, 'hotel with a kitchen' -> has_inroom_kitchen=True, 'family vacation' adds no kwarg.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\n-3. FLIGHT LOCK. Write a filter_flights line only when the user's last message is itself a flight preference (class, airline code, flight time, ticket price) or answers a flight question. 'business facilities', 'business center', 'business trip' are NOT a flight class. Anything already shown in a flight summary ('flight classes: [business]', 'budget: $450') is applied and never re-passed. Hotel words (stars, rating, neighborhood, 'near Downtown X', amenities) mean hotels only.\n   - A 'hotels' key exists and the reply is a hotel refinement -> exactly three lines on the most refined hotels key: load, `filter_hotels(prior_results=h, <only the hotel kwargs stated in the last message>)`, save under a new key. No flight lines at all, even if 'flights' and 'return_flights' are cached.\n   - No 'hotels' key, the user now describes a hotel, and the check-in AND check-out dates are not both known (for example only a one-way flight date) -> the whole output is `seek_information(\"We need the check-out date for the hotel.\")`. No flight lines, no search.\n"
+      },
+      {
+        "op": "replace",
+        "target": "- Handle every domain and leg affected by the last turn. If the user answers with both an airline and hotel amenities, filter both. If departure_flights and return_flights are both cached, apply a shared flight preference (class, time of day, airline) to EACH leg with its own load, filter and save.",
+        "content": "- Handle only the domain(s) the last user message states a constraint for. A reply naming a flight preference AND hotel amenities ('AA and a hotel with a gym') gets one load-filter-save block per named domain. A reply naming only hotel words gets no flight block. When a flight preference IS the reply, apply it to EACH cached flight leg with its own load, filter and save."
+      },
+      {
+        "op": "replace",
+        "target": "run the new domain's search with every constraint the user stated, save it, then call search_nearest and save that too.",
+        "content": "then branch on the NEW domain's own key. Key ABSENT: run that domain's search with every constraint the user stated and save it (the example below is this case). Key PRESENT (e.g. 'restaurants' cached from an earlier turn): never search. Write a separate `r = get_results_from_cache(key=\"<most refined restaurants key>\")` line, then `filter_restaurants(prior_results=r, <every constraint in the last message>)` and save it as filtered_restaurants / final_restaurants. For 'Persian sounds great, and a restaurant with 3.5 rating near the hotel' that is cuisine=[\"Persian\"], rating=[3.5, 3.5]. Either way finish with `search_nearest(hotels=<loaded hotels key>, restaurants=<the saved restaurants result>, groupBy=\"restaurant\")` saved as nearest_restaurants. Every variable you pass must be assigned earlier in the same block, because a filter on an undefined `restaurants` crashes."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

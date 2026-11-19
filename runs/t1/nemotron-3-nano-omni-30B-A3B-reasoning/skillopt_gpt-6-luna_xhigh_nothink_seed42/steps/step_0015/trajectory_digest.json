@@ -1,0 +1,60 @@
+{
+  "step": 15,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 27,
+  "failure_patterns": [
+    {
+      "pattern": "incomplete_conversation_or_cache_coverage: Plans missed new constraints, requested domains, or pending trip actions, or reprocessed a domain already covered by valid cache results.",
+      "count": 27,
+      "task_ids": [
+        "hotelrestaurant:train:7:59:2",
+        "hotel:train:14:35:2",
+        "restaurant:train:4:17:2",
+        "flighthotelrestaurant:train:15:42:2",
+        "flight:train:23:12:2",
+        "attraction:train:16:59:0",
+        "restaurant:train:18:7:3",
+        "restaurant:train:10:42:2",
+        "hotel:train:16:25:4",
+        "hotelrestaurant:train:12:1:3",
+        "hotelrestaurant:train:14:3:0",
+        "flighthotelattraction:train:12:26:3",
+        "hotelrestaurant:train:23:41:2",
+        "flighthotelrestaurant:train:15:59:2",
+        "restaurant:train:8:7:1",
+        "flighthotelrestaurant:train:15:23:3",
+        "flighthotelrestaurant:train:3:42:1",
+        "flighthotel:train:3:57:5",
+        "hotelrestaurant:train:25:60:1",
+        "attraction:train:13:42:0",
+        "hotelattraction:train:12:34:4",
+        "hotelrestaurant:train:5:27:2",
+        "hotelattraction:train:3:52:2",
+        "hotelrestaurant:train:15:1:1",
+        "flighthotelrestaurant:train:12:13:4",
+        "flight:train:2:18:3",
+        "hotelrestaurant:train:6:41:0"
+      ]
+    }
+  ],
+  "score_before": 0.24,
+  "score_after": 0.235,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "\n- Check mandatory-input readiness independently for each requested domain. If one domain lacks required information, still search or refine other requested domains whose required inputs are available, and use the single `seek_information` call only to ask for the missing mandatory information. For hotels, verify check-in and check-out dates independently. If the user requests a hotel stay as part of an explicitly dated itinerary and provides that itinerary's outbound and return departure dates, use the outbound date as check-in and the return departure date as check-out unless separate hotel dates are stated. A flight date alone does not establish a hotel date: if the stay is not explicitly tied to those itinerary dates, do not infer dates or duration; ask only for whichever required hotel date is missing.",
+      "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- When the assistant asks whether the user wants anything specific and the user declines, says they are flexible, or says “anything,” treat this as no new constraint—not cancellation of the original request. If a compatible cached result covers that request, retrieve it using its listed key into a local variable; do not search or filter again, or substitute `print(\"No planning needed\")` while the user is still expecting the existing results.",
+      "target": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- For an explicit request to find options near a named place, identify the target domain and the domain whose candidates should be ranked separately. A generic result for the same city or domain does not cover the named target. If a compatible cached result does not cover that target, search for it using the appropriate supported name field (such as `hotel_name`, `restaurant_name`, or `attraction_name`) before calling `search_nearest`; also search for candidate results if those are unavailable. Use context to identify the target's domain rather than assuming every named place is an attraction.",
+      "target": "- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call."
+    }
+  ]
+}

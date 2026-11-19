@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_follow_up_state_management",
+      "count": 5,
+      "description": "Follow-ups used stale results, skipped a needed cache update, repeated a completed domain, or failed to apply a new constraint."
+    },
+    {
+      "failure_type": "date_handling_and_call_hygiene",
+      "count": 3,
+      "description": "Agents parsed or reformatted dates in Python, imported date libraries, or made unnecessary extra calls."
+    },
+    {
+      "failure_type": "hotel_occupancy_constraints",
+      "count": 3,
+      "description": "Agents invented default room or guest counts, or omitted an explicitly stated trip-party size from the hotel request."
+    },
+    {
+      "failure_type": "attraction_criteria_mapping",
+      "count": 1,
+      "description": "A named attraction was replaced by an inferred category instead of being searched by its full name alongside the requested type."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify the operational cache-update sequence and date handling where agents repeatedly departed from existing guidance. Make hotel guest and room counts unambiguous, and ensure named attractions are searched by name without inferred categories.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "If a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only the new same-domain filter and save the update under a fresh relevant key.",
+        "content": "For a follow-up filter, choose the latest cache-summary entry for that domain that already reflects all earlier constraints, retrieve it using its exact listed key into a variable, and filter that result—not an earlier-turn variable or an original broad result when a later filtered result exists. Apply only the new constraints and save under a key not already present in the cache; never overwrite the source result or a prior filtered result."
+      },
+      {
+        "op": "replace",
+        "target": "Pass user-provided date strings unchanged to date-taking tools unless the schema explicitly requires a different format; do not parse, reformat, or calculate dates in Python or import date libraries. Use `adjust_date` only to compute checkout from an explicit trip start date and stated number of hotel nights.",
+        "content": "Pass user-provided date strings unchanged to date-taking tools unless the schema requires another format. Never import `datetime` or parse, reformat, or calculate dates in Python. When checkout must be computed from an explicit trip start date and stated number of hotel nights, call `adjust_date` with the original start-date string and the night count as an integer, then use its returned date."
+      },
+      {
+        "op": "replace",
+        "target": "For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+        "content": "For lodging on a trip, set `num_people` from an explicitly stated party size for that trip, including a headcount first given with a flight request; never default it to 1. Set `num_rooms` only when the user explicitly states a room count; never assume one. Apply newly supplied counts with a same-domain filter to the latest suitable cached hotel result when needed. Do not pass traveler counts to flight tools."
+      },
+      {
+        "op": "insert_after",
+        "target": "Search for a named attraction when requested.",
+        "content": "For a specifically named attraction, pass its full name in `attraction_name` on the attraction search. Combine it with only any `type` the user separately requested; do not infer an extra category from the attraction's name or identity."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

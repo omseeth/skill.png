@@ -1,0 +1,56 @@
+{
+  "step": 26,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 23,
+  "failure_patterns": [
+    {
+      "pattern": "stale_constraints_repassed: Refinement filters re-passed values from earlier turns or the cache summary (cuisine, dietary flags, neighborhood, gym/wifi) instead of only the last message's new values.",
+      "count": 23,
+      "task_ids": [
+        "flighthotel:train:8:39:3",
+        "attraction:train:16:10:0",
+        "flighthotelrestaurant:train:24:43:1",
+        "restaurant:train:4:17:2",
+        "hotelattraction:train:4:42:2",
+        "hotelrestaurant:train:16:3:0",
+        "flighthotelattraction:train:4:32:4",
+        "flighthotel:train:14:2:4",
+        "flighthotelrestaurant:train:21:27:1",
+        "flighthotel:train:10:9:2",
+        "hotelattraction:train:25:21:3",
+        "flighthotelattraction:train:12:16:4",
+        "flight:train:23:12:2",
+        "flighthotelattraction:train:7:34:1",
+        "attraction:train:23:10:0",
+        "hotel:train:14:35:2",
+        "flighthotel:train:16:1:1",
+        "hotelattraction:train:1:17:3",
+        "hotelrestaurant:train:18:45:3",
+        "flighthotelrestaurant:train:23:39:2",
+        "flighthotelattraction:train:3:19:2",
+        "hotelattraction:train:5:52:1",
+        "restaurant:train:13:21:3"
+      ]
+    }
+  ],
+  "score_before": 0.535,
+  "score_after": 0.535,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "- Handle only the domains whose words appear in the LAST user message, with one load -> filter -> save block per named domain. A hotel reply (stars, amenities, per-night budget, neighborhood) never touches a flight key, even when flights were filtered earlier for class: an earlier 'business' is already applied. Flight keys are filtered only when the last message is about class, airline, time or ticket price, and then EACH leg gets its own block.",
+      "target": "- Handle every domain and leg affected by the last turn. If the user answers with both an airline and hotel amenities, filter both. If departure_flights and return_flights are both cached, apply a shared flight preference (class, time of day, airline) to EACH leg with its own load, filter and save."
+    },
+    {
+      "op": "replace",
+      "content": "- Criteria to pass to filter_*: ONLY the constraints stated in the LAST user message, one kwarg per value in it. Everything from earlier turns was already passed to the search or to an earlier filter that built the cached entry, whether or not the summary lists it. For example, amenities named in an earlier turn are not re-passed when the last message only gives a budget and one new amenity. Never call filter_* with only prior_results.",
+      "target": "- Criteria to pass to filter_*: the constraints introduced in the LAST user turn, plus any earlier-stated constraint that the CACHE summary text (\"Additionally filtering for ...\" / search description) does not show as applied. Do NOT repeat filters or search parameters the summary already lists. Never call filter_* with only prior_results."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n-3. FLIGHT LOCK. Write a filter_flights line only when the user's last message is itself a flight preference (class, airline code, flight time, ticket price) or answers a flight question. 'business facilities', 'business center', 'business trip' are NOT a flight class. Anything already shown in a flight summary ('flight classes: [business]', 'budget: $450') is applied and never re-passed. Hotel words (stars, rating, neighborhood, 'near Downtown X', amenities) mean hotels only.\n   - A 'hotels' key exists and the reply is a hotel refinement -> exactly three lines on the most refined hotels key: load, `filter_hotels(prior_results=h, <only the hotel kwargs stated in the last message>)`, save under a new key. No flight lines at all, even if 'flights' and 'return_flights' are cached.\n   - No 'hotels' key, the user now describes a hotel, and the check-in AND check-out dates are not both known (for example only a one-way flight date) -> the whole output is `seek_information(\"We need the check-out date for the hotel.\")`. No flight lines, no search.\n",
+      "target": "## CACHE GATE (run this before writing any code, every turn)"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_reuse",
+      "count": 4,
+      "description": "Re-searched or regenerated cached or unaffected domains instead of retrieving compatible results and filtering only the changed scope."
+    },
+    {
+      "failure_type": "tool_argument_mapping",
+      "count": 5,
+      "description": "Used unsupported, over-specified, semantically mismatched, or incorrectly typed arguments, including a list where the tool expects a scalar."
+    },
+    {
+      "failure_type": "mandatory_date_inference",
+      "count": 1,
+      "description": "Invented a hotel checkout date rather than asking for the missing required date."
+    },
+    {
+      "failure_type": "tool_result_assignment",
+      "count": 1,
+      "description": "Saved the search function instead of assigning and saving the result of its call."
+    }
+  ],
+  "patch": {
+    "reasoning": "Put the existing cache and pending-request rules into a short precedence order at the first tool-selection point, addressing repeated scope regeneration without adding another generic reminder. Clarify schema type/cardinality and omission of None or ambiguous preferences to target invalid and over-specified calls. Clarify how a clearly linked trip date may establish hotel check-in without inventing checkout. The result-assignment invariant is already explicit, so no duplicate edit is warranted for that isolated violation.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "**Turn-action precedence (before tool selection):** Read the full conversation, preceding question or offer, and cache summary; identify only the scopes changed by the latest turn. (1) If the reply supplies missing required information for a pending request, execute only that now-complete scope and ask only for remaining mandatory details on incomplete scopes. (2) If it adds or changes a supported filter on a compatible cached scope, retrieve the exact compatible key, filter, and save; do not base-search, repeat an already-applied filter, or touch unaffected domains or legs. (3) Search only genuinely new or cache-uncovered scopes, with all active criteria; do not regenerate other covered scopes. (4) If the reply accepts proximity, retrieve compatible cached inputs and run `search_nearest`, rather than searching again for covered inputs. An affirmative to present existing recommendations requires retrieval/use only, with no duplicate search or filter unless a new constraint was added."
+      },
+      {
+        "op": "replace",
+        "target": "- Before each tool call, verify every keyword against that specific tool's declared arguments and ensure the user's preference semantically matches the field's supported values. Do not invent conversational aliases, pass unsupported fields, or put qualitative descriptors into categorical fields unless they name a valid option (for example, do not pass “kid-friendly” as an airline). Resolve terse replies using the preceding assistant question: a number supplied in response to a budget question is a budget, not a rating, and “business trip” alone does not request `flight_class=[\"business\"]`. Do not equate “kid-friendly” or “family-friendly” with a kids club; set `has_kids_club=True` only when the user specifically requests a kids club. If no supported argument captures an optional preference, omit it and proceed with the supported request without inventing a substitute or asking for unsupported details.",
+        "content": "- Before each tool call, verify that every keyword is declared for that specific tool and that each value matches its declared type and cardinality; do not wrap scalar values, such as airport identifiers, in lists. Never pass unsupported fields or optional arguments as `None`; include only explicitly supported constraints. Map a preference only to a field it semantically matches: do not infer a specific amenity from broad or ambiguous wording, or put qualitative descriptors into categorical fields unless they name a valid option (for example, do not pass “kid-friendly” as an airline). Resolve terse replies using the preceding question: a number in response to a budget question is a budget, not a rating, and “business trip” alone does not request `flight_class=[\"business\"]`. Set `has_kids_club=True` only when a kids club is specifically requested. If no supported argument captures an optional preference, omit it and proceed without inventing a substitute or asking for unsupported details."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs.",
+        "content": "\n- When a hotel is explicitly requested for an established trip, use its unambiguous arrival or first-lodging date as check-in only when the conversation clearly ties the stay to that trip. That date does not establish checkout or imply a one-night stay: ask for the missing checkout date unless an explicit stay length permits deriving it. If the trip-to-stay link is unclear, ask for the missing hotel dates."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

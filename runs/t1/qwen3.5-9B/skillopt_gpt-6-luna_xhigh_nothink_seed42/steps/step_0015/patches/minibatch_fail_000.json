@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "follow_up_cache_reconciliation",
+      "count": 3,
+      "description": "New party-size, neighborhood, or star constraints were treated as already complete instead of being applied to a suitable cached result."
+    },
+    {
+      "failure_type": "unsupported_hotel_date_inference",
+      "count": 2,
+      "description": "A checkout date or one-night stay was invented from a flight date or check-in date rather than asking for the missing required date."
+    },
+    {
+      "failure_type": "independent_domain_progress",
+      "count": 1,
+      "description": "The agent asked for hotel details already provided and failed to search the requested restaurant domain whose inputs were available."
+    },
+    {
+      "failure_type": "tool_argument_and_cache_compliance",
+      "count": 1,
+      "description": "A state abbreviation was passed as a city and the attraction result was not saved."
+    },
+    {
+      "failure_type": "runtime_tool_and_proximity_handling",
+      "count": 1,
+      "description": "The agent imported unavailable tool functions and omitted the proximity operation after filtering hotels."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers cache updates, state mapping, saving results, avoiding imports, and recomputing proximity results, so repeating those rules is unlikely to help. These edits clarify two uncovered hotel details—star-range interpretation and when checkout can be inferred—and provide a consistent way to rank qualitative requests for good or best options.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+        "content": "For hotel or restaurant rating scores, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and “at least x” is `[x, 5]`. For hotel star counts, map “at least x stars” to `stars=[x, 5]`, “exactly x stars” or an explicit x-star count to `stars=[x, x]`, and an explicit range to its stated bounds."
+      },
+      {
+        "op": "insert_after",
+        "target": "When an explicit trip start date and number of hotel nights are known, use the start date as check-in and call `adjust_date` with the night count to compute checkout.",
+        "content": "A single flight date or hotel check-in date does not establish a checkout date or stay length. Never assume a one-night stay or derive checkout from a flight date; seek the checkout date unless the user provides an explicit trip end date or hotel-night count."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Rank qualitative recommendations when appropriate:** If the user asks for a “good” or “best” option without specifying an objective filter, do not invent search criteria. Search using the explicit criteria, then, when a rating sort is supported for that domain, assign and cache a descending `sort_results` output using the schema's rating column (for example, `rating_hotels` or `rating_restaurants`)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

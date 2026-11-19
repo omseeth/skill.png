@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_mismanagement",
+      "count": 4,
+      "description": "Repeated base searches or filters instead of using compatible cached results for budget, class, or already-covered recommendation updates."
+    },
+    {
+      "failure_type": "offer_and_scope_resolution",
+      "count": 1,
+      "description": "Treated acceptance of an offer to search a new attraction category as a request to rerun nearest results."
+    },
+    {
+      "failure_type": "field_and_value_mapping",
+      "count": 1,
+      "description": "Passed a state abbreviation as a city and substituted a near-synonym for the requested attraction type."
+    },
+    {
+      "failure_type": "party_size_resolution",
+      "count": 2,
+      "description": "Omitted an explicitly established traveler count in one task and inferred a fixed count from vague family-with-kids context in another."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch shows recurring confusion between new scopes, filter-only updates, and already-covered requests. A concise action sequence makes the required cache choice explicit, including how to resolve affirmations of offers. The remaining edits address concrete mapping failures and clarify how to use established party-size context without guessing.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Cache-aware tool workflow",
+        "content": "### Classify the latest turn before acting\nFor each changed request, choose exactly one action:\n1. If the user adds no scope or constraint and accepts an offer to provide recommendations or results already covered by a compatible cached result, retrieve the most-constrained compatible result by its exact key and stop. Do not search, filter again, or run proximity work.\n2. If the domain, location, dates or leg, and scope are already covered and the user adds a filterable preference, retrieve the exact compatible cache key, apply the matching filter, and save it. Do not repeat the base search, even when the new preference could have been included in that search.\n3. Search only an uncovered new or expanded scope, carrying forward active supported criteria. For example, accepting an offer to search a new attraction category requires searching that category if no compatible result covers it; a prior hotel-attraction or nearest result does not satisfy the new category. Do not regenerate unaffected domains or legs."
+      },
+      {
+        "op": "replace",
+        "target": "For attractions, put the requested category in `type` with its exact value (for example, if the requested type is `Scenic`, pass `type=[\"Scenic\"]`).",
+        "content": "For attractions, put the requested category in `type` with its exact user-provided value; do not change it to a similar label found in examples (for example, `Cultural` remains `type=[\"Cultural\"]`, not `type=[\"Culture\"]`). When the user supplies a state abbreviation without a city, pass it as `state`, not `city`."
+      },
+      {
+        "op": "replace",
+        "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+        "content": "- Map explicit traveler descriptors and stated party sizes to supported party-size fields; for hotel searches, “solo” or “traveling alone” means `num_people=1`. Retain a party size explicitly stated as established context in the preceding assistant question when the user answers another part without correcting it. Do not infer a number from vague descriptions such as “family” or “family with kids,” or from the mere presence of children."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

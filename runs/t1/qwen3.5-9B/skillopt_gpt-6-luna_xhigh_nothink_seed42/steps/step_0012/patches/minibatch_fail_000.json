@@ -1,0 +1,55 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "location_parameter_mapping",
+      "count": 2,
+      "description": "State abbreviations were passed as attraction cities instead of using the state field."
+    },
+    {
+      "failure_type": "redundant_tool_execution",
+      "count": 2,
+      "description": "Attraction searches were issued twice, including an unnecessary bare call before the saved search."
+    },
+    {
+      "failure_type": "cache_follow_up_handling",
+      "count": 2,
+      "description": "Follow-ups re-searched instead of filtering a suitable cached result, or chose the wrong field for the assistant-suggested place."
+    },
+    {
+      "failure_type": "controlled_value_format",
+      "count": 1,
+      "description": "A flight class was passed with display capitalization rather than the tool's canonical categorical value."
+    },
+    {
+      "failure_type": "scope_and_constraint_inference",
+      "count": 3,
+      "description": "The code added unrequested domains or criteria, or inferred values not supplied by the user."
+    },
+    {
+      "failure_type": "date_handling",
+      "count": 2,
+      "description": "Dates were converted or used as extra constraints, and hotel checkout arithmetic bypassed the provided date tool."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already directly covers state-versus-city mapping, avoiding duplicate calls, incremental cache filtering, preserving dates, using adjust_date, and not inferring counts or domains. Repeating those rules would not address a document gap. These edits clarify the ambiguous boundary around implied lodging, how to route assistant-suggested areas versus named attractions through cached filters, and how to format controlled tool values.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Use only explicitly requested domains; do not infer extra searches, preferences, amenities, or substitute similar categories.",
+        "content": "Use only explicitly requested domains; do not infer extra searches, preferences, amenities, or substitute similar categories. Trip framing or travel dates alone do not request lodging: for example, a “weekend getaway” does not by itself authorize a hotel search."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Use canonical values for controlled tool fields:** When a tool argument accepts a controlled category or enum, use the exact canonical value and casing shown in its schema or usage examples. Map natural-language phrasing to that accepted value rather than copying display capitalization from the conversation."
+      },
+      {
+        "op": "replace",
+        "target": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion. Retrieve the latest suitable cached result and apply the corresponding same-domain filter when needed. Use `search_nearest` only if the user requests proximity.",
+        "content": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion. Prefer the latest suitable cached result for the established location and apply the corresponding same-domain filter. When the suggestion is an area or neighborhood within that location, filter with `neighborhood`; when the assistant specifically identifies an attraction entity, use `attraction_name`. Preserve the cached location context rather than issuing a standalone search without required location inputs. Use `search_nearest` only if the user requests proximity."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

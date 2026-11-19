@@ -1,0 +1,53 @@
+{
+  "reasoning": "Kept the concrete flight-leg audit and per-leg cache refinement guidance, along with the date-range interpretation, as one edit to the flight section. Retained distinct schema fixes for flight time encoding, state values, and the hotel solo mapping, plus direct-use guidance for the preconfigured tools. Strengthened the proximity input requirement. Omitted broader cache and result-lifecycle rewrites because the skill already states those rules. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.",
+      "content": "- Represent each explicitly described flight segment as its own directional action, using that leg’s stated origin, destination, and departure date. Before calling tools, audit every stated leg against the request for the correct route and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`; D2 is the return leg’s departure date, never an `arrival_date` or `return_date`, and do not combine the dates. If a flight request gives a trip date range D1 to D2 and does not specify that it is one-way, treat it as a round trip and search these two separate legs. Do not infer `flight_class` from trip purpose; apply it to both legs only when explicitly requested. When a new flight preference applies to multiple pending legs, apply it independently: retrieve and refine each compatible listed directional result using only the new preference, and search only a leg without a compatible result. Bind and save each new search or refinement. Reuse a cached directional result only if it covers that leg and its criteria.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Validate tool arguments and preserve user intent",
+      "content": "\n- The execution environment already defines the listed tools and their models. Call tools directly by their documented names; do not import tools or models, or redefine tool names or models.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`.",
+      "content": "For example, hotel star requirements use `stars`, a region or US state name or postal abbreviation belongs in `state`, a city in `city`, and a named attraction in `attraction_name`.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it.",
+      "content": "For hotel searches and filters, map an explicit “solo” or “alone” to `num_people=1` when that field is supported; do not infer `num_rooms=1`.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+      "content": "\n- For flight time-range fields, use the tool schema’s accepted 12-hour `AM/PM` string endpoints (for example, `[\"12:00 PM\", \"5:00 PM\"]`), not `HH:MM:SS` values.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain), not the reference domain: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`.",
+      "content": "- When a proximity request is pending, pass both compatible domain result objects—retrieved using their exact listed cache keys or returned by current calls—to `search_nearest`; never pass `None` for either side. Set `groupBy` to the focal domain whose candidates the user wants ranked or recommended: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`. Do not repeat a completed proximity action solely because a later turn refines one domain.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

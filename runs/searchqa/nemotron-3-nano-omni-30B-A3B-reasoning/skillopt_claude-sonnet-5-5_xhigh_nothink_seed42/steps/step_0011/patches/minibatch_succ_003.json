@@ -1,0 +1,25 @@
+{
+  "batch_size": 6,
+  "success_patterns": [
+    "Quoted-epithet or attribution clues ('The NYT Magazine has called him \"King of the Techno-Thriller\"') were solved by finding the passages that repeat the quoted phrase and taking the name attached to it. This reflects a repeated-sentence match, not outside recall.",
+    "Archive-style lines ('DALLAS | clue | Bobby Ewing. right: ...') were copied directly as the answer, and the answer matched the slot type: the character, not the actor or the show.",
+    "Clues with 'this raft', 'this Texas city' or 'one of these bombs' were answered with the specific named referent. The generic type word was dropped or kept according to the head-noun test: 'Kon-Tiki', 'El Paso', 'hydrogen bomb'.",
+    "In a closed-options numeric clue ('Of 2, 5 or 10...'), passages gave components (2 compound eyes + 3 simple eyes) and some stated the total (5 eyes). The agent picked the option that fits the total from the whole context, not the first number it saw."
+  ],
+  "patch": {
+    "reasoning": "Most successes were already handled by existing rules (verbatim archive hits, slot type, head-noun test). Two small refinements are worth adding. First, closed-options clues involving counts need an explicit step: add up component counts and prefer a passage that states the total, because a naive scan can match the wrong listed number (e.g. '2 compound eyes'). Second, quoted-epithet and 'has called him ...' clues are solved by matching the quoted phrase across passages and taking the name that co-occurs with it, which is not spelled out for person answers.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Clue lists its own options ('Of North Park, East Park, West Park or South Park, it's where...'): the answer is exactly one of the listed options, copied verbatim. Use the context to pick which.",
+        "content": "- Numeric options ('Of 2, 5 or 10, the number of eyes on a bee'): the passages may give only parts (2 compound eyes, 3 simple eyes) or a headline figure for a sub-type. Add up the components and prefer a passage that states the total ('a bee has 5 eyes'). Then answer with the listed number that matches the overall total, not the first number you meet. Give just the digit or number."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "- Epithet or attribution clues ('X has called him \"King of the Techno-Thriller\"', 'dubbed \"the Iron Lady\"'): search the passages for the quoted phrase. The name that sits next to it in many independent passages is the answer, even when the source (a magazine, a critic) is named in the clue. Answer with the person's standard full name, not the critic, the publication or a character."
+      }
+    ]
+  },
+  "source_type": "success"
+}

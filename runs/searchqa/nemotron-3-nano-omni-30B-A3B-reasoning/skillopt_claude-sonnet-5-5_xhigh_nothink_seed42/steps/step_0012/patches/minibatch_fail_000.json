@@ -1,0 +1,55 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Agent kept a type word the clue already supplied ('Roanoke Island' for 'this island', 'Adirondack Mountains' for 'these mountains'). Another answer used the wrong number ('bear' for 'species of these', where the key is plural 'Bears'), despite existing rules on dropping head nouns and on plurals for 'these'."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "Agent answered the wrong slot type: a person ('Themistocles') for 'this war', and a performer ('Ellie Goulding') for a quoted '...on my mind' fragment instead of the missing word ('Georgia')."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "Spoonerism clue ('queer old dean'): the answer is the intended unscrambled phrase ('dear old queen'). Agent gave one swapped word."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "Superlative dimension mismatch: 'smallest in size' was answered with the smallest denomination (cent) instead of the physically smallest coin (dime)."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "'Seen here' image clue ('Hostess snack food split in half'): agent picked the most-mentioned brand (Twinkies). A passage tied the exact action to 'Hostess Cupcakes that have been split in half', and the key is the generic singular noun."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most errors are shape or slot mismatches that existing rules already hint at but the agent skipped. Concrete, example-backed bullets target them: (1) geographic type words and plural short names, (2) number matching and 'seen here' image clues, (3) slot type for 'this war' and quoted '...' fragments, (4) spoonerisms and the exact dimension of a superlative. Edits are small and do not change the general singular/plural policy, because a broader rewrite of that rule was rejected in the previous step.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "The 'do not repeat clue words' rule is for a separate modifier already stated in the clue ('hasty' + pudding).",
+        "content": "\n- Geographic type words: when the clue says 'this island / this river / this lake / this city / these mountains', the clue already supplies the type noun, so drop it. 'Philip Amadas & Arthur Barlowe explored this island' -> 'Roanoke' (not 'Roanoke Island'). 'Lake Placid ... in these mountains' -> 'the Adirondacks' (not 'Adirondack Mountains'). For ranges, use the plural short name people say (Adirondacks, Rockies, Alps), not 'X Mountains'."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use the singular form for a generic single object ('Well', not 'wells'), but keep the plural for crops, commodities and mass categories ('Bananas') or when the clue says 'these'/'ones'.",
+        "content": "\n- Match the number the clue's pointer implies. 'species of these', 'types of these', 'these <plural noun>' or a clue where several different things share the answer ('X & Y had species of these as mascots') -> PLURAL ('Bears', not 'bear'). 'this <noun>', 'one of these' or a single described item -> singular. When the clue says 'seen here' (an image we cannot see), answer with the generic singular noun for the item that the passages tie to the clue's exact action or detail ('Hostess Cupcakes ... split in half' -> 'cupcake'), not simply the brand item mentioned most often."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "\n- The category noun fixes the answer's type. 'this war / battle / treaty / event' -> the NAME of that event (e.g. 'World War II'), never a general, statesman or place that merely appears in a passage. If the passages only reproduce the clue (archive page with the answer cut off) and no passage names the event, answer from your own knowledge using the clue's superlative or unique fact ('material cost greater than all other wars put together' -> 'World War II'). Do not grab a name from an unrelated passage.\n- Quoted fragment such as '\"...on my mind\"': the answer is the MISSING word(s) that complete the famous title or phrase ('Georgia' for 'Georgia on My Mind'). It is never the performer, author or the page's title ('Ellie Goulding'). When passages show several completions (Annie, Georgia, Always, Rhythm), prefer the best-known classic standard, as a one-word proper noun, over a recent single or obscure title."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 5: Special clue types\n- Spoonerism clues (they mention Dr./Rev. Spooner or a garbled phrase like 'queer old dean'): the answer is the INTENDED, unscrambled phrase with its initial sounds swapped back, given in full ('dear old queen'), not a single word and not the garbled form.\n- Superlatives: answer on the exact dimension the clue names. 'Smallest in size' (diameter, area, physical size) is not 'smallest denomination/value', and 'largest by area' is not 'largest by population'. If the passages discuss only the other dimension (e.g. 'smallest denomination' = the cent), use common knowledge for the asked dimension (the dime is the smallest U.S. coin in size). Check the candidate against that dimension before answering."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

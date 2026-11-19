@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Slot-owner typing worked in 3 of 8 cases. The agent answered the entity the category noun names, not an anchor from the clue: 'this actor's son' gave the actor (Sidney Poitier), 'this country's Bharat Ratna' gave India, and 'south of Hardin in this state' gave Montana.",
+    "The clue put a head noun in quotes ('this \"point\"') and the agent answered the full compound 'dew point', which repeats across the passages. It did not strip the quoted word, even though the delete-clue-words test could have pushed it to answer 'dew'.",
+    "A clue with a leading parenthetical about the host or video ('(Jimmy of the Clue Crew grapples...)') was matched on the clue text after the parenthetical. The agent then copied the archive answer from the GitHub dump line.",
+    "Definition-style and plural clues were answered with the headword in the form the clue asks for ('bleat' for 'the cry of a sheep or goat', 'horses' for 'these'). Passages that repeat the definition or the archived clue supported each answer.",
+    "Every answer was short and bare, with no sentence or restated clue. Each was backed by a recurring passage entity or an archive hit."
+  ],
+  "patch": {
+    "reasoning": "Most successes are already covered by existing rules. Two behaviours are only implicit and could collide with other rules. First, the 'delete clue words' test and the 'quoted word is a pun' bullet could lead an agent to cut a quoted head noun ('dew point' becoming 'dew'). Second, a leading host or video parenthetical is only implicitly separated from the trailing caption parenthetical, and an agent might treat it as a caption and ignore it, or fail to match the archive. Both edits are short, conditional on a visible clue feature, and resolve a likely conflict between rules. Neither weakens Rule 3.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- A word in quotation marks inside the clue (a 'drag', a nickname) is usually a pun or hint tied to the answer. Look for passages where that word appears next to a candidate and answer with that candidate.",
+        "content": "- QUOTED HEAD NOUN vs QUOTED MODIFIER: ask which half of the standard compound the clue supplies. If the quoted word is the HEAD of 'this \"point\"' / 'this \"line\"', the bare modifier alone is not the answer, so give the full compound including the quoted head, as the passages repeat it ('Fog forms when air cools to this \"point\"' -> 'dew point'). The delete-clue-words test does not apply here. If the quoted word is the MODIFIER already given ('A \"hasty\" dessert'), answer only the missing head ('pudding')."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Jokes, asides and filler in the clue ('(If I eat it, can I hear the ocean?)', 'Need help in this subject? Call up...') are decoration.",
+        "content": "A parenthetical at the START of the clue that describes the host, video or Clue Crew ('(Jimmy of the Clue Crew grapples with another clue from the University of Iowa.)') is also filler. Match archive lines on the clue text AFTER it. Only a TRAILING role-and-dates parenthetical is a caption (see Strategic guidance, section 2)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

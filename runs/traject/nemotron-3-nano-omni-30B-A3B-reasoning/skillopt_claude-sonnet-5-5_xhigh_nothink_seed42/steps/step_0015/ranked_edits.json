@@ -1,0 +1,26 @@
+{
+  "reasoning": "All five failure-driven edits are kept as written, because structure, tool-name form, missing calls and value form are the highest-cost buckets and the failure group is authoritative. Both success edits cover patterns the failure edits do not (per-region endpoints, `range` for 'top N', admin-hierarchy depth), so they are kept. I trimmed one sentence from the success 'RANK AND RANGE' edit: the lowercase author-name rule is a gold-artifact risk and conflicts with Section E ('keep other free-text as written'). Success edits are placed so they do not duplicate failure edits. The two inserts after `## Parameters` (failure schema-copy and success rank/range plus admin depth) are complementary, not overlapping. Nothing targets the protected SLOW_UPDATE block. The failure `append` lands after the end marker, outside the protected content. [optimizer-ranked: selected 2/7 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "## Parameters",
+      "content": "\n- SCHEMA COPY STEP (per call, before writing JSON). In your checklist, copy the chosen tool's `Required parameters:` and `Optional parameters:` name lists verbatim from ITS OWN block (e.g. `Wayfair: auto-complete: Required [query]; Optional []`). Fill every name under Required in `required parameters`, even enum-like ones such as `language`. Put only names under Optional in `optional parameters`. BAD: `News Network: Search News` with `keyword` required and `language`=`en` optional (the schema lists both as required). GOOD: `\"required parameters\": [{\"name\": \"keyword\", \"value\": \"Middle East politics\"}, {\"name\": \"language\", \"value\": \"en\"}], \"optional parameters\": []`.\n- Sibling tools share ideas but not param names. Wayfair auto-complete takes `query` (`q` is Asos's). `Aliexpress DataHub: Aliexpress - Item Search` has only optional `q`, `startPrice`, `endPrice`, `region`, `page` (`minPrice`/`maxPrice` belong to `Ali Express Data Service: Search Items`, and `loc` is not `region`). '$200-$500 in the US region' -> optional startPrice=`200`, endPrice=`500`, region=`US`, nothing in required. Then tick each adjective of the clause against the Optional names: 'English sports news from India' on `News API_v2: Top Headlines` -> language=`en` AND category=`sports` AND the country.\n- DO NOT LEAK QUALIFIERS ACROSS CLAUSES. 'Page 1' in the election clause belongs only to the election call. Add `page`, `limit` or any other optional to a call only when that call's own clause states or implies it.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+      "content": "\n- COMPARE ACROSS REGIONS = ONE CALL PER REGION ENDPOINT. When a provider has one endpoint per region and the query names several regions, call each region's own endpoint. 'Compare current gasoline prices across Europe, the United States, and Canada' -> `Gas Price: europeanCountries` + `Gas Price: allUsaPrice` + `Gas Price: canada`, each with `[]` required and `[]` optional because none has params. For the US, take the country-level aggregate (`allUsaPrice`), not a city list. Do not merge regions into one call and do not add a region the query did not name.",
+      "support_count": 5,
+      "source_type": "success"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 1 introduces a new per-call schema-copy procedure fixing required/optional placement, sibling param-name confusion, and qualifier leakage; it is general and complementary. Edit 5 addresses the higher-cost 'missing calls' bucket with strong support (5) and a transferable one-call-per-region-endpoint principle. Edit 2 is partly redundant with existing Airbnb examples; edit 3 is entity-specific; edits 0 and 4 restate existing rules; edit 6 chases gold-artifact casing with support 1.",
+    "selected_indices": [
+      1,
+      5
+    ]
+  }
+}

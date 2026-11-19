@@ -1,0 +1,40 @@
+{
+  "reasoning": "Kept all failure-driven clarifications as higher priority, including per-endpoint schema checks, output-format-aware serialization, and conditional canonical market-code handling. Preserved the success-driven count clarification because no failure edit addresses it. Retained the enum insight with a guardrail: include a directly requested value only when its canonical form is documented or reliably known, avoiding guessed tokens. Omitted the identifier edit because it targets content already covered in the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Serialize values according to the required call-format convention: follow explicit examples that consistently encode values as strings, even for numeric or boolean parameters; otherwise follow the declared schema types.",
+      "content": "Serialize values according to the required call-format convention, not merely their semantic schema types: follow explicit output-format instructions and examples. When examples consistently represent parameter values as strings (for example, `\"page\": \"1\"`), encode numeric and boolean values as strings too; use JSON numbers or booleans only when the required format calls for them.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Cross-check every parameter against the tool schema: place required parameters only in the required array and optional parameters only in the optional array, even when the user explicitly requests an optional field.",
+      "content": "For each call, check that exact endpoint's schema independently: place only parameters declared required in the required array and only parameters declared optional in the optional array, even when the user explicitly requests an optional field. Do not infer a parameter's group from another endpoint, its use in the query, or its JSON value type.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "When a request specifies a market or locale, populate directly corresponding documented parameters (such as country, store, currency, or language) when their values are documented or unambiguously implied; use canonical codes and a market-specific locale when a documented mapping establishes one.",
+      "content": "When a request specifies a market or locale, populate directly corresponding documented parameters (such as country, store, currency, language, or marketplace `domain`) only when their values are documented or unambiguously implied. If a selector convention expects a market code, use the canonical code rather than a storefront hostname or prose market label; use a market-specific locale when a documented mapping establishes one.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Map a requested count to the documented count field or `per_page`/`limit`; when the user asks for one result and the endpoint has a count field, set it to 1. If no count is requested, use the smallest conventional value needed.",
+      "content": "Map an explicit requested count to the documented count field or `per_page`/`limit`. When the user requests one result and the endpoint has a count field, set it to 1 unless the documentation already guarantees one result by default, in which case omit the redundant count. If no count is requested or implied, use the smallest conventional value needed.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "Never invent enum tokens, identifiers, credentials, or empty placeholders.",
+      "content": "If a request directly and unambiguously supplies an enum value matching the field's meaning, include its canonical value even when the tool listing omits the allowed choices, provided that canonical form is documented or reliably known. Do not guess synonyms, codes, or unsupported tokens, and do not omit the constraint solely because the choices are unlisted.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ]
+}

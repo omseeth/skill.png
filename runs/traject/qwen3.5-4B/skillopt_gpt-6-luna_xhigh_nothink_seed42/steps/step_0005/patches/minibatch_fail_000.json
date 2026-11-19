@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "argument_value_and_schema_mapping",
+      "count": 4,
+      "description": "Arguments were omitted or left null, placed in the wrong required/optional bucket, or not mapped to the endpoint's accepted form."
+    },
+    {
+      "failure_type": "response_structure_serialization",
+      "count": 2,
+      "description": "Calls were merged into malformed objects or invalid JSON, causing requested calls or fields to be lost during parsing."
+    },
+    {
+      "failure_type": "endpoint_semantic_selection",
+      "count": 2,
+      "description": "A neighboring validation endpoint was selected, or an extra narrower check was used instead of an endpoint explicitly covering the requested properties."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make argument construction more operational by requiring concrete values and clarifying schema-driven mappings; reinforce one-invocation-per-object serialization; and clarify how to select a single endpoint for multiple checks on the same subject without adding redundant validators.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- For each selected endpoint, take parameter names, declared types, and required-versus-optional placement from that endpoint's own schema; do not borrow fields or bucket assignments from a similar endpoint. Put every required field in the required bucket and every non-required field in the optional bucket, even when the user explicitly requests an optional setting; never duplicate a field across buckets. Use the schema's declared types and accepted enum or API-native forms, including canonical codes, symbols, and casing, while preserving identifiers and free-text search wording. Include optional settings only when requested or clearly implied; use documented recency or freshness controls for requests such as “recent” or “latest,” and a modest supported result count when wording such as “some” calls for one. Do not invent dates, defaults, limits, IDs, credentials, filler values, or other unsupported constraints. If a required value is missing, do not fabricate it.",
+        "content": "- For each selected endpoint, use only its own schema for exact parameter names, declared types, and required/optional placement; never borrow fields from similar operations. Put every required field in the required bucket and every non-required field in optional, regardless of whether the user explicitly asks for it; never duplicate a field. In formats that represent parameters as name/value entries, every entry must contain the exact name and a concrete non-null value—never emit name-only entries or null placeholders. Bind required values to the request or a documented derivation; if a required value is missing, do not call that endpoint rather than fabricate it. Treat documented finite choices as API-native values even if typed STRING, and use documented canonical codes and casing; preserve identifiers and free-text wording except where the endpoint specifies normalization. Include optional settings only when requested or clearly implied; use documented freshness controls for “recent” or “latest” and a modest supported result count for “some.” Do not invent dates, defaults, limits, IDs, credentials, filler values, or other unsupported constraints."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate before responding",
+        "content": "- For a list-of-calls response, each array element must be one complete invocation with one tool name; repeated invocations, including repeated calls to the same endpoint, remain separate elements. Never put multiple tool names in one object or repeat wrapper or parameter keys to encode more calls. Check that every intended invocation has its own element and that parsing the final JSON would retain every element and field."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Plan tool calls",
+        "content": "- When several requested checks concern the same subject, first look for a single endpoint whose documented operation explicitly returns all the requested properties, and prefer it over multiple narrower calls when it fully covers the outcomes. Do not infer endpoint functionality from a provider-wide description or add a secondary validator whose result is already covered; split the checks only when no endpoint genuinely covers them together."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

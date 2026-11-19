@@ -1,0 +1,43 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_persistence_omission",
+      "count": 4,
+      "description": "Search and filter results were returned without assigning and saving the exact result to cache."
+    },
+    {
+      "failure_type": "cache_state_action_misclassification",
+      "count": 2,
+      "description": "The agent repeated searches instead of retrieving a cached recommendation, or treated a newly supplied criterion as already satisfied."
+    },
+    {
+      "failure_type": "nearest_entity_specificity_and_grouping",
+      "count": 1,
+      "description": "A broad cached attraction category was reused for a newly named attraction, and nearest results were grouped by the wrong domain."
+    },
+    {
+      "failure_type": "date_context_binding",
+      "count": 1,
+      "description": "A date answering a pending itinerary question was not applied to the requested flight and hotel stay with a stated duration."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add a concrete completion check for pending requests and result persistence, clarify how to handle accepted offers using compatible cached results, and resolve the named-anchor and date-binding ambiguities seen in the trajectories. These edits reinforce the existing workflow without changing the protected section.",
+    "edits": [
+      {
+        "insert_after": "Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "\n- **Completion check:** Before returning, compare every newly requested action and criterion with the compatible cache summaries; an absent criterion or entity is still pending. Assign each search or transformation result to a variable and save that exact value under the appropriate cache key before returning. When the user accepts an offer to show recommendations already covered by cache, retrieve the relevant cached result rather than repeating the search."
+      },
+      {
+        "replace": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. If the user names a specific attraction or other entity as the anchor, a broad category result is not a match: search for or retrieve results for that named entity. Set `groupBy` to the requested organizing domain; when recommending lodging near an attraction, group by hotel."
+      },
+      {
+        "insert_after": "Associate dates with explicitly stated itinerary legs in the order and context given, and do not ask again for dates already supplied.",
+        "content": " When the user answers a pending travel-date question for a requested flight-and-hotel itinerary with one date and gives no separate lodging check-in, use that date for the outbound departure and hotel check-in. If an unambiguous hotel duration in nights is also stated, derive checkout from that check-in date."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

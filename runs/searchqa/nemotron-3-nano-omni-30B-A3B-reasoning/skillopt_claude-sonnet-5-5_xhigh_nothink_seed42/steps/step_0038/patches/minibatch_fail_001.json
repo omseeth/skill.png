@@ -1,0 +1,51 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "Bare 'Title + Name' clue answered with a role phrase ('Sultan of Brunei') instead of the country. A clue that already states part of a name ('named Chester') was answered with the full name ('Chester A. Arthur') instead of only the missing part ('Arthur')."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "A famous entity from a joint article (George Brett) was chosen over the person whose own page matches the clue's team and figures (Robin Yount, Brewers). The team constraint was not checked."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "Accented spelling ('Václav Havel') given where the answer key uses plain ASCII ('Vaclav Havel')."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "A synonym from the agent's own vocabulary ('Hydropower') was used instead of the wording most passages use ('hydroelectric')."
+    }
+  ],
+  "patch": {
+    "reasoning": "Step 37 shows targeted bullets keyed to visible clue features work, while global answer-line templates were rejected four times, so these are four targeted bullets and no template. (1) A Title+Name clue gets a bare-country rule in the editable Rules, because the same rule inside the protected block is not being applied. (2) A clue that states part of a name gets a strip-the-stated-part rule that overrides the 'first + last name' default. (3) One spelling/wording bullet covers the diacritics and synonym-vs-passage-wording misses. (4) A joint-article disambiguation rule makes the agent prefer the entity whose own page carries the clue's exact team and numbers.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "'N-word' hints ('this 3-word phrase') work like a letter count: the answer must have exactly N words.",
+        "content": "\n- BARE 'TITLE + NAME' clue (only a ruler/office title plus a personal name, e.g. 'Queen Margrethe II', 'Emperor Akihito', 'Chancellor Merkel', 'Sultan <name>'): the answer is the ONE-WORD country, realm or organization that person heads ('Denmark'). Never answer with the role phrase ('Queen of Denmark', 'Sultan of Brunei'), the title, or the name itself. Take the country from the passages' 'X of <Country>' wording and give just the country."
+      },
+      {
+        "op": "insert_after",
+        "target": "(not Roman 'Cupid').",
+        "content": "\n- CLUE ALREADY STATES PART OF THE NAME ('the only President named Woodrow', 'the only U.S. President named Chester', 'known by the first name Marilyn'): the answer is ONLY the missing part ('Wilson'), not the full name. This overrides the 'first + last name' default. Strike every name word the clue gives, including a middle initial ('Chester A. Arthur' -> 'Arthur'), and answer with what remains."
+      },
+      {
+        "op": "insert_after",
+        "target": "Still apply the person-name rule above.",
+        "content": "\n- SPELLING AND WORDING: write names and terms in plain unaccented letters ('Vaclav Havel', not 'Václav Havel'; 'Zurich', not 'Zürich'), unless a verbatim archive answer (Rule 3) shows accents. For a common noun or term, use the exact wording that most passages and page titles use ('hydroelectric' if most passages say 'hydroelectric power'), not a synonym or variant from your own vocabulary ('hydropower')."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not choose one that fits only some.",
+        "content": "\n- JOINT OR COMBINED ARTICLES: when a passage covers two people (an induction or 'versus' piece) and its stat line or facts could belong to either, assign them using the clue's team, years and totals. The answer is the person whose OWN page (title or stats table with the same team and figures, e.g. 'X Statistics | Baseball-Reference', 'X - Wikipedia') carries the clue's exact numbers and team. A famous co-subject who played for a different team is wrong. Before answering, confirm the candidate belonged to the team the clue names."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

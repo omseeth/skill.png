@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "dropped_requested_domain_in_first_search",
+      "count": 3,
+      "description": "First search block covered only one domain. T1 (flight+hotel with '4 rooms for 5 nights'), T5 (flights cached, hotel+attractions asked) and T7 (flight+hotel, dates given) each omitted the hotel search."
+    },
+    {
+      "failure_type": "refiltered_or_reloaded_cached_domain_instead_of_new_domain",
+      "count": 3,
+      "description": "Agent re-filtered or reloaded a cached domain instead of handling the requested uncached one. T4 re-filtered flights with the old budget instead of searching hotels, attractions and nearest. T6 re-filtered flights instead of asking for the missing checkout date. T2 reloaded and re-saved 'restaurants' instead of searching hotels."
+    },
+    {
+      "failure_type": "undefined_variable_or_missing_load",
+      "count": 1,
+      "description": "T3: assigned `attractions` but passed undefined `attractions1`, and never loaded the cached hotels before search_nearest (NameError)."
+    },
+    {
+      "failure_type": "search_despite_cache_key",
+      "count": 1,
+      "description": "T8: re-ran search_attractions even though an 'attractions' key existed; the assistant had proposed Buckhead, so a filter_attractions by neighborhood was needed."
+    },
+    {
+      "failure_type": "contradictory_rule_blocks_valid_param",
+      "count": 1,
+      "description": "T7: 'non-stop' was not mapped to num_layovers=[0] because the skill says search_flights never takes num_layovers."
+    }
+  ],
+  "patch": {
+    "reasoning": "Five of the eight failures share one cause: the agent did not tally which requested domains still had no cache key, so it dropped the hotel or attractions search, or re-filtered a cached domain that the last message never mentioned. The existing guidance is spread across many deep sections, so I put a compact tally at the very top, with the exact reply shapes seen here. I also rewrote the Rule 14 bullet 'search only the domain whose args just became complete', which contradicts the tally and encourages dropping domains. The skill's claim that search_flights never takes num_layovers is false and blocks 'non-stop', so I fixed it. A short hygiene sentence covers the NameError from mismatched or unloaded variables. These edits fix a contradiction and add one early check, rather than stacking more sibling examples.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- DOMAIN TALLY (step zero, before the SEARCH GATE): list every domain the user requested anywhere in the conversation (flight, hotel, restaurant, attraction) and mark each 'key in CACHE' or 'no key'. Every requested domain with NO key must appear in this turn's code: searched when its mandatory args are known anywhere in the conversation, otherwise named in the one closing seek_information. This holds even when the last message sounds like a refinement and even when other domains' keys fill CACHE. A domain that already has a key is touched only if the last message contains a word for it.\n  - Flight + hotel with dates now known (a date reply, 'depart X, back Y', or 'depart X ... N nights'): the flight search(es) AND search_hotels in the same block. Check-in = outbound date. Check-out = return date, or `checkout_date = adjust_date(date=\"<outbound>\", delta_days=<N>)`. Carry every hotel word stated in any turn (neighborhood, stars, amenities, budget, num_rooms, num_people from a stated headcount).\n  - CACHE holds only flight keys and the last message is about a stay or attractions ('stay in Downtown X with access to Cultural attractions', 'a 4 star hotel ... and Touristy attractions'): search_hotels (dates from the flights) and search_attractions(city=<destination>, type=[...]), each saved. If it says 'access to', 'near' or 'close to' the attractions, also `search_nearest(hotels=hotels, attractions=attractions, groupBy=\"hotel\")` saved as nearest_hotels. Write ZERO filter_flights lines: the flight budget or class in the flight summaries is already applied, and repeating the previous turn's budget is wrong.\n  - Hotel requested, check-in known but no return or check-out date: output only `seek_information(\"We need the check-out date for the hotel.\")`. No filter_flights and no search_hotels.\n  - CACHE holds 'restaurants' (or 'attractions'), a hotel was requested and the reply gives its dates: `search_hotels(...)` + save 'hotels'. Never reload the cached domain and re-save it unchanged.\n"
+      },
+      {
+        "op": "replace",
+        "target": "- Search only the domain whose mandatory args just became complete. Leave other domains' existing cache entries untouched (e.g. restaurants already cached, now the hotel dates arrive: call search_hotels only).",
+        "content": "- Search every requested domain that has no key and complete args in the same block (flights + hotel, hotel + attractions + search_nearest when asked). Leave domains that already have a key untouched (e.g. restaurants already cached, now the hotel dates arrive: call search_hotels only)."
+      },
+      {
+        "op": "replace",
+        "target": "Never repeat a search call, and never nest a search inside save_to_cache.",
+        "content": "Never repeat a search call, and never nest a search inside save_to_cache. Save the exact variable name you assigned (`attractions1 = search_attractions(...)` then `save_to_cache(key=\"attractions1\", value=attractions1)`), and every variable passed to search_nearest or filter_* must be assigned earlier in the same block: a cached hotels result needs its own `hotels = get_results_from_cache(key=\"<hotels key in CACHE>\")` line first."
+      },
+      {
+        "op": "replace",
+        "target": "search_flights never takes num_people or num_layovers.",
+        "content": "search_flights never takes num_people. Pass num_layovers only when the user said 'non-stop' or 'direct' (`num_layovers=[0]` on every flight search leg)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_contract_violation",
+      "count": 5,
+      "description": "Imported the unavailable `tools` module instead of calling injected tool functions directly."
+    },
+    {
+      "failure_type": "cache_reuse_tool_selection",
+      "count": 3,
+      "description": "Searched again or used a search tool instead of filtering compatible cached restaurant results."
+    },
+    {
+      "failure_type": "result_persistence",
+      "count": 3,
+      "description": "Failed to save newly generated search or filter results under a cache key."
+    },
+    {
+      "failure_type": "contextual_preference_resolution",
+      "count": 1,
+      "description": "Did not turn an affirmative response to a proposed hotel amenity into an actionable filter."
+    },
+    {
+      "failure_type": "tool_parameter_mapping",
+      "count": 2,
+      "description": "Mapped a state to the city field or treated an exact rating as a minimum threshold."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly requires direct tool calls, compatible-cache filtering, result saving, exact-value ranges, and appropriate parameter mapping, so repeating those rules would not patch a gap. The affirmation rule refers to carrying forward an entity or category but does not explicitly cover accepting a preference value such as a boolean amenity; clarify that these confirmations become actionable tool criteria.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the accepted value into the relevant tool argument—not only named entities or categories, but also preferences and boolean amenities (for example, “yes” to breakfast means `breakfast_included=True`). Treat an accepted preference as a new actionable criterion: apply it to a compatible cached result with the matching filter and save the updated result; do not treat the affirmation as a no-op."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_selection_and_scope",
+      "count": 5,
+      "description": "Agents used broader cache entries, repeated already-satisfied filters, skipped new refinements, or reprocessed unaffected domains."
+    },
+    {
+      "failure_type": "flight_leg_completeness",
+      "count": 2,
+      "description": "Round-trip requests were treated as a single outbound search instead of separate directional legs."
+    },
+    {
+      "failure_type": "result_binding_and_caching",
+      "count": 3,
+      "description": "Flight or restaurant searches were emitted without binding and saving their returned results."
+    },
+    {
+      "failure_type": "tool_value_format",
+      "count": 1,
+      "description": "An exact departure time was converted to a format rejected by the tool."
+    }
+  ],
+  "patch": {
+    "reasoning": "Cache refinement and scope errors recur across most of the batch. Clarifying how to choose among compatible cache entries can reduce redundant calls and keep new criteria attached to the latest refined result. The departure-time failure exposes a specific encoding gap; the existing general schema-validation guidance does not state how to preserve an exact time in a two-endpoint field. Flight-leg and result-lifecycle rules already exist, so adding more overlapping prose for those failures is not warranted.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "\n- When multiple listed cache entries match a domain and target, choose the most refined compatible entry whose summary covers the established criteria. Retrieve it and apply only genuinely new constraints; do not fall back to a broader base result or repeat filters already reflected in the chosen entry. Do not create new searches, filters, or cache entries for an unaffected domain merely to carry it forward."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "\n- For an exact time in a two-endpoint time-range field, use the same time at both endpoints and follow the tool parser’s accepted format. Preserve AM/PM notation when accepted: for example, encode an exact `12:22 PM` departure as `departure_time=[\"12:22 PM\", \"12:22 PM\"]`, not as `12:22:00`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

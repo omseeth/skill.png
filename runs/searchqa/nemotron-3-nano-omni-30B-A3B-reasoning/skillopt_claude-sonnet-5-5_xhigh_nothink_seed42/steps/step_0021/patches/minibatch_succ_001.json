@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Four of the eight clues were bare definitions or paraphrases ('pamper your eggs', 'a short, witty saying', 'accident where the driver flees', 'what they call unpasteurized milk'). The agent answered with the standard dictionary headword in the grammatical form the definition needs ('coddling' for the -ing definition, a noun for the noun definitions). It kept hyphens and the multiword phrase intact.",
+    "On the unpasteurized-milk clue the agent kept the head noun ('raw milk'), although it also appears in the clue. The answer was a renamed version of the clue's phrase, so the bare modifier would not name the thing. This sits in tension with the DELETE-CLUE-WORDS test, which has no explicit tie-breaker for it.",
+    "Where the context held a verbatim archive line ('... | John Bonham.', '... | Oscar Wilde.'), the agent copied that answer. It ignored the leading stage-direction parenthetical ('Jon of the Clue Crew peers down...') as filler and treated only the factual core as the clue. Rule 3 already covers the archive copy.",
+    "Descriptive qualifiers in the clue ('alliterative', 'goggle-eyed', 'late', 'died in 1962', 'now has its own series') were used as verification tests on candidates drawn from noisy or duplicated passages. For people the agent gave the full formal first and last name from the encyclopedia lead rather than a nickname ('Stu')."
+  ],
+  "patch": {
+    "reasoning": "The archive-copy and type-check behaviors are already encoded, so I add only gaps visible across several successes. First, a short rule for bare-definition clues: the dictionary headword, the form that fits the definition, and ignoring crossword and quote-collection noise. This also resolves the case where a leading video or stage-direction parenthetical is filler rather than a caption. Second, an explicit tie-breaker between the DELETE-CLUE-WORDS test and head-noun retention. Third, a verification step using the clue's descriptive qualifiers, plus a name-form rule for people. All three are conditional on visible clue features, so they should not collide with the stable passes. Each is a single bullet, so net length stays small.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "answer with the common English name (Conch).",
+        "content": "- BARE-DEFINITION clues ('A short, witty saying', 'This phrase describes an accident in which the driver flees', 'to cook gently in liquid just below boiling') ask for the standard dictionary headword or idiom that the definition glosses. Find the passage that pairs the definition text with a term (dictionary entry, flashcard, glossary) and answer with that term in its standard form, keeping internal hyphens and multiword idioms intact ('hit-and-run' stays one phrase). Match the grammatical form of the definition (-ing, noun or verb). Ignore crossword-solver pages that list the clue without its answer, and pages of quotes that merely contain the clue's words. A leading parenthetical stage direction about the video, audio or host ('(Jon of the Clue Crew peers down...)') is filler. Only a trailing role-and-dates parenthetical is a caption."
+      },
+      {
+        "op": "insert_after",
+        "target": "ignores that the passages say 'funeral pyre').",
+        "content": "- TIE-BREAKER with the head-noun exception: apply the delete-clue-words test only when the clue's word is a separate extra part of a longer name ('hasty' + pudding). If the clue merely glosses the thing with a synonym phrase ('what they call the unpasteurized milk') and the standard term is a modifier plus that same head noun, the bare modifier would not name the thing, so keep the full standard phrase ('raw milk', not 'raw')."
+      },
+      {
+        "op": "insert_after",
+        "target": "(Khartoum -> Sudan even if Sudan is no longer 'largest').",
+        "content": "- Descriptive qualifiers in the clue ('alliterative', 'goggle-eyed', 'late', a death year, 'now has its own series') are verification tests. Before answering, check that your candidate satisfies each one, and prefer the candidate that does when the passages offer several. For a person with no verbatim archive hit, give the full formal first-and-last name as it appears in the encyclopedia lead of the passages, not a nickname or a short form ('Stuart', not 'Stu')."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache lifecycle and incremental follow-up",
+      "count": 6,
+      "description": "Agents skipped requested updates, used an unsuitable cached base, overwrote a cache key, or failed to save new results."
+    },
+    {
+      "failure_type": "unrequested work and code",
+      "count": 3,
+      "description": "Agents added unrelated searches, sorting, imports, printing, or other unnecessary code."
+    },
+    {
+      "failure_type": "tool result type misuse",
+      "count": 1,
+      "description": "An agent treated a typed search-result model as a dictionary and triggered a TypeError."
+    },
+    {
+      "failure_type": "unsupported enum casing",
+      "count": 1,
+      "description": "An agent passed a title-cased flight class where the tool expected a lowercase value."
+    },
+    {
+      "failure_type": "inferred criteria",
+      "count": 2,
+      "description": "Agents inferred a hotel checkout date or traveler count that the user had not specified."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache, persistence, and inference failures are already explicitly addressed by existing rules, so repeating them would not fill a skill gap. These additions clarify two uncovered execution issues: avoiding unnecessary code and respecting the flight-class tokens accepted by the tool.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n- **Keep generated code limited to necessary tool calls:** Do not add result printing, summaries, manual result inspection, or sorting unless requested. Tool outputs are typed result models, not dictionaries: pass them directly to subsequent tools and cache functions; never subscript them (for example, `result[\"search_results\"]`). If inspection is genuinely needed, use declared model attributes.\n- **Use accepted flight-class values:** Pass `flight_class` as a list using the lowercase tool values `\"economy\"`, `\"business\"`, or `\"first\"`, even when the user's wording uses different capitalization."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

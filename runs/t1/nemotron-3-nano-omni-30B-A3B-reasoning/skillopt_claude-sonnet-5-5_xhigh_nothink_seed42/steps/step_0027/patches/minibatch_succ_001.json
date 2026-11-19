@@ -1,0 +1,24 @@
+{
+  "batch_size": 6,
+  "success_patterns": [
+    "First-turn requests missing a mandatory date or city (hotel with vague 'weekend getaway' timing, flight + hotel with 'last-minute' and a party size, round trip with 'weekend getaway', restaurant with no city) succeed as one short seek_information naming only the missing mandatory items.",
+    "When the user's reply supplies hotel dates and a neighborhood, the first search_hotels call carries every constraint stated in any earlier turn (rating, meeting rooms, business center), and each search is assigned and saved as 'hotels'.",
+    "An event date (the reunion date) given in answer to an assistant question about the event is not a departure date. The correct output was still a single seek_information for the flight departure date."
+  ],
+  "patch": {
+    "reasoning": "Most successes are seek_information-only or complete first searches, and the skill already covers them, so I add nothing for those. The one uncovered pattern is trajectory 6. The assistant asked 'What's the reunion date?', the user gave the event date, and the correct output was still seek_information for the departure date. Rule -2 and Rule 24 say a date reply to the assistant's date question always becomes the departure_date, which contradicts this. I add a narrow exception, keyed on the assistant asking about the event rather than travel dates, so it does not disturb the rule for replies to travel-date questions.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "If the assistant just asked for dates and the user's reply holds a date or an 'X to Y' range, never ask again.",
+        "content": "If the assistant just asked for travel or stay dates (when to fly, check-in/check-out) and the user's reply holds a date or an 'X to Y' range, never ask again. Exception: if the assistant asked for the EVENT date ('What's the reunion date?', 'When is the wedding?') and the user answers with that date and no departure date was ever given, the date is the event date, not a departure date. Then the whole output is `seek_information(\"We need the departure date for the flight.\")`."
+      },
+      {
+        "op": "replace",
+        "target": "- A date in the user's reply to the assistant's date question IS the departure_date, even when the conversation also mentions an occasion.",
+        "content": "- A date in the user's reply to the assistant's travel-date question IS the departure_date, even when the conversation also mentions an occasion. The exception is a reply to an EVENT-date question ('What's the reunion date?'): that date is the event date, so ask for the departure date with one seek_information (see CACHE GATE -2)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

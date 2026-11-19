@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache-scope selection",
+      "count": 4,
+      "description": "Filterable follow-up preferences triggered fresh searches instead of retrieving compatible cached results and filtering them."
+    },
+    {
+      "failure_type": "mandatory-argument handling",
+      "count": 2,
+      "description": "Hotel searches were attempted or left incomplete despite missing stay dates, without asking for the required dates while continuing independent work."
+    },
+    {
+      "failure_type": "result-variable integrity",
+      "count": 2,
+      "description": "Cache saves referenced guessed, undefined result names rather than variables assigned by the search calls."
+    },
+    {
+      "failure_type": "argument-field mapping",
+      "count": 1,
+      "description": "A state abbreviation for an attraction search was passed as a city instead of a state."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains the underlying cache, required-argument, assignment, and state-mapping rules. These edits add focused execution patterns and a final code check for the recurrent mistakes, without repeating the state-mapping guidance.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Cache-aware tool workflow",
+        "content": "**Use this decision boundary for follow-ups:** when a compatible cached result already covers the same domain, location, dates or leg, and scope, and the user only adds or changes a filterable preference, retrieve that exact cache key and filter it—do not rerun the base search. For example:\n```python\nprior = get_results_from_cache(key=\"<exact cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<new descriptive key>\", value=filtered)\n```\nRepeat this retrieve-filter-save sequence separately for every affected cached itinerary leg. Search anew only for a genuinely new scope or when no compatible result can cover the request."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Required-argument checks",
+        "content": "**Partial-completion pattern:** if a requested hotel lacks check-in or checkout dates, do not call `search_hotels` or supply placeholder dates; ask only for the missing stay dates with `seek_information`. Still search and save any independent requested domain whose mandatory inputs are complete. For example, a complete restaurant request can be searched and saved in the same code even while hotel dates are being requested."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Assign each search, filter, sort, and nearest-results call once to a named local variable, then immediately save that exact result with `save_to_cache` under a unique, descriptive key—even when it is the final call.",
+        "content": "Before emitting code, check every `save_to_cache(value=...)`: it must name the local variable assigned the corresponding tool result, not a guessed name derived from the domain or cache key. For example, use `hotels = search_hotels(...)` followed by `save_to_cache(key=\"<descriptive key>\", value=hotels)`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

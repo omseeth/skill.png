@@ -1,0 +1,49 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "refinement_scope_and_hygiene",
+      "count": 3,
+      "description": "On a hotel- or restaurant-only follow-up the agent re-filtered flights, repeated params already in the CACHE summary, added hotel dates to filter_hotels, invented a kwarg (business_facilities), nested get_results_from_cache inside filter_*, or skipped save_to_cache. Stars were passed as [N] instead of [N, N]. One neighborhood was shortened to 'Downtown' when the user said 'Downtown Tucson'."
+    },
+    {
+      "failure_type": "wrong_or_hallucinated_cache_key",
+      "count": 3,
+      "description": "Rule 9's example key 'departure_flights' made the agent load or save a key that does not exist. The CACHE and the gold answers use 'flights' / 'return_flights' (and 'flights2', 'hotels2' for multi-city), so the load returned None and filter_flights failed. Other runs used non-standard keys such as 'outbound_flights'."
+    },
+    {
+      "failure_type": "fabricated_params_instead_of_seek_information",
+      "count": 2,
+      "description": "The agent invented dates (and a neighborhood) for a hotel request with no dates, or searched flights with made-up dates when the user's last turn only supplied restaurant constraints. The correct output was seek_information, plus a real search for the domain that was complete (restaurants)."
+    },
+    {
+      "failure_type": "incomplete_flight_hotel_plan",
+      "count": 3,
+      "description": "The agent skipped the return-leg flight search for 'depart X and return Y'. It skipped the hotel search when the user gave '3 nights' and a departure date (checkout = adjust_date(departure, 3)). In a multi-city trip it searched hotels in the origin city and used same-day check-in/out."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four edits target the recurring failures. (1) Rule 9's 'departure_flights' key contradicts the actual cache and gold keys and caused a None-load crash, so it is replaced. (2) Rule 6 is refined: never fabricate dates or optional values, and still search any requested domain whose mandatory args are complete (e.g. restaurants with a known city) while seeking info for the rest. (3) A new rule covers round-trip two-leg searches, multi-city handling, key naming, and the 'N nights' hotel case. (4) A new rule restricts follow-up turns to the domain the user is answering and enforces the 3-statement refinement format, exact CACHE keys, the [N, N] stars convention, and no repeated or invented filter params.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "save_to_cache(key=\"departure_flights\", value=departure_flights)",
+        "content": "save_to_cache(key=\"flights\", value=departure_flights)"
+      },
+      {
+        "op": "replace",
+        "target": "- If any mandatory arg is missing, output ONLY a seek_information(...) call that names what is missing. Do not also emit a search call with placeholders.",
+        "content": "- If mandatory args are missing for every requested domain, output ONLY a seek_information(...) call naming what is missing. Never emit a search with invented or placeholder dates, never guess dates like '2025-08-09', and never invent optional values (e.g. neighborhood=[\"downtown\"] for a request that only says 'luxurious with a city view'). A first-turn hotel request that gives only city, occasion, style or amenities (no dates) is exactly: seek_information(\"We need to ask for the dates for the stay.\").\n- Multi-domain turns: if one requested domain already has all its mandatory args (e.g. restaurants need only a city; the last turn gives cuisine or dietary needs), emit that domain's search_* and save_to_cache first, then ONE seek_information at the end naming the missing items of the other domains (e.g. departure dates and check-in/check-out dates). Never search flights or hotels with guessed dates."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 15: Flight/hotel search completeness and cache key names\n- Standard cache keys: first or outbound flight search -> \"flights\"; return leg -> \"return_flights\"; multi-city legs -> \"flights\", \"flights2\"; hotels -> \"hotels\" (second city \"hotels2\"); restaurants -> \"restaurants\"; attractions -> \"attractions\". Never invent keys like \"departure_flights\" or \"outbound_flights\". When loading, copy the key literally from the CACHE summary.\n- \"Depart on X and return on Y\" (or any outbound/return date pair) always needs BOTH search_flights calls, outbound then return with the cities swapped. Never emit only the outbound leg.\n- Multi-city trip (A->B then B->C): one search_flights per leg. Search hotels only in the destination cities (B and C), never in the origin A, with each city's own stay dates. Do not use the same day for check-in and check-out.\n- If a hotel is requested with a stay length (\"3 nights\", \"for a weekend\") and a departure/arrival date is known, check-in is that date. In the SAME code block write `checkout_date = adjust_date(date=\"<that date>\", delta_days=<nights>)` and `hotels = search_hotels(city=<destination>, checkin_date=[\"<that date>\"], checkout_date=[checkout_date])`, then save under \"hotels\". This is the one allowed use of adjust_date (reference date + offset). Search the flight in the same block (with flight_class if stated).\n- Only search domains the user has asked for. Do not add a hotel just because the user said 'getaway'."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 16: Follow-up turns answer ONE domain (supplements Rules 2, 10 and 13)\n- Identify what the assistant's last question was about (hotel location/stars, restaurant rating, ...). The user's reply applies only to that domain. Emit load -> filter -> save for that domain only. Do NOT re-filter flights or other cached domains, even if flight class or airline appears earlier in the conversation. The CACHE summary text (e.g. 'flight classes: [economy]', 'cuisine(s): [Italian]', hotel dates) shows what is already applied, so never pass it again, and never add checkin_date/checkout_date, city or cuisine to a filter call when they are already in the summary.\n- Write exactly three straight-line statements on separate lines: `x = get_results_from_cache(key=\"<exact key from CACHE>\")`, `y = filter_<domain>(prior_results=x, <new constraints only>)`, `save_to_cache(key=\"filtered_<domain>\", value=y)`. Never nest get_results_from_cache inside filter_*. Never omit the save_to_cache.\n- Value formats: 'N star' -> stars=[N, N]. 'at least X' rating -> rating=[X, 5]. Neighborhood uses the user's wording including the city (\"Downtown Tucson\", \"Downtown Portland\"), not a shortened form.\n- Use only parameter names from the filter tool's arg list. 'Business facilities/center' -> has_business_center=True; never write business_facilities=True. Do not invent a kwarg for any phrase that has no matching parameter."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

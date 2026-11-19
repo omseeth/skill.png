@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Answer repeated words the clue already supplied: 'bear market' for 'this market' (gold 'the bear'), 'Grandpa Zeb' for 'called him this' (gold 'Grandpa'), and 'Show Boat' with a spelling mismatch. The delete-clue-words test was skipped, and it was not applied to archive-copied answers."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "The agent answered with a title or item named in the clue instead of the person or entity behind it: 'Shake It' for 'his 1983 album' (David Bowie), and the 'capital cities' descriptor for a bare list of cities."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A bare one-word proper noun clue ('Hamburg') was answered by repeating the noun instead of the larger entity the passages tie it to (Germany)."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "'The alliance of these Chinese businesses' asks for the business type ('laundries'), but the agent answered the organization name that the passages mention."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "'Superior' was given without the prefix type word of a standard name; gold is 'Lake Superior'. The existing rule only teaches dropping suffix type words."
+    }
+  ],
+  "patch": {
+    "reasoning": "These edits target the recurring slot-type errors. In the Bowie case the agent copied a quoted title from the clue instead of naming the creator. In the Hamburg case it repeated the bare noun instead of naming the larger entity. In the laundries case it named the organization instead of the members the clue points to. They also cover clue-echo trimming, including archive answers, and the prefix-style type-word distinction ('Lake Superior' kept, 'Amazon River' dropped). Each rule is general and avoids rewriting the larger rejected bundles from earlier steps.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- A clue that is ONLY one bare proper noun with no verb ('Hamburg', 'Timonium') is category-style. Answer with the larger entity that the passages tie it to: a city or town -> its country (or state), a region or landmark -> its country. Never repeat the noun itself and never say the clue is incomplete.\n- 'His / her' + a quoted title of a song, album, book or film ('\"Shake It\" is the last song on his 1983 album \"Let's Dance\"') asks for the CREATOR (David Bowie). Never answer with a title or item that already appears in the clue. Passages repeating the title next to a person's name give the answer."
+      },
+      {
+        "op": "insert_after",
+        "target": "If the clue says 'this manicurist / this king / this dessert', do not append that role word to the answer.",
+        "content": "\n- Echo check, which also applies to answers copied from an archive line: if the clue already states the head noun ('this market', 'this party') and the archive or passage answer is 'bear market', answer only the missing modifier ('Bear'). For 'This character's name was Zeb, but they called him this', answer only the nickname ('Grandpa'), not 'Grandpa Zeb'. Never include a name or word the clue says is the OLD or given name."
+      },
+      {
+        "op": "insert_after",
+        "target": "Other named entities in the clue are anchors, never the answer.",
+        "content": "\n- 'The alliance / union / league / association / guild / chain of these <Xs>' ('the alliance of these Chinese businesses') asks for the generic MEMBER type, as a bare plural noun ('laundries'), not the organization's full name that the passages give ('Chinese Hand Laundry Alliance'). Find the passage naming the members' trade or type, and drop the nationality and organization words that the clue already states."
+      },
+      {
+        "op": "insert_after",
+        "target": "The 'do not repeat clue words' rule is for a separate modifier already stated in the clue ('hasty' + pudding).",
+        "content": "\n- Prefix-style type words belong to the standard name and are kept: 'Lake Superior' (not 'Superior') when the clue lists sibling lakes ('Huron, Ontario, Michigan, Erie & this one'), 'Mount Everest', 'Fort Knox'. Suffix-style type words ('Amazon River', 'Roanoke Island', 'Adirondack Mountains') are dropped when the bare name is standard and the clue does not use the word."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

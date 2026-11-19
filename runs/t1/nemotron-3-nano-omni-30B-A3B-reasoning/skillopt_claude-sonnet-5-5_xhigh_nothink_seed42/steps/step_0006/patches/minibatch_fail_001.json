@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "reapplied_constraints_or_extra_domain_touched",
+      "count": 2,
+      "description": "Re-passed a constraint the CACHE summary already lists (budget=50 beside new stars). Or loaded and re-saved another domain's key (restaurants_final) on a hotel-only refinement."
+    },
+    {
+      "failure_type": "missed_domain_in_multi_domain_turn",
+      "count": 2,
+      "description": "Omitted search_hotels for a round trip plus hotel once dates were known. Or filtered only the restaurant and skipped the accepted hotel kids-club filter and the 'near the hotel' search_nearest."
+    },
+    {
+      "failure_type": "wrong_search_vs_filter_routing",
+      "count": 2,
+      "description": "Loaded a non-existent 'hotels' key (None -> ValidationError) when dates arrived for an uncached hotel domain. Or re-ran search_attractions on 'What's there?' instead of filtering by the proposed neighborhood."
+    },
+    {
+      "failure_type": "over_seeking_information",
+      "count": 1,
+      "description": "Asked for a restaurant city and a flight departure date although the destination city was known from hotels and flights were already cached."
+    },
+    {
+      "failure_type": "output_form_violation",
+      "count": 1,
+      "description": "Bare search_attractions(city=\"OR\") with no assignment or save, and a state abbreviation passed as city."
+    }
+  ],
+  "patch": {
+    "reasoning": "Several existing rules (17, 13, 21, 14, 9) were violated in the batch because they are buried deep in a long skill. A short pre-output checklist at the top re-surfaces the most-violated ones: already-applied constraints, other domains, assign+save, state=, and cache keys. Two genuine gaps remain. The first is routing: a domain with no cache key must be searched, and the hotel must be added to a flight+hotel request; city must carry over from other domains instead of triggering seek_information. The second is proposal and compound handling: replies like 'What's there?', combined accept+new-request turns, and 'near the hotel' (search_nearest).",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## PRE-OUTPUT CHECKLIST (apply to every turn before writing code)\n1. Touch only the domain(s) the LAST user turn talks about (including a 'Yes' to the assistant's amenity proposal). Never load, re-save or 'finalize' another domain's key. For example, a hotel-amenity answer never produces `restaurants_final`.\n2. Pass only NEW constraints. Every value the CACHE summary of the loaded key lists (budget: $50, stars range, cuisine, rating, neighborhood, amenities) is ALREADY applied, even if the user said it in an earlier turn. Do not re-pass it (e.g. no budget=50 next to a new stars=[3, 5]).\n3. Every search_*/filter_*/search_nearest call is assigned to a variable and followed by save_to_cache. A bare `search_attractions(...)` is wrong. A US state or abbreviation ('OR', 'Oregon') goes in `state=\"OR\"`, never in `city`.\n4. Only load keys that literally appear in the CACHE summary. If the domain has no key, it needs a search, not a load.\n5. No comments, print(), imports, or helper logic. Only straight-line tool calls."
+      },
+      {
+        "op": "insert_after",
+        "target": "4. Pass only the constraints the user literally stated. Never ask about optional details, and never seek information for a domain the user has not requested.",
+        "content": "5. A requested domain with NO key in the CACHE is a search, even when other domains' keys exist and the last turn only supplied dates or amenities. Example: CACHE holds only 'attractions'; the user asked for a hotel in Fresno for 3 people, budget 65, 4 stars; the last turn gives the dates. Output `hotels = search_hotels(city=\"Fresno\", checkin_date=[\"August 17, 2025\"], checkout_date=[\"August 20, 2025\"], num_people=3, budget=65, stars=[4, 4])` + `save_to_cache(key=\"hotels\", value=hotels)`. Never write `get_results_from_cache(key=\"hotels\")` when 'hotels' is not in the CACHE (it returns None and filter_hotels fails). Gather every hotel constraint stated anywhere in the conversation (party size, budget, stars, amenities) into this first search call. A round-trip flight request that also mentioned a hotel ('and a hotel stay for a special occasion') needs BOTH flight searches AND `search_hotels(city=<destination>, checkin_date=[<outbound date>], checkout_date=[<return date>])` saved as \"hotels\" as soon as the dates are given. Leaving the hotel out is a failure.\n6. City carry-over: the city for restaurants, attractions or hotels is the destination already established by ANY domain (hotel city, flight destination, attraction city). 'find me some restaurants with 110 range' after a St. Louis hotel search -> `restaurants = search_restaurants(city=\"St. Louis\", budget=110)` + `save_to_cache(key=\"restaurants\", value=restaurants)`. Never seek_information for a city that can be read from another domain. Never ask for a flight departure date when flight keys already exist in the CACHE, because those dates are already known. 'N range' or 'around N' on restaurants means budget=N."
+      },
+      {
+        "op": "append",
+        "content": "## Rule 23: Replies to assistant proposals, compound turns, and 'near' requests\n- A user reply that engages with a place or option the assistant just proposed is acceptance of it, not a 'no preference' answer. This includes questions such as 'What's there?', 'Tell me more' and 'Actually, I haven't'. Assistant: 'Have you considered Midtown Atlanta?' + CACHE 'attractions' -> `a = get_results_from_cache(key=\"attractions\")`, `a2 = filter_attractions(prior_results=a, neighborhood=[\"Midtown Atlanta\"])`, `save_to_cache(key=\"filtered_attractions\", value=a2)`. Never re-run search_* with the old criteria. Copy the neighborhood name exactly as the assistant wrote it.\n- Compound turns: when the last turn accepts a proposal for one domain ('Yes, a kids' club would be great') AND makes a new request for another domain ('recommend a Romanian restaurant'), handle BOTH. Load the most refined hotel key and filter it with has_kids_club=True, then load the most refined restaurant key and filter it with cuisine=[\"Romanian\"], each as load -> filter -> save. Do not drop the hotel half.\n- 'near / close to / by the hotel' (restaurants or attractions near the hotel) also needs search_nearest after the filters, using the filtered variables from the same code block: `search_nearest(hotels=final_hotels, restaurants=final_restaurants, groupBy=\"restaurant\")`, then `save_to_cache(key=\"nearest_restaurants\", value=nearest_restaurants)`. groupBy names the domain the user wants recommended (restaurant near the hotel -> \"restaurant\"). Both domains must be loaded and filtered first, hotels with anything just accepted. Later turns should chain from the nearest_* key (Rule 2)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

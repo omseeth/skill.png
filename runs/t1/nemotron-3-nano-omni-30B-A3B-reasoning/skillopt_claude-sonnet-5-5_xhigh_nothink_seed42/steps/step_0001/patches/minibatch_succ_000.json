@@ -1,0 +1,32 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "In 6 of 8 trajectories the user never gave the mandatory dates (flight departure_date, hotel checkin_date/checkout_date). The gold action was a single seek_information call. The agent instead invented dates and called a search tool, so tool_f1 was 0 on all six.",
+    "Users often supply only optional constraints (budget, stars, amenities, rating, num_people, num_rooms, 'last-minute', 'business trip'). The agent treated this as enough to search, but optional parameters never replace missing mandatory ones.",
+    "In combined requests (flight + hotel), the gold seek_information asks for all missing mandatory fields across domains in one call.",
+    "When the user's last turn adds no new constraint ('Not really, just something fun', 'Okay, that sounds good') and the cache already holds the relevant results, the gold action was get_results_from_cache with the base key. The agent instead re-searched or printed 'No planning needed', and both were wrong."
+  ],
+  "patch": {
+    "reasoning": "Most failures come from one root cause: hallucinating mandatory date arguments and searching instead of asking. A second, smaller pattern is mishandling an acknowledgement or no-preference reply when results are already cached. The rules below prevent both and are phrased to generalize across domains.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Rule 1: Never fabricate mandatory parameters (dates especially)\n- Before any search_* call, check that every mandatory argument was EXPLICITLY stated in the conversation. Never invent, guess, or default dates (e.g. '2025-08-03'), even for 'last-minute', 'this weekend', or 'business trip' requests with no concrete date.\n- Mandatory args that are commonly missing:\n  - search_flights: departure_date (plus an origin: start_airport_city / start_airport / start_airport_code).\n  - search_hotels: city, checkin_date AND checkout_date.\n  - search_restaurants: city.\n- If any mandatory arg is missing, output ONLY a seek_information(...) call that names what is missing. Do not also emit a search call with placeholders.\n- Optional details (budget, stars, rating, amenities, num_people, num_rooms, cuisine) never substitute for missing mandatory args. A user who has answered several follow-up questions about budget, stars, or amenities may still not have given dates, so re-check each time.\n- A round-trip request still needs the departure date. Ask for it; do not assume a return date."
+      },
+      {
+        "op": "append",
+        "content": "## Rule 2: Writing seek_information\n- Mention only MISSING MANDATORY parameters. Never ask for optional ones.\n- For multi-domain requests (flight + hotel, hotel + attraction), list the missing mandatory items for every domain in ONE call. Example: seek_information(\"We need the departure date for the flight, and the check-in and check-out dates for the hotel.\")\n- Keep it to one short sentence. Examples: seek_information(\"We need to ask for the check-in and check-out dates\"), seek_information(\"We need the departure date for the flight\")."
+      },
+      {
+        "op": "append",
+        "content": "## Rule 3: Acknowledgement / no-preference replies when results are cached\n- If the last user turn adds no new constraint (e.g. 'Not really, just something fun', 'Okay, that sounds good', 'No preference') and the cache summary already holds results for the domain under discussion, do NOT re-run search_* with the old criteria.\n- Do NOT output print(\"No planning needed\") either. Retrieve the stored results with get_results_from_cache(key=\"<key>\"), using the cache key that matches the user's original request (e.g. key=\"attractions\").\n- Only call search_* / filter_* again when the user introduces a new or changed constraint."
+      },
+      {
+        "op": "append",
+        "content": "## Rule 4: Pre-output checklist\n1. Which domains did the user mention? Generate code only for those.\n2. For each domain, are all mandatory args explicitly present? If not, use seek_information only (Rule 1/2).\n3. Does the cache already answer this turn, or does the user add nothing new? If so, use get_results_from_cache (Rule 3).\n4. Otherwise call the tool with keyword args, copying entity values exactly as the user wrote them. Set only the optional args the user stated, then save_to_cache the result."
+      }
+    ]
+  },
+  "source_type": "success"
+}

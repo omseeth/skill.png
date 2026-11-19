@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "duplicate_optional_key",
+      "count": 3,
+      "description": "A filled `optional parameters` list was followed by a second empty `\"optional parameters\": []` key. This erased enable (education:23), page (education:72) and get_test (education:28). The skill already shows this exact bad string four times."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 3,
+      "description": "A plausible-looking generic tool was chosen over the literal fit: lat/lng Airbnb instead of the admin-divisions tool (travel:7), BizToc instead of the movie-news tool (news:1), and Disposable Email Validation instead of Email Existence Validator (email:115)."
+    },
+    {
+      "failure_type": "param_placement_or_value",
+      "count": 3,
+      "description": "Required and optional were mixed up: Aliexpress q/startPrice/region were put in required although the schema's required list is none (ecommerce:21), DEI `page` was put in optional although the schema lists it as required (education:72), and starid was put in required (education:28). Value defaults were also wrong (Asos lang `en`, Amazon domain `US`)."
+    },
+    {
+      "failure_type": "dropped_calls",
+      "count": 1,
+      "description": "Narrative query lost the kanji 'parent' facet and the final Uncovered Treasure search clause (education:23)."
+    },
+    {
+      "failure_type": "dash_in_tool_name",
+      "count": 1,
+      "description": "Wrote `Lost Ark — get classes` although the heading and the query both use `Lost Ark: get classes`. The skill's own BAD example (`Lost Ark — get engravings`) is nearly identical to the output."
+    }
+  ],
+  "patch": {
+    "reasoning": "The agent answers directly with no visible reasoning, so process rules (checklists, skeleton passes) are not executed. Step 17's rejection shows that quoting a bad string in the skill makes the model reproduce it (the `], \"},` example came back verbatim). The fast section prints the duplicate-key bad string three more times, and it prints a dash-name BAD example that closely matches the one dash failure here. These edits remove the priming strings and replace them with positive one-line statements. Each rule shrinks, none grows, and the slow block's single copy of the bad pattern stays. Layout, skeleton and one-object-per-line rules are left untouched because the last three epochs showed changing them hurts. Tool-selection and placement misses repeat rules the skill already states, and the meta guidance says not to restate them or chase per-tool placement flips.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "BAD `Lost Ark — get engravings`, `Wayfair — This API helps to query...`, `BestBuy Product Data`. GOOD",
+        "content": "Type the name character for character from the `### ` line, so a colon always sits between provider and endpoint. BAD (missing endpoint) `BestBuy Product Data`. GOOD"
+      },
+      {
+        "op": "replace",
+        "target": "`\"optional parameters\": [{\"name\": \"wordLength\", \"value\": \"6\"}], \"optional parameters\": []` (the second key erased the first list)",
+        "content": "a second `optional parameters` key written after a filled list (the empty one erased the filled one)"
+      },
+      {
+        "op": "replace",
+        "target": "- Stray trailing key after a one-param list: `\"optional parameters\": [{\"name\": \"value\", \"value\": \"A\"}], \"optional parameters\": []`. The empty list erased `value`=`A`.",
+        "content": "- The `]` that closes a filled optional list is followed directly by `}`. Nothing else is typed after it."
+      },
+      {
+        "op": "replace",
+        "target": "3. Keys: BAD `\"optional parameters\": [{...}], \"optional parameters\": []` (the second key erases the first list), and BAD an object with no `\"optional parameters\"` key. GOOD exactly one each of `tool name`, `required parameters`, `optional parameters` per object, using `[]` when empty.",
+        "content": "3. Keys: every object has exactly one each of `tool name`, `required parameters`, `optional parameters`, in that order, using `[]` when empty. An object with no `optional parameters` key is also wrong."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

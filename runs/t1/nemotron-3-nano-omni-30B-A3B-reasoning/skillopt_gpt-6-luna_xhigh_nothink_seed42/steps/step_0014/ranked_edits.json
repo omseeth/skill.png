@@ -1,0 +1,37 @@
+{
+  "reasoning": "Combined the overlapping range-value and location-parsing guidance into one validation edit, retaining the amenity mapping as a distinct rule in that same section. Added the unique guidance on elliptical replies, return-leg dates and class inference, and searching for a newly requested attraction without implying proximity. Existing cache and result-persistence rules were not duplicated, and no edits target the protected section. [optimizer-ranked: selected 3/4 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+      "content": "\n- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.\n- Parse locations hierarchically when the user gives both a city and an area within it: use the parent city in `city` and pass the named district or area verbatim in `neighborhood` when supported. Preserve the complete location label rather than shortening it or passing the combined city-and-area phrase as the city; for example, a request for Downtown Tucson uses `city=\"Tucson\"` and `neighborhood=[\"Downtown Tucson\"]`.\n- Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+      "content": "\n- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. A direct answer can introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip, search outbound and return separately, reversing the route for the return; do not use an unsupported `return_date` argument or treat the return date as another outbound date. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.",
+      "content": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 2 adds broadly useful schema-value validation and clarifies location and amenity mapping. Edit 0 addresses elliptical replies and multiple locations, which are not fully covered by the existing update rules. Edit 1 sharpens round-trip date encoding and cache reuse, though much of its guidance is already present. Edit 3 is largely redundant with the existing named-attraction cache and search rule.",
+    "selected_indices": [
+      2,
+      0,
+      1
+    ]
+  }
+}

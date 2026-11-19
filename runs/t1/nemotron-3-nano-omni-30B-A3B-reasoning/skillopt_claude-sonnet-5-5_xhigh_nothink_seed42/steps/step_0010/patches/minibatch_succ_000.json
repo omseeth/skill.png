@@ -1,0 +1,25 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Missing-mandatory-arg first turns were answered with one short seek_information naming only what was missing. This covered a flight with no date even when a layover, 'one-way', a business trip or a birthday was mentioned, a flight+hotel request with no dates, and a restaurant request with no city. No search was made with guessed values.",
+    "A restaurant request with only a dietary need, occasion or 'don't know' cuisine reply and no city got seek_information for the city. A non-answer to an optional question does not change which mandatory args are missing.",
+    "Hotel refinements loaded the exact key from the CACHE, filtered with only the last turn's new constraint (a neighborhood or gym/wifi), and saved under a new key. When the CACHE had only 'hotels' and 'attractions', the agent filtered only 'hotels' and did not touch 'attractions' or call search_nearest, even though the assistant had offered 'a hotel near City Museum'.",
+    "Each search or filter was assigned to a variable and followed by save_to_cache, with no extra params, imports or prints."
+  ],
+  "patch": {
+    "reasoning": "Nearly all observed successes are already covered by existing rules, namely missing-date seeks, combined multi-domain seeks, and load-filter-save refinements. Two behaviours appear repeatedly and are only implicit in the skill. First, a restaurant request with no city gets a city-only seek, even after non-answers like 'don't know'. Second, an assistant's 'I can help you find a hotel near X' proposal, followed by hotel amenities, is a plain hotel filter with no search_nearest. The second also guards against over-engineering, since earlier attempts to add search_nearest rules scored lower. Both additions are short reinforcements of existing sections.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "  - search_restaurants: city.",
+        "content": "  - A restaurant request that gives only a dietary need or allergy ('nightshade allergy'), an occasion ('birthday'), a cuisine or a 'don't know' reply, with no city anywhere in the conversation, is still missing the city. Output only `seek_information(\"We need the city for the restaurant.\")`. Do not search and do not ask about cuisine, budget or rating."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Only refine domains the last turn actually talks about. Never invent filter values (e.g. a made-up cuisine list or budget) for another domain.",
+        "content": "- An assistant offer such as 'I can help you find a hotel near City Museum' does not by itself trigger search_nearest. If the user then answers with hotel amenities ('a gym and wifi') and the CACHE holds 'hotels' (plus 'attractions'), do exactly `hotels = get_results_from_cache(key=\"hotels\")`, `filtered_hotels = filter_hotels(prior_results=hotels, gym_present=True, free_wifi_included=True)`, `save_to_cache(key=\"filtered_hotels\", value=filtered_hotels)`. Do not re-search or reload attractions, and do not call search_nearest unless the user explicitly asks for results sorted by nearness."
+      }
+    ]
+  },
+  "source_type": "success"
+}

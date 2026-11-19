@@ -1,0 +1,82 @@
+{
+  "reasoning": "Failure edits are kept as the base. Where a success edit shared an anchor with a failure edit, I merged the two into one edit so anchors stay unambiguous and nothing is applied twice. This covered four anchors. (1) The 'Never give only the provider...' replace now carries the failure rules (wrong/right examples, heading text only, no invented endpoints) plus the success rule to copy headings character for character. (2) The 'A named group...' / 'Group Name' anchor now holds the failure qualifier and value conventions plus the success 'exact vs bounded values' bullet. (3) The 'Email API: Get Fake Email Address' anchor now holds the failure description-matching, retailer-search and Airbnb bullets plus the success scope-word sibling-endpoint bullet. (4) The 'Before answering, tick each sentence' anchor now holds the failure count-by-request-kind bullet plus the success narrative-checklist and duplicate-guard bullets. Success edits with unique anchors were kept as-is: the compound-clause bullet after 'Do not add helper...' and the literal value-spelling bullet after 'Do not invent parameters...'. No real conflicts appeared. The duplicate guard is worded to respect the rule that an action requested twice gets two identical calls. Nothing targets the protected SLOW_UPDATE block.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+      "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely (wrong: `BestBuyProductData`, `email Check SMTP`; right: `BestBuy Product Data: BestBuyProductData`, `fast Email verifier: email Check SMTP`). The name is the `### ` heading text only: never paste the `Provider:` description line or its ` — tagline`. Copy the heading character for character, including slashes, braces, parentheses and lowercase initials (e.g. `OpenCritic API: /game/hall-of-fame/{year}`, `Learn to read and write Japanese kanji: Study list (AP exam)`). Never invent, shorten or paraphrase an endpoint (`Priceline com Provider: Search locations` does not exist; the heading is `Priceline com Provider: Search hotels locations`). Before answering, find each call's name verbatim as a `### ` heading in the tool list. Keep its spelling and case, lowercase first letters, suffixes such as `(Deprecating)` and numbers such as `Item Search 3`.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Do not close the list early or leave stray brackets.",
+      "content": "Do not close the list early or leave stray brackets. Calls are separated only by `}, {`. A `]` in the middle (`}], {`, `}]}, {`, `], [`) ends the answer and makes every later call unparseable (score zero). The single `]` comes after the last object, right before `</answer>`: finish with `}]</answer>`, never `]]` or `}]}`.\n- Every entry in a parameter list is a `{\"name\": ..., \"value\": ...}` object, never a bare name or string (wrong `\"required parameters\": [\"offset\"]`; right `[{\"name\": \"offset\", \"value\": \"0\"}]`). An endpoint name is not a parameter. Every call has all three keys even when it has only required or only optional parameters (never omit `\"optional parameters\": []`). `\"optional parameters\"` appears exactly once per object, last. `\"optional parameters\": [{...}], \"optional parameters\": []` throws away the filled list, so merge every optional value (platform, sort-by, type, page, pulls, ...) into that one list.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not borrow a similar name from a sibling tool (use `region` if the tool has `region`, not `loc`).",
+      "content": "\n- Placement comes from the schema, not from how central the value seems. Reread the schema block for each call. Only names printed under `Required parameters:` go in `required parameters`. If it says `Required parameters: none`, that list is `[]` and every value from the query (e.g. `dice`, `sides`, `country`, `language`, `id`, `limit`, `page`, `publisher`, `q`, `storeId`, `starid`, `symbol`, `lang`) goes in `optional parameters`, even when it carries the query's main input. If the schema lists both `page` and `keyword` (or `topic`) under Required, both go in `required parameters`, even for 'page 1'. Never split one schema's required names across the two lists. If a call has one required name (e.g. `q`) plus qualifiers (language, outlet, dates), the qualifiers still go in `optional parameters`.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).",
+      "content": "\n  - A named outlet or source ('from CNN and BBC') -> the tool's publisher/sources-style parameter, comma-separated with no spaces (`publisher`=`cnn.com,bbc.com`), when the schema has one. Never turn an outlet into a `country` value, and do not add `country` unless the query names a place. 'In English' -> the language param (`en`).\n  - A header-style optional `Content-Type` -> include it as `application/json`. 'With free shipping' -> the filter/switches param whose description lists `freeShipping`. A '$600-$900' range -> startPrice `600`, endPrice `900` (plus `currency`=`USD` and `region`=`US` when the tool has them).\n  - Value conventions: 'US English' -> lang `en-US` (hyphen, never `en_US`), and when the tool has `country`, add `US`. US market -> country `US`, lang `en-US`, currency `USD`, store `US`. UK market -> country `GB` (not `UK`), lang `en-GB`, currency `GBP`. Fill whichever of country, lang, currency and store the tool offers. 'US and UK markets' -> two calls. For Asos with no market stated, use the US values. A 3-letter airport code like JFK -> `iata` (4-letter -> `icao`), not `ident`. When the query asks generally for locations or 'everything' and the tool has a type or enum field, use the catch-all value (`ALL`) rather than inventing one.\n  - Exact vs bounded values: '5 letters long' -> wordLength `5`, not minLength/maxLength (use min/max only for 'at least'/'at most'). '10 random words' -> the required `count` `10`. 'rolled 5 dice once' -> dice `5`, rolls `1`. 'games containing Majora in their name, limit 25' -> name `Majora`, limit `25`. '(page 1, limit 10)' -> page `1`, limit `10`. A year such as 'for 2022' goes in the tool's year field.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Tool selection",
+      "content": "\n- Match the object noun and check that the schema can take your values. 'Figures' or 'people' -> the `...People...` endpoint, not Events. 'Domain available for registration' -> the free-domain/availability tool. 'Company overview metrics' with no dedicated endpoint -> a generic or customizable endpoint (`function`=`OVERVIEW`, `symbol`=ticker). 'Help documentation' -> the Help Page tool. If a parameter you need (e.g. `domain`) is not in a tool's schema, that is the wrong tool. Never put an invented parameter name into an email-only tool.\n- When the query names a data provider for a clause ('from Yahoo Finance') and several providers offer near-identical endpoints (Yahoo Finance_v2 vs Mboum Finance), prefer the named provider's endpoint for the related requests (e.g. analyst upgrades/downgrades) when it has one.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Exception: the query names several distinct checks (e.g. deliverability, MX records and role account), which get one call each.",
+      "content": "\n- For 'valid AND disposable' on one address, pick the single tool whose description literally names both properties (e.g. an 'Email Checker' that says it checks validity and identifies disposable addresses) and make exactly one call to it. Do not also call a generic 'Validate Email Address' or 'Verify Email' tool on the same address.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "'generate a fake business email' -> `Email API: Get Fake Email Address`).",
+      "content": "\n- Match the query's own words to the endpoint descriptions, not just the topic. 'Deliverable', 'working', 'really exists' -> a tool whose description says deliverable, working or SMTP, not a format-only syntax checker (`Check Valid Emails`, `Bulk Email Syntax Check`). 'Disposable or temporary' -> a tool that detects disposable or temporary addresses, not a generator. If the MX or SMTP endpoint you chose belongs to a provider that also has a disposable-check endpoint, use that sibling for the disposable clause.\n- Scope words pick the sibling endpoint whose name carries that scope: 'this month's top articles' -> `Get the month's top articles` (not the year's), 'the 100 most recent' -> `Recent 100`, 'level 1 raids' -> `get raids by level`, 'blog posts' -> the Blog endpoint (not News). When the endpoint name already encodes the scope or count, do not add a redundant parameter for it. A site named in the query (Youm7, dev.to, Medium) maps to that site's endpoint, not to a sibling site's.\n- 'Searching for X on <retailer>' -> that retailer's search or auto-complete endpoint (`Asos: v2/auto-complete`, `Wayfair: products/search`), not its countries or categories list. 'On Wayfair and BestBuy' means one search call each, with no duplicate calls. A product ID given for 'details' -> the lookup-by-ID tool (e.g. `Zappos product detail by Product ID` with `product_id`), not a keyword-search tool.\n- Airbnb counts where the query names a country, region, area or city -> `Count Listings by administrative divisions`, not lat/lng or market. Use `state` = ISO country code (Italy -> `IT`), `admin1` = region, `admin2` = province or metropolitan area, `admin3` = city, plus `bedrooms` and `maxGuestCapacity` when stated.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Make a short checklist of the query's requests. Each request gets one call from the single tool that best matches it, and every call must trace to a clause.",
+      "content": "\n- For long or list-style queries, write a numbered checklist with one line per clause AND one line per item in any list ('BBC, CNN Arabic, France24 Arabic, Hibapress, and dev.to' = 5 lines). Then map every line to a call. If the query has 7 clauses and your answer has 3 calls, you stopped early. Each named game, platform or source and each action verb gets its own call: 'create a weapon' -> the Create tool; 'classes' and 'dungeons' -> two separate Lost Ark calls; 'first page of cards, 20 per page' -> Hearthstone with page `1` and pageSize `20`. For a source with no dedicated endpoint (e.g. BBC), use a generic by-source endpoint with the source id (e.g. BizToc `News / Source`, source_id `bbc`). Do not add a generic search tool to cover items that already have dedicated endpoints.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+      "content": "\n- A clause that names several objects is several requests, so it needs one call per object. Use the provider's sibling endpoint whose name matches each noun. Never merge them into one call or drop one. Examples:\n  - 'abyssal dungeons and game statistics' -> get abyssal dungeons + get stats.\n  - 'a practice question and details about a drill' -> Retrieve practice question + Retrieve drill details.\n  - 'math facts about 1729 and trivia about 42' -> Get math fact + Get trivia fact.\n  - 'engravings, character stats, and level 1 raids' -> three calls.\n  - 'roll both a 20-sided die and a regular 6-sided die' -> two calls to two different tools (`Custom die` with sides `20`, `Regular die`).\n  Numbered items (1) to 7)) and 'First..., Then..., Finally...' sentences also get one call each, in order.",
+      "support_count": 2,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+      "content": "\n- Copy values from the query's wording, converted to the schema's literal spelling. Enum words are lowercase slugs ('toys and games' -> `toysgames`, 'seasonal challenges' -> `seasonal`). A date like 'June 21st' becomes month `6`, day `21`. IDs and offsets are copied verbatim ('ID HxxIU' -> id `HxxIU`, 'offset 0' -> `0`). A required enum or type parameter takes the word the query uses for it. 'Complete' or 'all' information from a tool that has an `all` flag -> `all` = `true`.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+      "content": "\n- Count calls by kind of request, not by platform: each distinct data type asked for gets its own endpoint, and later sentences are as real as the first. 'Current pollution' + '48-hour forecast' + 'sun position' = three tools (current-data tool, forecast tool with hours `48`, sun tool). 'Pricing, warranty services, reviews and common product information' = four Wayfair endpoints (get-pricing, get-warranty-services, reviews/list, get-common-info). 'Images, reviews, delivery services, financing options for SKU X' = get-images, reviews/list, get-home-services, get-financing-offers. 'Detailed information about item X, including similar items' = the detail tool (e.g. `products/v2/detail`) AND the similar-items tool. 'On both ASOS and Wayfair' or 'alternatives on other platforms like Aliexpress and Asos' = one call per named platform (plus the host retailer's own search or auto-complete if the query asks for it). 'A store (storeId, sellerId)' -> the store item-search endpoint with both ids. 'Available base regions' -> `User Basic Parameters` with `filter`=`baseRegion`.\n- First-person or narrative queries ('I rolled..., I looked up..., I checked the latest news..., Finally I retrieved...') are checklists: one call per sentence, in order. Endpoints that need no input ('latest news', 'news feed', 'list of stats') still get a call with `[]` for both parameter lists. Do not add optional fields such as `callback` unless the query states a value for them.\n- In long lists, emit each call once unless the query asks for the same action twice. Scan for accidental repeats, and for a tool reused with another item's parameters (e.g. Ukrainian-word filters sent to the English random-word tool). Remove them or switch to the matching tool.",
+      "support_count": 4,
+      "source_type": "failure"
+    }
+  ]
+}

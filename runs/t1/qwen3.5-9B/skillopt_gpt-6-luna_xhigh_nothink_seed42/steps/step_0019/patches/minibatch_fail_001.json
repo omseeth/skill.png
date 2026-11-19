@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_persistence",
+      "count": 2,
+      "description": "Hotel searches were executed but their complete results were not saved to cache."
+    },
+    {
+      "failure_type": "follow_up_cache_reconciliation",
+      "count": 3,
+      "description": "New constraints or pending hotel work were missed, or already-satisfied cached work was repeated."
+    },
+    {
+      "failure_type": "scope_creep",
+      "count": 2,
+      "description": "Clarification replies triggered unrelated searches or proximity operations not requested by the user."
+    },
+    {
+      "failure_type": "independent_domain_completion",
+      "count": 1,
+      "description": "Missing hotel dates blocked an available restaurant search requested in the same task."
+    },
+    {
+      "failure_type": "criteria_or_value_mapping",
+      "count": 3,
+      "description": "Some explicit criteria were mapped to questionable tool values, or user-provided dates were unnecessarily transformed."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers saving results, applying new constraints, preserving dates, and processing domains independently, so duplicating those rules would not address a content gap. The trajectories expose an ambiguity around what a clarification reply or an earlier assistant offer authorizes. This edit clarifies that boundary while preserving the requirement to complete other actionable pending domains.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion.",
+        "content": "\n\n- **Scope clarification replies and assistant offers:** Map a reply to the clarification fields asked about, but do not infer that it also accepts a separate assistant offer or authorizes unrelated searches. An offer alone is not a user request; proceed with it only when the user clearly accepts it or independently requests that deliverable. Reconcile other explicitly requested pending domains separately and complete those whose required inputs are available, even if another domain needs clarification. Leave matching cached results untouched unless a new constraint or requested downstream operation requires them."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

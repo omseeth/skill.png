@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_and_context_reuse",
+      "count": 4,
+      "description": "Follow-ups missed cached results, failed to apply an assistant-suggested area as scope, or repeated constraints already embodied in cached results."
+    },
+    {
+      "failure_type": "required_argument_validation",
+      "count": 2,
+      "description": "Hotel searches were attempted without mandatory check-in and checkout dates instead of requesting them and proceeding with complete independent searches."
+    },
+    {
+      "failure_type": "field_mapping",
+      "count": 2,
+      "description": "Values were mapped to semantically unsuitable fields or changed rather than preserved as stated."
+    },
+    {
+      "failure_type": "flight_leg_encoding",
+      "count": 1,
+      "description": "A supplied return date was encoded as an arrival date on the outbound search instead of as a separate return leg."
+    },
+    {
+      "failure_type": "duplicate_tool_calls",
+      "count": 2,
+      "description": "Searches were called inline again when saving, rather than saving the result of the single assigned call."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already specifies mandatory hotel dates, result persistence, exact entity values, and separate directional flight legs, so repeating those rules would not address a documentation gap. The batch reveals two narrower ambiguities worth resolving: how to act on assistant-introduced areas and recommendation offers, and how to reject values that fit a field's data type but not its meaning.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+        "content": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Treat an assistant-introduced specific area or entity as scope when the user asks what is there, expresses interest, or accepts recommendations: retrieve a compatible cached candidate set and filter it to that scope, searching only if no cached result can cover it. If the user merely accepts an offer to provide recommendations and adds no new criterion, retrieve the most refined compatible cached result without rerunning or refiltering. An accepted offer to search a genuinely new domain, category, or entity creates a request for that scope, using established trip context. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool results and constraints",
+        "content": "- Check semantic as well as type compatibility when mapping values: a field's string or list type does not make arbitrary wording a valid value for that field. Entity fields should receive named entities, not qualitative descriptors (for example, do not pass “kid-friendly” as an airline). Omit unsupported, unmappable optional preferences rather than forcing them into a superficially compatible field or inventing a value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

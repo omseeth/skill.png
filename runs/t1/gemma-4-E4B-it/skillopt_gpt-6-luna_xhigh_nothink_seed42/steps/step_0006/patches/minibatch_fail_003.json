@@ -1,0 +1,41 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse",
+      "count": 3,
+      "description": "Valid cached results were searched again or a more-refined cached result was not reused."
+    },
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 3,
+      "description": "Tool results were called inline, not saved, or saved using an undefined variable."
+    },
+    {
+      "failure_type": "missing_required_information",
+      "count": 1,
+      "description": "A hotel search used invented stay dates instead of asking for the missing mandatory dates."
+    },
+    {
+      "failure_type": "flight_leg_modeling",
+      "count": 1,
+      "description": "A round trip was represented with an arrival date instead of separate outbound and return searches."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already specifies saving assigned tool results, validating mandatory inputs, and searching each round-trip leg separately, so those rules need no duplication. The remaining useful gaps are making cache-only follow-ups and choosing among multiple compatible cache entries explicit, and naming the hotel dates that must not be fabricated.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Cache-aware tool workflow",
+        "content": "- If a follow-up adds no new supported constraint (including a reply declining further preferences), do not rerun or filter the search. If the user still wants the existing recommendations, retrieve the compatible cached result by its exact key. When several cached entries are compatible, choose the most refined one that preserves all active constraints, then apply only genuinely new constraints. Do not search unchanged domains or legs."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Required-argument checks",
+        "content": "For hotel searches, the required stay details are city, check-in date, and checkout date. Use actual dates supplied or derived from explicit information; never substitute example, current, or placeholder dates. If a required date is missing and cannot be derived from an explicitly stated stay length, ask for that date."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

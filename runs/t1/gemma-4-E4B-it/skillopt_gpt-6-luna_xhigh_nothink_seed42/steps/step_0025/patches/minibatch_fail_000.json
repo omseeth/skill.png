@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_mismanagement",
+      "count": 7,
+      "description": "Repeated base searches, filtered already-embodied constraints, reran unaffected or derived results, or regenerated cached flights after an unsupported passenger-count update."
+    },
+    {
+      "failure_type": "required_argument_inference",
+      "count": 1,
+      "description": "Inferred a hotel checkout date and searched before the required hotel stay dates were established."
+    },
+    {
+      "failure_type": "result_variable_execution",
+      "count": 1,
+      "description": "Saved a hotel result using an undefined variable after calling the search without assigning its return value."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures concern choosing the wrong action for an already-covered scope. An explicit per-turn decision path distinguishes filtering new constraints, searching uncovered scopes, and reading or leaving covered scopes alone; it also prevents unnecessary derived calls. A targeted checkout reminder reinforces the existing stay-date validation. The undefined-variable failure is already directly addressed by the skill's save-result invariant, so it needs no duplicate edit.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Identify only the domains or itinerary legs changed by the latest user turn. For each changed request, if a compatible cached result exists, retrieve it with `get_results_from_cache(key=\"<literal cache key shown in the summary>\")` and assign the returned object to a local variable; cache keys and summaries are not Python result variables. Choose the most constrained cached result that still covers the request: its domain, location, dates or leg, and original scope must be compatible, and it must not be narrower than the requested scope. Prefer a result that already embodies the greatest number of still-active criteria, and retrieve it by its exact cache key. A result restricted to a different category or entity does not establish that a newly requested specific entity is included; search if the cached scope cannot cover it. Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result. A cached proximity result may also be used as filter input when its candidate set remains valid. Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no cached result can cover the changed scope.",
+        "content": "- At each turn, list only the domains or itinerary legs changed by the latest user turn, then choose one action for each changed scope:\n  1. If a compatible cached result covers the scope and the user adds a filterable constraint, retrieve its exact cache key and apply the matching `filter_*` tool. Pass the new constraint and any active criteria not already embodied in the cached result; do not resend criteria already embodied in it. Save the filtered result. Repeat separately for each affected leg.\n  2. If no compatible cached result covers the changed scope, make and save a base search with all active supported criteria.\n  3. If the scope is already covered and the latest turn adds no supported constraint, do not search or filter. For a broad or non-specific reply that accepts or requests already-covered recommendations, retrieve the compatible result once; do not save it again. If the turn only adds unsupported information, such as a passenger count for a flight search, do not rerun cached searches.\n  Do not rerun unaffected domains or legs, or recompute cached sort/nearest/other derived results merely because an input was filtered. Run a derived operation only when the latest turn requests it or changes its requested scope. A different category or entity is not covered unless the cached scope can include it."
+      },
+      {
+        "op": "insert_after",
+        "target": "For hotels, when the check-in date and an explicit stay length in nights are known but checkout is not, use `adjust_date` to calculate checkout.",
+        "content": "Do not infer a one-night stay or derive checkout by adding a night to a flight date. If checkout is not explicitly supplied or derivable from an explicit stay length, keep the hotel request pending and ask for checkout while proceeding with any independent, complete requests."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,82 @@
+{
+  "reasoning": "Kept the failure-driven consolidation as the priority: it replaces the opening audit with one ordered, domain-scoped decision sequence and removes the now-duplicated audit and cache bullets. Preserved the remaining failure-driven schema, time-encoding, amenity, and result-saving corrections. Also kept the success-driven readiness rewrite because it sharpens the hard gate for each action and rules out asking for optional inputs; it complements rather than conflicts with the consolidated sequence. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+      "content": "- Resolve the latest user turn against the immediately preceding assistant question or suggestion and all still-pending requests. Interpret replies in context: a direct answer can supply the asked-for criterion or introduce a new target or criterion; an affirmative answer to a concrete yes/no question proposing an action in a supported travel domain makes that action pending even if the domain was not previously active. Carry forward the named target or type and relevant location; search if mandatory inputs are available, otherwise seek the missing information. Asking what is available about a suggested area likewise makes that area an actionable target. Apply “both” to every still-pending referenced domain, and apply other still-valid criteria independently to every named location, creating a distinct result for each. When the user accepts an offer, perform the offered action; an accepted proximity recommendation requires `search_nearest` with the relevant domain results, while mere interest in a place alone does not request proximity.\n- Build a complete checklist of every new and still-pending action by domain, target, location, relation, schema-supported argument, and—where applicable—flight leg. Apply every new constraint. Assess each domain, location, and leg independently; leave unchanged domains alone, recheck previously blocked items when a reply supplies missing information, and do not rely on variables from earlier executions.\n- For each checklist item, use only an exact listed compatible cache result. If it already covers the requested action and every constraint—including when the latest turn adds no criterion and recommendations are expected—retrieve it by its exact listed key into a local variable and use it directly; do not search or filter again. If the request adds a constraint to an existing target, retrieve the latest listed compatible result that covers the prior criteria and apply only the new constraint with the appropriate filter, passing it as `prior_results` when required. A base result that lacks the new constraint, or a result for a different target or domain, is not coverage. If no compatible result exists, search with all applicable stated criteria only when mandatory inputs are explicit. Do not infer missing mandatory inputs or use defaults: make one `seek_information` call for missing mandatory inputs across blocked items while proceeding with other ready items. Mark an item complete only when its constraints are covered by a valid compatible cached result or have been applied by the required tool call. Use `print(\"No planning needed\")` only when no requested action remains pending and valid cached results cover every requested constraint.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "delete",
+      "target": "- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. Interpret replies in the context of the assistant's concrete question or suggestion, not only their literal wording: a direct answer can supply the asked-for amenity or preference, and asking what is available after an area is suggested makes that area an actionable search target. A direct answer can also introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the reply says a criterion applies to “both,” apply it independently to every still-pending domain referenced in context (for example, hotels and restaurants), using each domain’s appropriate filter and latest compatible cached result; do not apply it only to the last-mentioned domain. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.",
+      "content": "",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "delete",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+      "content": "",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "delete",
+      "target": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.",
+      "content": "",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "delete",
+      "target": "- If the latest turn adds no criterion and a compatible listed cache result already covers the outstanding request—including when the user says they are flexible or accepts an offer to provide recommendations—retrieve that result with its exact listed key into a local variable and use it directly. Do not search or filter again, and do not use `print(\"No planning needed\")` in place of retrieving a result the user is expecting.",
+      "content": "",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+      "content": "- Validate value encoding as well as argument names. For fields whose schema describes a range or minimum and maximum (such as hotel `stars`), represent an exact requested value x with both endpoints: `[x, x]` (for example, exactly four stars is `stars=[4, 4]`). Do not use a singleton list for an exact range, widen it, or treat it as a minimum. Do not apply this endpoint rule to ordinary selection lists such as cuisines or attraction types. Follow the schema for non-exact bounds and do not invent endpoints.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Represent flight legs separately",
+      "content": "\n- Encode explicitly requested flight times in the format accepted by the tool, preserving AM/PM notation when provided (for example, an exact `12:22 PM` departure is `departure_time=[\"12:22 PM\", \"12:22 PM\"]`). Do not convert such times to `HH:MM:SS` or invent all-day time bounds when no time was requested.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+      "content": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; reject unsupported arguments and do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. A state-only location, including an abbreviation, belongs in `state`, not `city`. Preserve user-provided enum, category, and code values literally rather than substituting near-synonyms; do not treat illustrative examples as exhaustive enum values unless the schema says they are. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`.",
+      "content": "- Disambiguate hotel amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. Map “fitness center” to `has_fitness_class`, a literal request for a “gym” to `gym_present`, and “room service” to `has_room_service`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "content": "- Bind the exact return value of every result-producing search, filter, sort, or nearest-results call to a local variable and save it with `save_to_cache` under a unique, descriptive key. Never leave a result-producing call bare or omit its save; save each refinement under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "## Missing mandatory information\nBefore searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness independently for each requested domain and, where applicable, each city or leg: proceed with searches or refinements for domains whose required inputs are available even if another is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across blocked domains. Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood. Optional preferences are not mandatory inputs.",
+      "content": "## Missing mandatory information\nFor each planned tool action, first identify its non-optional schema fields and verify that each has an explicit value in the conversation. If any required value is missing, do not make that search or refinement call. Do not invent dates from the current date, trip purpose, birthday, wedding, or event context; an event date is not a flight departure date unless the user explicitly says so. Hotel check-in and check-out dates must both be explicit. Ask for missing mandatory values in one `seek_information` call across blocked domains, and do not ask for unspecified optional filters (such as an arrival-time range). Assess readiness independently for each requested domain, city, or flight leg, and proceed with ready actions even if another is blocked. Related context does not automatically satisfy a required field: for example, cuisine or budget does not supply a restaurant city.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ]
+}

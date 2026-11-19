@@ -1,0 +1,25 @@
+{
+  "batch_size": 5,
+  "success_patterns": [
+    "Each clause was matched to the endpoint whose description literally echoes the clause's wording, numbers or noun. Examples: '5% or more in a day' -> small_cap_gainers; 'growth exceeding 25%' -> growth_technology_stocks; 'mathematical facts' -> Get math fact and 'trivia fact' -> Get trivia fact; 'scrape emails from a website' -> Email Scraper. Generic indicator or time-series tools were ignored.",
+    "Parameter values were copied verbatim from the query as strings (IDs, keys, URLs, timestamps, codes with leading zeros). Each value was given in the form the schema's parameter asks for: a full email for an `email` field, a bare domain for a `domain` field, even when the clause says 'MX records for this email domain'.",
+    "Explicit range or location qualifiers were mapped onto the tool's optional fields (start and end timestamps -> startTime/endTime; 'Jakarta' -> keyword).",
+    "The answer stayed minimal: one call per distinct request (3-4 calls), no helper calls, no stacked validators, all three keys in every object, and a single bracket-balanced list."
+  ],
+  "patch": {
+    "reasoning": "All five successes have the same shape. Each clause was matched to the endpoint whose description echoes the clause's own words or numbers, values were copied verbatim in the form the schema expects, and the call list stayed minimal. The skill covers the minimality and format rules but not the description-echo matching or the value-form rule. Earlier large rewrites were rejected and lowered the score, so these are two short, targeted additions.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "a location field that accepts the given ID format).",
+        "content": "\n- Match each clause to the endpoint whose description echoes the clause's own words, numbers or noun, and skip generic siblings. Examples: 'price change of 5% or more in a day' -> the small-cap-gainers endpoint; 'revenue and earnings growth exceeding 25%' -> the growth-technology-stocks endpoint; 'mathematical facts' -> the math-fact endpoint and 'trivia fact' -> the trivia-fact endpoint (two numbers, two calls); 'scrape email addresses from a website' -> the scraper endpoint; 'historical volatility' -> the volatility endpoint, not a technical-indicator endpoint."
+      },
+      {
+        "op": "insert_after",
+        "target": "Never emit a parameter with an empty value.",
+        "content": "\n- Copy values verbatim from the query as strings: IDs, keys, codes (keep leading zeros, `026000`), URLs and timestamps (`1659312000000`). Give each value in the form the schema asks for. If the parameter is `email`, pass the full address even when the clause says 'MX records for this email domain'. If the parameter is `domain`, pass the bare domain (`premiumwidgets.co`). A lone identifier in a clause goes to that tool's id-like parameter (`video_id`, `key`, `drill_id`, `kode_wilayah_kabupaten_id`). Explicit start and end values map to the tool's matching start/end fields even when they are optional."
+      }
+    ]
+  },
+  "source_type": "success"
+}

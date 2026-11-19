@@ -1,0 +1,36 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_identity_or_capability_mismatch",
+      "count": 4,
+      "description": "Calls omitted part of a full tool name or selected an endpoint that did not match the requested operation or its available inputs."
+    },
+    {
+      "failure_type": "schema_value_or_facet_binding",
+      "count": 3,
+      "description": "Calls used incorrect or incomplete parameter values, fields, or requested scope facets."
+    },
+    {
+      "failure_type": "requested_result_omission",
+      "count": 2,
+      "description": "A requested result or constraint was missing, including game reviews/ratings and some search filters."
+    },
+    {
+      "failure_type": "response_serialization_ambiguity",
+      "count": 1,
+      "description": "A call object repeated the optional-parameters key, risking loss of the parameters in one of the arrays."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already addresses endpoint selection, schema binding, canonical values, and coverage, so repeating those rules is unlikely to help. The trajectories reveal one specific serialization gap: duplicate JSON keys can make parameter arrays ambiguous or cause entries to be discarded. Explicitly prohibit duplicate keys.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Return a parseable JSON list inside the required tags, with exactly the required keys (`tool name`, `required parameters`, and `optional parameters`) in each call object. Include no commentary or reasoning inside the JSON list.",
+        "content": "- Use each required JSON object key exactly once. Put all parameter entries for a call into its single corresponding required- or optional-parameters array; never repeat a key such as `optional parameters`, since duplicate-key parsing can discard entries."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

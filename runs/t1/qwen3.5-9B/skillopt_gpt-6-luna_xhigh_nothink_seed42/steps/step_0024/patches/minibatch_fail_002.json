@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "proximity_tool_misuse",
+      "count": 3,
+      "description": "Agents added proximity calls when not requested or chose unsuitable proximity inputs and grouping."
+    },
+    {
+      "failure_type": "cache_followup_omission",
+      "count": 3,
+      "description": "Agents failed to apply a new constraint to a suitable cached result or explored the wrong referent."
+    },
+    {
+      "failure_type": "schema_mapping_or_validation",
+      "count": 3,
+      "description": "Calls used an unsupported flight-class casing, omitted attraction location, or mapped a state abbreviation to city."
+    },
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 2,
+      "description": "Attraction searches were left unassigned or their results were not saved."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures already contradict existing cache, persistence, and proximity guidance, so repeating those rules is unlikely to help. These edits clarify underspecified tool-schema requirements that caused concrete validation or lookup failures: search_nearest's two-domain inputs and target grouping, the location required for attraction searches, and canonical flight-class values.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "with relevant domain results and `groupBy` set to the requested anchor domain.",
+        "content": "with exactly two relevant domain result objects: the target domain and the reference or anchor domain. Set `groupBy` to the target domain whose candidates the user wants ranked (for example, `restaurant` for restaurants near a landmark), not to an unrelated or third domain."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Check required city inputs and distinguish event dates from travel dates:**",
+        "content": "\n\n`search_attractions` also requires at least one of `city` or `state`, even though each field is individually optional in the schema. Use an established trip or destination location when applicable; if neither is known, seek it rather than calling the search without a location."
+      },
+      {
+        "op": "insert_after",
+        "target": "If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+        "content": "\n\nFor both `search_flights` and `filter_flights`, use the supported lowercase `flight_class` labels `business`, `economy`, or `first` (for example, “business class” maps to `[\"business\"]`); do not title-case these values."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

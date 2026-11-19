@@ -1,0 +1,117 @@
+{
+  "reasoning": "Failure-driven edits are kept (11), with edit 4 trimmed slightly. They fix concrete failures: example-date leakage, mixed first turns, the no-key hotel first search, replacement of an applied value, state= vs city=, num_layovers, the pure-retrieval one-liner, and allergy flag names. Four of the five success edits are kept because they shrink or de-conflict text and touch no failure edit's target. Rule 23's save-key scheme is simplified because key names are not scored. SEARCH GATE's 'no key' permission is now tied to literally stated mandatory args, which also restores the placeholder ban that failure edit 1 removes from DATE GATE. The Rule 2 and Rule 17 'earlier-stated constraint not shown in summary' clauses are deleted because they contradict slow-block Section 3 and caused re-passed halal, neighborhood and amenities. The fifth success edit (vague-descriptor bullet) is shortened because it partly duplicates Rule 21. No new top-level gate or sibling example was added. Every target matches the current skill text, none overlap, and none touch the SLOW_UPDATE block. merge_level is dropped because it is not in the output schema.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "find the date the user literally wrote in the conversation (e.g. 'May 16, 2025'). Found -> search with it. Not found -> that domain gets `seek_information(...)` naming only the missing date(s) and NO search call. It is the whole output unless another requested domain is searchable (see 4b). 'One-way', 'N travelers', 'solo trip', 'weekend getaway', 'birthday' and 'special occasion' are context, not dates. Never use a TOOL CONFIG example date such as '2025-08-03', and never reuse a date that appears only in this skill's examples (May 16/18/19/26, 2025 and similar). Never write a placeholder such as '<date>' or '<X>' as an argument. Before typing any date, find that exact string in a user message of the CONVERSATION. If you cannot, the date is missing and that domain gets seek_information.",
+      "content": "find the date the user literally wrote in the conversation. Found -> search with it. Not found -> that domain gets NO search call, only `seek_information(...)` naming the missing date(s) as the LAST line of the output. 'One-way', 'N travelers', 'solo trip', 'weekend getaway', 'birthday' and 'special occasion' are context, not dates. Every date you type must be copied from a user message in the CONVERSATION; dates that appear in this skill or in TOOL CONFIG are never usable. If you cannot find the exact string in a user message, the date is missing. MIXED FIRST TURN: if the user also asked for attractions or restaurants and a city or state is known from any turn (e.g. 'a hotel in <city> for N people and some <type> attractions', or flight + hotel + 'vegan restaurants there'), FIRST write that domain's search (`attractions = search_attractions(city=\"<city>\", type=[\"<type>\"])` or `restaurants = search_restaurants(city=\"<city>\", <diet/cuisine stated>)`, each followed by its save_to_cache), THEN one closing seek_information naming only the missing dates. A lone seek_information is correct only when no other requested domain is searchable. An EVENT date (reunion, wedding, party) given when the assistant asked for the event date is not a departure date (overrides Rule 24 and -2 for event-date questions): the flight still lacks departure_date, so seek it; the event date later goes in arrival_date.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "search_flights never takes num_people or num_layovers.",
+      "content": "search_flights never takes num_people. Pass num_layovers=[0] on EVERY flight leg only when the user wrote 'non-stop', 'nonstop' or 'direct'; otherwise never pass num_layovers. A bare capital two-letter code ('AM', 'AG') answering an airline/class question is airline=[...], never a time of day. Never write departure_time/arrival_time unless the user gave a clock time, and never repeat one the CACHE summary already lists.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "A US state or abbreviation ('OR', 'CA', 'Georgia', 'a trip to CA') goes in `state=`, never in `city=`.",
+      "content": "A US state or abbreviation ('OR', 'AZ', 'GA', 'Georgia', 'a trip to CA') is ALWAYS `state=\"...\"`; `city=\"AZ\"` or `city=\"GA\"` is always wrong.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "A search_* call is allowed only for a domain with NO key.",
+      "content": "A search_* call is allowed only for a domain with NO key AND every mandatory arg literally stated in the conversation (hotel: city + check-in + check-out; flight: origin + departure date; restaurant: city). Otherwise write seek_information for the missing item and no search; a placeholder such as '<date>' or '<city>' is never an argument.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "saved as filtered_attractions.",
+      "content": "\n  GATE SCOPE: (i) A domain requested anywhere with NO key is searched, not filtered (Rule -2); a flight class the cached summary already lists is not re-filtered, and 'don't need a return flight' adds no flight action. (ii) 'Yes' to an assistant offer of ANOTHER attraction type is a fresh `search_attractions(city=<trip city>, type=[\"<offered type>\"])` saved under a new key (e.g. attractions_2), not a filter and not a hotel party-size refilter. (iii) REPLACEMENT: when the user swaps out a value the cache summary shows as applied ('Actually only X', 'instead', 'change it to'), a filter would intersect with the old value and return nothing. Run a NEW `search_<domain>` with the city/state from any turn, the new value and any other constraint stated in that message (e.g. a budget), saved under an unused key (e.g. restaurants1). Do not load or filter the old key.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "-2. DATE ANSWER = SEARCH NOW (beats every seek_information rule below, including the 'vague timing' paragraph of Rule 6). If the assistant just asked for dates and the user's reply holds a date or an 'X to Y' range, never ask again.",
+      "content": "-2. NO-KEY HOTEL / DATE ANSWER = SEARCH NOW (beats every seek_information rule below, including the 'vague timing' paragraph of Rule 6). First test: does a hotels-type key (hotels, filtered_hotels*, final_hotels*, nearest_hotels) literally appear in CACHE? If NOT, a hotel was requested anywhere, the last message gives any hotel detail (dates, stars, neighborhood, amenity, per-night budget, or a 'Yes' to the assistant's hotel offer) and check-in AND check-out dates are both known (flight dates count), write `hotels = search_hotels(...)` + `save_to_cache(key=\"hotels\", value=hotels)`, carrying every hotel constraint from every turn (stars=[n, n], neighborhood, budget, the amenity just accepted, num_people when a headcount was stated). Do this whatever other keys CACHE holds (flights, restaurants, attractions): never apply the hotel message to another domain's key, never load a key CACHE lacks, never save a loaded result unchanged. If a date is still missing, the only hotel output is the seek_information of the DATE GATE. Check-in is the user's check-in date, else the flight departure date; check-out is the date the user stated; copy date strings exactly as written. If the assistant just asked for dates and the user's reply holds a date or an 'X to Y' range, never ask again.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Add no hotel filter the user did not state.",
+      "content": "\n   - If the restaurants (or attractions) key is NOT in CACHE, 'near the hotel' is a FIRST SEARCH of that domain plus search_nearest (Rule 26), never filter_hotels, and never a city name in neighborhood=.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "with no search, no filter and no print('No planning needed').",
+      "content": "as the ONLY line: no search, no filter, no save_to_cache, no search_nearest, no invented nearest_* key and no print('No planning needed').",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "A flight-only opener with origin and destination ('large group booking from Atlanta to Tucson for a school trip') -> ask only for the departure date, and do not add hotel dates because no hotel was requested.",
+      "content": "A flight-only opener with origin and destination and NO date yet ('large group booking from Atlanta to Tucson for a school trip') -> ask only for the departure date, and do not add hotel dates because no hotel was requested. Once the user answers with a date or an 'X to Y' range, never ask again: search (Rule 9).",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Example: CACHE holds only flight keys (depart May 16, 2025, return May 18, 2025, trip to St. Louis) and the turn says 'A 4 star hotel in Downtown St. Louis with business facilities and a gym. And I'm interested in Touristy attractions' -> `hotels = search_hotels(city=\"St. Louis\", checkin_date=[\"May 16, 2025\"], checkout_date=[\"May 18, 2025\"], stars=[4, 4],",
+      "content": "Example: CACHE holds only flight keys (outbound date X and return date Y, both written by the user earlier, trip to St. Louis) and the turn says 'A 4 star hotel in Downtown St. Louis with business facilities and a gym. And I'm interested in Touristy attractions' -> `hotels = search_hotels(city=\"St. Louis\", checkin_date=[\"<X exactly as the user wrote it>\"], checkout_date=[\"<Y exactly as the user wrote it>\"], stars=[4, 4],",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Rule 26: Proximity requests ('near the hotel', 'near <attraction>') need search_nearest (overrides the 'do not touch the hotel cache' and 'type if stated' parts of Rule 10)",
+      "content": "- search_nearest takes exactly TWO of hotels / attractions / restaurants, each loaded from its own domain's key (`hotels=<hotels key>`, `attractions=<attractions key>`). One argument, or a result passed under the wrong kwarg, raises a ValidationError.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Never write comments, and never leave a filter_* or search_* call unassigned or unsaved.",
+      "content": "\n- Restaurant allergy wording -> parameter (each has its own flag, never substitute another): tomato / nightshade -> has_tomato_allergy_options=True, dairy -> has_dairy_allergy_options=True, nut -> has_nut_allergy_options=True, shellfish -> has_shell_fish_allergy_options=True, gluten -> has_gluten_free_options=True.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- The key to SAVE must be a name that does NOT appear in CACHE. If 'filtered_<domain>' exists, save as 'filtered_<domain>1', then 'filtered_<domain>2', and so on. Never save a filter result under the key you loaded or under any existing key.",
+      "content": "- The key to SAVE can be any name that does NOT appear in CACHE (the exact name is not scored, e.g. filtered_<domain>, filtered_<domain>1, final_<domain>). Never save under the key you loaded or under any existing key.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": ", plus any earlier-stated constraint that the CACHE summary text (\"Additionally filtering for ...\" / search description) does not show as applied.",
+      "content": ". Earlier turns are already inside the cached entry; never re-pass them.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "delete",
+      "target": " Include an earlier-stated constraint only if the summary does NOT list it.",
+      "content": "",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "'Formal with a good Italian menu' -> cuisine=[\"Italian\"] only.",
+      "content": "'Formal with a good Italian menu' -> cuisine=[\"Italian\"] only. Descriptors with no tool parameter ('a large dining area', 'suitable for a family with kids') are dropped; never derive num_people or amenities from them.",
+      "support_count": 1,
+      "source_type": "success"
+    }
+  ]
+}

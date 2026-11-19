@@ -1,0 +1,34 @@
+{
+  "reasoning": "Preserved all six failure-driven edits as higher-priority corrections, including the incremental cache workflow, contextual date handling, schema-value constraints, affirmation handling, and nearest-result behavior. Added the success-driven clarification that a destination or occasion alone does not identify a requested planning domain; it addresses a case not covered by the failure edits. No edits target the protected section, and support counts and source types are retained. [optimizer-ranked: selected 3/7 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "General trip framing, such as a getaway or school trip, does not by itself imply a return flight or a hotel search; request only missing inputs for the domains and legs actually requested.",
+      "content": "General trip framing, such as a getaway or school trip, does not by itself imply a return flight or a hotel search; request only missing inputs for the domains and legs actually requested. If the user gives only a destination or occasion without requesting a travel service, ask which planning domain(s) they want before requesting domain-specific details.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+      "content": "- **Cache and result completion:** On each turn, use the full conversation and cache summaries to identify requested work and compatible results. Retrieve a cache entry only if it is present and its domain and subject match. For an update, start from the closest compatible result that already includes the earlier criteria; compare its summary with the new request and apply only criteria not already represented. Retrieval alone or re-saving an unchanged result does not complete an update. Do not filter unrelated results or repeat searches for domains already covered by compatible results. If no compatible base result exists and the domain's required inputs are complete, perform a fresh base search using applicable explicit details; never filter a missing or uninitialized `prior_results`. When a new criterion applies to multiple still-relevant results, such as outbound and return flights, update each independently, applying only the new criterion and saving each output separately. Make separate filtering calls and save separate outputs when distinct values require distinct results. Assign every result-producing search, filter, sort, or nearest call to a variable and immediately save that exact output. Use established canonical domain keys for base results and distinct descriptive keys for transformed results; use distinct suffixes when multiple same-domain results must be kept separately. Use “No planning needed” only when cached results satisfy every current request and no requested action remains.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+      "content": "- For proximity recommendations, call `search_nearest` only when the requested result is not already satisfied by a compatible cached nearest result or the user explicitly asks to update it. Do not repeat a completed nearest search merely because proximity was mentioned earlier if a later turn adds an unrelated filter. For an uncompleted or updated request, ensure compatible results are available for both the target and anchor domains, apply any new criteria relevant to each result set, then assign and save the nearest result. Set `groupBy` to the user's requested organizing domain: use the recommendation domain when it is the requested target (for example, restaurants near a hotel), and use the anchor domain when the user explicitly wants that domain as the organizing base.",
+      "support_count": 2,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Prioritize the high-support clarification rule for requests that name a destination or occasion but no planning service. Next, strengthen cache updates with compatible-base checks, incremental filtering, and reliable result saving. Finally, clarify when to reuse nearest-search results and how to apply new criteria before rerunning proximity recommendations.",
+    "selected_indices": [
+      6,
+      0,
+      5
+    ]
+  }
+}

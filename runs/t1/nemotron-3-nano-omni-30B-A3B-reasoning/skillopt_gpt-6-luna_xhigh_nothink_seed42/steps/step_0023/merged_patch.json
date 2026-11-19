@@ -1,0 +1,54 @@
+{
+  "reasoning": "Kept all failure-driven edits, which address distinct corrective patterns, and retained their support counts and source types. Added the success-driven reminder about dates from tool documentation and examples: although general missing-input guidance already exists, this specifically targets repeated use of fabricated example dates. No edits target content within the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. Interpret replies in the context of the assistant's concrete question or suggestion, not only their literal wording: a direct answer can supply the asked-for amenity or preference, and asking what is available after an area is suggested makes that area an actionable search target. A direct answer can also introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the reply says a criterion applies to “both,” apply it independently to every still-pending domain referenced in context (for example, hotels and restaurants), using each domain’s appropriate filter and latest compatible cached result; do not apply it only to the last-mentioned domain. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.",
+      "content": "- Resolve elliptical latest turns against the immediately preceding assistant question or offer and all still-pending user requests. Identify the exact action, category, or criterion the user answered or accepted; an affirmative reply to a proposed search or recommendation is an action to fulfill, not “No planning needed.” A direct answer can supply the asked-for amenity or preference, introduce a new destination, neighborhood, cuisine, amenity, or other criterion, or accept a specific search category. If the assistant solicits preferences for an additional recommendation domain (for example, cuisine or allergies for restaurants) and the user responds, or proposes a specific category search and the user accepts, treat that domain or category as pending. Carry forward a clearly established destination and fulfill the request using a compatible listed cache result or an appropriate search if mandatory inputs are available; do not let another domain’s cache suppress it. Asking what is available after an area is suggested makes that area an actionable search target. If the reply says a criterion applies to “both,” apply it independently to every still-pending domain referenced in context (for example, hotels and restaurants), using each domain’s appropriate filter and latest compatible cached result; do not apply it only to the last-mentioned domain. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip with outbound date D1 and return date D2, search origin-to-destination with `departure_date=[D1]`, then destination-to-origin with `departure_date=[D2]`. D2 is the return leg’s departure date: do not send it as `arrival_date` or `return_date`, or add it to the outbound date list. Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.",
+      "content": "- Before emitting flight code, enumerate every explicitly described leg and verify that each is covered by a compatible directional cache result or its own search with the exact stated origin, destination, and departure date. A round trip requires separate outbound origin-to-destination and return destination-to-origin legs, using `departure_date=[D1]` and `departure_date=[D2]` respectively. D2 is the return leg’s departure date, never an outbound date or an `arrival_date` or `return_date`. Do not infer `flight_class` from trip purpose; apply a class to both legs only when explicitly requested. Reuse a cached directional result only if it covers that exact leg and its criteria.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "content": "- Tools and cache helpers are already available under their provided names; call them directly and do not import or redefine tools, models, or cache modules. For every search, filter, sort, or nearest-results call, assign the exact returned object to a variable and save it with `save_to_cache` under a unique, descriptive key; do not leave a result-producing call standalone. Save refined results under a new key. Before emitting code, verify that every such call has its matching assignment and save. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+      "content": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`; a state-level location, including a state abbreviation, belongs in `state`, while a city belongs in `city`; and a named attraction belongs in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+      "content": "\n- Encode threshold and approximate wording according to the field semantics. For a minimum rating on a 5-point scale, use `[minimum, 5]` (for example, “at least 4.5” becomes `[4.5, 5]`). When the hotel schema provides a scalar maximum-budget field, map “around N per night” to `budget=N` rather than inventing a range; when refining a compatible cached hotel result, apply that new budget without resending criteria already represented in the result.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+      "content": "\n- For hotel calls, include `num_people` when supported and a concrete party size is established in the conversation, including a count stated in the immediately preceding assistant question when the user responds without correcting it. Treat `num_people` and `num_rooms` independently; include each only when its own value is established, and never infer one from the other.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Missing mandatory information",
+      "content": "\n- Never use a date shown in tool documentation or examples, a default, or an assumed trip schedule to fill a missing required date. If a flight departure date or hotel check-in/check-out date is not explicitly supplied and no compatible cached result covers the request, do not call that search; ask for the missing date(s) with `seek_information`.",
+      "support_count": 7,
+      "source_type": "success"
+    }
+  ]
+}

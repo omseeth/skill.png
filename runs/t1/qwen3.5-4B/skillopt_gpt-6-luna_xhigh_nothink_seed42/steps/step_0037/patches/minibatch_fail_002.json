@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_followup_action_omission_or_wrong_domain",
+      "count": 5,
+      "description": "New party-size, rating, budget, or attraction/restaurant requests were treated as no-ops or answered by acting on the wrong cached domain."
+    },
+    {
+      "failure_type": "cross-domain_location_reference_and_clarification",
+      "count": 1,
+      "description": "A complete restaurant request was skipped while the agent asked for locations and optional details already recoverable from the trip context."
+    },
+    {
+      "failure_type": "cache_write_omission",
+      "count": 1,
+      "description": "A fresh attraction search was made without saving its result."
+    },
+    {
+      "failure_type": "runtime_contract_and_contextual_field_mapping",
+      "count": 1,
+      "description": "The agent imported the unavailable tools module and misread a terse airline value as a time preference."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most cache-follow-up, save-result, and import behaviors are already explicitly covered by the skill and protected slow-update guidance; repeating those instructions has been ineffective. These edits address the remaining context-resolution gaps: interpreting an explicit place reference across domains and assigning terse answers according to the field asked about.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Still perform every independent requested search or update whose own required inputs are complete in the same turn.",
+        "content": "\n- Resolve explicit place references such as “there,” “that city,” or “the destination” to their unambiguous location antecedent in the conversation, including a stated trip destination. Use that location in the matching domain field rather than asking for it again. If the antecedent is genuinely ambiguous, ask only for the missing location."
+      },
+      {
+        "op": "insert_after",
+        "target": "For controlled-choice fields, use a choice and spelling or casing accepted by the schema, while preserving the user's casing for free-form entity values.",
+        "content": " When a reply gives terse values in response to a specific assistant question, assign each value according to the criterion asked about; do not reinterpret a code or abbreviation as a different field merely because it could also resemble that field’s value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

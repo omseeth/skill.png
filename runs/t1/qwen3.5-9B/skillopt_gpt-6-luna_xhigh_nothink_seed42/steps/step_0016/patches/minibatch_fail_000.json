@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "follow_up_state_reconciliation",
+      "count": 7,
+      "description": "New or pending constraints were ignored, applied to stale results, or handled without completing the requested domain updates."
+    },
+    {
+      "failure_type": "proximity_tool_selection",
+      "count": 2,
+      "description": "Proximity work used the wrong grouping domain or was performed without an explicit proximity request."
+    },
+    {
+      "failure_type": "tool_argument_mapping",
+      "count": 2,
+      "description": "A user-supplied attraction category or hotel amenity was mapped to a different tool value."
+    },
+    {
+      "failure_type": "tool_call_and_cache_protocol",
+      "count": 6,
+      "description": "Expected tool calls or cache saves were omitted, or unrelated operations were added."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache, incremental-update, and result-saving rules already cover many failures in this batch, so duplicating them would not patch a skill gap. The proximity rule currently describes groupBy as the anchor domain, which conflicts with the intended target domain. Explicitly distinguishing a fitness center from fitness classes also resolves a concrete amenity-mapping ambiguity.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results. Do not pass the attraction name as a `neighborhood` value or approximate proximity with a neighborhood filter. If a later constraint changes an underlying domain result, such as filtering the hotel set, recompute and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call.",
+        "content": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested, but call `search_nearest` only when the user asks about proximity. Pass the two relevant result domains and set `groupBy` to the target domain the user wants near the anchor—not to the anchor domain (for example, hotels near an attraction uses `groupBy=\"hotel\"`; restaurants near a hotel uses `groupBy=\"restaurant\"`). A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results. Before calling `search_nearest`, apply and save any new constraints to each affected domain, and use those updated results. Do not pass an attraction name as a `neighborhood` value or approximate attraction proximity with a neighborhood filter. If the latest suitable cached base is already the combined nearest result and supports applying a new constraint directly, filter and save it instead of making an unnecessary nearest call."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Distinguish hotel fitness facilities from classes:** A request for a gym or fitness center maps to `gym_present=True`. Use `has_fitness_class=True` only when the user asks for fitness classes; do not treat facility access and classes as interchangeable amenities."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

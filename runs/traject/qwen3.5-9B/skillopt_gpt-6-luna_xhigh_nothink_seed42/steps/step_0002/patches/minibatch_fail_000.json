@@ -1,0 +1,29 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "operation_coverage_and_scope",
+      "count": 4,
+      "description": "Agents omitted a distinct requested result or added redundant tools instead of mapping each requested output to the minimum appropriate calls."
+    },
+    {
+      "failure_type": "parameter_binding_and_value_fidelity",
+      "count": 7,
+      "description": "Calls mishandled schema placement, omitted requested filters, or changed user-provided values and their accepted representation."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already gives broad selection and schema rules, but the trajectories show those rules are not being applied as a complete, output-by-output audit. These additions make the audit explicit for compound requests and reinforce schema-authoritative binding without encouraging guessed parameters or redundant calls.",
+    "edits": [
+      {
+        "insert_after": "## Planning, tool selection, and validation",
+        "content": "- Maintain a coverage checklist of distinct requested outputs and targets. Split compound requests by independently requested data, search terms, or time horizons; count an item as covered only if the selected endpoint's documented output and supported filters meet that exact request. Use the minimum relevant calls to cover the checklist—do not substitute a merely related endpoint or add alternate tools that repeat the same check."
+      },
+      {
+        "insert_after": "## Parameter binding",
+        "content": "- Bind against the endpoint schema, not intuition: a parameter remains optional if the schema marks it optional, even when it supplies an important constraint. Include every explicitly requested constraint using the supported parameter, including optional filters such as a requested forecast horizon. Preserve the user's exact literal when accepted by the schema; do not transliterate, change casing, or guess values for unspecified dimensions unless the endpoint documents that conversion or default."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

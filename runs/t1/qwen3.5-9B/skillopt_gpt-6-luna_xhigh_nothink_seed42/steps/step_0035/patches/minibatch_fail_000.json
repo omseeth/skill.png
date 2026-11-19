@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_follow_up_or_pending_deliverable_mishandled",
+      "count": 5,
+      "description": "Follow-up constraints were skipped, repeated as new searches, or an accepted deliverable was omitted while other work was touched."
+    },
+    {
+      "failure_type": "result_call_integrity",
+      "count": 4,
+      "description": "Searches were left unsaved or bare, or the same search was duplicated."
+    },
+    {
+      "failure_type": "proximity_or_domain_mapping_error",
+      "count": 2,
+      "description": "A landmark was treated as a neighborhood or a filter received results from the wrong domain."
+    },
+    {
+      "failure_type": "flight_time_range_mapping",
+      "count": 1,
+      "description": "An exact departure time and an arrival-by deadline were not converted into two-endpoint ranges."
+    },
+    {
+      "failure_type": "multi_city_flight_legs_skipped",
+      "count": 1,
+      "description": "Known flight legs were not searched because hotel stay details were incomplete."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers cache deltas, saving every result, and proximity/domain rules, so repeating those instructions would add little. These edits address two uncovered decision cases: exact and 'by' flight times, and separately searching explicitly dated legs in a multi-city itinerary without letting incomplete hotel details block them.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X” uses `[\"12:00 AM\", X]`, and “after X” uses `[X, \"11:59 PM\"]`, preserving the stated AM/PM value.",
+        "content": "- For flight-time bounds, use two endpoints: an exact “at X” departure or arrival uses `[X, X]`; “before X,” “by X,” or “no later than X” uses `[\"12:00 AM\", X]`; and “after X” uses `[X, \"11:59 PM\"]`. Preserve the stated AM/PM value and use the supported 12-hour format."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+        "content": "\n\n- **Search explicitly dated multi-city flight legs independently:** When the user lists consecutive route segments with dates, search each stated segment separately using its stated origin, destination, date, and any other explicit criteria for that leg. Assign and save each leg under a distinct cache key. Do not combine the segments into one flight or infer extra legs. Complete these known flight searches even if required hotel details are missing; seek only the genuinely missing hotel inputs."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

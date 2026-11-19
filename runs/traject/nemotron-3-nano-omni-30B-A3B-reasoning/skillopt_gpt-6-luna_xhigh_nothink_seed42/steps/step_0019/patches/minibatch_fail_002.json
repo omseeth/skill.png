@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrapper_type_mismatch",
+      "count": 5,
+      "description": "Numeric and boolean inputs were serialized as JSON primitives where the call format expected string values."
+    },
+    {
+      "failure_type": "endpoint_and_parameter_mapping",
+      "count": 6,
+      "description": "Calls used mismatched operations, parameter buckets, target granularity, or canonical values."
+    },
+    {
+      "failure_type": "action_coverage_or_scope",
+      "count": 4,
+      "description": "Responses omitted requested operations, added unrelated calls or qualifiers, or duplicated checks while missing a distinct requested check."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers endpoint selection, action coverage, and schema mapping, so restating those rules would be redundant. A recurring gap is confusion between an endpoint's native parameter type and the active answer format's serialized value type. Clarifying that distinction addresses the numeric and boolean serialization mismatches without changing the tool-specific mapping rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Follow the active prompt’s answer contract. Represent each invocation as its own call object with exactly the required keys and value types; keep calls in the required wrapper and do not merge calls or duplicate fields.",
+        "content": "- Distinguish an endpoint’s native parameter type from the active call format’s serialized `value` type. When the contract represents parameters as `{\"name\": ..., \"value\": ...}` and requires `value` to be a string, serialize numeric and boolean inputs as canonical strings (for example, `\"3\"` or `\"true\"`), not JSON numbers or booleans. Follow any explicit contrary wrapper requirement."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

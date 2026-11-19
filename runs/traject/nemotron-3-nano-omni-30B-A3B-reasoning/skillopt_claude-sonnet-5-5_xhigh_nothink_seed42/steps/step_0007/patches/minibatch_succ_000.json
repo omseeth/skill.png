@@ -1,0 +1,37 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every clause of the query got exactly one call from the endpoint whose name literally matched the verb and object. Distractor siblings were ignored: get-images, get-financing-offers, get-warranty-services and get-similar-items for Wayfair; Validate Email Address, disposable Domain and Suggest Domain, and Help Page for email.",
+    "Clauses naming a parameter-less feed, list or help endpoint (currencies list, Flixbus stations, German police news, BizToc hot news, email help page) each got a call with `[]` for both parameter lists. This happened in 4 of 8 trajectories.",
+    "When a tool's schema says `Required parameters: none` (Aliexpress store item, NWS alerts), every query-supplied ID or coordinate went into `optional parameters` and `required parameters` stayed `[]`.",
+    "Values were copied verbatim from the query: full place strings ('Whistler, British Columbia', 'Zurich HB'), coordinates as a single 'lat,lon' string, and SKUs or IDs as given.",
+    "Several qualifiers in one clause were mapped to separate optional fields of one call: 'British English for the UK market' -> lang `en-GB` and country `GB`; 'active alerts' for coordinates -> active `1` and point; '3 days' -> num_of_days `3`.",
+    "A time-split request ('current weather' and 'forecast for the next 3 days') used two different tools: a realtime/current tool and a forecast tool with a day-count parameter."
+  ],
+  "patch": {
+    "reasoning": "The skill already covers tool-name format, sibling selection and qualifier mapping. Two gaps showed up repeatedly in the successes. First, the 'Do not add list calls' bullet could make a model skip a clause that explicitly names a list, feed or help endpoint, even though those calls were correct in 4 of 8 trajectories. Second, there is no explicit rule for `Required parameters: none` schemas, for verbatim place/coordinate values, or for combining language and market (and status words like 'active') into one call's optional list. These edits are small and targeted, since the earlier large rewrite was rejected.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names. But when a clause DOES name a parameter-less endpoint ('a list of currencies', 'available Flixbus stations', 'help information about the service', 'German police reports', 'trending news from BizToc'), make that call with `\"required parameters\": []` and `\"optional parameters\": []`. Do not skip it because it needs no input, and do not give it parameters the query did not state."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not borrow a similar name from a sibling tool (use `region` if the tool has `region`, not `loc`).",
+        "content": "\n- If a tool's schema says `Required parameters: none`, its `required parameters` is `[]` and every value the query supplies goes in `optional parameters`. Examples: `storeId` and `sellerId` for a store-item tool, `point` for an alerts tool. Never promote an optional-schema parameter to required.\n- Copy values from the query verbatim. Keep a full place string (`Whistler, British Columbia`, `Zurich HB`) intact, and write coordinates as one string (`39.48,-106.04`) when the field is a single point. Do not reformat IDs or SKUs."
+      },
+      {
+        "op": "insert_after",
+        "target": "'subtitles in Hebrew' -> subtitle_lang `he`; 'US English' -> `en-US`.",
+        "content": "\n  - 'British English for the UK market' -> lang `en-GB` AND country `GB` in ONE call. Several qualifiers in one clause all go into that single call's `optional parameters`, never into extra duplicate calls.\n  - 'active weather alerts for coordinates 39.48,-106.04' -> point `39.48,-106.04` AND active `1`. Status words (active, federal, exact) map to the matching flag field when the schema has one."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Never pick a tool just because a parameter value fits (e.g. a country code).",
+        "content": " When a query asks for 'current' conditions and a 'forecast for N days', make two calls: the realtime/current endpoint, and the forecast endpoint with the day-count parameter (e.g. `num_of_days` `3`)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

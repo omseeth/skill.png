@@ -1,0 +1,48 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "output_format_error",
+      "count": 5,
+      "description": "Tool names were shortened (provider or API part dropped). Parameters were emitted as a dict instead of a list of name/value objects. Two calls were merged into one object with duplicate keys. The list was closed early with a stray `]`, which gave zero parsed calls. Numbers were left unquoted."
+    },
+    {
+      "failure_type": "parameter_placement_and_value",
+      "count": 4,
+      "description": "Optional parameters (id, postalCode) were placed under required. Query constraints were dropped or reformatted: type 'season' instead of 'seasonal', lang 'en_US' instead of 'en-US', and filter key ignored the format shown in the schema example."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 3,
+      "description": "A lat/lng tool with invented coordinates was used where an admin-division tool fit the named region and city. A province-level tool was used twice instead of the sibling tool matching the district-level code. A generic validator was used instead of the tool whose description matched the query's verb."
+    },
+    {
+      "failure_type": "incomplete_coverage",
+      "count": 1,
+      "description": "A retailer named in the query (Aliexpress) got no call."
+    }
+  ],
+  "patch": {
+    "reasoning": "Earlier steps were rejected because they added long, many-rule skills that included suppressing rules ('add nothing else', 'do not call', checklists, '7-10 calls'). This patch is short and targets only the failures seen here. First, deterministic answer-format errors that zero out parsing or tool matching. Second, schema-driven parameter placement and value formats. Third, tool choice by input granularity and hierarchy level. Fourth, one call for every named provider. It avoids any rule that discourages making calls.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Answer format checklist (a malformed answer scores zero)\n- `tool name` is the tool's full `### ` heading copied verbatim as `Provider: API` (e.g. `BestBuy Product Data: BestBuyProductData`, `Zappos Realtime Data: Zappos product detail by Product ID`). Never keep only the provider or only the API part.\n- Each call is its own object with exactly three keys, each appearing once: `tool name`, `required parameters`, `optional parameters`. Never merge two calls into one object. Two calls to the same tool are two objects.\n- Both parameter keys are LISTS of `{\"name\": \"x\", \"value\": \"y\"}` objects. Never use a dict such as {\"region\": \"US\"}. Never omit a key; use `[]` when empty.\n- Every value is a quoted string, including numbers and booleans (\"1\", \"9098084\", \"true\").\n- Output ONE flat list `[{...}, {...}]`. Put no `]` between objects, and balance the brackets before `</answer>`."
+      },
+      {
+        "op": "append",
+        "content": "\n## Parameters\n- Put each parameter in the list where the chosen tool's schema puts it. Names under 'Required parameters' go in `required parameters`. Names under 'Optional parameters' go in `optional parameters`, even when they carry the query's main subject (id, q, postalCode, country). If the schema says 'Required parameters: none', `required parameters` is `[]`. Use only parameter names from that tool's schema.\n- Copy ids, SKUs, codes, emails, names and search terms verbatim from the query. When the schema lists no options, use the query's own word for type-like values ('seasonal', not 'season'). Use 'en-US' style for 'US English'.\n- Map every constraint the query states to a parameter of that tool (guest count, bedrooms, country, language, page, category filter, limits). If a parameter description shows an example format (e.g. `filters=masterClID~180`), reuse its key format with the query's value.\n- For hierarchical location fields, put each level in its matching field (country code, region, metro area, city) as the descriptions say."
+      },
+      {
+        "op": "append",
+        "content": "\n## Tool selection\n- Choose the tool whose name, description and PARAMETERS fit the inputs the query actually gives. Never invent inputs such as coordinates. If the query names a region, metro area and city, use the tool with administrative-division fields rather than a lat/lng tool.\n- When sibling tools differ by hierarchy level, match the query's level to the tool's PARAMETER name, not just its title. A 'district' code goes to the tool taking a `kabupaten` id, and a 'province' code goes to the tool taking a `propinsi` id. Use different siblings for different levels, not the same tool twice.\n- Match the query's verb literally: 'verify' points to a 'Verify …' tool, 'disposable' to a disposable-domain checker, 'current conditions' to a 'current' tool. Prefer a dedicated endpoint over a generic search."
+      },
+      {
+        "op": "append",
+        "content": "\n## Coverage\n- Every provider, platform or entity named in the query needs its own call (e.g. 'BestBuy, Wayfair, Zappos and Aliexpress' means one search endpoint per retailer, plus every detail call requested). Re-read the query's full list of names before finalizing.\n- A tool that takes one value gets one call per entity or ID in the query. Calls for the same clause belong in one object each, never merged."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

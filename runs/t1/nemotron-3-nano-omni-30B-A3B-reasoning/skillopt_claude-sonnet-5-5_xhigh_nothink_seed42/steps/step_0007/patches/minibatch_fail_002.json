@@ -1,0 +1,47 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "flight_filter_repasses_search_constraints",
+      "count": 2,
+      "description": "On an airline/class reply the agent re-passed departure/arrival dates and times already applied by the search, using 24-hour 'HH:MM:SS' strings that raise 'Unrecognized time format'. The gold call passes only airline and flight_class."
+    },
+    {
+      "failure_type": "wrong_domain_state_handling",
+      "count": 2,
+      "description": "The agent loaded a non-existent 'hotels' key (None) instead of calling search_hotels. In another case it re-filtered flights, fabricated a hotel checkout date and ran extra hotel calls instead of searching restaurants and then seek_information for the missing checkout."
+    },
+    {
+      "failure_type": "over_seeking_or_missed_stated_value",
+      "count": 2,
+      "description": "The agent asked for a departure date although the last turn gave 'depart on X and return on Y'. It also omitted num_people=1 for a 'solo trip'."
+    },
+    {
+      "failure_type": "repeated_cache_constraints_and_param_misuse",
+      "count": 2,
+      "description": "The agent re-passed amenities already listed in the CACHE summary (is_pet_friendly, has_kids_club) and dropped the new pool request. It also put a state abbreviation in city= and left the search unassigned and unsaved."
+    }
+  ],
+  "patch": {
+    "reasoning": "Each edit targets a recurring failure. (1) Flight airline/class replies should pass only those two params, never re-pass dates or times, and never use 24-hour time strings (2 failures). (2) A per-domain state audit covers the missing 'hotels' key and the mixed-state turn where one domain has a key, another is complete but unsearched, and another lacks a checkout date (2 failures). (3) Dates in the last turn must trigger a search rather than seek_information, and explicit 'solo' party size becomes num_people=1. (4) A last-mile audit against the CACHE summary, plus the state= and assign-and-save rules, which existing rules already state but the agent keeps violating. All edits are appended so they do not disturb the existing rules.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Rule 27: Flight refinement replies pass ONLY the new flight constraint\n- When the reply gives an airline and/or class ('I prefer AE and economy class', 'AK and economy'), the call is exactly `y = filter_flights(prior_results=x, airline=[\"AE\"], flight_class=[\"economy\"])`. The earlier dates and times (departure_date, arrival_date, departure_time, arrival_time) were already applied by the search or an earlier filter, and the CACHE summary shows them ('departing on date(s)', 'departure time range', 'arrival time range'). NEVER re-pass them, even if the user stated them earlier in the conversation.\n- Never write 24-hour 'HH:MM:SS' strings such as \"23:31:00\" or \"00:00:00\" in filter_flights. They raise 'Unrecognized time format'. Use the 12-hour style (\"12:00 PM\") only when the LAST turn introduces a new time preference.\n- Save under a key that is not already in the CACHE (if `filtered_flights` exists, use `filtered_flights1`). Keep it to three straight-line statements with no comments."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 28: Per-domain state audit (do this before writing any code)\nFor every domain requested anywhere in the conversation, classify its state first:\n- KEY IN CACHE: refine only if the last turn adds a constraint that the key's summary does not list. Otherwise emit nothing for that domain. For example, do not re-filter flights with a budget that the summary already lists.\n- NO KEY and all mandatory args are known (from ANY turn): `x = search_*(...)` plus `save_to_cache`. NEVER call `get_results_from_cache(key=K)` unless K literally appears in the CACHE dict. Loading a missing key returns None and crashes filter_*. Put every constraint stated anywhere (neighborhood, stars, budget, amenities, num_people) into this first search call. Do not search and then filter.\n  Example: the user asked for a hotel and a restaurant in Fresno, CACHE holds only 'restaurants', and the last turn gives '4 stars, check in September 6, 2025, check out September 13, 2025, Downtown Fresno'. Output `hotels = search_hotels(city=\"Fresno\", neighborhood=[\"Downtown Fresno\"], stars=[4, 4], checkin_date=[\"September 6, 2025\"], checkout_date=[\"September 13, 2025\"])` and `save_to_cache(key=\"hotels\", value=hotels)`. Leave the restaurants key alone.\n- NO KEY and a mandatory arg is missing: no search for that domain. End the block with ONE seek_information naming only the missing item. Never invent a value such as 'the next day' for checkout.\n  Example: flights are cached, a hotel was requested but only the check-in date (the flight date) is known, and the last turn is 'Yes, as long as it's a Turkish or Persian restaurant'. Output `restaurants = search_restaurants(city=\"Colorado Springs\", cuisine=[\"Turkish\", \"Persian\"])`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `seek_information(\"We need the check-out date for the hotel.\")`. Do NOT re-filter the flights, do NOT call search_hotels or filter_hotels, and do NOT write 9 statements when 3 are needed."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 29: Read the LAST user turn for values before deciding to seek information\n- A date in the last turn answering the assistant's date question IS the departure date. 'We're looking to depart on May 19, 2025 and return on May 28, 2025' gives both legs, so never output seek_information for the departure date. Take origin and destination from the earlier turns ('a flight from Lexington for Raleigh, 3 people') and follow Rule 9: `departure_flights = search_flights(start_airport_city=\"Lexington\", end_airport_city=\"Raleigh\", departure_date=[\"May 19, 2025\"])`, save as 'departure_flights', then `return_flights = search_flights(start_airport_city=\"Raleigh\", end_airport_city=\"Lexington\", departure_date=[\"May 28, 2025\"])`, save as 'return_flights'. Party size is not a flight parameter. Do not add hotel or attraction calls unless the user mentioned them.\n- Party size the USER explicitly states for a hotel goes in `num_people`: 'solo trip' / 'just me' -> num_people=1, 'the two of us' / 'my wife and I' -> 2, 'for 3 people' -> 3. Example: 'hotel in St. Louis for a solo trip, gym and air conditioning' plus dates -> `search_hotels(city=\"St. Louis\", checkin_date=[...], checkout_date=[...], num_people=1, gym_present=True, air_conditioning_present=True)`. Do not infer num_people from vague words ('family vacation') or from a number only the assistant mentioned."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 30: Last-mile audit of every call before answering\n- filter_*: check each kwarg against the CACHE summary of the key you load. Bare amenity names in the summary ('Number of room(s): 3, is_pet_friendly, has_kids_club', 'budget: $475', 'has_vegetarian_options') are ALREADY applied, so delete them from your call. Pass only what the last turn adds.\n  Example: CACHE 'hotels' says '... Number of room(s): 3, is_pet_friendly, has_kids_club.' and the last turn is 'budget around 1075 per night, a pool would be fantastic'. Output `h = get_results_from_cache(key=\"hotels\")`, `h2 = filter_hotels(prior_results=h, budget=1075, pool_present=True)`, `save_to_cache(key=\"filtered_hotels\", value=h2)`. Do not repeat is_pet_friendly or has_kids_club, and do not write explanatory comment lines.\n- A bare US state abbreviation or name ('CA', 'GA', 'Texas') goes in `state=`, never `city=`. 'Culinary attractions in CA' -> `attractions = search_attractions(state=\"CA\", type=[\"Culinary\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. A search call that is not assigned to a variable and saved is always wrong, even on the first turn."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

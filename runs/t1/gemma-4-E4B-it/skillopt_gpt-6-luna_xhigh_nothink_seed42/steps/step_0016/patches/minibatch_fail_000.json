@@ -1,0 +1,34 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_result_reuse_and_filtering",
+      "count": 5,
+      "description": "Agents repeated searches or recomputed proximity results instead of retrieving compatible cached results and applying the newly supplied filters."
+    },
+    {
+      "failure_type": "constraint_interpretation_and_field_mapping",
+      "count": 3,
+      "description": "Agents substituted an attraction category, mapped a state abbreviation to city, or confused a restaurant price range with a rating."
+    },
+    {
+      "failure_type": "result_binding_and_cache_persistence",
+      "count": 2,
+      "description": "Agents omitted caching a search result or repeated a search inline instead of saving the assigned result."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures involved bypassing compatible cached candidate sets. Clarifying that a cache summary need not already include a newly requested filter should help resolve that gap, including for saved proximity results. A separate restaurant price-range rule addresses the ambiguous numeric request. Other observed behaviors, such as preserving exact categories, mapping state abbreviations, and saving results, are already explicitly covered by the skill.",
+    "edits": [
+      {
+        "insert_after": "A cached proximity result may also be used as filter input when its candidate set remains valid.",
+        "content": "A cached result is still compatible when it covers the requested domain and original candidate scope but its summary does not include a newly supplied filterable criterion; retrieve and filter that result rather than searching again. This also applies to a saved proximity result when the user adds a supported filter, such as party size; do not rerun `search_nearest` solely to apply that filter."
+      },
+      {
+        "insert_after": "Do not add unrelated preferences.",
+        "content": "For restaurant requests, a phrase such as “in the [amount] range” ordinarily describes a per-person price budget; map it to `budget`, not `rating`, unless the user explicitly identifies the amount as a rating or score."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

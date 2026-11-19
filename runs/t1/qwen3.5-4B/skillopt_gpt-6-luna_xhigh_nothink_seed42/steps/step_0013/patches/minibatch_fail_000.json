@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_namespace_import",
+      "count": 7,
+      "description": "Agents imported a nonexistent tools module instead of calling injected functions directly; the current skill already explicitly prohibits this."
+    },
+    {
+      "failure_type": "incremental_state_and_cache_handling",
+      "count": 5,
+      "description": "Agents skipped a new criterion, chose the wrong update operation, or repeated a search despite compatible cached results."
+    },
+    {
+      "failure_type": "argument_and_criterion_interpretation",
+      "count": 6,
+      "description": "Agents misapplied or omitted stated criteria, including interpreting a bare rating as a minimum or substituting an unrelated field."
+    },
+    {
+      "failure_type": "proximity_operation_selection",
+      "count": 2,
+      "description": "Agents confused a named local area with cross-domain proximity, or did not correctly organize a near-hotel recommendation."
+    }
+  ],
+  "patch": {
+    "reasoning": "The import failure is already directly addressed by the skill, so no duplicate instruction is warranted. The edits clarify how an accepted affirmation triggers an update, distinguish local-area filters from cross-domain proximity searches, and remove ambiguity about bare numeric ratings.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity, category, or criterion as stated. Treat an affirmation accepting a filterable preference as a new active criterion and update the compatible cached result; do not return “No planning needed” unless the cache shows that criterion is already satisfied."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- Distinguish local-area requests from cross-domain proximity: “in” or “near” a named neighborhood or city area is a location constraint for that domain; use its supported city or neighborhood field and filter compatible cached results when available, rather than calling `search_nearest`. Use `search_nearest` when recommending one result type near another (for example, restaurants near hotels); group by the type being recommended unless the user explicitly wants the other type as the organizing base."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Never pass a preference as an unsupported extra argument or place it in an unrelated field. For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+        "content": "- For a numeric rating stated without comparative wording (for example, “a 3.5 rating”), treat it as an exact value and encode it as `[n, n]`. Use a lower-bound range only when the user says “at least,” “minimum,” “or higher,” or equivalent."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

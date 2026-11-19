@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_follow_up_misclassification",
+      "count": 7,
+      "description": "Agents repeated base searches or reprocessed unchanged results for filter-only updates, while one filtered a cached named attraction even though the requested category required a broader search."
+    },
+    {
+      "failure_type": "tool_argument_format_error",
+      "count": 1,
+      "description": "Midnight was formatted as `00:00 AM`, which the flight tool rejected."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify how cache summaries determine whether a request is a same-scope filter update or an uncovered scope, including that filters cannot broaden cached candidates and already-satisfied scopes should not be reprocessed. Make the invalid midnight format explicit.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.",
+        "content": "**Follow-up decision boundary:** Use cache summaries to compare each changed request's domain, location, dates or leg, and category/entity scope. If these match a cached result, adding or changing a supported filter—such as budget, amenity, cuisine, rating, flight class, or time—is a filter-only update, even when that new constraint is absent from the cache summary. Retrieve the exact compatible key, apply only the newly changed filters and any active constraints not already embodied in that result, and save the filtered result. Do not repeat a base search for a filter-only update or reprocess unchanged domains or legs. Search only when the cached candidate scope cannot cover the request; filters can narrow candidates but cannot broaden them. For each affected flight leg, retrieve and filter its compatible result separately."
+      },
+      {
+        "op": "replace",
+        "target": "Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed. For flight `departure_time` and `arrival_time`, use 12-hour strings with an AM/PM suffix (for example, `[\"12:00 AM\", \"04:33 AM\"]`); represent midnight as `12:00 AM`, not `00:00:00`, and do not pass 24-hour `HH:MM:SS` strings to flight tools.",
+        "content": "Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed. For flight `departure_time` and `arrival_time`, use 12-hour strings with an AM/PM suffix (for example, `[\"12:00 AM\", \"04:33 AM\"]`). Represent midnight only as `12:00 AM`; never use `00:00 AM` or `00:00:00`, and do not pass 24-hour `HH:MM:SS` strings to flight tools."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

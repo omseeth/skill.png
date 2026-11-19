@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "Wrong slot type. For 'he ... his <work>' the agent named a work ('The Last Supper') instead of the person. For 'this way' it named an item from the joke ('prison') instead of the manner word ('backwards')."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 2,
+      "description": "The archive-verbatim answer was copied with a word the clue already supplies or echoes: 'bear market' for 'this market' (key 'the bear'), and 'Rainbow Serpent' for a clue that says 'snake' (key 'Rainbow'). Rule 3 copy-verbatim conflicted with the Rule 4 delete-clue-words test."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "Telegraphic definition clue ('An astringent applied under the arms to curtail sweating'). The agent gave one example or ingredient (witch hazel) instead of the general product class (antiperspirant)."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 2,
+      "description": "Person-name form mismatch: 'James Doolittle' vs '(Jimmy) Doolittle', and 'Patty Hearst' vs 'Patricia Hearst'. No consistent rule can be derived from these two."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "'Air Force Plant 16' vs gold 'Edwards Air Force Base'. The gold answer looks noisy and cannot be fixed by a general rule."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the eight failures were slot-type errors, where the answer's grammatical or semantic type was ignored. The agent answered a work for a 'he' clue, an item from the joke for a 'this way' clue, and an ingredient example for a definition clue. Two more had the correct archive hit but kept a word the clue already supplied or echoed ('bear market', 'Rainbow Serpent'). I propose three short, targeted edits: a pointer-type check, a rule that Rule 3 copying still passes the delete-clue-words trim, and a rule for definition clues. I skipped a name-form edit because Doolittle and Hearst point in opposite directions, so it would risk regressions. I skipped the Palmdale case because the gold answer is unreliable.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "\n- POINTER CHECK: before choosing among passage words, decide what TYPE the pointer asks for. (a) A bare pronoun clue ('he/she/his/her', no 'this') asks for the PERSON. Works, pictures, films or places named in the clue are anchors, and so are the 'more famous' neighbours it mentions. 'In the early 1500s, between 2 more famous pictures, he worked on his \"Virgin and Child with St. Anne\"' -> the artist (Leonardo da Vinci), not 'The Last Supper'. (b) 'this way / this manner / this often / this much' asks for the adverb or manner word that the joke or saying fills in. 'Play country music this way and your wife, dog & car return' -> 'backwards'. Things listed in the punchline or in passage variants ('prison', 'house') are not the answer. Take the word that follows the same verb phrase in the passages ('play a country song backwards'). (c) 'this phenomenon / this thing seen in the sky' asks for the bare thing itself ('Rainbow'), not a myth creature or title linked to it."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "\n- Archive dumps and flashcard pages often run clue and answer together with no separator ('...ARCHING ITS BODY Rainbow This \"platinum-dome\" character...', '...PRICE DROPS, BEAR MARKET.'). The answer is the short run of words right after the clue's last words and before the next clue. Copying the archived answer means copying its spelling and article. It does NOT exempt it from the Rule 4 delete-clue-words test. If the archived answer ends with the noun the clue's own 'this <noun>' already gives ('this market' + 'BEAR MARKET' -> 'Bear'), or adds a word that only repeats a clue word or its synonym ('giant snake' + 'Rainbow Serpent' -> 'Rainbow'), drop that echoed word. Keep the head noun only when the bare modifier alone would not name the entity ('Roman Empire')."
+      },
+      {
+        "op": "insert_after",
+        "target": "and answer with the common English name (Conch).",
+        "content": "\n- Telegraphic definition clues with no pointer ('An astringent applied under the arms to curtail sweating') describe a CLASS of thing. The answer is the general product or thing-type that does exactly that, the headword the passages keep pairing with the action ('antiperspirant'). Do not answer with one ingredient, remedy or example that the passages list as a way to do it ('witch hazel', 'apple cider vinegar', 'tea tree oil'), and do not reuse the clue's own descriptor word ('astringent'). Test: all the listed examples should be members of your candidate, and your candidate should not be a member of them."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

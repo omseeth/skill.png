@@ -1,0 +1,25 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every passing run gave a short, bare entity of the type the slot asked for (a person, a work, a place or a season). Passages were noisy, and the agent chose the entity that recurred across several passages together with the clue's other details.",
+    "When the archive passage showed only the clue (Jeopardy question dumps, 'THEIR FIRST FILMS $600: ...'), the agent completed the answer from the other passages that repeated the same facts. This is already covered by Rule 3.",
+    "A distinctive quoted epithet or nickname in the clue ('Nature's most labor-intensive fruit', 'Happiest Place on Earth') reappeared word for word in a passage next to the answer. The agent took the entity in that sentence.",
+    "When the clue gave an approximate quantity ('about 1/5 the population'), the agent converted it to a percentage and picked the passage entity with the matching figure (about 21 percent), not the other large groups."
+  ],
+  "patch": {
+    "reasoning": "Most success patterns are already encoded: slot type, truncated archive clues, bare answers and near-copy sentences. Two small gaps remain, and both show up in several passing runs. The first is turning a paraphrased fraction or approximate quantity into the percentage or range the passages use. The second is treating a quoted epithet in the clue as a verbatim search key, not just a pun hint. Both are short additions that reinforce existing bullets without restructuring them or conflicting with other rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not choose one that fits only some.",
+        "content": "\n- Numeric paraphrases: when the clue gives an approximate share or size ('about 1/5 the population', 'nearly half', 'a quarter'), convert it to a percentage or range (1/5 -> about 20%) and match it against the figures in the passages. Choose the entity whose figure fits (21 percent), not another large entity from the same list."
+      },
+      {
+        "op": "insert_after",
+        "target": "Look for passages where that word appears next to a candidate and answer with that candidate.",
+        "content": "\n- A quoted epithet, nickname or slogan in the clue ('Nature's most labor-intensive fruit', 'Happiest Place on Earth') is a search key. Find passages that contain the exact phrase and answer with the entity named in that same sentence, even if it is only mentioned once in a noisy passage."
+      }
+    ]
+  },
+  "source_type": "success"
+}

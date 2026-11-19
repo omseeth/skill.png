@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_action_selection",
+      "count": 7,
+      "description": "Agents searched or recomputed cached scopes, selected a less-constrained cache entry, or filtered when the user only accepted an offer to present existing results."
+    },
+    {
+      "failure_type": "constraint_semantics_and_carry_forward",
+      "count": 3,
+      "description": "Agents inferred unsupported amenities from broad wording or mis-mapped or dropped explicitly supplied constraints."
+    },
+    {
+      "failure_type": "tool_result_dataflow",
+      "count": 1,
+      "description": "A tool result was used and saved through variables that had not been assigned."
+    }
+  ],
+  "patch": {
+    "reasoning": "Cache-related mistakes dominate the batch. Replacing the opening rule with an explicit action precedence makes the choice between proximity, presentation, filtering, and new searches easier to follow while limiting calls to changed scopes. The second edit strengthens the existing safeguard against treating broad family-friendly wording as a request for a specific amenity. Tool-result assignment errors are already addressed explicitly elsewhere in the skill.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "**Latest-turn action precedence:** Resolve the final user turn against the full conversation, the preceding assistant offer or question, and the cache summary; identify only changed scopes and pending requests that are now complete.\n1. If the latest turn requests or accepts proximity, retrieve compatible cached datasets and run `search_nearest`; do not infer proximity from domains merely mentioned together or search a new category to satisfy an existing offer.\n2. If the user only accepts an offer to present recommendations from an already-covered scope, retrieve the cache entry matching that scope and stop—do not search, filter, or save a duplicate.\n3. If a covered scope gains a filterable constraint, retrieve the most constrained compatible result by its exact cache key. Apply the changed constraint and any still-active supported constraints not embodied in that result, then save it; do not repeat its base search or act on unaffected scopes.\n4. Search only for a genuinely new or uncovered scope, or execute a pending request that has just become complete. Include all active supported criteria and combine same-domain criteria when supported."
+      },
+      {
+        "op": "replace",
+        "target": "Do not equate “kid-friendly” or “family-friendly” with a kids club; set `has_kids_club=True` only when the user specifically requests a kids club.",
+        "content": "Broad descriptions such as “kid-friendly” or “family-friendly” do not specify an individual hotel amenity and must not be mapped to a kids club, pool, or another feature. Set `has_kids_club=True` only when the user specifically requests a kids club."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

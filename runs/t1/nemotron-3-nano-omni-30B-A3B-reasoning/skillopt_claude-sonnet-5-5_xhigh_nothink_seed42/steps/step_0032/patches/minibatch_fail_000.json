@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_routing",
+      "count": 4,
+      "description": "Reply was applied to the wrong domain or key. Flights were re-filtered with an old class on a hotel reply (T4, T7). A hotels key that does not exist was loaded (T7). A hotel budget reply was applied to attractions (T8). A restaurant cuisine/allergy reply was applied to hotels instead of a first restaurant search (T5)."
+    },
+    {
+      "failure_type": "flight_leg_under_coverage",
+      "count": 1,
+      "description": "A flight price cap was applied to departure_flights only. return_flights was skipped (T2)."
+    },
+    {
+      "failure_type": "invalid_kwargs_or_syntax",
+      "count": 2,
+      "description": "num_people was passed to search_flights (T1). A bare search_restaurants call with a stray </parameter> tag, num_people and an invented budget gave a SyntaxError (T6)."
+    },
+    {
+      "failure_type": "airport_code_misplaced",
+      "count": 1,
+      "description": "The airport code SJC went into start_airport_city / end_airport_city. The city should stay 'San Jose' and the code belongs in start_airport / end_airport (T3)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Per the optimizer meta-skill, these edits replace or tighten existing text and add no new gate. (1) The flight-filter rule is rewritten so it fires only on a flight word in the last message. It then covers every flight key, and it forbids flight lines on hotel, restaurant or attraction replies. This addresses T4, T7 (over-fire) and T2 (under-fire). (2) The domain-routing step in rule 0 is rewritten as a key-present or key-absent decision tied to the words of the last message. An absent key means a first search or seek_information, never another domain's key. This addresses T5, T7 and T8. (3) The hygiene bullet gets a one-line ban on num_people for non-hotel tools and on bare search calls. This addresses T1 and T6. (4) The airport-code sentence is clarified so the city name stays in *_airport_city and the code goes in start_airport / end_airport. This addresses T3.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "-1. FLIGHT REPLIES = ONE BLOCK PER FLIGHT KEY. This applies only when the assistant's last question or the user's last message is about flight class, airline, flight time or ticket price (a class word such as 'economy'/'first', an airline code, 'under N' answering a flight-price question), even if a 'hotels' key is also in CACHE. Count the flight keys in CACHE (flights, return_flights, flights2, first_departure_flights, ...), take each leg's most refined key, and write a three-line block for EACH: `x = get_results_from_cache(key=\"<flight key>\")`, `y = filter_flights(prior_results=x, <kwarg>)`, `save_to_cache(key=\"<new key not in CACHE>\", value=y)`, with the same new kwarg in every block. 2 keys -> 2 blocks, 3 keys -> 3 blocks; stopping after the first key is wrong. Write no hotel line for that reply. Every value comes from the user's last message ('I'd prefer economy' -> `flight_class=[\"economy\"]` on each flight key; 'keep it under 1150' after a flight-price question -> `budget=1150` on each key). Conversely, when the last message is about hotels or restaurants, write no flight line.",
+        "content": "-1. FLIGHT FILTER TRIGGER. Write flight filter lines ONLY when the user's LAST message itself holds a flight word (a class such as 'economy'/'first'/'business', an airline code, a departure/arrival time, or a price cap answering the assistant's flight-price question; a per-night price answers a hotel question). Then list every flight key in CACHE (flights, return_flights, flights2, departure_flights, ...) and write one load/filter/save block per key (2 keys = 2 blocks, 3 keys = 3 blocks), each using that key's most refined name, a new unused save key, and the same new kwarg. Stopping after the first key is wrong. Write no hotel line for that reply. When the last message is about stars, amenities, neighborhood, a hotel, a restaurant or an attraction, write ZERO flight lines, even if flight keys sit in CACHE and an earlier turn said 'business' or 'first': the flight entries already hold it."
+      },
+      {
+        "op": "replace",
+        "target": "Look up that domain's OWN key in CACHE, write code only for that domain (plus any domain the reply newly requests), and never load or filter another domain's key to apply the reply.",
+        "content": "Look up that domain's OWN key in CACHE. Key present -> load its most refined key, filter, save. Key ABSENT -> it is a first search (carry every constraint stated in any turn; hotel dates may be the flight dates; the city is the trip destination) or, when a mandatory arg is missing, one seek_information. Never substitute another domain's key: a cuisine, allergy or restaurant reply is never applied to hotels, a hotel reply (stars, amenities, per-night price, rooms) is never applied to attractions or flights, and the domain whose key was saved most recently is irrelevant. Write code only for that domain (plus any domain the reply newly requests)."
+      },
+      {
+        "op": "replace",
+        "target": "no stray tags such as `</parameter>`. All tools are already defined.",
+        "content": "no stray tags such as `</parameter>`. All tools are already defined. Only search_hotels / filter_hotels accept num_people and num_rooms: never put num_people, a party size ('2 travelers', 'around 20 people') or an occasion into search_flights, search_restaurants or any other call, and never invent a budget the user did not state. Every line starts with `name = tool(...)`, `save_to_cache(...)` or `seek_information(...)`; a bare search call is invalid."
+      },
+      {
+        "op": "replace",
+        "target": "If the user names an airport code (e.g. 'I normally fly from SJC'), add start_airport=\"SJC\" on the outbound leg and end_airport=\"SJC\" on the return leg.",
+        "content": "If the user names an airport code (e.g. 'I normally fly from SJC'), keep the CITY name in start_airport_city / end_airport_city ('San Jose', never 'SJC') and add start_airport=\"SJC\" on the outbound leg and end_airport=\"SJC\" on the return leg (a one-way gets start_airport only)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

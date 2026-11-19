@@ -1,0 +1,25 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "In 3 of 8 trajectories (Welsh, Hundred Years' War, Falcon) a passage reproduced the clue verbatim, either flat after a flashcard comma ('...INTO THIS LANGUAGE, WELSH.') or as a 'Category: ... Question: ... Answer: ...' dump. The agent copied that answer, completing it when it was truncated ('Answer: Hundred...').",
+    "The remaining easy factual clues (Pascal, El Paso, Marie Antoinette, Michelin, Boss) were solved by taking the entity that recurs across many passages next to the clue's anchor names. The answer type matched the slot (language, city, queen, brand), and no clue word was echoed back.",
+    "When the clue asked for a part or label of a name ('Last name of the French brothers...', \"Tweed's better known moniker\"), the agent returned only that part ('Michelin', 'Boss'). It did not return the full name ('Andre Michelin', 'Boss Tweed').",
+    "The answer was a bare, short core form with no type word and no qualifiers: 'Falcon' for 'one of these birds' (not 'Maltese Falcon'), 'El Paso' (no state). It kept the head noun only where the bare word would not stand alone ('Hundred Years' War')."
+  ],
+  "patch": {
+    "reasoning": "The skill already covers most of these behaviors, so I propose only two small edits to existing bullets with no new sections. First, the nickname bullet covers only one direction (clue gives nickname, answer real name). Successful runs show the mirror case: clue gives the real name and asks for the 'moniker' or a 'last name', so only that part is the answer. Making the direction explicit avoids a collision with the existing 'answer with the real name' rule. Second, the verbatim-archive rule lists several layouts but not the 'Question: ... Answer: ...' dump or the flat flashcard layout with the answer after the clue's final comma. Three successes relied on these, and naming them helps the agent recognise and copy them.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- For nickname clues about a person ('known as \"Uncle Walter\"'), answer with the real name as it appears in the context (Walter Cronkite), not the nickname. Still apply the person-name rule above.",
+        "content": "- For nickname clues about a person ('known as \"Uncle Walter\"'), answer with the real name as it appears in the context (Walter Cronkite), not the nickname. Still apply the person-name rule above.\n- DIRECTION CHECK for name clues: first decide which half the clue already gives. If it gives the real name and asks for the 'moniker / nickname / alias' (\"William Marcy Tweed's better known moniker\"), answer only the nickname word as the passages print it ('Boss', not 'Boss Tweed'). If it asks for a part of a name ('Last name of the French brothers who...'), answer only that part ('Michelin', not a first name or full name)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Archive lines may also be formatted 'CATEGORY | clue text | answer'. Take the answer that follows the clue, even if the whole context is one short passage.",
+        "content": "- More archive layouts to recognise: quiz-dump pages shaped 'Category: X Question: <clue> Answer: Y', and flat flashcard text where the answer is the capitalised word(s) after the clue's last word, often after a comma ('...INTO THIS LANGUAGE, WELSH.'). Take Y as the answer. If it is cut off ('Answer: Hundred...'), complete it from the other passages that repeat the same fact."
+      }
+    ]
+  },
+  "source_type": "success"
+}

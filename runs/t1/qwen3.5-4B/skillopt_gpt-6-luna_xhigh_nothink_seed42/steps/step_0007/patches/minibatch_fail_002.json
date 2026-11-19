@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_invocation_contract_violation",
+      "count": 3,
+      "description": "Agents imported the unavailable `tools` module despite the skill requiring direct calls to injected functions."
+    },
+    {
+      "failure_type": "cache_satisfaction_error",
+      "count": 3,
+      "description": "Agents returned “No planning needed” even though the user had added criteria not supported by the cached results."
+    },
+    {
+      "failure_type": "contextual_parameter_misinterpretation",
+      "count": 1,
+      "description": "An abbreviated answer to a question about airline and class preferences was misread as a time-of-day preference."
+    },
+    {
+      "failure_type": "cache_operation_completeness",
+      "count": 2,
+      "description": "New search results were generated without saving them to cache."
+    }
+  ],
+  "patch": {
+    "reasoning": "The repeated import, cache no-op, and cache-save errors are already directly addressed by the skill, so duplicating those instructions is unwarranted. The remaining actionable gap is resolving short or ambiguous answers according to the question they answer, rather than assigning them to an unrelated parameter.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "\n- Resolve contextual answers, abbreviations, and fragments using the immediately preceding question as well as the full conversation. Map each answer to the preference dimension being asked about; for example, a short airline code in response to a question about airline and class is an airline preference, not a departure-time preference. Do not assign an ambiguous term to an unrelated parameter merely because that parameter could also accept it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

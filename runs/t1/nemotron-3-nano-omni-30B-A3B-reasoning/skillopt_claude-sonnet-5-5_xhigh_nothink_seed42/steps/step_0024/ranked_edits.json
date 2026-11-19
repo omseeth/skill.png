@@ -1,0 +1,37 @@
+{
+  "reasoning": "fallback concatenation [optimizer-ranked: selected 3/13 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "-> the ONLY output is one short `seek_information(...)` naming just the missing items. This holds on a first turn (CACHE `{}`).",
+      "content": "-> `seek_information(...)` naming just the missing items is the LAST line, and it is the only line only when no other requested domain is searchable. If the user also asked for restaurants or attractions and a city/state is known anywhere in the conversation (e.g. 'a hotel in Colorado Springs for a solo trip, budget 65 per night, with some restaurant recommendations in the city'), first write `restaurants = search_restaurants(city=\"Colorado Springs\")` + `save_to_cache(key=\"restaurants\", value=restaurants)` (or the attractions equivalent), then the single seek_information for the hotel dates. Hotel budget, party size and trip-purpose words ('solo trip', 'weekend') never go into the restaurant call. A seek_information-only output is WRONG in that case. A lone seek_information is correct on a first turn (CACHE `{}`) when only one domain was requested.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Never add default time windows, flight_class, budget, num_layovers or num_people on flights.",
+      "content": "Never invent default time windows, num_layovers or num_people on flights, and never invent a flight_class, airline or budget. But a flight_class, airline or budget the user DID state in any earlier turn ('economy') goes into the first search_flights call of EVERY leg, and a hotel neighborhood stated in any turn ('Downtown St. Louis') goes into the first search_hotels. A domain whose key is already in CACHE (e.g. 'restaurants') is not searched again in the same block.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "1. Copy the CACHE keys of each domain the LAST user turn touches (flights / hotels / restaurants / attractions, including filtered_*, nearest_*, hotels2, final_* names).",
+      "content": "\n   - KWARG TRACE (every filter_* call): each kwarg must come from a word in the user's LAST message. Never copy parameters from the examples in this skill (room service, shuttle, gym...). Anything the loaded summary lists ('has_meeting_rooms', budget, rooms) is already applied. 'Yes, near Midtown Atlanta' answering an area question -> `neighborhood=[\"Midtown Atlanta\"]` only. 'I have a dairy allergy' -> `has_dairy_allergy_options=True` on restaurants only, with no hotel kwargs.\n   - 'near / nearby' when both hotels and restaurants (or attractions) are in play: filter only the domain whose constraint the user just stated and save it as final_*. Then `nearest_x = search_nearest(hotels=<most refined hotels key, loaded>, restaurants=<the restaurants result>, groupBy=\"hotel\")` when the user wants a HOTEL recommended near restaurants ('a hotel with good restaurants nearby'), or groupBy=\"restaurant\" when they want a restaurant near the hotel. Save it as nearest_hotels / nearest_restaurants. Add no hotel filter the user did not state.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Selected edits that fix recurring systematic failures and resolve conflicts rather than accrete examples. [4] reconciles the contradictory 'seek_information is the ONLY output' wording in 4b with the multi-domain first-turn rule (a high-value target the meta-skill says is ignored), as a replace, not an addition. [7] converts a negative-only prohibition into a positive trigger (user-stated class/airline/budget goes into the first search of each leg), which the meta-skill identifies as causing dropped flight_class, and is a replace so it doesn't grow the skill. [5] adds a general kwarg-trace rule (every kwarg must come from the last message, no copying from examples) plus correct near/nearby routing, addressing the cross-domain leakage cluster and filter minimality. Rejected: [0],[1],[11] task-specific examples already failed; [2],[6] duplicate existing hard output rules; [3],[8],[12] largely duplicate existing rules 24/25/slow-update C,E; [10] risks inventing num_people on filter_hotels; [9] conflicts partly with slow-update section B.",
+    "selected_indices": [
+      4,
+      7,
+      5
+    ]
+  }
+}

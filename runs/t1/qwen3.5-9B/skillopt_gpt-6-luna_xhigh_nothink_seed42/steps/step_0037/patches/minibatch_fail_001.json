@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "follow_up_or_accepted_offer_mishandled",
+      "count": 4,
+      "description": "Follow-ups were treated as complete despite missing constraints, or were applied to the wrong domain or an unrelated cached attraction."
+    },
+    {
+      "failure_type": "conversation_context_or_criteria_loss",
+      "count": 3,
+      "description": "Earlier explicit criteria were dropped, truncated, or replaced with an inferred or unrelated value when answering a clarification."
+    },
+    {
+      "failure_type": "result_not_saved",
+      "count": 2,
+      "description": "Initial search results were returned by bare calls without assigning and saving the complete result object."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already states the general cache and save contracts, so the edits avoid repeating them broadly. They sharpen the decision points that failed here: verify exact cache constraints before no-planning, resolve accepted attraction requests by their exact category or name, retain earlier criteria across clarifications, and map explicit nonstop requests to the supported flight parameter.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Resolve accepted offers against cache criteria:** Treat an affirmative reply accepting an earlier offer as a request to complete that specific deliverable. A cached result satisfies the offer only if it matches the requested location, category, and other criteria; a same-domain result for a different attraction, cuisine, or filter is not sufficient. If a suitable result is cached, retrieve the latest one even when no search or filter is needed. Otherwise, use a suitable cached base with the needed same-domain filter, or search if no suitable base exists and required inputs are available. Ask for missing required inputs, and do not repeat completed work or redo an unrelated domain whose result already reflects current constraints.",
+        "content": "- **Resolve accepted offers against exact referents:** Treat an affirmative reply as a request for the specific deliverable offered. Identify its domain, location, category, and full name from the conversation; a same-domain cache result is suitable only if its summary matches those criteria. Accepting an offered attraction category requires an attraction search or filter for that category—not a hotel filter. A newly named attraction requires `search_attractions` for that full name unless that exact attraction is already cached, even if another attraction is cached. For a requested hotel-or-restaurant proximity result, use that exact attraction result as the anchor. Retrieve a matching cached result even when no further operation is needed; otherwise filter a suitable base or search when required inputs are available. Ask for missing required inputs and leave satisfied or unrelated domains untouched."
+      },
+      {
+        "op": "replace",
+        "target": "Return no-planning only when every requested or pending deliverable reflects all current constraints and the latest turn adds no request, accepted offer, or new constraint.",
+        "content": "Before returning no-planning, verify each latest user-provided value or accepted request against the latest suitable cache summary by its actual criterion and value (for example, hotel stars, traveler count, or attraction name/type); matching domain or location alone is insufficient. If a criterion is absent or differs, retrieve the suitable base and complete the required filter or search. Return no-planning only when all deliverables demonstrably match and the latest turn adds no request, acceptance, or constraint."
+      },
+      {
+        "op": "replace",
+        "target": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion.",
+        "content": "- **Interpret clarification answers cumulatively:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. It fills those fields; it does not cancel other explicit criteria already provided for that pending domain. Include all known criteria together in an initial search where supported, or retain prior constraints in a suitable cached base while applying only the new delta. For restaurant allergies, use the corresponding `has_*_allergy_options` field when supported; never substitute an unrelated allergen field."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+        "content": "\n\n- **Honor explicit nonstop requests:** When the user requests a non-stop or nonstop flight, pass `num_layovers=[0]` on every requested leg, including legs searched after a later clarification; do not rely on the tool's default layover range."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

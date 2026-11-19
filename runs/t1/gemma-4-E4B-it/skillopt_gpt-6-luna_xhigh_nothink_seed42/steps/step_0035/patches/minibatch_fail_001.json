@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_followup_handling",
+      "count": 3,
+      "description": "Agents repeated searches or filters for already-covered scopes instead of making only the latest requested change or reusing cached results."
+    },
+    {
+      "failure_type": "location_field_mapping",
+      "count": 3,
+      "description": "Agents mapped areas to the wrong field, shortened a named neighborhood, or treated a state abbreviation as a city."
+    },
+    {
+      "failure_type": "argument_and_tool_call_hygiene",
+      "count": 3,
+      "description": "Agents supplied guessed optional values, called tools with missing required inputs, or omitted required cache and information-seeking actions."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already gives detailed cache reuse, required-argument, and save-to-cache instructions, so repeating those reminders would not address the gaps. These edits clarify how to map a suggested area to attraction fields, handle an affirmative that only accepts a recommendations offer, and avoid defaulting an unstated hotel party size.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "For attractions, put the requested category in `type` with its exact value (for example, if the requested type is `Scenic`, pass `type=[\"Scenic\"]`).",
+        "content": "\nFor attraction requests, map a named neighborhood or district to `neighborhood`, not `attraction_name`; reserve `attraction_name` for a named attraction or site. Preserve the complete area name as stated."
+      },
+      {
+        "op": "insert_after",
+        "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+        "content": "\n- If an affirmative accepts only an offer to present recommendations from an already covered scope, retrieve the relevant cached result for use; do not repeat its search or an already-applied filter, or save a duplicate filtered result. Apply a filter only if the reply adds a new constraint."
+      },
+      {
+        "op": "replace",
+        "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+        "content": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.” Do not default `num_people` to a conventional occupancy or include it unless the conversation provides an unambiguous party size."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

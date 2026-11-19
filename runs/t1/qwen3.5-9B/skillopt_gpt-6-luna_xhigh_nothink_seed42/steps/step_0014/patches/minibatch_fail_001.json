@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_lifecycle_and_follow_up_reconciliation",
+      "count": 6,
+      "description": "Agents misused suitable cached results, omitted assignments or saves, repeated existing criteria, or used inconsistent cache keys."
+    },
+    {
+      "failure_type": "unnecessary_or_duplicate_operations",
+      "count": 4,
+      "description": "Agents added duplicate searches, unrequested downstream work, imports, or presentation code beyond the necessary plan."
+    },
+    {
+      "failure_type": "location_refinement_mishandling",
+      "count": 2,
+      "description": "Follow-up cities were not consistently applied as refinements to cached broad-location results."
+    },
+    {
+      "failure_type": "controlled_value_drift",
+      "count": 2,
+      "description": "Agents changed user-supplied category wording or enum casing, such as Scenic to Scenery or first to First."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify gaps around predictable cache keys, city-level refinements of cached regional results, exact controlled-value casing, and runtime tools being preloaded rather than imported. Existing rules already cover assigning and saving result-producing calls and restricting proximity calls, so those rules are not duplicated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Do not import libraries, redefine models or schemas, or add helper code.",
+        "content": "Do not import libraries or tool functions (including `from tools import ...`): runtime tools and cache functions are already available directly. Do not redefine models or schemas, or add helper code."
+      },
+      {
+        "op": "replace",
+        "target": "Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save.",
+        "content": "Use predictable, fresh keys: name initial results by domain (for example, `attractions`, `hotels`, or `restaurants`) and flight leg (for example, `departure_flights` or `return_flights`); name updated results with an operation prefix and base key (for example, `filtered_attractions`), adding a distinct suffix when keeping multiple outputs for the same domain. Keep results for separate domains, legs, and updates distinct; never leave a result-producing call bare or omit its save."
+      },
+      {
+        "op": "replace",
+        "target": "When a domain is newly requested during an ongoing trip, use the already-established destination as its location when that context clearly applies rather than asking for a city already known.",
+        "content": "When a domain is newly requested during an ongoing trip, use the already-established destination as its location when clearly applicable rather than asking for a city already known. When a user later names one or more cities to refine a cached state- or region-wide result, retrieve that result and filter separately for each city; do not search again retaining the broad region alongside the cities."
+      },
+      {
+        "op": "replace",
+        "target": "Preserve complete names, categories, criteria, and date strings unless a tool requires a format conversion.",
+        "content": "Preserve complete names, categories, criteria, date strings, and user-supplied casing unless the tool schema requires a conversion. Do not synonymize or change the case of a valid controlled value (for example, change “Scenic” to “Scenery” or “first” to “First”); when conversion is required, use the exact accepted schema value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

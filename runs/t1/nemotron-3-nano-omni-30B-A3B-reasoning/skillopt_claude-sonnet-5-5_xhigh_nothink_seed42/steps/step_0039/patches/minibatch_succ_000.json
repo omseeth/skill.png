@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Flight-only openers with an origin and destination but no date (including 'specific arrival airport/time', 'large group', 'not sure about dates') get exactly one seek_information for the departure date, with no search and no hotel dates.",
+    "Hotel refinement in a flight+hotel chat loads the most refined hotels key, passes only the new amenity kwargs from the last message, and saves under an unused key with no flight lines.",
+    "With two flight legs cached (first_flights/second_flights or departure/return), a class reply is filtered on every leg with identical kwargs, and key names do not matter.",
+    "When the hotel domain has no key and only another domain (attractions) is cached, the correct output is seek_information for the missing hotel dates. The agent should not touch the cached attractions key (Trajectory 8 passed only by luck).",
+    "When the assistant promised 'a hotel near <named attraction>' and the user replies with hotel amenities, the gold output is: filter hotels, save, then search_nearest on the filtered hotels and the cached attractions, saved as nearest_hotels. No new attraction search is made (Trajectory 7 re-searched and lost tool_f1)."
+  ],
+  "patch": {
+    "reasoning": "Most successes are already covered by the skill, and the meta-skill says to shrink rather than add gates. Two trajectories passed cache_em while showing sloppy behaviour in cases the skill only half covers. Trajectory 7 re-ran search_attractions on an amenity reply when attractions were already cached. Trajectory 8 loaded and re-saved the attractions key on a hotel-budget reply that should have been a lone seek_information. Two short additions close those gaps, using placeholders and no new top-level gate: one line in Rule 26 and one clause in an existing bullet.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Without a hotels key, 'near the hotel' needs no search_nearest. Just run the normal first search.",
+        "content": "- Hotels AND attractions keys both cached, and the assistant just offered a hotel near the named/cached attraction, and the user answers with hotel constraints (amenities, stars, budget): load the most refined hotels key, `filter_hotels(prior_results=h, <only the last message's kwargs>)`, save it, then `search_nearest(hotels=<that filtered result>, attractions=<loaded attractions key>, groupBy=\"hotel\")` and save it as nearest_hotels. Do not re-search attractions and do not re-save the attractions key."
+      },
+      {
+        "op": "insert_after",
+        "target": "Never apply a hotel reply to the attractions key.",
+        "content": " Do not load or re-save the attractions key either: the output is the single seek_information line, with no get_results_from_cache and no save_to_cache."
+      }
+    ]
+  },
+  "source_type": "success"
+}

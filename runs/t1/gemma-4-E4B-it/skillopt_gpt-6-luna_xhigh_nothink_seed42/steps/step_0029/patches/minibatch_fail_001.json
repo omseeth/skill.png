@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_follow_up_misclassification",
+      "count": 3,
+      "description": "Repeated hotel or restaurant base searches instead of retrieving compatible cached results and filtering newly supplied constraints."
+    },
+    {
+      "failure_type": "cache_scope_mismanagement",
+      "count": 1,
+      "description": "Used a category-only attraction scope for a newly named attraction rather than searching for that entity before proximity processing."
+    },
+    {
+      "failure_type": "missing_required_arguments_and_partial_execution",
+      "count": 2,
+      "description": "Searched an incomplete hotel or flight request without required dates or failed to seek those details while handling an independent complete request."
+    },
+    {
+      "failure_type": "result_variable_assignment",
+      "count": 2,
+      "description": "Called a search without assigning its result, then attempted to save an undefined variable."
+    },
+    {
+      "failure_type": "flight_itinerary_leg_modeling",
+      "count": 1,
+      "description": "Treated the return date as an arrival date instead of searching a separate reverse-direction leg."
+    },
+    {
+      "failure_type": "neighborhood_value_mapping",
+      "count": 1,
+      "description": "Shortened the user's full neighborhood phrase instead of preserving it in the neighborhood field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the general cache, required-argument, assignment, itinerary, and value-mapping rules. The edits make two recurring decision points more operational: treating occupancy changes as hotel filters and distinguishing a new named entity from a cached category scope, plus showing how to complete independent searches while seeking missing mandatory details.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "\n\n**Classify follow-ups by scope, including occupancy updates:** When a later turn answers an assistant's question about a filterable preference for an already searched scope, treat it as a filter update—not a new base search. Retrieve the most constrained compatible result, including a cached proximity result when its candidate set remains valid, and apply only the changed criteria. For hotels, this includes `num_people` and `num_rooms` as well as budget and amenities. Do not regenerate unchanged domains or legs. Conversely, a newly requested named entity not covered by a cached category result requires a search for that entity: for attractions, use `attraction_name` with the user's exact name rather than repeating the old category search."
+      },
+      {
+        "op": "insert_after",
+        "target": "A no-op response is appropriate only when the latest turn adds no actionable request and compatible cached results already cover all active requests. If required information is missing for one domain or itinerary leg, ask for it while still searching and caching any independent requested domain or leg whose mandatory inputs are complete.",
+        "content": "\n\n**Partial-completion pattern:** Validate mandatory inputs separately for every requested domain and leg. Never call a search for an incomplete scope. If an independent request is complete, execute and save it first, then make one `seek_information` call listing only the missing mandatory details. For example, if a restaurant city is known but hotel dates are missing:\n```python\nrestaurants = search_restaurants(city=\"<known city>\")\nsave_to_cache(key=\"restaurants\", value=restaurants)\nseek_information(\"We need the hotel's check-in and checkout dates.\")\n```"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

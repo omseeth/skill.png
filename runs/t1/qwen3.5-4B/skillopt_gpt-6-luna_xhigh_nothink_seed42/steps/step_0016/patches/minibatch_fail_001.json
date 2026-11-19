@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_namespace_misuse",
+      "count": 3,
+      "description": "Agents imported tools from a nonexistent module despite the skill already requiring direct calls to injected functions."
+    },
+    {
+      "failure_type": "result_persistence",
+      "count": 3,
+      "description": "Agents omitted cache saves after generating search results."
+    },
+    {
+      "failure_type": "cache_reuse_or_refinement",
+      "count": 2,
+      "description": "Agents searched anew or returned no-op when compatible cached results needed filtering for newly added criteria."
+    },
+    {
+      "failure_type": "cross_domain_proximity_interpretation",
+      "count": 1,
+      "description": "A request for lodging with access to a requested attraction category did not trigger searches for both domains and a nearest-results call."
+    },
+    {
+      "failure_type": "location_field_selection",
+      "count": 1,
+      "description": "An agent asked for a city even though the attraction tool supports state-level searches and the user supplied a state."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures repeat instructions already stated in the skill, so duplicating them is unlikely to help. Clarify that lodging described as having access to a requested attraction category is a cross-domain proximity request, addressing the remaining ambiguity in when to search both domains and call search_nearest.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- Treat requests for lodging or other recommendations with access to, close to, or near a requested attraction or restaurant category or named place as cross-domain proximity requests: ensure compatible results for both domains are available, then call `search_nearest` and save its result. Merely planning for multiple domains on the same trip is not a proximity request. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

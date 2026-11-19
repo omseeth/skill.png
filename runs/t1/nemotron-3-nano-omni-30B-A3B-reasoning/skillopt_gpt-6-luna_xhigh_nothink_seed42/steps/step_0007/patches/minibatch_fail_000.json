@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_followup_scope",
+      "count": 5,
+      "description": "Agents missed follow-up work, including an accepted activity request, a new flight request, a flight preference, or a return leg."
+    },
+    {
+      "failure_type": "argument_or_target_mapping",
+      "count": 4,
+      "description": "Agents used the wrong location or proximity target, supplied invalid time values, or represented a return flight incorrectly."
+    },
+    {
+      "failure_type": "unnecessary_or_redundant_operations",
+      "count": 4,
+      "description": "Agents added unrequested sorting or no-op output, repeated covered filtering, or continued work in an unrelated domain."
+    },
+    {
+      "failure_type": "result_lifecycle",
+      "count": 3,
+      "description": "Agents failed to bind and save results from attraction or flight searches."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already explicitly covers saving tool results, state-versus-city mapping, named-attraction coverage, and separate round-trip legs, so those rules should not be duplicated. These edits address remaining gaps: associating accepted activities with multiple planned stops, validating time strings against tool formats rather than copying cache serialization, and avoiding unrequested post-processing or no-op output.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Represent flight legs separately",
+        "content": "\n- For an activity request accepted in the context of stays at multiple explicitly planned destinations, preserve the destination-to-stay mapping and search the requested activity separately in each relevant destination. Do not arbitrarily choose one stop or combine destinations into one location argument; use a single destination only when the conversation scopes the activity to that stop."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- Format time-window values exactly as the relevant tool schema and examples require. A cache summary may serialize a time differently from the tool's accepted input format; do not copy that representation blindly. Convert explicit user times to the accepted format while preserving their meaning, and do not resend a time constraint already represented in the selected cached result."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "\n- Use only operations needed to satisfy an explicit request or preference. Do not add sorting or other post-processing merely because a tool is available; use it only when requested or necessary to fulfill the stated preference. Emit `print(\"No planning needed\")` only for a true no-op with no planning action performed, never after searches, filters, sorts, or other requested work."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

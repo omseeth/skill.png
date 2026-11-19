@@ -1,0 +1,20 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "When a first-turn request lacks a mandatory arg (flight departure date, hotel check-in/check-out, restaurant city), the agent emitted ONLY one short seek_information naming just the missing mandatory item. It did not search with partial or guessed args, and it ignored optional details such as class, amenities, rating, party size, 'specific airport' and purpose.",
+    "Contextual words ('birthday', 'solo trip', 'specific arrival airport', 'dietary restriction') were correctly not treated as dates or cities. The agent asked only for the departure date or city.",
+    "On a neighborhood-acceptance reply with a restaurants cache entry, the agent ran load -> filter_restaurants(neighborhood=[user's wording]) -> save_to_cache, passing only the new neighborhood. The cached cuisine and vegetarian filters were not repeated.",
+    "Two hotel 'weekend getaway' tasks were scored success on cache_em but had tool_f1=0, because the agent fabricated weekend dates (two-date lists) and searched anyway. The gold answer was a seek_information for the stay dates. Vague stay timing needs an explicit rule."
+  ],
+  "patch": {
+    "reasoning": "Most batch successes are seek_information turns already covered by Rules 6 and 7. The notable gap is two hotel tasks ('weekend getaway' with amenities and rating) where the agent invented weekend dates and called search_hotels. They passed only because of cache_em, while tool_f1 was 0 against a gold seek_information. Rule 6 covers 'this weekend' only generically, and its 'context is not a date' bullet covers flights only. One concise hotel-specific bullet closes the gap, and it reinforces the one-line seek_information pattern for flight and restaurant cases.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not search, and do not ask about class, airline, time, return date, or passenger count.",
+        "content": "\n- Vague stay timing is not a hotel date either. 'weekend getaway', 'a getaway', 'solo trip', 'birthday', 'for the weekend' plus a city and amenities or rating (e.g. 'hotel in Tucson for a weekend getaway with a hot tub and sauna, rating at least 4.0') gives NO check-in or check-out date. Do not compute weekend dates, do not pass multi-date lists, and do not call search_hotels with the amenities or rating. Output only `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. The same single-call pattern applies to a flight with a purpose or party size but no date (`seek_information(\"We need the departure date for the flight.\")`) and to a restaurant request with dietary needs but no city (`seek_information(\"We need the city for the restaurant.\")`). Ask only for the missing mandatory item. Never ask about an unnamed 'specific airport', amenities, rating, budget, flight class or number of guests."
+      }
+    ]
+  },
+  "source_type": "success"
+}

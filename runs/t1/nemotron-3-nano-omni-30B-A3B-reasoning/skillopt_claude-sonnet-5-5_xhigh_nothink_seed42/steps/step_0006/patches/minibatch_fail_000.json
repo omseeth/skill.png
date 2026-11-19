@@ -1,0 +1,45 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "over_refinement_of_unchanged_domains",
+      "count": 4,
+      "description": "The last turn concerned one domain, but the agent also re-filtered or re-loaded another cached domain with constraints its CACHE summary already lists. Examples: hotels re-filtered on a restaurant answer, hotels re-filtered on an attraction answer, flights re-searched. In one case the hotel neighborhood answer was dropped in favour of retrieving restaurant keys."
+    },
+    {
+      "failure_type": "missing_search_nearest_for_proximity_requests",
+      "count": 2,
+      "description": "'Restaurant near the hotel' and 'hotel near Fountains of Bellagio' should call search_nearest (after filter_restaurants, or after search_attractions by name). The agent never used search_nearest and re-filtered hotels instead."
+    },
+    {
+      "failure_type": "filter_on_missing_cache_key_or_domain_not_searched",
+      "count": 1,
+      "description": "Hotel checkout date arrived with no hotels cache key. The agent filtered a non-existent 'hotels' key (None) and re-searched cached flights instead of calling search_hotels."
+    },
+    {
+      "failure_type": "output_format_violations",
+      "count": 2,
+      "description": "The agent wrote `from cache import ...` (ModuleNotFoundError) and left a bare search_attractions call with no assignment or save_to_cache. It also put the state code 'TN' in city instead of state."
+    },
+    {
+      "failure_type": "cache_not_reused_for_narrowing",
+      "count": 1,
+      "description": "A state-level attractions cache existed and the user named two cities. The agent re-searched one city instead of one filter_attractions(city=...) per city on the cached key."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures break rules the skill already states: imports, a bare unsaved search, a state passed as city, filtering a missing key, and re-filtering domains the CACHE summary already shows as filtered. Those rules are buried deep in a long document, so a short hard-checks block at the top should help. Two real gaps remain. search_nearest is never explained, and the Rule 10 line 'do not touch the hotel cache' contradicts the proximity pattern. There is also no per-domain 'is this constraint new?' test, no handling for a domain completed this turn with no cache key, and no narrowing of a state-level attractions cache to named cities. Four edits cover all of these.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Hard output checks (apply to EVERY response, before anything else)\n1. Output only straight-line tool calls. Never write `import` / `from ... import ...` (e.g. `from cache import get_results_from_cache` raises ModuleNotFoundError), and never write def, if/else, loops or print of results.\n2. Every search_*, filter_* and search_nearest call is assigned to a variable and followed by `save_to_cache`, even a one-call first turn. Correct: `attractions = search_attractions(state=\"TN\", type=[\"Historical\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. A US state name or abbreviation ('TN', 'CO', 'Georgia') is `state=`, never `city=`.\n3. Only load keys that literally appear in the CACHE summary. If a domain has no key, search it. Never filter a key that is not there (that gives prior_results=None and a ValidationError).\n4. Touch only the domain(s) that got a NEW constraint in the last user turn (Rule 24). Proximity wording ('near the hotel', hotel near an attraction) needs search_nearest (Rule 23)."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 23: 'Near the hotel' / 'near an attraction' means search_nearest\n- Trigger: the user wants restaurants or attractions near the hotel, OR answers 'Yes' to 'Are you looking for a hotel near any specific attraction?' by naming an attraction. This overrides the 'do not touch the hotel cache' bullet in Rule 10.\n- Restaurants near the hotel (a hotels key exists in the CACHE): filter the restaurants with the new constraints, then call search_nearest. Do NOT re-filter hotels.\n  `restaurants = get_results_from_cache(key=\"restaurants\")`\n  `hotels2 = get_results_from_cache(key=\"<latest hotels key>\")`\n  `filtered_restaurants = filter_restaurants(prior_results=restaurants, cuisine=[\"French\"], rating=[3.5, 3.5])`\n  `save_to_cache(key=\"filtered_restaurants\", value=filtered_restaurants)`\n  `nearest_restaurants = search_nearest(hotels=hotels2, restaurants=filtered_restaurants, groupBy=\"restaurant\")`\n  `save_to_cache(key=\"nearest_restaurants\", value=nearest_restaurants)`\n  A plain 'a 3.5 rating' is rating=[3.5, 3.5]. 'Near the hotel' is never a filter param. Do not re-pass hotel stars or budget that the hotels summary already lists.\n- Hotel near a named attraction: load the latest hotels key, run a NEW named search, then call search_nearest grouped by hotel.\n  `hotels = get_results_from_cache(key=\"hotels\")`\n  `attractions1 = search_attractions(city=\"<established city>\", attraction_name=[\"Fountains of Bellagio\"])`\n  `save_to_cache(key=\"attractions1\", value=attractions1)`\n  `nearest_hotels = search_nearest(hotels=hotels, attractions=attractions1, groupBy=\"hotel\")`\n  `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`\n  Save the named search under a NEW key (do not overwrite 'attractions'). Do not use filter_attractions for the name. Do not re-filter hotels with amenities, budget or stars that the hotel CACHE summary already shows.\n- If the CACHE has no hotels key yet, do not call search_nearest. Follow Rules 6 and 14 for the missing domain.\n\n## Rule 24: Per-domain 'new constraint' test (stops over-filtering)\n- For each cached domain ask: does the LAST user turn add a constraint that this key's CACHE summary does not already list? If not, emit NOTHING for that domain (no load, no filter, no re-save). Typical mistakes: a restaurant answer ('rating at least 4.5, around 65') that also triggers `filter_hotels(... budget=115, has_business_center=True)` although the hotel summary already says 'Additionally filtering for budget: $115, has_business_center'; or an attraction answer that re-filters hotels with pool and room service already applied.\n- Restaurant answer (cuisine, rating, budget, dietary need) -> only load the latest restaurants key, filter_restaurants and save. Example: `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, rating=[4.5, 5], budget=65)`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`.\n- Answer to a hotel question in a hotel+restaurant conversation ('Downtown Colorado Springs is preferred for hotel', 'at least 3 stars', 'with a gym') -> filter ONLY hotels from the latest hotels key. Example: `hotels2 = get_results_from_cache(key=\"hotels2\")`, `hotels3 = filter_hotels(prior_results=hotels2, neighborhood=[\"Downtown Colorado Springs\"])`, `save_to_cache(key=\"hotels3\", value=hotels3)`. Never replace this with a retrieval of restaurant keys or a re-save of an old key. Never skip the filter because restaurants were filtered earlier.\n\n## Rule 25: A domain completed this turn, and narrowing cached results\n- The last turn supplies the missing hotel date(s) and the CACHE has no hotels key (only flights or restaurants): call `search_hotels` once. Use city = the destination, checkin_date = the flight departure date given earlier, checkout_date = the new date, and the hotel preferences from earlier turns (gym_present=True, free_wifi_included=True, num_people, budget, stars ...). Save it as \"hotels\". Do NOT re-run a cached search_flights. Do NOT call filter_hotels (there is no key to load).\n- If the same turn names cuisines ('Japanese and Thai') and the restaurants are cached, use `filter_restaurants(prior_results=r, cuisine=[\"Japanese\", \"Thai\"])` and save it as 'filtered_restaurants'. Do not call search_restaurants again.\n- Attractions are cached for a state or region and the user then names cities ('Memphis and Las Vegas'): do not re-search. Load the attractions key and make ONE `filter_attractions(prior_results=x, city=\"<city>\")` per named city, each saved under a distinct new key (filtered_attractions1, filtered_attractions2). Cover every named city."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

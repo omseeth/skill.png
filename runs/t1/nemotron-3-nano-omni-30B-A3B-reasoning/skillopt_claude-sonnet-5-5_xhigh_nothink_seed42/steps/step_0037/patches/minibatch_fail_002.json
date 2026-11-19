@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "dropped_searchable_domain_when_hotel_or_flight_dates_missing",
+      "count": 3,
+      "description": "On a first turn with hotel/flight dates missing plus a searchable restaurant or attraction request, the agent output only seek_information (T2), a placeholder-date search_hotels with a stray tag (T3), or `import sys` (T4). It should search the other domain and then ask for the dates."
+    },
+    {
+      "failure_type": "fabricated_date_copied_from_skill_example",
+      "count": 1,
+      "description": "A flight request with no date was searched with 'May 16, 2025', the string the skill lists as forbidden and also uses in its Rule 24 example (T7). T3's '<date>' placeholder is the same priming effect."
+    },
+    {
+      "failure_type": "filter_instead_of_new_search_on_replaced_constraint",
+      "count": 1,
+      "description": "'Actually we want only Pakistani' was applied as a filter on the Japanese-filtered key, which intersects to nothing. Gold re-searches with the new cuisine and the stated budget (T5)."
+    },
+    {
+      "failure_type": "invented_save_after_pure_retrieval",
+      "count": 1,
+      "description": "For 'Okay, that sounds good' with the proposal already applied in the cache, the agent loaded a key and saved it again under an invented nearest_hotels key (T6). Gold is a single load."
+    },
+    {
+      "failure_type": "near_hotel_first_search_misrouted",
+      "count": 1,
+      "description": "With no restaurants key, 'Chinese ... 3.5 rating near the hotel' was handled as filter_hotels(neighborhood=['Fresno']) saved as nearest_hotels. It should be search_restaurants followed by search_nearest (T8)."
+    },
+    {
+      "failure_type": "optional_param_added",
+      "count": 1,
+      "description": "num_people=1 was added from 'solo trip' although gold omits it (T1). Conflicts with the protected slow block, so not patched."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of eight failures are the same mixed-domain first turn: the other requested domain must be searched, then one seek_information asked for the dates. The DATE GATE actively primed the wrong behaviour by naming the forbidden strings ('May 16/18/19/26, 2025', '<date>'), and the model emitted exactly those. Edit 1 rewrites the gate positively, drops the priming strings, and states the mixed-first-turn pattern with an attraction/restaurant example. Edit 2 adds a narrow exception for a user who replaces an already-applied value ('Actually only X'), which must be a new search rather than a filter. Edit 3 states in the KWARG TRACE near/nearby bullet that a missing restaurants or attractions key means a first search plus search_nearest, never filter_hotels. Edit 4 makes the pure-retrieval exception a single load line with no save or invented nearest_* key. The edits are targeted rewrites of existing text, not new gates.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "find the date the user literally wrote in the conversation (e.g. 'May 16, 2025'). Found -> search with it. Not found -> that domain gets `seek_information(...)` naming only the missing date(s) and NO search call. It is the whole output unless another requested domain is searchable (see 4b). 'One-way', 'N travelers', 'solo trip', 'weekend getaway', 'birthday' and 'special occasion' are context, not dates. Never use a TOOL CONFIG example date such as '2025-08-03', and never reuse a date that appears only in this skill's examples (May 16/18/19/26, 2025 and similar). Never write a placeholder such as '<date>' or '<X>' as an argument. Before typing any date, find that exact string in a user message of the CONVERSATION. If you cannot, the date is missing and that domain gets seek_information.",
+        "content": "find the date the user literally wrote in the conversation. Found -> search with it. Not found -> that domain gets NO search call, only `seek_information(...)` naming the missing date(s) as the LAST line of the output. 'One-way', 'N travelers', 'solo trip', 'weekend getaway', 'birthday' and 'special occasion' are context, not dates. Every date you type must be copied from a user message in the CONVERSATION; dates that appear in this skill or in TOOL CONFIG are never usable, and no filler argument may stand in for a missing date. If you cannot find the exact string in a user message, the date is missing. MIXED FIRST TURN: if the user also asked for attractions or restaurants and a city or state is known from any turn (e.g. 'a hotel in <city> for N people and some <type> attractions', or flight + hotel + 'vegan restaurants there'), FIRST write that domain's search (`attractions = search_attractions(city=\"<city>\", type=[\"<type>\"])` or `restaurants = search_restaurants(city=\"<city>\", <diet/cuisine stated>)`, each followed by its save_to_cache), THEN one closing seek_information naming only the missing dates. A lone seek_information is correct only when no other requested domain is searchable. Never write an import."
+      },
+      {
+        "op": "insert_after",
+        "target": "saved as filtered_attractions.",
+        "content": "\n- REPLACEMENT EXCEPTION: when the user swaps out a value already shown as applied in the cache summary ('Actually we want only Pakistani', 'instead', 'change it to'), filtering the old key would intersect with the replaced value and return nothing. Run a NEW `search_<domain>` with the city/state from any turn, the new value, and any other constraint stated in that same message (e.g. a budget). Do not carry over the replaced value. Save it under an unused key (e.g. restaurants1) and do not load or filter the old key."
+      },
+      {
+        "op": "insert_after",
+        "target": "Add no hotel filter the user did not state.",
+        "content": "\n   - If the restaurants (or attractions) key is NOT in CACHE and the user asks for them near the hotel ('Chinese sounds great, and a restaurant with 3.5 rating near the hotel'), the reply is a FIRST SEARCH of that domain plus search_nearest: load the most refined hotels key, `restaurants = search_restaurants(city=<trip city>, <cuisine / rating stated>)` + save 'restaurants', then `nearest_restaurants = search_nearest(hotels=<loaded hotels>, restaurants=restaurants, groupBy=\"restaurant\")` + save. Never call filter_hotels for it and never put a city name in neighborhood=."
+      },
+      {
+        "op": "replace",
+        "target": "with no search, no filter and no print('No planning needed').",
+        "content": "as the ONLY line: no search, no filter, no save_to_cache, no search_nearest, no invented nearest_* key and no print('No planning needed'). A pure retrieval never saves anything; when the summary already shows the proposal applied, 'Okay, that sounds good' is exactly one get_results_from_cache line for that domain's key."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

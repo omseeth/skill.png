@@ -1,0 +1,49 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_persistence",
+      "count": 5,
+      "description": "Search or refinement results were used without consistently binding and saving the returned objects."
+    },
+    {
+      "failure_type": "incremental_cache_and_constraint_handling",
+      "count": 5,
+      "description": "Agents ignored new constraints, chose a less-refined cached result, repeated unrelated work, or resent criteria already covered."
+    },
+    {
+      "failure_type": "invalid_range_argument_shape",
+      "count": 1,
+      "description": "A range-valued rating argument was passed as a singleton instead of the required two endpoints."
+    },
+    {
+      "failure_type": "unrequested_constraint_inference",
+      "count": 1,
+      "description": "The agent added restaurant preferences and limits that the user had not specified."
+    },
+    {
+      "failure_type": "cross_domain_target_or_proximity_error",
+      "count": 1,
+      "description": "The agent reused generic attraction results for a newly named attraction and ranked the wrong domain."
+    },
+    {
+      "failure_type": "omitted_domain_and_stay_date_derivation",
+      "count": 1,
+      "description": "The agent omitted a requested hotel search despite having a check-in date, party size, stay duration, and destination."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already directly covers result saving, incremental cache refinement, avoiding inferred preferences, and target-specific proximity, so repeating those rules would not address a skill gap. These edits add the missing guidance for constructing valid range arguments and deriving a hotel checkout date from an explicitly stated number of nights.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Encode range-valued arguments\n- Check both the meaning and required length of list arguments before calling a tool. When the schema describes a range, minimum/maximum, or start/end window, provide exactly two endpoints; never pass a scalar or singleton list. For a stated minimum threshold, use the threshold and the documented scale maximum; for an exact requested value, use that value for both endpoints. Use bounds supported by the tool schema or its documentation rather than guessing."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Derive checkout dates from stated stay duration\n- If the user gives an explicit check-in date and number of nights but no checkout date, calculate checkout with `adjust_date(date=<check-in date>, delta_days=<number of nights>)`, then pass the check-in and calculated checkout as the required date lists to the hotel search. Use the hotel city only when the conversation clearly establishes it (for example, the trip destination). Include an explicitly stated `num_people`; do not infer a room count. If the date or duration needed for this calculation is missing, follow the missing-mandatory-information rule."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

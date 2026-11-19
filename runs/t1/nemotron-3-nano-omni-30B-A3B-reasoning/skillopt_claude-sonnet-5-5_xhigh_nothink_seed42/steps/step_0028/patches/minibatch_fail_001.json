@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_filter_or_stale_params_repassed",
+      "count": 3,
+      "description": "Party-size/rooms replies (T5, T6) also re-filtered flights and re-passed dates, stars and amenities. A hotel 'Yes' (T2) was applied to a flight key with an invented airline, instead of searching hotels."
+    },
+    {
+      "failure_type": "re_searched_cached_domain",
+      "count": 1,
+      "description": "Flight and hotel keys were cached, but a 'budget for the flight and budget for the hotel' reply re-ran search_flights and search_hotels instead of load, filter, save per domain (T7)."
+    },
+    {
+      "failure_type": "round_trip_incomplete_or_nested",
+      "count": 2,
+      "description": "T1 searched only the outbound leg and dropped the return leg. T4 nested search_flights inside search_flights via a bogus return_flights kwarg."
+    },
+    {
+      "failure_type": "placeholder_args_instead_of_seek_information",
+      "count": 1,
+      "description": "A first turn with flight, hotel and restaurant requested and no dates wrote departure_date=['<date>'] instead of searching restaurants and then calling one seek_information (T8)."
+    },
+    {
+      "failure_type": "save_key_collision",
+      "count": 1,
+      "description": "A filter result was saved under 'filtered_flights', which was already in CACHE, instead of the next unused name (T3)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Seven of the eight failures are existing rules being ignored in specific turn shapes: rooms/party-size replies, two-domain budget replies, round-trip date replies, a hotel 'Yes' with no hotels key, a three-domain opener with no dates, and save-key collisions. Following the meta-skill, I add short checkable rules at the top of the HARD OUTPUT RULES and CACHE GATE sections, each paired with its positive trigger, rather than more sibling examples deep in the document. The two-domain budget reply is explicitly carved out from the slow-update 'bare number = one domain' shortcut, so the two do not conflict. The edits touch no protected content and do not duplicate any existing rule.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- SAVE-KEY CHECK (do this on the last line of every block): compare every `save_to_cache(key=...)` with the keys printed in CACHE. A key that is already there is never reused, even when you loaded the raw key. 'filtered_flights' present -> save as 'filtered_flights1'. 'filtered_hotels' present -> 'filtered_hotels1'. 'final_hotels' present -> 'final_hotels2'.\n- NO PLACEHOLDERS, NO NESTING: never write '<date>', '...' or any made-up value inside a call. A domain with a missing mandatory arg gets seek_information (see 4b) and no search call. Never put one tool call inside another call's kwargs (for example `return_flights=search_flights(...)`). Every call is its own `x = ...` line followed by its save_to_cache line."
+      },
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\n- REFINEMENT REPLY MAP (the domain's key is in CACHE, so never search again):\n  * Party size and/or rooms ('There are 3 rooms and 3 people', '2 of us and we need 2 rooms') with a hotel requested and a hotels key cached -> exactly `h = get_results_from_cache(key=<most refined hotels key>)`, `h2 = filter_hotels(prior_results=h, num_people=<N>, num_rooms=<M>)` (only the numbers stated), then save under an unused key. Write no flight line even though flight keys are cached. Do not re-pass checkin_date/checkout_date, stars, amenities, neighborhood or budget; they are already in the cache entry.\n  * One reply that gives a number for each of two domains ('Around 1075 for the flight and 125 per night for the hotel') with both keys cached -> one load/filter/save block per domain and no search_*. Each cached flight key (outbound and return) gets `filter_flights(prior_results=x, budget=1075)`. The hotels key gets `filter_hotels(prior_results=h, budget=125)`. Every result is saved under an unused key. This is not a 'bare number' reply, so the one-domain budget shortcut does not apply."
+      },
+      {
+        "op": "insert_after",
+        "target": "1. Copy the CACHE keys of each domain the LAST user turn touches (flights / hotels / restaurants / attractions, including filtered_*, nearest_*, hotels2, final_* names).",
+        "content": "\n- 'YES' TO A HOTEL PROPOSAL WITH NO HOTELS KEY (assistant asked 'Are you looking for a family-friendly hotel?', CACHE holds only flight keys): the hotel is a FIRST SEARCH, not a filter. Write `hotels = search_hotels(city=<flight destination>, checkin_date=[<outbound date as written>], checkout_date=[<return date as written>])` + save 'hotels'. Pass only hotel constraints the user actually stated. 'Family-friendly' and 'kid-friendly' are not parameters and never an airline, and num_people comes only from a stated number. Never load or filter a flight key for a hotel reply. If only one flight date is known, output only seek_information for the check-out date.\n- FLIGHT + HOTEL + RESTAURANT OPENER WITH NO DATES (CACHE `{}`): write `restaurants = search_restaurants(city=<destination>, <every restaurant constraint stated: rating, dietary flag, cuisine>)` + save 'restaurants'. Then add ONE `seek_information(\"We need the departure date for the flight, and the check-in and check-out dates for the hotel.\")`. Write no search_flights or search_hotels call and no '<date>' placeholder."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 9: Round-trip flights (+ hotel) are separate search calls",
+        "content": "\n- TWO LEGS, TWO STATEMENTS: a depart date plus a return date always yields BOTH searches. This holds even when the wording is hedged ('around May 21 possibly, returning May 28') and when it is only a 'trip' or 'weekend getaway'. Write `x = search_flights(start_airport_city=A, end_airport_city=B, departure_date=[\"<depart>\"])` + save, then `y = search_flights(start_airport_city=B, end_airport_city=A, departure_date=[\"<return>\"])` + save as 'return_flights'. search_flights has no return_flights or return_date kwarg. Writing only the outbound leg, or nesting the second search inside the first, is wrong. A party size ('5 people') is not passed to flight calls."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

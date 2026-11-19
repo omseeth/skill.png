@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_first_search_after_date_reply",
+      "count": 4,
+      "description": "The user's reply held concrete dates but the agent re-asked with seek_information (T4, T7), dropped the requested hotel (T8), or built one malformed flight search with invented times and arrival_date instead of two legs (T3)."
+    },
+    {
+      "failure_type": "wrong_domain_refiltering",
+      "count": 2,
+      "description": "A hotel reply (stars/neighborhood, or a 'Yes' to a hotel offer) triggered re-filtering of cached flight keys with an old class or an invented airline, instead of a hotel filter or first hotel search (T2, T5)."
+    },
+    {
+      "failure_type": "party_size_reply_misrouted",
+      "count": 1,
+      "description": "'There are 4 of us' with hotels, attractions and nearest_hotels cached: the agent loaded raw 'hotels' and re-passed an earlier-turn attraction as a neighborhood, instead of filtering nearest_hotels by num_people (T1)."
+    },
+    {
+      "failure_type": "save_key_collision",
+      "count": 1,
+      "description": "A filter result was saved under 'filtered_flights', a key already in CACHE, so no new key was created (T6)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Five of the eight failures are a first search that should have fired but didn't, or a wrong domain handled when the reply arrived. Two of those are caused by the worked example 'hotel in Tucson with an ocean view -> seek_information', which the agent copies even after dates arrive. So the example is rewritten to state it holds only until dates appear, with the ocean-view kwarg named. The -2 DATE ANSWER rule is extended in place, not given a new gate: it covers any date-bearing reply, searching every requested domain (including a hotel the assistant offered and the user accepted, and 'N nights' via adjust_date), no invented time kwargs on flights, and the ocean-view kwarg. The party-size bullet in rule 0 contradicted the correct behaviour (it only said 'write nothing'), so it is rewritten to give the right action when a hotels-type key exists, with nearest_hotels taking priority. Finally, one trailing sentence of rule -1 is sharpened into a checkable test for when a flight line is allowed. No existing rule is duplicated or moved.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Correct whole output for 'a hotel in Tucson with a view of the ocean' (CACHE `{}`): `seek_information(\"We need the check-in and check-out dates for the hotel.\")`, with no search_hotels call.",
+        "content": "A FIRST-turn hotel request that has a city and an amenity but NO dates (CACHE `{}`) gets only `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. That holds ONLY until the user supplies dates. On the next turn, when the user's message holds the dates (turn 1 'a hotel in <city> with an ocean view', turn 2 '<X> to <Y>'), write `hotels = search_hotels(city=\"<city>\", checkin_date=[\"<X>\"], checkout_date=[\"<Y>\"], has_ocean_view_rooms_present=True)` + `save_to_cache(key=\"hotels\", value=hotels)` and never ask again."
+      },
+      {
+        "op": "replace",
+        "target": "-2. DATE ANSWER = SEARCH NOW (beats every seek_information rule below, including the 'vague timing' paragraph of Rule 6).",
+        "content": "-2. DATE ANSWER = SEARCH NOW (beats every seek_information rule below, including the 'vague timing' paragraph of Rule 6 and any 'last-minute' / 'weekend getaway' / 'family vacation' wording from turn 1). If the user's last message contains a date ('ideally May 19, 2025' counts), no date is missing: seek_information is WRONG. Search EVERY requested domain that has no CACHE key, in one block. (1) Flights: origin and destination from earlier turns; one date = one search saved as \"flights\", two dates = outbound and return searches. The kwargs are only the two cities, departure_date and a class/airline/budget the user stated. Never add departure_time, arrival_time, arrival_date or num_layovers, and never copy times such as '00:00:00' from TOOL CONFIG. (2) Hotel: it counts as requested if the user asked for it in ANY turn, or if the assistant offered one ('Are you looking for a family-friendly hotel?') and the user accepted ('Yes, that sounds wonderful'). Write `search_hotels(city=<destination>, checkin_date=[<outbound date>], checkout_date=[<return date>])` plus any stated stars, amenity, neighborhood or budget. Vague words like 'family-friendly' add no kwarg, and a hotel offer is never answered with a flight filter. With 'N nights' and one date, write the flight search first, then `checkout_date = adjust_date(date=\"<date>\", delta_days=N)` and search_hotels(checkin_date=[\"<date>\"], checkout_date=[checkout_date]). Ocean view -> has_ocean_view_rooms_present=True."
+      },
+      {
+        "op": "replace",
+        "target": "A party-size-only reply ('There are 5 of us') when NO hotel has been requested adds no constraint, because flight and restaurant tools have no party-size parameter. Write no search and no filter.",
+        "content": "A party-size-only reply ('There are 5 of us'): if ANY hotels-type key is in CACHE (hotels, filtered_hotels*, final_hotels*, nearest_hotels), load the latest-created one (nearest_hotels beats raw hotels) and write exactly `h = get_results_from_cache(key=\"<that key>\")`, `h2 = filter_hotels(prior_results=h, num_people=5)`, `save_to_cache(key=\"<unused key>\", value=h2)`. Add no neighborhood, stars or amenity from earlier turns (an attraction named earlier is not a neighborhood), and do not search or filter attractions or flights. If NO hotel has been requested anywhere, the reply adds no constraint (flight and restaurant tools have no party-size parameter): write no search and no filter."
+      },
+      {
+        "op": "replace",
+        "target": "Conversely, when the last message is about hotels or restaurants, write no flight line.",
+        "content": "Conversely, write a filter_flights line ONLY if the last message itself names a flight class, an airline code, a time of day or a ticket-price cap, or accepts the assistant's flight class/airline/time offer. A reply about stars, neighborhood, amenities, a restaurant or attraction, or a 'Yes' to a hotel/restaurant/attraction offer, produces NO flight line. A class stated in an earlier turn is already in the flight summaries ('flight classes: [economy]'), so re-passing it is wrong, and an airline is never taken from 'kid-friendly' or from an example."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

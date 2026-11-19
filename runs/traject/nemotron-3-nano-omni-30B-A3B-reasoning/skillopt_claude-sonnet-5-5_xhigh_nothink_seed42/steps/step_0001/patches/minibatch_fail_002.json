@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incorrect_tool_name_format",
+      "count": 2,
+      "description": "Tool names were shortened to the endpoint name or provider name (e.g. 'Flight Data_v2', 'Airline by Country', 'BestBuy Product Data') instead of the exact 'Provider: API' heading, so tool matching failed."
+    },
+    {
+      "failure_type": "missing_calls_incomplete_coverage",
+      "count": 4,
+      "description": "Sub-requests in the query were dropped (kanji meaning, star planets, solar data sources, daily treasure, Wayfair common-info, several news/election clauses). The agent collapsed many items onto one tool or emitted fewer calls than the query implies."
+    },
+    {
+      "failure_type": "wrong_tool_among_similar_candidates",
+      "count": 4,
+      "description": "Several near-duplicate tools fit and the agent picked the wrong one. The query wording paraphrases a specific tool's description (e.g. 'disposable domain' vs 'disposable email', 'format and authenticity', 'product ID' detail vs keyword search, 'Item Search 3' for a third approach)."
+    },
+    {
+      "failure_type": "parameter_placement_and_format",
+      "count": 3,
+      "description": "Optional-schema parameters were put under 'required parameters', bare strings were used instead of {name,value} objects, the 'optional parameters' key was omitted, and enum/locale values were not in the tool's format (e.g. 'best match' vs BEST_MATCH, 'en_US' vs 'en-US'). Paging values the query implied were dropped."
+    }
+  ],
+  "patch": {
+    "reasoning": "Every trajectory failed on tool matching or call coverage, with wrong parameter placement as a secondary issue. The edits target four patterns: (1) always copy the exact 'Provider: API' heading as the tool name, (2) enumerate every clause and entity of the query into its own call, (3) disambiguate near-duplicate tools by matching the query's wording and input type to the tool descriptions, (4) follow the tool schema strictly for required vs optional placement and value formats.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Rule 1: Tool names must be copied verbatim\n- The tool name is the full heading text after '### ' in the tool list, in the form `Provider: API` (e.g. `Flight Data_v2: Data of countries in json format`, `Airport Guide - Aviation Info: Airline by Country`, `BestBuy Product Data: BestBuyProductData`).\n- Never shorten it to only the endpoint name or only the provider name, and never rename or paraphrase it.\n\n## Rule 2: Cover every part of the query (build a checklist first)\n- Before answering, split the query into atomic requests: each sentence, each 'then/also/finally' clause, each aspect named in a list (e.g. 'pricing, warranty, reviews, and common product info' = 4 separate calls), and each entity (every domain, email, country code, ID or keyword = its own call to the matching tool).\n- Each atomic request needs a call. Count your calls against the checklist before finalizing. Dropping a clause is the most common failure.\n- If the query names a tool or endpoint that is not in the list, still map that clause to the closest available tool by function. Do not substitute a tool that means something different (e.g. past events for 'upcoming events'), and do not skip the clause.\n- If a clause mentions a concept such as 'English meaning of a kanji', 'planets around a star', 'daily treasure' or 'data sources', scan the whole tool list for the tool that fits it. Do not stop at the first related tool."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 3: Choose among near-duplicate tools by matching the query's wording\n- Query phrases are usually paraphrases of one specific tool's description. Pick the tool whose description most literally matches the requested action and input type:\n  - Input type decides the tool: a domain (e.g. 'is X.org a disposable domain') needs a domain-level tool, while a full email address ('is a@x.org disposable') needs an email-level tool. A product/item ID needs the 'by Product ID' or detail tool, not a keyword search tool.\n  - Match the verb: 'validate format and authenticity', 'deliverable and working', 'disposable or temporary', 'role accounts', 'available for registration' and 'fetch messages' each point to a different tool, so do not reuse one generic validator for all of them.\n  - Prefer a tool from the same provider that matches the sub-task (e.g. a provider's own disposable-domain, FreeDomain and Role Account tools) over a generic tool from another provider.\n  - When the query says the same platform was used 'in different approaches' (general search, store search, targeted search), use different endpoints of that platform (e.g. Item Search, Store Item Search 2, Item Search 3) rather than repeating one.\n- Do not map many different items onto a single tool if the query's wording matches different tools for different items.\n\n## Rule 4: Parameter placement and format\n- Follow the tool's schema exactly. A parameter listed under 'Required parameters' goes in \"required parameters\". A parameter listed under 'Optional parameters' goes in \"optional parameters\", even when the query clearly supplies its value (e.g. `starid`, AliExpress `q`/`storeId`/`sellerId`, `limit`).\n- Always output every parameter as an object `{\"name\": ..., \"value\": ...}` with the value as a string (e.g. \"1\", \"true\", \"100\"). Never output bare names like [\"all\"].\n- Always include all three keys (`tool name`, `required parameters`, `optional parameters`), using [] when empty.\n- Include every optional parameter the query explicitly states or implies (page number, limit, sort order, country, language, accept_all, timeout, etc.).\n- Use value formats the tool expects: ENUM values in the listed style (e.g. sort 'best match' -> BEST_MATCH, 'highest ratings' -> RATING_DESCENDING), and language/locale codes in the form shown for that tool (e.g. 'US English' -> lang en-US, country US)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

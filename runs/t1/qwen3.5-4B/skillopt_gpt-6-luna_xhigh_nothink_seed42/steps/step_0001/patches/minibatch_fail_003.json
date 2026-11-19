@@ -1,0 +1,35 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "tool_invocation_error",
+      "count": 4,
+      "description": "Imported tools from a nonexistent module instead of calling the already-defined tool functions directly, causing runtime failures."
+    },
+    {
+      "failure_type": "constraint_mapping",
+      "count": 4,
+      "description": "Constraints from the conversation were omitted, mapped to the wrong parameter, or supplemented with criteria the user did not request."
+    },
+    {
+      "failure_type": "unnecessary_tool_calls",
+      "count": 2,
+      "description": "Made extra searches, filters, or sorting calls for unrelated cached domains or unrequested preferences."
+    },
+    {
+      "failure_type": "cache_handling",
+      "count": 1,
+      "description": "Failed to save the result of a search to cache as required."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch repeatedly shows failures to use the provided tool environment and to apply only the user's explicit, relevant constraints. These rules reinforce direct tool invocation, careful use of conversation state and cache, and saving results without unnecessary calls.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Reliable tool use and follow-up turns\n- Call the provided tool functions directly; do not import them or define wrappers. Keep generated code limited to tool calls needed for the request.\n- Read the full conversation when extracting constraints. Map each explicitly stated value to the appropriate supported argument, carry forward relevant earlier details, and do not invent preferences or optional values.\n- For a follow-up, retrieve the most relevant cached results for the domain being changed and apply the newly stated constraints to those results. Do not reprocess unrelated domains or add filtering or sorting the user did not request.\n- Assign each search or transformation result to a variable and save that result to cache using a unique key."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

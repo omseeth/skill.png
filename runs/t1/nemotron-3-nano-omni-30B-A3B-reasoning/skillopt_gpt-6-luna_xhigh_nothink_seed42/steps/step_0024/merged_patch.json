@@ -1,0 +1,60 @@
+{
+  "reasoning": "Kept targeted additions for gaps not already covered: state abbreviations, explicit hotel party-size mapping, preserving proximity relations during refinement, affirmative replies to concrete proximity offers, and minimum-rating encoding. Combined the two related recommendations-domain clarifications. Omitted neighborhood and general cache/filter guidance because the skill already covers them; added the shared pre-bound-tool execution rule once. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+      "content": "\n- For attraction searches, treat a state name or postal abbreviation (for example, `OR`) as `state`, not `city`.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+      "content": "\n- When the user explicitly states the number of people traveling, map it to `num_people` for hotel searches or filters when the schema supports that field. Do not infer a room count.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+      "content": "\n- When refining a result that already represents a proximity relation, use the latest compatible cached result that preserves that relation (for example, a nearest-hotels result), rather than reverting to a generic result.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- If the latest turn adds no criterion and a compatible listed cache result already covers the outstanding request—including when the user says they are flexible or accepts an offer to provide recommendations—retrieve that result with its exact listed key into a local variable and use it directly. Do not search or filter again, and do not use `print(\"No planning needed\")` in place of retrieving a result the user is expecting.",
+      "content": "\n- If the assistant offers recommendations in another domain or category and the user accepts or supplies relevant preferences, treat that domain or category as a pending request. Carry forward the established destination and use a cached result only if it covers the exact domain and scope; for example, a result for one named attraction does not satisfy a request for more attractions of a stated category.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+      "content": "\n- For a rating field whose schema documents a 0-to-5 lower/upper range, encode a minimum rating `r` as `[r, 5]` (for example, at least 3.0 as `[3.0, 5]`). Verify the range in the tool schema.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+      "content": "\n- An affirmative answer to a concrete assistant offer to find one domain near a named place is explicit proximity intent. Set `groupBy` to the requested candidate domain, and treat the named place as a reference in its actual domain—not automatically as an attraction. Verify that the cache covers that exact target before calling `search_nearest`.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "append",
+      "content": "\n\n## Execution contract\n- Tools and cache helpers are provided by the execution environment. Call them directly; do not import tool modules or redefine tool functions or models.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_selection",
+      "count": 7,
+      "description": "Selected a related but non-equivalent endpoint, missed the most direct endpoint, or added calls that did not satisfy a distinct requested operation."
+    },
+    {
+      "failure_type": "argument_construction",
+      "count": 6,
+      "description": "Omitted supported pagination or other parameters, misgrouped schema fields, or used an incorrect parameter representation."
+    },
+    {
+      "failure_type": "constraint_propagation",
+      "count": 4,
+      "description": "Failed to carry location, status, locale, or other contextual qualifiers into available endpoint filters."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch repeats endpoint-selection and call-set errors, so a concrete candidate audit can help distinguish direct results from merely related ones and reject calls that cannot express the requested target. Clarifying first-page handling and how to propagate documented scope and locale fields addresses recurring argument omissions without adding guessed parameters.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Learned rules",
+        "content": "- **Run a candidate coverage audit.** For every clause, match the endpoint's returned result to the requested action and entity, not merely the topic. A suggestion endpoint, a check of a weaker property, or an unfiltered result does not replace the requested lookup, verification, or scoped result. Keep only calls that cover a distinct requested result; remove speculative, duplicate, and adjacent calls. Reject a candidate if its schema cannot express the requested target or constraints without misusing fields or inventing arguments."
+      },
+      {
+        "op": "replace",
+        "target": "If a request implies a count or page and the endpoint exposes that parameter, use the smallest conventional value needed to fulfill it.",
+        "content": "When the user asks for the first page, explicitly pass `page=1` on every applicable paginated call rather than relying on a default. When the user asks for a count and the endpoint exposes `per_page` or `limit`, set it to that count and include `page=1` where applicable. Apply each constraint to every relevant call whose schema supports it."
+      },
+      {
+        "op": "replace",
+        "target": "Carry requested or clearly implied constraints into the matching fields, including optional fields when they express a requested constraint; do not add unrelated options, defaults, or guessed values.",
+        "content": "Carry each explicitly requested qualifier (such as location or area, active status, locale, sort, or postal code) into its matching documented field, including optional fields; a global or unfiltered response is not a substitute when the endpoint supports the requested scope filter. Infer locale-specific units or currency only when the user's geography unambiguously implies one and the schema documents the exact value; otherwise omit rather than guess."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

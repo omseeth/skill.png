@@ -1,0 +1,48 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "missing_call",
+      "count": 3,
+      "description": "A clause or named provider in the query got no call: the SMTP check, the Asos auto-complete, and the sunrise/sunset lookup were all dropped."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 2,
+      "description": "A sibling tool was chosen that does not fit the clause: a validity-only validator instead of one that also checks disposable, and Role Account or Check-for-Disposable-emails instead of the domain disposable/suggest tool or MailCheck: Domain. Tools were also reused for the wrong domain."
+    },
+    {
+      "failure_type": "format_error",
+      "count": 3,
+      "description": "The tool name had the provider description appended, required parameters were bare strings like [\"type\"], a numeric value was unquoted, and the 'optional parameters' key was duplicated."
+    },
+    {
+      "failure_type": "parameter_error",
+      "count": 4,
+      "description": "Query-implied or enum values were missed or misplaced: page=1 for 'first page', type=seasonal, units, active=1, value=A for Ace. The Zelda name was put under required instead of optional. 'More reviews' got no page value."
+    }
+  ],
+  "patch": {
+    "reasoning": "The earlier rejected patch was long and prescriptive, and the score dipped slightly. This batch shows four recurring problems: sloppy output formatting, dropped clauses, sibling-tool confusion, and missed query-implied parameters. The rules below are short and cover only those, each with a concrete check the agent can run before answering. Example values are not hardcoded as defaults.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Rule 1: Exact output format (verify before answering)\n- `tool name` is ONLY the text of the tool's `### ` heading (`Provider: API`). Never append the provider's ' — description' text, and keep the original capitalization and spacing (e.g. `fast Email verifier: disposable Domain and Suggest Domain`, `Epic Games Store - Free Games: Free Games`).\n- Each call has exactly three keys, each once: `tool name`, `required parameters`, `optional parameters` (use `[]` when empty).\n- Every parameter, required ones too, is an object `{\"name\": \"type\", \"value\": \"seasonal\"}`. Never emit bare names like `[\"type\"]`. Write every value as a quoted string (`\"1500\"`, `\"1\"`, `\"true\"`).\n- Put each parameter in the list where the tool's own listing puts it. A parameter under 'Optional parameters' goes in `optional parameters` even when it carries the query's main subject (a name filter, a country, an id). A parameter under 'Required parameters' always gets a value taken from the query, including ENUM ones. Use only parameter names the tool lists.\n- The answer is one flat JSON list with balanced brackets."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 2: Cover every clause (build a checklist first)\n- Before answering, split the query into atomic requests: every sentence, every then/also/finally/additionally clause, every item in a list, and every past-tense narrative step ('I checked...', 'I looked at...'). Each one needs its own call. Count your calls against the checklist before finalizing.\n- 'X on both A and B' means one call per named provider or platform (e.g. an auto-complete on Asos AND one on Wayfair). Use each provider's own tool when the query names it.\n- Several entities for the same action (domains, emails, countries, users) means one call per entity. The same action repeated with different settings ('sorted by helpful', then 'sorted by most recent') means separate calls.\n- Companion requests inside a sentence are separate calls. 'Snow conditions, alerts, and sunrise/sunset times' = a snow tool, an alerts tool, and an astronomy tool. 'Check for disposable domain and verify SMTP configuration' = two tools.\n- Do not add calls that no clause asks for."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 3: Choose the tool whose description matches each clause\n- Match the clause's verb and object to the tool's name and description. Different checks use different tools: disposable domain, role account, SMTP configuration, MX records, free-domain availability, format validity, deliverability, help page. Do not reuse one tool for several different checks, and do not apply a tool to the wrong entity. Each clause names its own target (e.g. 'disposable-mail.xyz for role accounts' means Role Account with domain=disposable-mail.xyz).\n- Input type decides the tool. A bare domain needs a domain-level tool, a full email needs an email-level tool, and an 'email Check SMTP' style tool that takes username and domain needs the email split into username and domain.\n- If a clause asks for two things at once ('valid AND disposable', 'disposable AND suggest alternatives'), pick the tool whose description covers both. A validator that only checks deliverability or format does not cover 'disposable'. A tool with 'Suggest' in its name covers 'suggested alternatives'.\n- When several tools could serve the same clause (several disposable-domain checkers), prefer the one whose description most literally mirrors the query wording. When the query asks for the same kind of check on different targets, sibling tools may be used for the different targets.\n- If the query names a provider or tool ('Blaze Verify', 'Email Existence Validator', 'GamerPower'), use that provider's endpoint for that clause.\n- Prefer a dedicated endpoint over a generic search. Match singular and plural variants ('a die' vs 'dice', 'a card' vs 'cards')."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 4: Fill every parameter the query states or implies\n- Map each constraint in the query to a parameter that the chosen tool lists:\n  - 'first page' -> page `1`. 'limited to N' / 'N results' -> the limit/pageSize/count field. A rating, name or keyword -> its own field.\n  - 'Ace' -> value `A`. 'seasonal challenges' -> the enum `type` = `seasonal`. 'sort by value' -> sort field `value`.\n  - 'active alerts' -> active `1`. 'US' / 'Germany' -> country `US` / `DE`. A location named in the query goes into the point/q/city/resort field. If a tool wants coordinates and the query gives only a place name, pass the place name in a field that takes names when one exists.\n  - If a unit system is implied for a tool that has a units parameter and the listing gives codes (e.g. 'i' imperial), set it. A US ski resort implies imperial.\n  - If the query asks for 'more' results of something already requested with a paging parameter (e.g. a second review lookup 'sorted by most recent' after a first one), give the first call page `1` and the later call page `2`.\n- Copy IDs, SKUs, zip codes, URLs, emails, domains and search terms verbatim. Keep search keywords unchanged. Use enumerated values exactly as the parameter description lists them. Pass numbers as strings.\n- Do not invent placeholder values or add parameters (format flags, toggles, callbacks) that the query neither states nor implies."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

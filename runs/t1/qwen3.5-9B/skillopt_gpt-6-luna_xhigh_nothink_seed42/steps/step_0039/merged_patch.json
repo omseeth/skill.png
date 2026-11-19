@@ -1,0 +1,45 @@
+{
+  "reasoning": "Kept the cache edits as compact operational call and follow-up patterns, since they address recurring gaps without restating the full rules. Added the distinct cuisine-field and “by” time-bound mappings, and clarified multi-city flight legs without changing the round-trip rule. No edits target the protected section. Each edit is supported by one of the two source patches.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Write every result-producing search, filter, sort, or `search_nearest` call in two steps: assign its returned result to a variable, then save that exact, complete result object with `save_to_cache` under a fresh, descriptive key.",
+      "content": "Immediately pair every result-producing search, filter, sort, or `search_nearest` call—including a simple initial search—with `result = tool(...)` and `save_to_cache(key=\"<fresh descriptive key>\", value=result)`; save the exact, complete returned object and never leave the call bare or omit its save.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "If a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only the new same-domain filter and save the update under a fresh relevant key.",
+      "content": "When a short answer, accepted offer, or other follow-up adds a value or constraint not reflected in a suitable cached base, retrieve the latest result with `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign it to a variable this turn. Apply the requested value using only the relevant same-domain filter, assign the filtered result, and save it under a fresh key; retrieval or re-saving an unchanged result is not completion. Do not reuse a prior-turn variable or repeat the search when that base is suitable.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Combine known criteria on initial searches:**",
+      "content": "For an initial restaurant request, map each explicitly named cuisine to `cuisine=[...]` in the same `search_restaurants` call, preserving the user's wording; a city-only search does not satisfy a cuisine-specific request.\n\n",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X” uses `[\"12:00 AM\", X]`, and “after X” uses `[X, \"11:59 PM\"]`, preserving the stated AM/PM value.",
+      "content": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X,” “by X,” and “no later than X” use `[\"12:00 AM\", X]`; “after X” uses `[X, \"11:59 PM\"]`. Preserve the stated AM/PM value.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+      "content": "\n\nFor an explicitly ordered multi-city route with multiple specified flight legs, search each listed leg on its corresponding stated start date. Do not infer a reverse leg from a date range associated with a leg; add return legs only when the user explicitly requests a round trip or return flight for that route or segment.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

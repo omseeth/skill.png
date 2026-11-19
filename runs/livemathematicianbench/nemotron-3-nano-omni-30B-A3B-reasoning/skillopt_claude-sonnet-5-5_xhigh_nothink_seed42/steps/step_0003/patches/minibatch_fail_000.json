@@ -1,0 +1,45 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "strength_mismatch",
+      "count": 3,
+      "description": "Chose a strictly weaker true corollary or a negative hedge over the full theorem that was the hub of the options (one-way instead of iff; 'rational' instead of the exact formula; 'full property need not hold')."
+    },
+    {
+      "failure_type": "strength_mismatch",
+      "count": 2,
+      "description": "Chose an option with an extra rider (an a-priori estimate, 'conversely every divisor occurs') over the plain membership or list statement."
+    },
+    {
+      "failure_type": "option_confusion",
+      "count": 3,
+      "description": "Chose a cleaner-looking substitute for the awkward true clause ('d>2k' for the explicit threshold, u^{-γ} for u^{-(γ-1)}, ΣN_c for ΣcN_c) without testing it, even though the skill already contained these checks."
+    }
+  ],
+  "patch": {
+    "reasoning": "In all 8 failures the correct option was the hub (star-center) of the option set: every other option was a one-clause edit of it (a swapped constant or exponent, an added rider, a dropped clause, a hedge). The agent answered in one step and never ran the hub test, which is buried as item 8 of a long list. It then picked a leaf. The leaves were either safe-looking weaker truncations or hedges, or sharper-looking riders or clean-looking substitutes. Several skill bullets also pull toward leaves, for example 'specific numerics are inflated distractors' and 'unproved converse is an over-claim'. The patch (1) adds a mandatory, concrete Step 0 that finds the center by counting one-edit neighbours and requires a concrete failing test to override it, (2) narrows the numerics bullet to clauses unique to a single option, (3) qualifies the iff/converse bullet so it does not push toward truncated leaves, and (4) lists the specific leaf traps seen in this batch.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "## Core workflow: compare options exactly, never pick by gist (follow even when answering quickly)",
+        "content": "## Step 0 (do this FIRST, in writing): find the star-center of the options\nDistractors are produced by single edits of the true statement, so the true statement is the center of a star. Before judging truth or strength:\n(a) Split the options into atomic clauses and mark the shared skeleton.\n(b) For each option, count how many OTHER options differ from it by exactly one clause. One-clause edits are: swap a constant, exponent, threshold or range; add or drop a rider; reverse a direction; weaken to a corollary; add a 'need not / only' hedge; replace the hypothesis.\n(c) The option with the most one-edit neighbours is the CENTER. The default answer is the center.\n(d) Override the center only with a concrete failing test on a named clause of the center (small case, degenerate case, count or dimension, scaling, finiteness, zero data). 'I cannot derive this clause', 'it feels too strong or too specific' and 'another option looks safer' are NOT failing tests.\n(e) Never retreat to a leaf. Leaves include the strictly weaker true corollary, the one-direction version of an iff, 'only rational / only necessary', and 'need not hold' hedges. A leaf with an extra rider (an estimate, 'conversely every ... occurs', an explicit rate) is also a leaf. If the center is the option whose clauses all match the stem's own objects and ranges, a leaf cannot beat it.\nThen continue with the workflow below to confirm the center clause by clause.\n\n## Core workflow: compare options exactly, never pick by gist (follow even when answering quickly)"
+      },
+      {
+        "op": "replace",
+        "target": "Options with specific numerics (explicit asymptotic coefficients, exact constants, extra sign or monotonicity claims, a 'moreover' clause on large-time behaviour) are the typical inflated distractors. Keep one only if you can derive the extra detail.",
+        "content": "A numeric, exponent or 'moreover' clause that appears in ONLY ONE option as an add-on (a sharper constant, an extra monotonicity or rate claim) is a typical inflated distractor. Keep it only if you can derive it. A specific numeric, threshold or formula that sits in the shared skeleton of several options (for example an awkward explicit threshold, a gcd-type formula, a weighted sum Σ c·N_c) is usually the authentic one. The distractors are the cleaner-looking substitutes: a round threshold like 2k, an exponent shifted to look natural, an unweighted sum, a formula with the key parameter dropped. When a clean substitute competes with an awkward specific version, test the clean one on a tiny case or a generic example (for example, ΣN_c<∞ with N_c≥1 forces finitely many c, which is false for a generic infinite spectrum) before choosing it."
+      },
+      {
+        "op": "replace",
+        "target": "If the converse or realization claim is not derivable, it is an over-claim, not a strengthening.",
+        "content": "If the converse or realization claim is not derivable AND it appears as a rider on one option only (a leaf), it is an over-claim, not a strengthening. But if the iff or exact-formula form is the center of the options and the stem asks when something exists or for the exact value, it is the intended theorem. The one-direction version ('if it exists then ...'), 'the value is rational', and 'is a limit group' without the stated stronger property are then truncated leaves, even though they are true. A 'complete list of possible cases' stem asks only for the necessary list. A 'conversely, every listed case occurs' rider is then a leaf."
+      },
+      {
+        "op": "append",
+        "content": "## Leaf traps seen in practice (each wrong pick was one of these; the right answer was the center)\n- Cleaner-hypothesis gloss ('the explicit threshold can be replaced by d>2k'), a swapped threshold type ('there exists some D(k)'), a dropped-simplicity claim, or a sharper constant (≤5 for ≤6) are leaves of the explicit-threshold center.\n- Estimate rider: when the stem gives data with a lower-order unknown and asks for 'the strongest statement about every such h', the plain regularity membership is the center. A bound of ||h|| by the data norms alone fails the zero-data test (h need not vanish), so it is a leaf.\n- Exponent shifts in asymptotics: use the stem's threshold (γ>1) and the form of the center. Prefer the exponent that is natural and decaying exactly on the stem's range (u^{-(γ-1)} needs γ>1). Do not import a template such as 'Kesten u^{-γ}'. A '~ C u^{-a}' center beats its O(·), ε-loss and complementary-probability variants.\n- Hedge leaf: an option saying a property 'need not hold when q≠0' while another option asserts that property is a direct contradiction. Decide the property itself. If it is the natural companion of the other stated conclusions, as 'fully residually free' is of 'limit group', the hedge is false.\n- Weighted-sum leaf: 'ΣN_c<∞' versus 'Σ c·N_c<∞' for positive-integer multiplicities. Only the weighted form allows infinitely many velocities, which is the generic case.\n- Exact-formula leaf: when the stem says 'which exact statement holds for every p', test the candidate formulas on a tiny case or a degenerate parameter (for example m=n, gcd=1, one anchor). The formula that survives, not the vague 'it is rational' corollary, is the answer."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

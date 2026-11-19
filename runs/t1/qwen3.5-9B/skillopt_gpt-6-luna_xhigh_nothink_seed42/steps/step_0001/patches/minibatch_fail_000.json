@@ -1,0 +1,42 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool misuse / runtime error",
+      "count": 7,
+      "description": "Agents imported libraries or redefined result models despite tools being pre-provided; six trajectories consequently failed with a Field NameError."
+    },
+    {
+      "failure_type": "intent-to-tool orchestration",
+      "count": 5,
+      "description": "Agents missed requested domain or cache actions, repeated irrelevant filters, or called nearest-search despite an explicit request not to prioritize proximity."
+    },
+    {
+      "failure_type": "parameter and context mapping",
+      "count": 5,
+      "description": "Agents dropped known constraints or mapped user details to the wrong fields, including state versus city, hotel dates, neighborhood, and flight-class values."
+    }
+  ],
+  "patch": {
+    "reasoning": "The recurring failures call for a short execution audit, a cache-aware incremental planning procedure, and clearer guidance for mapping context and handling hotel-attraction proximity. These additions target the systematic errors without prescribing task-specific values.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Code execution discipline\nBefore finalizing, audit the snippet for anything beyond necessary tool calls and assignments. Do not add imports, helper classes, redefined models, or diagnostic `print` statements: the runtime provides the tools, and such additions can fail or introduce irrelevant output."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Incremental planning from cache\nFor a follow-up turn, compare the latest request with the conversation and cache summaries. Retrieve the most relevant existing result and apply new criteria only to the matching domain; preserve still-relevant earlier constraints and traveler details. Do not repeat completed work, re-filter unrelated domains, or add unrequested sorting. Assign and cache each newly produced result."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Hotels and attractions\nWhen a request includes both a hotel and attractions, search or reuse results for each requested domain. Use `search_nearest` to connect them when the user asks for nearby access or proximity; do not call it when the user says proximity is unnecessary. Keep attraction types and names as attraction-search criteria, not hotel criteria."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Map context to tool fields\nUse the field that matches the meaning of the user's detail: a state or region belongs in `state`, a city in `city`, and a hotel area in `neighborhood`. When starting a hotel search, include the known required dates and any known room or traveler counts. For range fields, represent a single requested value as a closed range; use the tool's expected enum form rather than arbitrarily changing its capitalization."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,48 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache lifecycle / incremental-update failure",
+      "count": 4,
+      "description": "Follow-ups used stale or unrelated results, skipped retrieval, or failed to apply newly requested constraints to the latest suitable cached result."
+    },
+    {
+      "failure_type": "result persistence failure",
+      "count": 4,
+      "description": "Search or proximity results were left unassigned, unsaved, or saved under a key that was not fresh."
+    },
+    {
+      "failure_type": "invented or mishandled itinerary details",
+      "count": 3,
+      "description": "Agents inferred an unrequested return flight, fabricated a hotel check-in date, or inferred an unconfirmed traveler count."
+    },
+    {
+      "failure_type": "premature no-op / incomplete fulfillment",
+      "count": 2,
+      "description": "Agents returned no planning despite unsatisfied cached constraints or skipped an independently actionable requested domain."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch repeatedly misses cache and persistence requirements already stated in the skill, so a final code audit adds a practical safeguard. Clarifying when a return leg is warranted, how hotel dates may be established, and when party size may be carried forward addresses the remaining recurring inference errors.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Search round-trip flights as separate legs:** Search outbound from origin to destination using the outbound date, then return from destination to origin using the return date as that leg's `departure_date`. Cache each leg separately; do not use the return date as the outbound `arrival_date`.",
+        "content": "- **Search round-trip flights only when requested:** Search a return leg only when the user explicitly requests a round trip or return flight, or provides a return date; a hotel stay duration alone does not imply a return flight. For an explicit round trip, search outbound from origin to destination using the outbound date, then return from destination to origin using the return date as that leg's `departure_date`. Cache each leg separately; do not use the return date as the outbound `arrival_date`."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Handle hotel stay dates without inventing dates:** When an explicit trip start date and number of hotel nights are known, use the established start date as check-in and call `adjust_date` with the night count to compute checkout. For a hotel added to an ongoing itinerary, reuse a clearly established trip date as check-in when applicable; do not guess a check-in by subtracting a day from checkout. If a required hotel date still cannot be established from user-provided itinerary details, seek it. Keep user-provided date strings for searches unless conversion is required, and use `adjust_date` rather than importing date libraries or doing date arithmetic in Python."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Carry party size only when the user confirms it:** Pass an explicitly user-provided traveler count to hotel searches as `num_people`, but never to flight tools. Do not treat a number introduced only in an assistant question or suggestion as confirmed when the user answers without affirming it."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Audit code before returning it:** In the generated code, confirm that every result-producing call is assigned and its exact result is saved under a fresh key; every cached input is retrieved by its exact key in this code rather than referenced as an earlier-turn variable; and no requested work is skipped. Return a no-planning response only if the cache actually satisfies every current request. If one requested domain lacks required input, still perform independent requested work whose inputs are available."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

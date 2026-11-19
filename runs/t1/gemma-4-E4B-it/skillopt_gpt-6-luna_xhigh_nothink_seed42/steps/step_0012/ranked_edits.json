@@ -1,0 +1,33 @@
+{
+  "reasoning": "Preserved all three failure-driven edits because they clarify flight-leg handling, cached-result selection, and rating interpretation. Added the success-driven guidance on distinguishing travel dates from event dates and vague timing, which complements the existing required-input rules without duplicating the failure edits. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Do not infer a return leg or ask for a return date solely because the user mentions a vacation, getaway, or destination. Request a return date only when the user explicitly asks for a round trip or return leg, or supplies a return date.\nTreat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to both legs, and do not combine distinct legs by repeating keyword arguments in one call.",
+      "content": "Do not infer a return leg or ask for a return date solely because the user mentions a vacation, getaway, or destination. Request a return date only when the user explicitly asks for a round trip or return leg, or supplies a return date. For an established origin-destination route, treat a two-date travel span (for example, “from [date] to [date]”) as the outbound date and return date unless the conversation indicates otherwise.\nTreat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to every described leg. If a filterable preference is supplied after compatible per-leg flight results are cached, retrieve and filter each affected leg separately rather than repeating its base search. Do not combine distinct legs by repeating keyword arguments in one call.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Choose a result whose domain, location, dates or leg, and original scope can cover the request: a broader candidate set may be filtered, but do not use a narrower result for a broader request.",
+      "content": "Choose the most constrained cached result that still covers the request: its domain, location, dates or leg, and original scope must be compatible, and it must not be narrower than the requested scope. Prefer a result that already embodies the greatest number of still-active criteria, and retrieve it by its exact cache key. A result restricted to a different category or entity does not establish that a newly requested specific entity is included; search if the cached scope cannot cover it.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds.",
+      "content": "\nFor restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs.",
+      "content": "\n- Use a date as a required travel date only when the conversation clearly ties it to the relevant flight leg or hotel stay; an event date alone does not establish a departure or stay date. Treat vague timing or occasion language (such as “last-minute,” “for my birthday,” “weekend getaway,” or “vacation”) as context, not as a calendar date or explicit stay length. Do not guess travel dates or duration; ask for any required date that remains missing or unclear.\n",
+      "support_count": 2,
+      "source_type": "success"
+    }
+  ]
+}

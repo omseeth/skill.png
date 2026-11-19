@@ -1,0 +1,44 @@
+# Question Answering Skill
+
+## Rule 1: Questions are Jeopardy-style clues; always answer with the missing entity
+- The 'question' is usually a trivia clue, a category-like fragment, or a statement with a hidden answer (e.g. 'In Dijon & Bordeaux', '"...on my mind"', '"X" is the Norwegian title of his drama'). It is rarely a literal question.
+- NEVER answer 'Not answerable', 'True/False', 'Yes/No', or a description of the clue. Always output the specific entity, word, or name that the clue is asking for.
+- If the clue is a fragment, work out what single thing connects it to the context. Examples: places plus language context -> the language or nationality; a phrase with '...' -> the missing word; 'his/her/this [work]' -> the person who created it. The context passages about the topic usually reveal the link.
+
+## Rule 3: Look for the clue repeated verbatim in the context
+- ALWAYS scan every passage first for the clue's distinctive words repeated verbatim, before using your own knowledge. Passages often reproduce the clue from a trivia/Jeopardy archive (J! Archive, jeopardy question dumps on GitHub, flashcard sites, trivia pages), followed by the answer. Typical layouts: 'CLUE text | answer. right: ContestantName.' (the answer is the text between '|' and '. right:'/'wrong:'), 'CLUE | Madge.', 'CLUE, THE ATMOSPHERE', 'Q: ... A: the atmosphere', or flashcard front/back. The archived clue may be slightly garbled (missing accents or letters, parentheses, dropped words), so match on the distinctive words.
+- When such a verbatim hit exists, COPY that answer in its own form and spelling, including a leading 'the' or 'Sir' if shown. Do not lengthen it with descriptors ('Madge', not 'Madge the Manicurist'). It OVERRIDES any guess from your own knowledge, other passages, forum comments, a contestant's wrong response ('What is gravity?'), or an unrelated page that merely mentions the topic. Before the answer tags, briefly quote the matched line.
+- Otherwise, build the answer from passages that match several of the clue's details.
+
+- The clue is often a near-copy of a sentence that appears in many context passages with one slot blanked ('Only the arrival of the Cunard liner ___ ...'). Find that sentence and take the word or name that fills the slot. A phrase repeated across independent passages is strong evidence.
+- Archive lines may also be formatted 'CATEGORY | clue text | answer'. Take the answer that follows the clue, even if the whole context is one short passage.
+- Archive snippets are often truncated right after the clue (e.g. '...THIS PLAYWRIGHT, DAVID...'). Treat the visible part as a strong hint and complete the answer from other passages repeating the same fact. Choose the entity that recurs across many passages together with the clue's other named entities (e.g. the title in 'Thunder Road (film)' pages). Do not talk yourself out of a well-supported entity.
+- If the context offers several candidates (a different player in the same article, a film and its song), pick the one that satisfies ALL distinctive details: exact numbers, team, years, place. Do not choose one that fits only some.
+
+## Rule 4: Exact-match formatting of the final answer
+- Give only the core answer: no category or descriptor words ('vitamin C' -> 'C', 'U2 tribute band' -> 'U2', 'Ellie Goulding song' is wrong), no added articles, no explanation. Keep a leading article only when it is part of the proper title or name as it appears in the context (e.g. 'The New York Times', 'The Divine Comedy').
+- Use the shortest standard form that names the entity, as a trivia answer key would. If the clue says 'this vitamin', answer with just the letter. If the clue names a group or band, give the group's name only. For people, prefer the form used in a verbatim answer from the context (Rule 3); otherwise use the name form most natural for the clue.
+- Match the grammatical number of the clue's noun. Use the singular for a generic single object ('Well', not 'wells'). Use the plural when the clue noun is plural ('canvas-covered blades of a windmill' -> 'Sails'; 'these', 'ones', 'muscles', 'group of ...'), and for crops, commodities and mass categories ('Bananas'). If a verbatim archive/flashcard hit shows the answer in a particular number, copy that number ('SAILS' -> 'Sails').
+- Give only the MISSING part. If a word from the clue is part of the answer phrase, do not repeat it ('A "hasty" dessert' -> 'pudding', not 'hasty pudding'; 'Bridge to' this place -> 'Terabithia'). If the clue says 'this manicurist / this king / this dessert', do not append that role word to the answer.
+
+- If the clue describes the SAME person or character under different epithets, roles or film titles ('In '84 he's a destroyer, in '82 just a barbarian'), the answer is the shared base name ('Conan'), not a title or phrase that includes the clue's epithets ('Conan the Destroyer' is wrong).
+- If the clue gives a person's middle name ('His middle name was Gamaliel'), answer in the standard 'First M. Last' form with the middle name reduced to its initial ('Warren G. Harding'), not spelled out.
+- For titles, give the standard title without quotation marks and keep internal punctuation as written in the context ('M*A*S*H', not 'MASH film').
+- For nickname clues about a person ('known as "Uncle Walter"'), answer with the real name as it appears in the context (Walter Cronkite), not the nickname. Still apply the person-name rule above.
+- Put only the bare answer in the answer tags. Do not write a sentence, restate the clue, or add dates, qualifiers or alternatives. Brief reasoning belongs before the tags.
+
+## Rule 2: Answer the referent, not a word from the clue
+- When the clue says 'this country / this vitamin / this man / one of these ...', the answer is the thing that phrase stands for. Do not copy a proper noun or phrase already in the clue.
+- Example pattern: a clue about a region 'in this country' wants the country, not the region. A clue about 'one of these "watering holes"' wants the real object being nicknamed, not the nickname.
+- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?
+
+- VERIFY before answering: substitute your candidate into the clue and check every descriptor, role, verb and date is true of it. A name that dominates the passages is often only the context figure (e.g. the sitting president), not the answer. 'Former first lady announced candidacy' -> the person who WAS a first lady and ran (Imelda Marcos), not the president whose name fills the pages. 'Admitted to the U.N. in 1971' -> the country admitted (China), not the one that lost its seat (Taiwan). Look for the sentence that lists candidates ('candidates, including former First Lady ...') or places the clue's distinctive phrase next to one entity ('Hostess Cupcakes ... split in half' -> cupcake), and prefer that entity over a more frequently mentioned one.
+
+- Match the TYPE of the slot. When the context mentions several related entities (a film and its theme song, a series and its columnist, a daughter and her mother, a team and its city), answer only the entity the category noun asks for. 'this film' -> the film, not its song; 'this city's Sabres' -> 'Buffalo', not 'Buffalo Sabres'; 'this playwright' -> the playwright, not the actress named beside him. Other named entities in the clue are anchors, never the answer.
+
+- Container vs member: when the clue says "this state's / this country's / this city's X includes A, B & C" or lists parts, branches or divisions, the listed items are anchors. Answer the whole that owns them ('Divisions of this state's national forest include Long Cane, Enoree & Tiger' -> the state, 'South Carolina'), never one of the listed members.
+- 'One of these <role/title>' ('the 14th one of these spiritual leaders') asks for the title or category noun itself (Dalai Lama), not the individual named in the clue.
+- Clue lists its own options ('Of North Park, East Park, West Park or South Park, it's where...'): the answer is exactly one of the listed options, copied verbatim. Use the context to pick which.
+- A word in quotation marks inside the clue (a 'drag', a nickname) is usually a pun or hint tied to the answer. Look for passages where that word appears next to a candidate and answer with that candidate.
+- Anchor on the clue's most specific unique detail (a named person, capital, rare term such as 'Helots' or 'Khartoum') and choose the entity the passages repeatedly tie to it. When the context is clearly outdated on a superlative or descriptor ('largest', 'first'), let the unique detail win (Khartoum -> Sudan even if Sudan is no longer 'largest').
+- Honor qualifiers when the context offers several names for the same thing: 'Greek god of erotic love' -> 'Eros' (not Roman 'Cupid').

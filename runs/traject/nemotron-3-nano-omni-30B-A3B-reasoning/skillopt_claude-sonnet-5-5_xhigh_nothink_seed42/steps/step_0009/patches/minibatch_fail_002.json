@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_name_not_verbatim",
+      "count": 2,
+      "description": "The tool name was a hallucinated provider (`RapidWeather: Current conditions (detailed)`, which is really `Easy Weather: ...`) or a truncated heading (`/alerts` instead of `/alerts?{parameters}`)."
+    },
+    {
+      "failure_type": "malformed_parameter_lists",
+      "count": 2,
+      "description": "Parameter lists held bare strings with repeated names (`[\"grade\",\"grade\"]`), or a second `optional parameters` key wiped the first (kjoller `composer`)."
+    },
+    {
+      "failure_type": "wrong_required_optional_or_value",
+      "count": 2,
+      "description": "An optional-schema parameter (`point`) was promoted to required while the schema said `Required parameters: none`. A negative longitude lost its minus sign. Values for `keyword`, `by` and `composer` were dropped or recased."
+    },
+    {
+      "failure_type": "wrong_tool_choice",
+      "count": 3,
+      "description": "The district ID went to the province-level endpoint. 'News from CNN' used a keyword search instead of the by-source endpoint. The current-weather call used a sibling tool."
+    },
+    {
+      "failure_type": "missing_or_stacked_calls",
+      "count": 2,
+      "description": "The 'is domain X disposable' clause got no domain-level call, and two validators were stacked on one email. Election tools named in the query were substituted with the wrong endpoint or skipped."
+    }
+  ],
+  "patch": {
+    "reasoning": "Step 6-8 edits were large bundles that scored worse. These four edits are short and each targets a failure seen more than once: parameter-list shape and duplicate keys, verbatim tool names, schema-faithful required/optional placement with verbatim values, and three concrete selection rules (entity level, outlet to source endpoint, disposable domain vs email). The edits are placed next to the existing rules they sharpen instead of restating them.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Each parameter is `{\"name\": \"x\", \"value\": \"y\"}`. Every value is a quoted string, including numbers (`\"2023\"`, `\"1\"`, `\"9098084\"`).",
+        "content": "\n- Both lists contain ONLY `{\"name\": ..., \"value\": ...}` objects. Never write bare strings or repeat a name (wrong: `\"required parameters\": [\"grade\", \"grade\"]`, `\"optional parameters\": [\"all\"]`; right: `[{\"name\": \"grade\", \"value\": \"2\"}]`). Build each call as: tool name, then ONE `required parameters` list, then ONE `optional parameters` list holding every optional value. Wrong: `\"optional parameters\": [{\"name\": \"composer\", \"value\": \"Bellman\"}], \"optional parameters\": []`, because the second key erases the first."
+      },
+      {
+        "op": "replace",
+        "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+        "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely. Copy the complete heading, including any tail such as `?{parameters}`, `(basic)`, `/v1/weather` or `{type}` (the heading is `National Weather Service: /alerts?{parameters}`, not `.../alerts`). The provider must be the one printed in that same heading. Do not attach an endpoint to a sibling provider with a similar name (`Current conditions (detailed)` belongs to `Easy Weather`, not `RapidWeather`). Before answering, find each name verbatim as a `### ` heading in the tool list."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not borrow a similar name from a sibling tool (use `region` if the tool has `region`, not `loc`).",
+        "content": "\n- If the chosen tool's schema says `Required parameters: none`, then `required parameters` MUST be `[]`. Every value the query supplies, even the main input (`point`, `lat`, `composer`), goes in `optional parameters`. Never promote an optional parameter to required.\n- Copy values verbatim from the query. Keep minus signs and decimals (longitude `-116.8649` stays `-116.8649`; a single coordinate field takes `33.3563,-116.8649`). Keep ID strings exactly. Selector-type values (source, publisher, type, composer) are lowercase tokens (`cnn`, `english`, `bellman`), while free-text search terms keep the query's casing."
+      },
+      {
+        "op": "insert_after",
+        "target": "- If the query names a tool or provider ('using Easy Email Validation', 'the Email Existence Validator tool', 'the Email API'), use that provider's endpoint whose description matches the requested action ('check if disposable' -> `Email Existence Validator: Check for Disposable emails`; 'generate a fake business email' -> `Email API: Get Fake Email Address`).",
+        "content": "\n- Match the entity level to the parameter name, and never reuse one endpoint for IDs of a different level. Province -> a `propinsi_id` endpoint, district/city (kabupaten) -> a `kabupaten_id` endpoint, sub-district (kecamatan) -> a `kecamatan_id` endpoint. A province call and a district call are two different endpoints. Check every ID against its parameter name.\n- 'News/articles from <named outlet>' -> the endpoint that takes a source or publisher (e.g. `Moka News: By Source (New)` with source `cnn`), not a keyword search such as `Newscatcher` and not another outlet's own endpoint.\n- 'Is domain X disposable' -> a domain-level disposable checker (e.g. `MailCheck: Domain` with the domain). It is its own call, so do not skip it or answer it with an email-level tool. 'Email valid AND disposable' -> ONE call to a tool covering both (e.g. `Alpha Email Verification: Email Checker`). Do not add `Email Existence Validator: Check for Disposable emails` on top of it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

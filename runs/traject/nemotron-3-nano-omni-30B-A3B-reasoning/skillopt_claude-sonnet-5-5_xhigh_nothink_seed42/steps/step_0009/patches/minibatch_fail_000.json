@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "answer_format_syntax",
+      "count": 3,
+      "description": "Malformed answer structure. T2 and T7 close the list early with `}], {`, so nothing parses (n_pred=0). T7 also repeats the `optional parameters` key. T8 lists bare names (`[\"region\",\"version\"]`) instead of {name, value} objects, losing required_em."
+    },
+    {
+      "failure_type": "tool_name_format",
+      "count": 2,
+      "description": "T4 and T6 used the `Provider — tagline` text instead of the exact `### Provider: API` heading, so the tool name never matched."
+    },
+    {
+      "failure_type": "missing_calls",
+      "count": 4,
+      "description": "Under-enumerated calls. T1 made 2 of 6 (skipped the extra email-level and domain-level checks that 'comprehensive' implies). T4 skipped Lost Ark stats, classes and engravings. T5 stopped after 3 of 9. T3 picked musicApp for 'faith' instead of the Bible topic endpoint."
+    },
+    {
+      "failure_type": "multi_value_in_one_call",
+      "count": 2,
+      "description": "T6 put country=US and country=DE in one call instead of two calls. T4 and T7 repeated parameter keys within one object."
+    }
+  ],
+  "patch": {
+    "reasoning": "Parse failures and tool-name mismatches score zero, so they come first: malformed brackets, bare parameter names and the tagline-as-name error. The two most common coverage errors come next: stopping early on long lists, and the email 'comprehensive' case where the anti-stacking rule suppressed needed calls. Earlier large multi-example bundles were rejected, so these edits are short and use only generalizable rules.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Do not close the list early or leave stray brackets.",
+        "content": "Do not close the list early or leave stray brackets. Calls are separated only by `}, {`. Never write `}], {` or `], [` between calls: the first `]` ends the answer and every later call is lost. The only `]` comes after the last object, immediately followed by `</answer>`. Every entry of a parameter list is a `{\"name\": ..., \"value\": ...}` object, never a bare name (wrong: `\"required parameters\": [\"region\"]`; right: `[{\"name\": \"region\", \"value\": \"us\"}]`). Every object has both parameter keys, `[]` when empty."
+      },
+      {
+        "op": "replace",
+        "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+        "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely. The name is only the `### ` heading line (e.g. `Lost Ark: get stats`, `Epic Games Store - Free Games: Free Games`). Never copy the `Provider:` description line or any ` — tagline` text, and never put ` — ` in a tool name."
+      },
+      {
+        "op": "replace",
+        "target": "Exception: the query names several distinct checks (e.g. deliverability, MX records and role account), which get one call each.",
+        "content": "Exception: the query names several distinct checks (e.g. deliverability, MX records and role account), which get one call each. Likewise, when the query asks for 'comprehensive' or all checks on BOTH an email and its domain, call every email-level validity/disposable tool with the email and every domain-level tool (disposable-domain, role-account, domain checker) with the domain, one call each. Keep the separately requested 'generate a fake email' call."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Make a short checklist of the query's requests. Each request gets one call from the single tool that best matches it, and every call must trace to a clause.",
+        "content": "\n- Count every item the query lists. In 'retrieving statistics, character classes, and the engraving system' or a run of 'first..., then..., finally...' clauses, each item is its own call to its own endpoint (e.g. Lost Ark `get stats`, `get classes`, `get engravings`). A 9-item query needs about 9 calls, and stopping after the first few is the commonest error. One tool needing two different values ('US and Germany', 'pages 1 and 2') means two separate calls, one per value; never repeat a parameter name within one list. 'Information about faith' (or any topic) on a Bible/topic API means that API's topic endpoint, not an unrelated search tool such as a music-track search."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

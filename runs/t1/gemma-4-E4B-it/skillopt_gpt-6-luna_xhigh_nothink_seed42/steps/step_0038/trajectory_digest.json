@@ -1,0 +1,50 @@
+{
+  "step": 38,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 22,
+  "failure_patterns": [
+    {
+      "pattern": "cache_reuse_and_scope_selection: Re-searched or used a less-constrained cache entry for filterable follow-ups, and sometimes regenerated unaffected domains.",
+      "count": 22,
+      "task_ids": [
+        "flighthotelattraction:train:4:32:4",
+        "flighthotelrestaurant:train:19:35:2",
+        "flighthotel:train:18:2:3",
+        "hotel:train:14:35:2",
+        "hotelattraction:train:25:10:4",
+        "flighthotelattraction:train:12:26:3",
+        "restaurant:train:1:42:2",
+        "restaurant:train:22:42:2",
+        "flight:train:7:56:3",
+        "flight:train:3:60:3",
+        "attraction:train:16:32:0",
+        "hotelrestaurant:train:15:3:1",
+        "hotelrestaurant:train:18:45:3",
+        "hotelrestaurant:train:5:53:0",
+        "flighthotelattraction:train:6:59:4",
+        "flighthotelattraction:train:20:16:1",
+        "attraction:train:6:29:0",
+        "flight:train:3:8:2",
+        "hotel:train:4:33:2",
+        "flighthotelrestaurant:train:4:13:5",
+        "attraction:train:4:34:2",
+        "attraction:train:17:12:0"
+      ]
+    }
+  ],
+  "score_before": 0.51,
+  "score_after": 0.485,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "**Turn-action precedence (before tool selection):** Inspect the full conversation, preceding assistant question or offer, and cache summary; identify only the scopes changed by the latest turn.\n1. If a covered scope gets a new or changed filterable constraint—including a narrower location that a supported filter can express—retrieve the most constrained compatible cache entry by its exact key from the summary, preferring one that already embodies active constraints. Apply only constraints not already embodied in that result, then save it. Repeat for each affected leg and leave unrelated scopes untouched; do not re-search or reapply existing constraints.\n2. If the user only accepts an offer to present recommendations from an already covered scope, retrieve the cache entry matching the offered final scope and stop; do not search, filter, or save a duplicate.\n3. For explicitly requested or accepted proximity, use compatible cached datasets with `search_nearest`; search only for a genuinely missing dataset. Keep the offered or requested proximity operation active through later clarifications unless the user withdraws it.\n4. Make a new base search when the request is genuinely new or the compatible cached candidate set cannot cover its domain, entity, location, date, or leg. Include all active supported criteria.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, neighborhood=[\"<requested neighborhood>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```"
+    },
+    {
+      "op": "replace",
+      "content": "- Call `search_nearest` only when the user explicitly requests or accepts proximity; mentioning domains together does not imply it. Use exactly two compatible datasets from `hotels`, `restaurants`, and `attractions` that match the requested proximity operation. If a proximity offer is answered with new criteria (such as hotel amenities), filter the changed candidate set first, then call `search_nearest` with that updated result and the compatible cached result for the unchanged counterpart. Retrieve existing compatible datasets and search only for a genuinely missing dataset; do not use stale broader candidates or repeat an unaffected base search. Set `groupBy` to the domain the user wants prioritized (for example, “restaurants near the hotel” means `groupBy=\"restaurant\"`).",
+      "target": "- Call `search_nearest` when the user explicitly requests or accepts proximity, including a clear spatial relation such as asking for restaurants near a hotel or a hotel with access to nearby attractions. Merely requesting a hotel and a restaurant recommendation, or independently mentioning a planned attraction visit in the same trip or city, does not imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized."
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool/schema/runtime misuse",
+      "count": 5,
+      "description": "Agents redefined runtime-provided models or passed unsupported arguments and incorrectly typed values, causing validation or execution failures."
+    },
+    {
+      "failure_type": "cache lifecycle and state tracking",
+      "count": 4,
+      "description": "Agents failed to retrieve the most relevant cached results, apply the latest constraint, or use a no-op only when cached results already satisfy the request."
+    },
+    {
+      "failure_type": "scope and redundant operations",
+      "count": 4,
+      "description": "Agents made unrelated searches or repeated retrieval, filtering, and formatting instead of handling only the unsatisfied part of the request."
+    },
+    {
+      "failure_type": "constraint and entity mapping",
+      "count": 5,
+      "description": "Agents changed user-stated criteria, inferred preferences, or mapped a request to an unsuitable field or operation."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch repeatedly shows runtime/schema errors, incorrect incremental handling of cached results, and unnecessary or mis-mapped tool calls. These focused rules address those causes while keeping each turn scoped to the user's actual request.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Learned rules\n\n- **Use the provided runtime directly:** Call tools as defined; do not import libraries, redefine tools or input models, or add output formatting and unrelated code. Use keyword arguments for tool calls, except `seek_information`.\n- **Validate tool arguments against the schema:** Use only declared parameters and their required types; pass list-valued fields as lists and do not send a parameter to a tool that does not support it. Preserve user-stated values and criteria; do not invent preferences, infer amenities, or substitute similar categories.\n- **Handle follow-ups as incremental updates:** Retrieve the most relevant cached result using `get_results_from_cache` rather than referring to prior-turn variables. Apply new constraints to the appropriate existing result and save the new result. Use a no-op only when the cached results already satisfy the latest request; avoid unrelated searches and redundant operations.\n- **Use the proximity tool for proximity requests:** Call `search_nearest` with the relevant cached or newly searched domain results, and set `groupBy` to the domain the user wants as the anchor. Do not approximate proximity by extracting a neighborhood and passing it as a filter."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

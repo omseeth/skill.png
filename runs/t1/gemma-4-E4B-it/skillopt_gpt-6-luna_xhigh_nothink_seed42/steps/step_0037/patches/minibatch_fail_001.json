@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_action_selection",
+      "count": 6,
+      "description": "Follow-ups repeated cached searches, touched unrelated domains, or chose filtering/proximity actions that did not match the changed scope."
+    },
+    {
+      "failure_type": "conversation_context_and_offer_resolution",
+      "count": 4,
+      "description": "Affirmatives and compound preference replies were not consistently resolved against the preceding assistant question or offer."
+    },
+    {
+      "failure_type": "tool_argument_or_result_binding",
+      "count": 3,
+      "description": "Some calls omitted result assignment/saving or failed to map a requested entity or location to the correct tool field."
+    },
+    {
+      "failure_type": "cross_domain_trip_context",
+      "count": 1,
+      "description": "A hotel check-in date clearly tied to the same trip was treated as missing despite an explicit outbound date and stay length."
+    }
+  ],
+  "patch": {
+    "reasoning": "A precedence-based classifier makes the existing cache rules easier to apply to terse follow-ups, new offered scopes, and presentation-only affirmatives without regenerating unrelated results. Small additions clarify compound-answer field mapping and the missing link between an explicitly shared flight itinerary and hotel check-in. Existing schema and result-saving rules already cover the remaining call-contract failures.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.",
+        "content": "**Latest-turn action precedence (before tool selection):** Resolve the final user turn using the full conversation, preceding assistant question or offer, and cache summary; act only on scopes changed by that turn. (1) If the user accepts an offer to search a new domain, category, or entity, or names a new entity, search only that uncovered scope using the requested entity field and all active criteria; do not substitute a related cached scope or infer proximity. (2) If the user only accepts an offer to present recommendations already covered, retrieve a compatible cached result for presentation without filtering, searching, or saving a duplicate. (3) If the user adds or changes a filterable constraint on a covered scope, retrieve the most constrained compatible result by its exact key, filter and save only that changed scope, and leave unrelated domains and legs untouched. (4) Use `search_nearest` only for explicitly requested or accepted proximity, with compatible datasets. Base-search only a genuinely new or cache-uncovered scope."
+      },
+      {
+        "op": "insert_after",
+        "target": "Resolve terse replies using the preceding assistant question: a number supplied in response to a budget question is a budget, not a rating, and “business trip” alone does not request `flight_class=[\"business\"]`.",
+        "content": " When a question asks for multiple preference fields, map each answer to the slot it answers; for example, a carrier name or code in response to an airline question belongs in `airline`, while a cabin class belongs in `flight_class`. Do not reinterpret an abbreviation as a time preference without explicit time wording."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs.",
+        "content": "\n- When a hotel is explicitly part of the same trip as a flight whose destination is the hotel city, and no separate hotel check-in date is given, use the outbound travel date as check-in. Derive checkout from an explicit stay length when available; do not infer a stay length."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,51 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "pending_action_omission",
+      "count": 3,
+      "description": "Newly requested or contextually accepted work was missed, including additional-domain searches and actions ready while another domain was blocked."
+    },
+    {
+      "failure_type": "cache_refinement_error",
+      "count": 2,
+      "description": "Agents searched instead of refining compatible cached flight results or treated cached city-level hotel results as satisfying a new neighborhood constraint."
+    },
+    {
+      "failure_type": "tool_argument_or_execution_error",
+      "count": 2,
+      "description": "Tool calls used an invalid flight time format or attempted imports and unsupported arguments."
+    },
+    {
+      "failure_type": "inferred_mandatory_input",
+      "count": 1,
+      "description": "A hotel search was attempted with invented dates instead of asking for the missing check-in and check-out dates."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify two contextual cases that led to missed work: accepting a suggested additional search across a multi-destination itinerary, and accepting a nearby-options offer. Make the neighborhood delta operational, and document the flight time format accepted by the validator. Existing guidance already covers missing mandatory inputs and direct tool use, so those rules are not duplicated.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.",
+        "content": "When an affirmative reply accepts a proposal to add a search domain or category but does not repeat the city names (for example, attractions “during your stay”), apply the proposed search to each explicit itinerary destination the proposal covers, saving a distinct result for each. Do not treat the acceptance as confirmation that existing cached domains complete the plan."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between supported domains.",
+        "content": "An affirmative answer to an assistant question or offer explicitly proposing options “near” another supported domain is a contextual proximity request: ensure compatible results exist for both sides, then call `search_nearest`. An affirmative answer to a general question about visiting attractions, without a nearby-options relation, calls for the attraction search but not by itself a nearest-results call."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Parse locations hierarchically when the user gives both a city and an area within it: use the parent city in `city` and pass the named district or area verbatim in `neighborhood` when supported. Preserve the complete location label rather than shortening it or passing the combined city-and-area phrase as the city; for example, a request for Downtown Tucson uses `city=\"Tucson\"` and `neighborhood=[\"Downtown Tucson\"]`.",
+        "content": "If a user supplies a neighborhood after compatible city-level results are cached, treat it as a new uncovered constraint: retrieve the latest compatible result, apply `neighborhood=[<verbatim area>]` using the domain’s supported filter, and save the refinement. Retrieving the city-level result alone does not complete the update."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "For flight `departure_time` and `arrival_time` ranges, use the validator-accepted human-readable 12-hour format (for example, `['12:00 PM', '5:00 PM']`), not `['12:00:00', '17:00:00']`. For a broad period such as afternoon, encode its conventional bounded range when the time-range field is supported."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

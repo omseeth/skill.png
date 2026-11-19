@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_mismanagement",
+      "count": 6,
+      "description": "Agents repeated searches, filtered already-satisfied results, or acted on unaffected domains instead of using cached results for the changed scope."
+    },
+    {
+      "failure_type": "required_argument_and_pending_scope_management",
+      "count": 2,
+      "description": "Agents failed to complete an explicitly requested hotel search when itinerary dates became available, or searched for a hotel before required stay dates were known."
+    },
+    {
+      "failure_type": "natural_language_time_mapping",
+      "count": 1,
+      "description": "The agent treated “afternoon” as an open-ended period rather than applying a bounded flight-time interval to cached legs."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make cache actions distinguish retrieval-only acceptance from filter updates and genuinely uncovered scopes, addressing repeated redundant searches and filters. Clarify when an explicitly requested hotel shares the dates of a round-trip itinerary, and specify a concrete interval for “afternoon.” Existing instructions already cover invalid None arguments, result assignment, and family-friendly not implying a kids club, so those rules are not duplicated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Identify only the domains or itinerary legs changed by the latest user turn. For each changed request, if a compatible cached result exists, retrieve it with `get_results_from_cache(key=\"<literal cache key shown in the summary>\")` and assign the returned object to a local variable; cache keys and summaries are not Python result variables. Choose the most constrained cached result that still covers the request: its domain, location, dates or leg, and original scope must be compatible, and it must not be narrower than the requested scope. Prefer a result that already embodies the greatest number of still-active criteria, and retrieve it by its exact cache key. A result restricted to a different category or entity does not establish that a newly requested specific entity is included; search if the cached scope cannot cover it. Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result. A cached proximity result may also be used as filter input when its candidate set remains valid. Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no cached result can cover the changed scope.",
+        "content": "- Identify only the domains or itinerary legs changed by the latest user turn, plus pending requests that are now complete. For each changed scope, choose one action:\n  1. **Retrieve existing results:** If the user asks to receive or inspect recommendations already covered by compatible cached results, or accepts an offer to present those results without adding a constraint, retrieve a compatible result once using its exact cache key and stop. Do not search, filter, sort, or save it again. If the latest turn adds no actionable request, follow the no-op rule below.\n  2. **Filter a covered scope:** For a newly added or changed filterable constraint, retrieve the most constrained compatible cached result—including a filtered result that already embodies other active criteria—and assign it to a local variable. Apply only the new constraints not already embodied in that result, then save the filtered result under a new descriptive key. Repeat separately for each affected itinerary leg.\n  3. **Search an uncovered scope:** Make a base search only when no compatible cached result covers the requested domain, location, date, leg, category, or entity; include all active supported criteria.\n  A result restricted to a different category or entity does not cover a newly requested specific scope unless the cache summary shows that scope is included. Do not search, filter, or save unaffected domains or legs."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs.",
+        "content": "\n- When a hotel has been explicitly requested for the same destination trip and the user supplies the outbound and return dates without separate lodging dates, use the outbound date as hotel check-in and the return date as checkout. Do not infer hotel dates this way if the user gives different lodging dates or the trip dates are missing or unclear."
+      },
+      {
+        "op": "insert_after",
+        "target": "Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed.",
+        "content": "\n  For flight time filters, interpret “afternoon” as `[\"12:00 PM\", \"05:00 PM\"]` and use the supported 12-hour AM/PM format."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

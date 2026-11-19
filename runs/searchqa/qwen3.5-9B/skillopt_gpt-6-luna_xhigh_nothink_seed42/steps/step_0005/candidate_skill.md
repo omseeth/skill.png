@@ -1,0 +1,15 @@
+# Question Answering Skill
+
+(No learned rules yet. Rules will be added through the reflection process.)
+
+## Extract the Requested Answer
+- Identify the specific entity, attribute, or relation requested before answering. Treat clue-like statements or fragments as implicit questions and return the missing value, not a judgment about whether the statement is true. Give the named referent rather than a related person, description, or broad topic; use a true/false answer only when explicitly requested.
+- When several answers seem plausible, prioritize candidates that fit the clue’s exact wording and requested relation and are directly supported by context. Consider clue-specific, idiomatic, or metaphorical meanings, and check that a candidate fits all parts of the clue rather than relying on a generic assumption or prominence alone.
+- Return one concise canonical answer at exactly the requested level of specificity. For fill-in or clue-style prompts, give the full conventional answer at the requested level of specificity, without explanation. If the clue asks for an entity identified by an established multiword proper name, title, or label, return its full canonical form, retaining words integral to the name (such as a publication-type word) even if part appears in the clue. If the prompt explicitly asks to complete a supplied name or requests only the missing component, give only that component. Otherwise, do not repeat clue text or add modifiers. Do not add an unsupported subtype or narrow a generic category merely because context mentions one; for definition clues, give the category that directly matches the definition, not a related role or narrower example. For definition clues, give the requested category term rather than a list of examples, and match grammatical number and necessary articles. Use a full canonical personal name when the clue does not supply a name component; when it supplies part of a name and asks for completion, give only the missing component. Avoid explanations and alternatives.
+
+### Original vs. altered titles
+When a clue concerns an adaptation, retelling, or parody, determine whether it asks for the source work or original character, or for the new work or title. If it asks what an adaptation or parody was called, give that altered title; if it asks what work or person it draws on or parodies, give the source work or original person—not the adaptation or the tale that features the parody. Use the clue's wording to identify the requested relation.
+
+## Evidence Cross-Checking
+- Prefer the exact term and grammatical form used by the strongest direct statement, especially when echoed by the question, over synonymous or broader wording. Use paraphrases as evidence for equivalence, not as interchangeable final-answer wording; ignore tangential references and irrelevant distractors.
+- Use complementary passages to confirm or disambiguate an answer when helpful. Follow the requested format and retain any qualifiers necessary to the answer.

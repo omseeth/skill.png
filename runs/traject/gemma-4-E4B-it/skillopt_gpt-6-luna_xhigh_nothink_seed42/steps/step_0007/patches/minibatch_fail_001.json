@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "argument_mapping_and_serialization",
+      "count": 5,
+      "description": "Calls omitted or misrepresented requested sort, locale, unit, query, casing, or string-versus-number values."
+    },
+    {
+      "failure_type": "endpoint_name_format",
+      "count": 2,
+      "description": "Some calls used the provider's descriptive text instead of the exact provider-and-API endpoint name."
+    },
+    {
+      "failure_type": "deliverable_coverage",
+      "count": 2,
+      "description": "A broad endpoint was treated as covering every facet, omitting a dedicated current-conditions or general-details call."
+    },
+    {
+      "failure_type": "redundant_fanout",
+      "count": 1,
+      "description": "The agent called several equivalent validation tools for each email rather than selecting one suitable endpoint."
+    },
+    {
+      "failure_type": "call_object_schema",
+      "count": 3,
+      "description": "Some outputs omitted empty parameter arrays or failed to serialize parameter entries as name/value objects."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify how to construct endpoint names from tool listings, distinguish separate requested facets from duplicate calls, and make explicit sort and regional-locale mappings more operational. The existing schema and response-format rules already cover general serialization and array requirements, so those are not repeated.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Choose the most directly fitting documented endpoint using its exact `Provider: endpoint` name.",
+        "content": "Construct that name from the short provider label and the endpoint name shown under `API`, formatted `Provider: API`. Omit descriptive or marketing text following the provider label; do not use it as part of the tool name."
+      },
+      {
+        "op": "replace",
+        "target": "For a broad request, prefer a documented broad or all-scope endpoint when it fully provides the requested output; do not choose a narrower endpoint merely because it has fewer required arguments. Conversely, cover separately requested outputs when they require distinct endpoints rather than assuming one broad or multi-capability lookup covers every facet.",
+        "content": "For a single broad deliverable, prefer a documented broad or all-scope endpoint when it fully provides the requested output. For explicitly distinct deliverables, check coverage facet by facet and use a direct endpoint for each requested facet when available, even if another endpoint returns overlapping information; include a general-details endpoint when general details are requested in addition to named facets. Use only one best-fitting endpoint for a given subject and facet—do not call equivalent validators or searches merely to increase confidence."
+      },
+      {
+        "op": "insert_after",
+        "target": "When a request specifies a market or locale, populate directly corresponding documented parameters (such as country, store, currency, or language) when their values are documented or unambiguously implied; use canonical codes and a market-specific locale when a documented mapping establishes one.",
+        "content": "When both a market and language are specified and the endpoint accepts a regional language tag, use the established combined locale (for example, `en-US` rather than `en`) and apply it to each requested endpoint that supports that field. Do not add a language or locale that the request and documented mapping do not support."
+      },
+      {
+        "op": "insert_after",
+        "target": "If the user explicitly requests default sorting and the endpoint exposes a documented default-sort value, use that value; do not guess or add unrelated parameters.",
+        "content": "Also map named sort intent to the exact documented token (for example, “most relevant” to `RELEVANCE` when that enum is listed). Do not omit a requested sort merely because the sort parameter is optional."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

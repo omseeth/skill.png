@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_result_reuse",
+      "count": 5,
+      "description": "Agents reran searches instead of retrieving compatible cached results and filtering them for the latest constraints."
+    },
+    {
+      "failure_type": "entity_and_field_mapping",
+      "count": 1,
+      "description": "An attraction search put a state abbreviation in the city field and substituted a near-synonym for the requested type."
+    },
+    {
+      "failure_type": "contextual_constraint_omission",
+      "count": 1,
+      "description": "An agent omitted a concrete party size supplied in the assistant's preceding question and left uncorrected by the user."
+    },
+    {
+      "failure_type": "result_assignment_and_duplicate_calls",
+      "count": 2,
+      "description": "Agents called searches inline rather than saving the result of the same assigned call, causing duplicate searches."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache-reuse, exact mapping, and same-result saving failures are already directly addressed by the skill, so repeating those instructions would not patch a gap. The party-size case exposes a narrower ambiguity: a concrete count in the assistant's immediately preceding question can be established conversational context when the user answers without correcting it.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+        "content": "If the assistant's preceding question supplies a concrete party size and the user's direct reply answers that question without correcting the count, carry that count forward as established context and pass it as `num_people`. Do not treat an unsupported assistant assumption or a vague group label as a confirmed count."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

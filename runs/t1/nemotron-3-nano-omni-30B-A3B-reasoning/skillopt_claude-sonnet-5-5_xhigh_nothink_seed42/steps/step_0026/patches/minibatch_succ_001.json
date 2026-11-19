@@ -1,0 +1,32 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Refinement turns on a cached domain are exactly load, filter, save. They pass only the last turn's new constraint (neighborhood only, or room service plus fitness center only) and never re-search.",
+    "A hotel-only opener with no dates, including 'weekend getaway' and 'ocean view' wording, produces a lone seek_information naming only the check-in and check-out dates.",
+    "A headcount-only reply ('There are 3 of us') with a hotels key in CACHE becomes filter_hotels(num_people=3) on the most refined hotels key. It is not a re-search and not an amenity guess.",
+    "When a date reply completes the mandatory args, the first search carries every earlier-turn constraint the tool supports (num_people, budget). It saves under the plain 'hotels' key.",
+    "A flight date plus a stay length ('4 rooms for 5 nights') gives a flights search plus a hotels search in one block, with num_rooms and num_people taken from the user's literal numbers. The gold computes the checkout with adjust_date. The one trajectory that added the nights by hand lost some param credit.",
+    "A named attraction plus its type, stated together while hotels are cached and no attractions key exists, is a plain first search_attractions(city, attraction_name, type) saved as 'attractions'. The gold has no search_nearest in that case."
+  ],
+  "patch": {
+    "reasoning": "Most successful patterns are already covered. Three are under-specified or ambiguous. (1) A headcount or room-count reply with hotels cached is covered only for the no-hotel case and the first-search case. (2) Rule 26 says a named attraction with hotels cached uses search_nearest, but the gold for name + type with no attractions key is a plain search. (3) The stay-length checkout was computed by hand in one run and lost credit against the adjust_date gold. Each edit amends an existing bullet or adds one short bullet beside it, so the skill does not grow by accretion.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- A party size the user states explicitly ('there are 5 of us') with a hotel request -> num_people=5 on search_hotels only. Flight and restaurant tools have no party-size parameter.",
+        "content": "- A party size the user states explicitly ('there are 5 of us') with a hotel request -> num_people=5 on search_hotels only. Flight and restaurant tools have no party-size parameter. If a hotels key is already in CACHE and the reply is just a headcount or room count answering the assistant's party-size question ('There are 3 of us', '2 rooms'), it is a hotel filter: load the most refined hotels key, `filter_hotels(prior_results=h, num_people=3)` (add `num_rooms=N` only if rooms are stated and not listed in the summary), and save under the next unused hotels key. Never route it to flights or restaurants, and never add amenity kwargs (has_kids_club, pool_present) because of words like 'family'."
+      },
+      {
+        "op": "replace",
+        "target": "Flight search and save come first, the hotel after, in the same block. Do not drop the hotel.",
+        "content": "Flight search and save come first, the hotel after, in the same block. Do not drop the hotel. Never add the nights to the date by hand ('May 27, 2025'): the checkout is always its own `checkout_date = adjust_date(date=\"<start date>\", delta_days=<nights>)` line before search_hotels, passed as `checkout_date=[checkout_date]`. 'N rooms' -> num_rooms=N and a stated headcount -> num_people on that same search_hotels call."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Without a hotels key, 'near the hotel' needs no search_nearest. Just run the normal first search.",
+        "content": "- Name AND type given in the same last turn with no 'attractions' key yet ('Yes, we want to visit Pittock Mansion, which is a Social attraction.', hotels cached): write one plain first search `attractions = search_attractions(city=\"<city>\", attraction_name=[\"Pittock Mansion\"], type=[\"Social\"])` + `save_to_cache(key=\"attractions\", value=attractions)`. Add no search_nearest and no hotel lines. Use the search_nearest recipe above only when an attractions key already exists or the user names the attraction without stating its type."
+      }
+    ]
+  },
+  "source_type": "success"
+}

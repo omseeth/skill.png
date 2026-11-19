@@ -1,0 +1,46 @@
+{
+  "reasoning": "Combined overlapping guidance into one full-conversation action checklist and one per-domain missing-information rule. Preserved distinct improvements for result-saving checks, valid cache refinement, user-value fidelity, and nearest-results grouping. Support counts reflect the number of source patches containing each edit. [optimizer-ranked: selected 4/6 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+      "content": "- Build an action checklist from the full conversation, treating the latest user turn as an update. Retain every still-active requested item and domain, including each flight leg and each requested hotel destination. Resolve short replies and questions such as “What’s there?” against the immediately preceding assistant question or suggestion, and map each supplied constraint to its intended item and domain. Preserve multiple criteria, such as an attraction type and a named attraction, in the appropriate supported fields. Check cache coverage separately for each action and constraint. For affected actions, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only newly introduced constraints; search when a needed result is unavailable. If the latest turn introduces a new domain, perform that request rather than repeating unrelated work. For an in-trip search, use the current trip destination only when it is unambiguous; otherwise ask for the location. Do not omit uncovered actions, redo unaffected domains, or rely on variables from earlier executions.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "## Missing mandatory information\nBefore searching, check the full conversation for all mandatory inputs required by each requested tool. If any are missing, do not invent values, use defaults, or run a partial search. Make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+      "content": "## Missing mandatory information\nCheck mandatory inputs separately for each requested action and domain. If any are missing, make one `seek_information` call asking only for those missing mandatory inputs; do not search an incomplete action, but still execute and cache other requested actions whose own mandatory inputs are complete. Never invent values or use defaults; optional preferences are not mandatory inputs. For a hotel stay clearly tied to a dated round trip to one destination, use the explicitly supplied trip dates as check-in and check-out when no separate hotel dates were given. If an exact check-in date and an explicitly stated stay length in nights are supplied, use `adjust_date` to derive checkout rather than asking. If stay dates cannot otherwise be determined unambiguously, ask; do not treat vague timing as an exact date.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Validate tool arguments and preserve user intent",
+      "content": "- Preserve user-supplied entity names and category values verbatim. Do not normalize, translate, or replace them with synonyms or near-synonyms; use the schema to choose the argument field, not to rewrite the value, unless the schema explicitly requires a mapping.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+      "content": "- When refining results, do not resend criteria already represented in the base result. For each newly introduced, schema-supported constraint not already satisfied, retrieve a valid relevant base result and apply the matching filter, passing it as `prior_results`. Retrieval alone is not refinement: never filter using a missing, guessed, or `None` result; if no suitable base result is available, search when its mandatory inputs are complete.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 0 strengthens multi-turn tracking across all active actions and resolves references to prior context. Edit 4 prevents incomplete inputs for one action from blocking other ready actions and clarifies deriving hotel dates. Edit 2 fills a gap by protecting user-supplied entity names and categories from unwanted rewriting. Edit 3 adds a concrete safeguard against refining with missing or invalid cached results. Edit 1 largely repeats existing save requirements, while edit 5 addresses a narrower grouping case.",
+    "selected_indices": [
+      0,
+      4,
+      2,
+      3
+    ]
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_missing",
+      "count": 4,
+      "description": "Compressed prompts and relative clauses required inferring the intended relation or referent, but agents chose a related role, object, or work instead."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "Agents overlooked explicit answer-type or qualifier cues, choosing a conference for a city clue and a related animal despite the Florida qualifier."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "The artist was identified correctly, but the answer used a full name where the gold answer used the surname."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "The bare list prompt did not specify a relation, so the predicted broader category was plausible but could not be reconciled with the gold answer."
+    }
+  ],
+  "patch": {
+    "reasoning": "The current rule covers answer type but not how to identify the requested endpoint in compressed relational clues. A focused relation-parsing rule addresses the repeated confusion between an entity and its associated role, location, product, or broader category. A separate quotation-attribution rule addresses the prompt that gave only a famous line. No name-form edit is proposed because the full artist name was semantically correct and prior name-form guidance was ineffective.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Resolve the Relation in Compressed Clues\nFor a short fragment or definition, determine not only the topic but which relation or argument is being requested. Use grammatical cues and the surrounding context to distinguish an entity from its role, location, product, source, or broader category. In relative clauses, track what each verb applies to rather than answering with a nearby object mentioned in the context. Let qualifiers narrow the candidate, and return the value that fills the indicated relation rather than the most salient associated fact."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Attribute Standalone Quotations\nWhen a prompt consists of a quoted line without an explicit question, use contextual attribution to identify the author or speaker if that is what the clue conventionally seeks. Do not answer with the line’s subject or the title of the work merely because either is prominent in the context."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

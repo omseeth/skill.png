@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Refinement turns on a cached domain (restaurant budget, hotel rooms + budget, hotel neighborhood) load that domain's own key, call one filter_* with only the last turn's new constraint, and save. They never re-pass cuisine, stars or amenities already in the cache summary, and never touch other domains.",
+    "A first turn that asks for a hotel with only a city and an occasion ('anniversary') and no dates produces exactly one seek_information for check-in and check-out dates. No search is made, and nothing is guessed from the occasion word.",
+    "A first search carries every constraint stated in any turn. Example: stars=[1, 1] and neighborhood=['Downtown Tucson'] go into search_hotels once the hotel dates arrive, and restaurants are not re-searched because the key already exists.",
+    "A single-domain first request with a city and type produces one assigned search plus save_to_cache, for example search_attractions(city=..., type=[...]) saved as 'attractions'.",
+    "A bare numeric or 'N rooms and budget' reply is mapped literally: num_rooms=2, budget=1100. No amenities or neighborhood are added."
+  ],
+  "patch": {
+    "reasoning": "All eight successes are already covered by the existing HARD OUTPUT RULES, CACHE GATE, Rule 10, Rule 14 and the strategic section. Adding a sibling rule or example would only grow the skill, which the optimizer notes say to avoid. The one useful change is hygiene: the skill still points to Rules 11, 15 and 18, which do not exist. Those dangling references can send the agent looking for rules it will never find, so I repoint them to rules that exist.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "refine with filter_* (Rules 2, 13, 17, 18)",
+        "content": "refine with filter_* (Rules 2, 13, 17)"
+      },
+      {
+        "op": "replace",
+        "target": "plus `save_to_cache` (Rules 14, 15)",
+        "content": "plus `save_to_cache` (Rule 14)"
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,35 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every clause of the query, including narrative past-tense steps such as 'I retrieved...' or 'the search checked...', was turned into exactly one call. Nothing was dropped and no extra helper calls were added.",
+    "The chosen tool's name and description literally mirrored the query's verb, object and named provider. Examples: Moka News categories, Kubric Basic Search, Wayfair get-home-services versus get-financing-offers, News Network Available Region List, BizToc Search.",
+    "Sibling endpoints were told apart by quantity or variant semantics. '3 twenty-sided dice 5 times' used Custom dice rolls. '5 random words' used Get multiple random words, while 'a random word starting with z' used Get a random word. A single-year fact used Get year fact. The kanji stroke-count query used Kanji stroke number.",
+    "The tool name was copied exactly in 'Provider: API' form, taken from the tool heading.",
+    "Values came verbatim from the query: IDs, SKUs, postal codes, search phrases and domains. Units were converted to the tool's own unit (5 minutes became min_duration=300), and codes were taken from the parameter description (GB, en, cnn.com,bbc.com).",
+    "Parameters that appeared in the required list went under required parameters. Tools with no required parameters got an empty required list. Optional parameters were added only when the query stated a value, such as limit 15, pageSize 20, wordLength 7, or beginsWith z.",
+    "Look-alike distractor tools were ignored: other news feeds, other Drillster endpoints, other Airbnb endpoints. When one provider had a single fitting endpoint, it was used even if its name differed slightly from the query wording ('relevant' versus 'recent' articles)."
+  ],
+  "patch": {
+    "reasoning": "The skill is empty and a previous large rule set was rejected, so these edits are short. They encode only behaviours seen across the successful runs: clause-by-clause coverage, literal tool matching with sibling disambiguation, required-versus-optional parameter discipline, and clean output structure. The successes were scored mainly on tool names and required parameters, so those rules come first. Duplicated JSON keys appeared in two successes and could silently drop parameters, so that is called out.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Rule 1: One call per atomic request\n- Before answering, split the query into atomic requests: every sentence, every 'first / then / also / finally' clause, and every narrative past-tense step ('I retrieved...', 'the search checked...'). Each one is a real call, even if it is hedged ('likely', 'possibly').\n- Emit exactly one call per request. Do not drop a clause, and do not add helper calls the query never asks for (list-languages, search-then-get, account or inbox tools).\n- The same endpoint may be called several times when the query names several entities. Use different arguments for each call.\n- Copy the tool name character-for-character from the tool's `### ` heading, in the form `Provider: API`."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 2: Pick the tool that literally mirrors the query\n- Match the query's verb, object and named provider to the tool's name and description. If the query names a provider or product (Kubric, Wayfair, Asos, Ikea, BizToc, Moka News, dev.to), use that provider's endpoint.\n- Prefer the dedicated endpoint over a generic search. 'List of categories', 'region list', 'stations', 'currencies list' and 'latest articles' each point to the matching list-style endpoint. Use a keyword Search only when the query supplies a search phrase.\n- Tell sibling endpoints apart by what they take and return:\n  - one random word -> 'Get a random word'; N random words -> 'Get multiple random words' with count N\n  - dice with a stated side count and a roll count -> 'Custom dice rolls'\n  - an ID of a product or drill -> the matching 'details' or 'by ID' endpoint\n  - 'home services', 'financing offers' and 'images' for the same SKU are three separate endpoints\n  - a single year -> 'year fact'\n- Ignore tools about unrelated topics, regions or sources, even if their descriptions contain overlapping words."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 3: Parameter placement and values\n- Follow the schema exactly. A parameter listed under 'Required parameters' goes in `required parameters`. Everything else goes in `optional parameters`. If required is 'none', use `[]`. Always fill every required parameter.\n- Copy IDs, SKUs, postal codes, search phrases, domains and numbers verbatim from the query. Never invent values.\n- Add an optional parameter only when the query states or clearly implies its value. Map each stated constraint to the matching parameter:\n  - counts: 'up to 15' -> limit/pageSize '15'; '5 words' -> count '5'; '6 letters long' -> wordLength '6'\n  - paging: 'page 1' -> page '1'; 'first 15 posts' -> per_page '15'\n  - ordering and filters: 'sorted by relevancy' -> sortBy 'relevancy'\n  - locale and sources: 'Great Britain' -> country 'GB'; 'in English' -> language 'en'; 'CNN and BBC' -> publisher 'cnn.com,bbc.com'; 'begins with z' -> beginsWith 'z'\n  - flags: 'without exact matches' -> exact '0'\n- Convert units to the tool's unit (5 minutes -> 300 seconds). Use code formats exactly as the parameter description lists them.\n- Do not add default, format or toggle parameters the query never mentions."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 4: Output hygiene\n- Give ONE flat JSON list inside `<answer>` tags. Each call object has exactly three keys: `tool name`, `required parameters`, `optional parameters`.\n- Never repeat a key within one object. Put all optional parameters for a call in a single `optional parameters` list. A second `optional parameters` key overrides the first and silently drops its values.\n- Every parameter is an object `{\"name\": \"x\", \"value\": \"y\"}`.\n- Check that brackets are balanced and that the number of calls matches the number of atomic requests."
+      }
+    ]
+  },
+  "source_type": "success"
+}

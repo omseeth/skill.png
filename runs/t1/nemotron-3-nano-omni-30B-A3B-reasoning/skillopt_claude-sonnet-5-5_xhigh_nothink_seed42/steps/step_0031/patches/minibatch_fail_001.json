@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_routing",
+      "count": 3,
+      "description": "The reply was about hotels, but the agent loaded and re-saved or re-filtered a different cached domain (attractions, restaurants, flights) instead of searching hotels or asking for the missing hotel date."
+    },
+    {
+      "failure_type": "attraction_proposal_misrouted",
+      "count": 2,
+      "description": "A 'Yes' or 'What's there?' to an assistant proposal was mishandled. A proposed neighborhood should filter the cached attractions but was re-searched. A new attraction type should be searched fresh but was turned into an invented hotel neighborhood filter."
+    },
+    {
+      "failure_type": "repassed_applied_constraints",
+      "count": 1,
+      "description": "The agent re-passed cuisine and dietary flags already listed in the cache summary alongside the new budget, because Rules 2 and 17 say to include earlier constraints the summary does not list."
+    },
+    {
+      "failure_type": "dropped_searchable_domain",
+      "count": 1,
+      "description": "On a first turn with hotel plus restaurants and a known city, the agent output only seek_information. The 'solo trip' paragraph in Rule 6 triggered the seek-only output."
+    },
+    {
+      "failure_type": "ambiguous_gold_key_choice",
+      "count": 1,
+      "description": "The gold loads the raw 'flights' key instead of the most refined 'filtered_flights', which conflicts with the load-most-refined rule. This is not learnable."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures come from not routing the last reply to the right domain and key. Four are 'Yes' or hotel replies applied to another domain's key, or an attraction proposal treated the wrong way. A compact top-of-skill bullet fixes domain selection, no-key handling, and the two attraction cases. It also notes the one exception to the SEARCH GATE, which currently conflicts with Rule 10 and the protected guidance on new attraction types. Two edits remove the contradictory 'plus earlier constraints the summary does not list' clauses in Rules 2 and 17. These clauses cause re-passed filters and contradict the protected block's 'every kwarg comes from the last message'. One edit fixes the Rule 6 'vague stay timing' paragraph, which forces a seek-only output even when a restaurant or attraction with a known city must be searched first. No flight-filter blocks are added, because the earlier flight-block addition caused regressions.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n\n- ROUTE FIRST (before the SEARCH GATE): pick the domain from the words of the user's LAST message and from the assistant's FINAL question sentence. A 'Yes' answers that final question, not an earlier statement of the assistant. Hotel words (stars, hotel amenity, per-night budget, hotel neighborhood, rooms) -> hotels. Cuisine, dietary or per-person -> restaurants. Attraction type, name or neighborhood -> attractions. Class, airline, flight time or ticket price -> flights. Write code only for that domain. Never load, re-save or re-filter another domain's key as a stand-in. A hotel reply never produces a flight line, even if a class was stated earlier. If the domain has NO key in CACHE: first `search_*` when its mandatory args are known anywhere in the conversation (hotel dates may be the flight dates; carry every stars/amenity/neighborhood stated), otherwise ONLY `seek_information` naming the missing hotel date. If it has a key: load it, `filter_*` with only the new constraint from the last message, save under an unused key. Attractions: the assistant proposed a neighborhood and the user says 'Yes' or 'What's there?' -> `filter_attractions(prior_results=a, neighborhood=[\"<proposed neighborhood>\"])`, no search. The assistant offered a NEW attraction type ('other <Type> attractions?') and the user says 'Yes' -> `x = search_attractions(city=\"<trip city>\", type=[\"<Type>\"])` saved under an unused key such as attractions1. This is the one exception to the SEARCH GATE; write no hotel filter for it."
+      },
+      {
+        "op": "replace",
+        "target": "do not call search_hotels with made-up dates, party size, amenities or rating. Output only",
+        "content": "do not call search_hotels with made-up dates, party size, amenities or rating. If the user ALSO asked for restaurants or attractions and a city is known (e.g. 'solo trip, budget 65 per night, plus restaurants in the city'), first write that search plus its save_to_cache, then the single seek_information for the hotel dates. Otherwise output only"
+      },
+      {
+        "op": "replace",
+        "target": ", plus any earlier-stated constraint that the CACHE summary text (\"Additionally filtering for ...\" / search description) does not show as applied.",
+        "content": ". Earlier-turn constraints are already inside the cached entry, so never re-pass them (cuisine, dietary flags, stars, neighborhood, amenities, class, budget). A budget reply on a restaurants entry that lists cuisine and dietary flags is `budget=<n>` only."
+      },
+      {
+        "op": "replace",
+        "target": "Include an earlier-stated constraint only if the summary does NOT list it.",
+        "content": "Pass only the new constraint from the last message; values from earlier turns are already in the cached entry."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

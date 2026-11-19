@@ -1,0 +1,46 @@
+{
+  "reasoning": "Combined the two cache-related proposals into one insertion because they target the same passage, preserving both delta-based refinement and explicit-correction handling. Kept the remaining distinct clarifications on interpreting criteria, short replies, return-only flights, and schema types/tool use. Support counts reflect how many of the three source patches support each merged edit. [optimizer-ranked: selected 4/5 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.",
+      "content": "- Make cache decisions against the latest turn's delta, not the cache's mere existence: for each new schema-supported constraint, retrieve a compatible listed result and refine it with that constraint; passing only `prior_results` does not satisfy a new preference. For a new target or domain, search for the missing result. If a cached result already satisfies a domain and the latest turn adds no criterion for it, reuse it directly downstream without filtering again. If a preference has no schema-supported field, do not invent one; still apply other supported new criteria.\n- Treat explicit correction or replacement language (for example, “actually,” “instead,” or “only”) as superseding the conflicting earlier criterion while retaining nonconflicting context. Recheck cache coverage against the revised criterion: a result based on the superseded value is incompatible and cannot justify “No planning needed.” Refine a compatible earlier base result only if it covers the remaining criteria; otherwise search with the revised criteria.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Validate tool arguments and preserve user intent",
+      "content": "- Validate declared value types as well as argument names; follow the schema's actual type annotation rather than inferring a list from wording or a field name. For example, pass an airport code as a string when the selected airport field is declared `str`. Call tools already exposed in the runtime directly; do not import, redefine, or wrap them.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+      "content": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters and do not infer preferences: broad descriptions such as “family” do not specify exact party or room counts; “kid-friendly” does not by itself mean `has_kids_club`; and “good restaurant” does not specify a numeric rating. When traveler and room counts are explicitly stated, map each independently to its supported field; do not infer one from the other. Treat “solo” as one traveler only when a supported traveler-count field is available, and a traveler count is not a flight-search parameter unless the schema provides one. A direct affirmative answer to a question about a named amenity or constraint accepts that specific criterion. For range-valued ratings, represent an exact requested rating x using equal lower and upper bounds; do not reinterpret it as a minimum.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Proximity between travel domains",
+      "content": "- Resolve short replies against the immediately preceding assistant question or proposal. A direct confirmation accepts the specific target or relation proposed, including a proximity offer; a contextual reference to a suggested area updates that area's search or filter. Treat an accepted proximity relation as explicit, search if the target is not covered by cache, and reuse an already-valid result for the other domain without re-filtering it.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 0 most directly strengthens cache decisions across many incremental-planning cases, including superseded criteria and missing targets. Edit 4 adds general schema-type validation and runtime tool-use guidance. Edit 1 clarifies common preference and count mappings while reinforcing non-inference. Edit 2 addresses ambiguous short replies and accepted proximity proposals; edit 3 is a narrower return-flight edge case and ranks last.",
+    "selected_indices": [
+      0,
+      4,
+      1,
+      2
+    ]
+  }
+}

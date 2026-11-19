@@ -1,0 +1,31 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "The clue said 'this market' and the archive line read 'BEAR MARKET'. The agent copied the archive answer whole and kept the head noun the clue already gave. The key is the modifier ('the bear'). Rule 3's 'copy verbatim' overrode Rule 4's delete-clue-words test."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "'They were once called \"Saratoga Chips\" after the town...' asks for the THING that carried the old name (potato chips). The agent answered the place named in the clue (Saratoga Springs). There is no rule for 'once called / formerly known as X' clues, where the pronoun subject is the answer and the place is only an anchor."
+    }
+  ],
+  "patch": {
+    "reasoning": "Both failures are slot or form errors. They come from a verbatim or anchor entity beating the clue's own slot noun. A short note in Rule 3 reconciles 'copy the archive answer' with 'drop the head noun the clue already gave', so the archive copy is still stripped of the clue's slot noun. A short Rule 2 bullet covers 'once called / formerly known as' clues, where the pronoun subject is the answer, not the place, person or old name in the clue. Both edits are short, add no task-specific gold answers, and leave the Rule 3 archive priority intact.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "\n- Verbatim copy still passes the strip test against the clue's own slot noun. If the clue says 'this <noun>' ('this market', 'this party') and the archived answer is '<Modifier> <noun>' ('BEAR MARKET'), give only the modifier ('Bear'). The clue already supplied the noun. Keep the full archived form only when the bare modifier would not name the thing (Rule 4 head-noun test)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Honor qualifiers when the context offers several names for the same thing: 'Greek god of erotic love' -> 'Eros' (not Roman 'Cupid').",
+        "content": "\n- 'They/It were once called \"X\" (after the town/person Y)' or 'formerly known as X': the subject pronoun is the THING that carried the old name. Answer with that thing's current common name (the food, object, group or title), never the place, person or old name already in the clue. Use the passages that say '<X>, now known as <common name>'. The origin place or inventor is an anchor, so a clue like 'once called \"Vienna Loaves\" after the city where first baked' wants the bread, not 'Vienna'. The current name may share a word with the quoted old name; keep it if the standard name needs it, since the strip test targets words the clue states as a separate modifier."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,28 @@
+{
+  "reasoning": "Kept the distinct call-level guidance on handling multiple named providers and requests for additional results, preserving random selection, and matching forecast horizon and cadence. Omitted the wrapper-only reminder because the existing final-validation guidance already requires the exact active wrapper and no extra text. Each retained edit is supported by one of the three source patches; none targets the protected section. [optimizer-ranked: selected 2/3 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Deduplicate the call set: make one invocation per distinct requested operation and input unless the schema supports batching or the user requests repetition. Do not add related calls as extra checks. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint.",
+      "content": "- Deduplicate the call set: make one invocation per distinct requested operation and input unless the schema supports batching or the user requests repetition. When an action explicitly names multiple providers, create a distinct outcome for each named provider; a call to one source cannot fulfill another source's request. Treat explicit cues such as `again` or `recheck` as requests to repeat the relevant invocation even when its endpoint and subject are unchanged. For requests for more list results, use the next documented page or an appropriate documented result limit when available rather than repeating the same page. Do not add related calls as extra checks. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Check temporal scope explicitly: current conditions are not forecasts, and location-specific active alerts are not aggregate alert counts. When coordinates are supplied and a matching coordinate-based endpoint exists, use it rather than inferring a city or changing the location form.",
+      "content": "- Check temporal scope and resolution explicitly: current conditions are not forecasts, and location-specific active alerts are not aggregate alert counts. Treat a requested forecast horizon and cadence as result-granularity constraints: an hourly or short-range endpoint does not fulfill a multi-day forecast when a matching multi-day operation is available, and do not extend an endpoint beyond its documented horizon. When coordinates are supplied and a matching coordinate-based endpoint exists, use it rather than inferring a city or changing the location form.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 0 best addresses omitted repeat and additional-page actions, though its provider guidance partly duplicates existing rules. Edit 2 adds a useful horizon-and-cadence check for forecast endpoint selection. Edit 1 is more narrowly scoped and substantially overlaps existing guidance against unsupported restrictive selectors.",
+    "selected_indices": [
+      0,
+      2
+    ]
+  }
+}

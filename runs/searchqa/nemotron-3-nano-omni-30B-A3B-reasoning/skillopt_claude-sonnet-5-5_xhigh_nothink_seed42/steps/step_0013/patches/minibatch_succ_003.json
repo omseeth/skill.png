@@ -1,0 +1,25 @@
+{
+  "batch_size": 3,
+  "success_patterns": [
+    "Trajectory 1 hit a verbatim J!-Archive line ('CATEGORY | clue | Joseph McCarthy.'), copied the answer in its own form and ignored the noisy secondary passages. Rule 3 already covers this.",
+    "For a 'this team's <player/coach>' clue, the agent answered with the full team name as the passages repeat it (New York Giants), not just the city or a nickname. The skill covers 'this city's Sabres' -> Buffalo but not the reverse case where the clue names a person and asks for the team.",
+    "In a very noisy context (mannequins, children, sweetheart), the agent used the one passage that tied together the clue's rare keywords ('mannequins' + 'sweetheart' + 1920s -> 'America's sweetheart', Mary Pickford). It ignored passages that matched only a single common word, such as film titles containing 'Sweetheart'.",
+    "A descriptive epithet in the clue ('sweetheart of an actress') was treated as a hint to a known nickname phrase ('America's sweetheart'). The agent answered with the person, not the epithet."
+  ],
+  "patch": {
+    "reasoning": "Two of the three wins follow patterns the skill covers only partly. (a) Team clues where the answer is the full team name, which complements the existing 'this city's Sabres' rule. (b) Noisy-context disambiguation: picking the passage that combines several rare clue words, and reading an epithet as a nickname phrase. Both are short, general additions to existing rules that do not conflict with the delete-clue-words or head-noun rules, which caused earlier rejections.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Other named entities in the clue are anchors, never the answer.",
+        "content": "\n- Reverse case: when the clue names a player, coach or game and asks for 'this team' ('this team's Phil Simms'), the player is the anchor. Answer with the full team name as the passages repeat it, city included ('New York Giants'), not just the city or a bare nickname."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "\n- In very noisy contexts, most passages are only keyword hits on one common word (e.g. film titles containing 'Sweetheart'). Look for the single passage that combines the clue's rarest words (e.g. 'mannequins' + 'sweetheart' + 1920s) and take the answer from it. Treat an epithet in the clue ('sweetheart of an actress') as a hint to the nickname phrase the passage uses ('America's sweetheart'). Answer with the person or thing it names (Mary Pickford), not the epithet."
+      }
+    ]
+  },
+  "source_type": "success"
+}

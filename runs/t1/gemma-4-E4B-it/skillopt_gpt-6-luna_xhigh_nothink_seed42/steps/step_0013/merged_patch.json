@@ -1,0 +1,53 @@
+{
+  "reasoning": "Combined the two overlapping cache-rule edits and the proximity/groupBy edits into single coherent replacements. Preserved the unique corrections for return-only flights, rating interpretation, flight-origin and airport-code handling, and unsupported amenity inference. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no cached result can cover the changed scope.",
+      "content": "When a changed request adds only filterable criteria, retrieve the most constrained compatible cached result by its exact key—including an already-filtered result that embodies active criteria—apply the matching filter, and save the result; do not repeat its base search. If the latest turn supplies missing required information for a previously pending request, act on that request while leaving already-satisfied domains and legs untouched. Do not retrieve, save, search, or otherwise repeat unaffected domains or legs merely to preserve them; retrieve a cached result only when it is needed as input to a requested operation, such as `search_nearest`. Search anew only when no compatible cached candidate set covers the requested domain, location, dates or leg, and scope.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "content": "- Call `search_nearest` only when the user explicitly requests proximity or directly accepts an assistant offer that explicitly proposed proximity. Merely mentioning hotels and attractions or restaurants for the same trip or city does not imply proximity. For an explicit or accepted proximity request, use the relevant compatible hotel and attraction or restaurant results, searching only where needed to cover the request, then save the `search_nearest` result. Set `groupBy` to the domain being located—the domain the user wants prioritized—not the reference domain. For example, for “restaurants near the hotel,” use `groupBy=\"restaurant\"`; for “hotels near attractions,” use `groupBy=\"hotel\"`.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+      "content": "For restaurant ratings and hotel guest ratings, phrases such as “at least N,” “N or higher,” or “minimum N” mean a threshold; use the inclusive range `[N, 5]` in `rating`. A bare request for “a N rating” or “rating N” means an exact rating; use `[N, N]` unless the user indicates a threshold.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not combine distinct legs by repeating keyword arguments in one call.",
+      "content": "\nIf the user explicitly requests only the return flight, search only the reverse of the established route on the return date; do not search the outbound leg or encode the return date as `arrival_date` on an outbound search.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Flight itinerary legs",
+      "content": "\n- For a newly requested flight, do not infer its origin from the hotel city or destination; if no origin has been established for that route, seek it rather than guessing. When an airport code is supplied, pass it as a scalar string in an appropriate supported airport argument, not as a one-item list.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not add unrelated preferences.",
+      "content": "Do not infer a specific amenity from a broad suitability description unless it clearly means that supported feature. For example, “kid-friendly” alone does not establish that a hotel must have a kids' club or any other particular amenity.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "reasoning": "Failure-driven edits take priority and are carried forward. Every insertion target was checked against the current skill, and none touches the SLOW_UPDATE block. Three changes were made. (1) The SAVE-KEY CHECK edit named 'filtered_hotels1' as the next save key, which conflicts with the protected guidance (section B: loading a filtered_* key saves as final_<domain>, and that replaces Rule 23's scheme). I rewrote it to follow the protected scheme and kept the core point that an existing key is never reused. (2) I dropped the failure-driven LAST-LINE CHECKLIST append. It duplicates the new PRE-FLIGHT CHECK at the top, the protected section G final check, and the 'filter before search_nearest' item in the new -3 hotel-constraint rule, and the meta-skill says to shrink the skill instead of accreting. (3) The single success edit covers a pattern the failure edits do not put at the amenity-mapping lookup site. It pairs the prohibition with a positive trigger ('kids club' mapping only when literally stated) and does not conflict with the failure edits, so it is kept as lower priority. All other failure edits are kept as written, with their support counts and source types. [optimizer-ranked: selected 2/15 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "## HARD OUTPUT RULES (check before EVERY response)",
+      "content": "\n- DOMAIN LOCK (do this before the SEARCH GATE). Classify the LAST user message by its words. Hotel words (hotel, stars, gym, wifi, laundry, pool, kids club, spa, breakfast, shuttle, a hotel neighborhood, per-night price, rooms, nights, check-in/out) -> hotels. Cuisine, dietary words, restaurant rating, per-person price -> restaurants. Class, airline, flight time, ticket price -> flights. Attraction type or name -> attractions. Write code for that domain only, and load only that domain's keys. A reply such as 'a gym and laundry service' loads the newest HOTELS key (hotels2, filtered_hotels...), never filtered_restaurants and never a flight key, even when that key is newer or an earlier turn said 'economy'.\n  HOTEL TRIGGER: a hotel was requested in any turn, CACHE has no 'hotels' key, and check-in and check-out are known or derivable (outbound/return flight dates, or a stated start date plus 'N nights' via adjust_date). Then this block must contain `hotels = search_hotels(city=<destination>, checkin_date=[...], checkout_date=[...], <stars / neighborhood / amenities stated in any turn>, num_people only from a stated number)` followed by `save_to_cache(key=\"hotels\", value=hotels)`. This holds when only flight keys are cached (a message describing a hotel with stars and a neighborhood becomes a hotel search using the flight dates, with no filter_flights). It also holds when the message is only a date plus party size plus nights: save the flight search as 'flights' first if no flight key exists, then `checkout_date = adjust_date(...)`, then the hotel search.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "1. Copy the CACHE keys of each domain the LAST user turn touches (flights / hotels / restaurants / attractions, including filtered_*, nearest_*, hotels2, final_* names).",
+      "content": "\n- 'YES' TO A HOTEL PROPOSAL WITH NO HOTELS KEY (assistant asked 'Are you looking for a family-friendly hotel?', CACHE holds only flight keys): the hotel is a FIRST SEARCH, not a filter. Write `hotels = search_hotels(city=<flight destination>, checkin_date=[<outbound date as written>], checkout_date=[<return date as written>])` + save 'hotels'. Pass only hotel constraints the user actually stated. 'Family-friendly' and 'kid-friendly' are not parameters and never an airline, and num_people comes only from a stated number. Never load or filter a flight key for a hotel reply. If only one flight date is known, output only seek_information for the check-out date.\n- FLIGHT + HOTEL + RESTAURANT OPENER WITH NO DATES (CACHE `{}`): write `restaurants = search_restaurants(city=<destination>, <every restaurant constraint stated: rating, dietary flag, cuisine>)` + save 'restaurants'. Then add ONE `seek_information(\"We need the departure date for the flight, and the check-in and check-out dates for the hotel.\")`. Write no search_flights or search_hotels call and no '<date>' placeholder.",
+      "support_count": 8,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Ranked by systematic impact and complementarity with the meta-skill's top targets. [10] gives a positive one-domain routing rule (cross-domain leakage, the biggest persistent failure group) paired with a positive hotel-search trigger, avoiding negative-only suppression, and is placed at the top. [4] covers the multi-domain first turn (restaurant search + single seek_information) and the 'Yes' to a hotel proposal with no hotels key, both recurring failures the existing skill states but the agent ignores. Others mostly duplicate existing rules ([6], [8], [1], [0], [2]), are single-task or niche ([11], [12], [13], [14], [9]), or rely on unverified params ([3]).",
+    "selected_indices": [
+      10,
+      4
+    ]
+  }
+}

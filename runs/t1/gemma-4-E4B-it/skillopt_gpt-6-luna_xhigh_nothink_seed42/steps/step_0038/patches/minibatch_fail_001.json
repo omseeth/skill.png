@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_follow_up_scope",
+      "count": 7,
+      "description": "Filterable follow-ups re-searched covered scopes, selected broader base results over already-filtered cache entries, repeated existing filters, or did extra work after an affirmative accepted recommendations."
+    },
+    {
+      "failure_type": "proximity_dependency_refresh",
+      "count": 1,
+      "description": "After filtering hotel candidates for an active proximity request, the agent used stale candidates for nearest results instead of recomputing nearest with the filtered hotels."
+    },
+    {
+      "failure_type": "natural_language_time_mapping",
+      "count": 1,
+      "description": "The agent did not map an afternoon preference to the expected bounded time range or apply it to both affected cached flight legs."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill contains cache-reuse rules, but agents repeatedly fail to choose the most constrained cached entry and distinguish a new constraint from acceptance of an offer to present existing recommendations. A precedence-based classifier makes those actions explicit. The additional edits address the remaining concrete gaps: refreshing an active nearest operation after an input changes, and interpreting common flight dayparts as bounded intervals.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "**Turn-action precedence (before tool selection):** Read the full conversation, preceding assistant question or offer, and cache summary; identify only the scopes changed by the latest turn.\n1. If a covered scope gets a new filterable constraint, retrieve the most constrained compatible cache entry by its literal key—including an already-filtered entry that embodies active constraints, rather than a broader base result. Apply only the new or changed constraint(s), then save the result. Repeat for each affected leg; leave unrelated scopes untouched. Do not re-search or reapply constraints already embodied in the selected result.\n2. If the user only accepts an offer to present recommendations from an already covered scope, retrieve the cache entry matching the offered final scope and stop; do not search, filter, or save a duplicate.\n3. For explicitly requested or accepted proximity, use compatible cached datasets with `search_nearest`; search only for a genuinely missing dataset. Search a new base scope only when the request is genuinely new or no compatible cache entry can cover it."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Call `search_nearest` when the user explicitly requests or accepts proximity, including a clear spatial relation such as asking for restaurants near a hotel or a hotel with access to nearby attractions. Merely requesting a hotel and a restaurant recommendation, or independently mentioning a planned attraction visit in the same trip or city, does not imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "\n- An answer to a domain-specific clarification asked as part of an assistant's proximity offer (for example, supplying requested hotel amenities) supplies criteria while retaining that offered proximity operation. Filter the changed candidate set first; then, if proximity is active, call `search_nearest` with the updated result and the compatible cached result for the unchanged counterpart. Do not use stale broader candidates or repeat an unaffected base search."
+      },
+      {
+        "op": "insert_after",
+        "target": "Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed.",
+        "content": " For flight dayparts without numeric bounds, interpret “afternoon” as [\"12:00 PM\", \"05:00 PM\"]. Interpret “anytime after X” as [X, \"11:59 PM\"]. Apply a new time constraint to every affected cached flight leg using its filter tool."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

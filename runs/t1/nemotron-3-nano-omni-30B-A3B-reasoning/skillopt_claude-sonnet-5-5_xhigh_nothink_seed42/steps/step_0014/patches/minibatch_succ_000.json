@@ -1,0 +1,37 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Refinement turns are three straight-line statements (load the most refined key, filter with only the new constraint, save under a new key). This is seen in trajectories 3, 6, 7 and 8.",
+    "The first search for a domain carries every constraint stated in earlier turns once its mandatory args arrive (trajectory 2: dates arrive late, but kids club, beach access and rating from turn 1 are included).",
+    "A flight request with only an arrival-time constraint and no date gets a single seek_information for the departure date (trajectory 4).",
+    "A multi-city request with one date range per leg becomes one search per leg, each using that leg's first date as departure_date (trajectory 1).",
+    "Refined cache keys are not always named filtered_*. In trajectory 8, 'hotels2' was the right key to load because its summary showed extra filtering. The turn's answer applied to hotels only, so the cached restaurants key needed no action.",
+    "Combined flight and hotel requests with no dates at all are answered with one combined seek_information and no search (trajectory 5)."
+  ],
+  "patch": {
+    "reasoning": "Most successes follow rules the skill already states. Four small gaps showed up in them: (1) per-leg date ranges on multi-city trips, (2) refined keys with non-obvious names such as 'hotels2' and leaving other domains' keys alone, (3) an arrival deadline treated as a non-date, and (4) wording the seek_information for a flight plus hotel when no dates exist. Each is a short reinforcement of an existing rule rather than a new section.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 9: Round-trip flights (+ hotel) are separate search calls",
+        "content": "- Multi-city trips with ONE date range per leg ('Las Vegas to Atlanta, then Atlanta to Anchorage; June 19 to July 2 and then July 8 to July 17'): run one search per leg. Use the FIRST date of each range as that leg's departure_date (`departure_date=[\"June 19, 2025\"]` for leg 1, `[\"July 8, 2025\"]` for leg 2). Do not add extra return searches for the range end dates and do not use arrival_date for them. Save each leg under its own key (e.g. first_flights / second_flights)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 23: Load the most refined CACHE key; never overwrite a key",
+        "content": "- Refined keys can have ANY name (hotels2, final_hotels, filtered_hotels1). Judge refinement by the summary text: the key whose summary has extra 'Additionally filtering for ...' lines (e.g. 'hotels2' showing 'stars range') is the one to load, not the raw 'hotels'. Save to a name not already in CACHE.\n- When the last turn answers only ONE domain (e.g. hotel amenities in a hotel + restaurant conversation), output only that domain's load -> filter -> save. Do not reload or re-save another domain's already-refined key (e.g. 'filtered_restaurants'); doing so adds extra calls that count as errors."
+      },
+      {
+        "op": "replace",
+        "target": "a timing worry ('make sure we arrive on time')",
+        "content": "a timing worry ('make sure we arrive on time') or an arrival-time constraint with no date ('we need to arrive before 06:36 PM', 'a specific arrival time')"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 7: Writing seek_information, including multi-domain requests",
+        "content": "- If a flight and a hotel were requested and NO dates have been given at all (e.g. 'round-trip flight from Raleigh to San Jose, a hotel with a fitness center'), the single seek_information names the departure date(s) for the flight AND both the check-in and check-out dates for the hotel. Name only the check-out date when the check-in date is already known."
+      }
+    ]
+  },
+  "source_type": "success"
+}

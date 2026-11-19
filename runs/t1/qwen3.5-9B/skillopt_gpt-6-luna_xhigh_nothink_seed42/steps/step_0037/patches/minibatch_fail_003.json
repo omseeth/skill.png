@@ -1,0 +1,31 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "proximity_call_order_and_schema",
+      "count": 1,
+      "description": "Called nearest before both result objects existed, passed a None placeholder, repeated the call, and did not save the restaurant search result."
+    },
+    {
+      "failure_type": "rating_range_interpretation",
+      "count": 1,
+      "description": "Treated an unqualified 3.5 rating as a minimum instead of an exact rating."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify the order and inputs for proximity calls, including saving newly searched source results, and make the existing exact-rating rule more salient for bare numeric ratings.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain.",
+        "content": "Use `search_nearest` only for an explicit proximity request. First obtain both source-domain results; assign and save each newly searched result before proceeding. Then make one call for that proximity relationship with exactly two actual, non-`None` inputs from distinct supported domains—never call early with a placeholder or repeat the call after the second result exists. Set `groupBy` to the domain the user wants returned or recommended (for example, restaurants near a hotel uses `groupBy=\"restaurant\"`)."
+      },
+      {
+        "op": "replace",
+        "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+        "content": "For ratings, an unqualified single number is an exact rating, not a minimum: “3.5 rating” means `[3.5, 3.5]`. Use `[x, x]` for “exactly x”; use `[x, 5]` only when the user explicitly says “at least x” or gives equivalent minimum language."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

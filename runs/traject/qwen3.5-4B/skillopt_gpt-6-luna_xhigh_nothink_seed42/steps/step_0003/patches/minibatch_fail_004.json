@@ -1,0 +1,46 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_semantic_mismatch",
+      "count": 2,
+      "description": "A related endpoint was substituted despite differing in requested output or scope, such as forecast for current conditions or news for reviews and ratings."
+    },
+    {
+      "failure_type": "schema_parameter_and_constraint_mapping",
+      "count": 3,
+      "description": "Parameters were placed in the wrong required/optional bucket or a compatible requested filter was omitted."
+    },
+    {
+      "failure_type": "entity_match_specificity",
+      "count": 1,
+      "description": "A named-item lookup omitted the endpoint's available exact-match constraint."
+    },
+    {
+      "failure_type": "canonical_value_representation",
+      "count": 1,
+      "description": "A country code's casing differed from the expected value, though the tool description lists the supplied casing as an example."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits strengthen endpoint matching by requested output, time scope, and location form; encourage exact matching for named-item searches; and add a field-by-field schema audit for buckets, types, and filters. The isolated country-code casing discrepancy is not patched because the tool description explicitly accepts the agent's casing.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Plan tool calls",
+        "content": "- Compare requested output, time scope, and location granularity—not just topic—against each endpoint's documented behavior. Current conditions are not forecasts; location-specific active alerts are not aggregate alert counts; and reviews or ratings are not news or deals. When coordinates are supplied and a matching coordinate-based endpoint exists, use it rather than inferring a city or changing the location form."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Preserve requested search text, identifiers, and constraints; normalize only as the endpoint requires, without dropping meaningful words or substituting one value or geographic level for another. Map explicit filters, counts, pages, sorting, locale, category, and location to the corresponding schema fields, using accepted representations for enums and locales.",
+        "content": "- For a search or list about a specifically named item, use a documented exact-match control when available to avoid similar-name results, unless the user asks for broad or fuzzy discovery. Use a modest documented result limit for an open-ended lookup only when appropriate; do not invent a count."
+      },
+      {
+        "op": "replace",
+        "target": "- Check that every requested outcome is covered, each call uses the exact listed tool name, and each call object follows the active answer format exactly. Use the required keys, parameter buckets, types, and wrappers; include empty arrays when required. Do not merge calls, duplicate keys, or add explanatory text outside the required format.",
+        "content": "- Before finalizing, audit each call against its own endpoint schema field by field: place required parameters in the required bucket and non-required parameters in the optional bucket, verify declared types and documented value forms, and check that every explicit compatible filter is represented. Do not invent a missing required value. Then confirm every requested outcome is covered, exact tool names and the active answer format are used, required keys and empty arrays are present, and there are no duplicate keys, merged calls, or extra text."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

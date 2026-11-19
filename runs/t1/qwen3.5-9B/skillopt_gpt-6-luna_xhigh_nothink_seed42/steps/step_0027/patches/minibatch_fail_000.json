@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_result_persistence_and_cache_selection",
+      "count": 5,
+      "description": "Result calls were left unsaved, nested inside saves or filters, or based on an older cached result."
+    },
+    {
+      "failure_type": "date_grounding_and_itinerary_context",
+      "count": 4,
+      "description": "Agents invented missing hotel dates or asked for stay dates already established by the itinerary, and sometimes added unsupported date constraints."
+    },
+    {
+      "failure_type": "criterion_mapping_and_scope",
+      "count": 5,
+      "description": "Agents confused fields across domains, omitted explicit criteria, or added unrelated filters and operations."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add concrete mappings for criteria that were missed or assigned to the wrong domain, and clarify how an established outbound/return date pair supplies hotel stay boundaries. General persistence and category-preservation guidance is already present, so repeating it would not patch a skill gap.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not infer unspoken counts or pass traveler counts to flight tools.",
+        "content": "Map explicit criteria only to matching domain fields: “non-stop” flights means `num_layovers=[0]`; “first” or “business” flight class belongs in `flight_class`, not hotel `stars`. For hotels, an explicit request for business facilities maps to `has_business_center=True`; a meeting-room request separately maps to `has_meeting_rooms=True`."
+      },
+      {
+        "op": "insert_after",
+        "target": "When lodging is requested for an explicitly planned trip and both trip dates are known, use the trip start and end dates as hotel check-in and check-out.",
+        "content": "An established outbound and return date pair for the same trip supplies those hotel stay boundaries; do not ask the user to restate them. If no stay dates can be established, ask for the missing dates without inventing them, while completing other requested domains that are ready."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

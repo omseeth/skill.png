@@ -1,0 +1,51 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "Agent kept a type word, or answered the wrong slot, when a bare proper name was wanted ('Amazon River' for 'Amazon'; 'Yalta Conference' for 'this Crimean city' = Yalta). The existing head-noun exception even lists Amazon and Yalta."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "A verbatim archive hit gave 'Anchorage, Alaska', but the agent trimmed it to 'Anchorage' instead of copying the archived form."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "Agent copied the word from a passage that echoes the clue ('relative of the dugong') without checking the clue's own descriptor ('found in Florida'). The answer was the manatee."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "Grammatical form of the answer did not follow the clue: plural 'insulators' for a singular 'this is the term for...', and 'meander' for a gerund-worded clue ('following a winding course') where 'Meandering' was expected."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four of the six misses are formatting or slot-fit errors where the right entity was found. They fall into four patterns: (1) a type word is attached to a proper name, or the event is named instead of the place the pointer asks for; (2) a verbatim archive answer is trimmed instead of copied in full; (3) an echo passage is trusted without checking the clue's own descriptors; (4) the answer's number or inflection does not match the clue wording. Each edit is narrow and adds a concrete check rather than restating an existing rule, because broad rewrites were rejected in earlier steps.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Before the answer tags, briefly quote the matched line.",
+        "content": "\n- Copy the archived answer IN FULL, including any qualifier that follows it. If the line reads 'It's the largest city in its state; ... | Anchorage, Alaska.', the answer is 'Anchorage, Alaska', not the trimmed 'Anchorage'. Do not apply the shortening rules of Rule 4 to a verbatim archive answer."
+      },
+      {
+        "op": "insert_after",
+        "target": "The 'do not repeat clue words' rule is for a separate modifier already stated in the clue ('hasty' + pudding).",
+        "content": "\n- Rivers, lakes, mountains, islands, cities and countries: give the bare proper name even when the passages add a type word. 'Amazon' (not 'Amazon River'), 'Nile', 'Roanoke'. If the pointer names a place type ('the 1945 conference in this Crimean city'), the slot is the PLACE ('Yalta'), never the event held there ('Yalta Conference'). Keep a type word only when it is an inseparable part of the name ('Lake Erie', 'Mount Everest', 'Great Salt Lake')."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not choose one that fits only some.",
+        "content": "\n- Echo-passage trap: a passage that repeats the clue with the blank filled ('Steller's Sea Cow was a relative of the dugong') is not proof by itself. Check the filler against EVERY descriptor the clue attaches to the slot ('this rare aquatic mammal found in Florida'). The dugong lives in the Indo-Pacific, so it fails and the manatee fits. If the filler fails any descriptor, answer the candidate that satisfies all of them. The descriptors after 'this' decide the answer, not the most-repeated word."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Put only the bare answer in the answer tags. Do not write a sentence, restate the clue, or add dates, qualifiers or alternatives. Brief reasoning belongs before the tags.",
+        "content": "\n- Match the grammatical form the clue's wording requires. 'This is the term for nonconductors like plastics' has a singular 'this' with plural examples, so the answer is the singular headword ('insulator', not 'insulators'). Plural examples inside the clue do not make the answer plural. If the clue defines the term with an -ing phrase ('this term for following a winding & turning course'), answer in the -ing form ('Meandering', not the base verb 'meander'). Write the form without an article."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

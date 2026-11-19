@@ -1,0 +1,50 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_cache_and_delta_errors",
+      "count": 5,
+      "description": "Calls used stale or less-refined cache results, repeated already-covered criteria, or missed the latest requested constraint."
+    },
+    {
+      "failure_type": "pending_domain_or_leg_omission",
+      "count": 2,
+      "description": "Plans omitted a requested domain or a round-trip flight leg."
+    },
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 2,
+      "description": "Result-producing calls were not consistently bound to variables and saved to cache."
+    },
+    {
+      "failure_type": "invalid_tool_code",
+      "count": 2,
+      "description": "Generated code included invalid markup or imported tools instead of calling the runtime-provided tools directly."
+    },
+    {
+      "failure_type": "range_argument_cardinality",
+      "count": 1,
+      "description": "A range-valued rating argument was passed with one endpoint instead of the schema-required pair."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers conversation auditing, flight legs, result persistence, and exact range encoding, so those rules should not be duplicated. The useful gaps are making cache selection among multiple compatible results explicit, reinforcing range cardinality and threshold encoding, and adding a final executable-code/runtime-tools check.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "\n- If the cache listing contains multiple results for an affected domain, choose the most-refined compatible result whose summary covers all still-valid earlier criteria; do not default to a generic base result. Apply only the latest unmet constraint to that result, and do not rerun filters or domains already satisfied. If no compatible result covers the needed prior criteria, use an appropriate compatible base or search as required."
+      },
+      {
+        "op": "replace",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "- Validate value encoding and cardinality as well as argument names. When the schema defines a range as a two-endpoint list, pass exactly `[lower, upper]`: use `[x, x]` for an exact value, and for a one-sided threshold use the stated bound and only an opposite endpoint documented by the schema. Never pass a scalar or singleton list, reinterpret an exact value as a minimum, widen an exact value, or invent endpoints. If the supported bounds are unclear, consult the schema before calling."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Emit executable tool code\n- Call tools by their declared names as provided in the runtime; do not import, redefine, or wrap them. Before output, check that the code is valid Python and contains only executable tool code—no XML or other markup tags, and no explanatory prose."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

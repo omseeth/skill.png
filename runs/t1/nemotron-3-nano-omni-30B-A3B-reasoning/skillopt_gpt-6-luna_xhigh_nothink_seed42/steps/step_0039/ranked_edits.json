@@ -1,0 +1,28 @@
+{
+  "reasoning": "Consolidated the overlapping cache-selection and refinement proposals into one per-item decision sequence that distinguishes using a complete cached result, refining the latest compatible result with every missing constraint, and searching only when no compatible result exists and required inputs are available. Kept the separate minimal-code/persistence check and clarified readiness without duplicating the decision sequence. Merged the endpoint-encoding guidance, including one-sided time deadlines, and incorporated the explicit stay-duration rule into the missing-information section. Preserved the flight-date and nearest-call clarifications. No edits target the protected section. [optimizer-ranked: selected 2/6 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+      "content": "- For each affected or still-pending item, compare its exact target, domain, location or flight leg, and prior and new criteria against the listed cache summaries. Choose one path: (1) If a compatible result covers the complete request and the user expects results, retrieve it by its exact listed key and use it directly. (2) If a compatible result covers earlier criteria but lacks new constraints, retrieve the latest compatible result that preserves those criteria, apply every missing delta, and pass it as `prior_results` when required. (3) If no compatible result exists, search using the applicable stated criteria only when all mandatory inputs are available. Do not filter without compatible prior results, repeat covered filters, or rely on variables from earlier executions. Assess items independently: leave satisfied and unchanged domains alone, and proceed with ready items even when others are blocked; follow “Missing mandatory information” for blocked items.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "## Missing mandatory information\nBefore searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness independently for each requested domain and, where applicable, each city or leg: proceed with searches or refinements for domains whose required inputs are available even if another is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across blocked domains. Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood. Optional preferences are not mandatory inputs.",
+      "content": "## Missing mandatory information\nFor every still-pending request in the full conversation, identify the tool's required fields and verify each against an explicit user-provided value. Do not invent dates, use defaults, or treat an event date, itinerary context, or assistant suggestion alone as a flight departure or hotel stay date; count a suggested date only if the user explicitly adopts it. Do not call a search or refinement for an item with missing required inputs. Assess domains and flight legs independently, completing ready items even if others are blocked, and make one `seek_information` call asking only for all missing mandatory values across blocked items. A later update in one domain does not cancel earlier pending requests in another. Hotel check-in and check-out dates must both be explicit unless the user explicitly provides a start/check-in date and a stay duration in nights; then obtain checkout by calling `adjust_date(date=<start date>, delta_days=<number of nights>)` and use its returned date as `checkout_date`. Do not infer duration from vague wording such as “weekend getaway,” borrow hotel dates from flight dates, or infer a neighborhood. Optional preferences are not mandatory inputs.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "[1] provides the strongest systematic improvement: a clear per-item cache decision sequence that applies every missing constraint while avoiding redundant work. [2] fills a concrete gap in required-date handling, including explicit stay durations, and preserves pending requests across domains.",
+    "selected_indices": [
+      1,
+      2
+    ]
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "reasoning": "Consolidated repeated cache, schema-mapping, and readiness guidance into single replacements, while keeping distinct edits for affirmations and proximity requests. Preserved the unique itinerary-date guidance and reconciled independent searches with the rule to ask once for all missing required values. Support counts estimate how many of the five source patches support each edit. [optimizer-ranked: selected 4/6 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+      "content": "- Match every argument to the tool schema’s expected field, type, and cardinality. Map values to fields by meaning: use `city` for a city and `state` for a state or region, including its abbreviation; do not put a state in a city field, normalize user-provided values, or put a preference in an unrelated field. If the tool has no matching field for a requested feature, use the supported criteria and leave that feature unencoded. For a range field, encode one requested exact value as both endpoints (for example, `[n, n]`); for a lower-bound preference, use a valid upper bound supported by the schema. Treat soft preferences as actionable: use a stated approximate budget in the scalar budget field, map a desired amenity such as “would be nice” to its corresponding boolean `True`, and translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). Carry forward explicitly stated, applicable constraints from earlier turns, including party size, room count, and amenities.",
+      "support_count": 4,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied in a search. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+      "content": "- On each turn, compare the full conversation and compatible cache summaries with the active request. For each requested result, check whether every active criterion is already satisfied. If a compatible cached result lacks criteria, retrieve it, apply all applicable criteria not already reflected in that result, and update each relevant cached result when the request covers distinct legs or items. Do not filter unrelated results or repeat constraints already applied. Search for any requested entity or category the cache does not cover, rather than treating another result in the same domain as a match. Leave results that already satisfy the request untouched. Assign every new search, filter, sort, or `search_nearest` output and immediately save it under a unique cache key; retrieve cached results with the cache retrieval tool rather than relying on an assumed cache dictionary or variables from earlier turns. Use “No planning needed” only when cached results satisfy every current request.",
+      "support_count": 4,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available.",
+      "content": "- Check each requested domain separately against the full conversation, compatible cached results, and its tool schema. For example, flight searches require a known route and departure date; hotel searches require a city, check-in date, and checkout date; restaurant searches require a city. If required values are missing, make exactly one `seek_information(...)` call listing only all missing required values across the requested domains. Do not guess or invent values, search or filter an incomplete domain, or ask for optional preferences as if they were required. Missing inputs in one domain do not block independent requested searches or updates in other domains whose required inputs are complete; do those in the same turn.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, search each leg separately, reverse the outbound route for the return, and use the return leg’s departure date. Ask for an unknown endpoint rather than assuming a route.",
+      "content": "- Preserve user-provided dates, entity values, and casing. For a round trip, make separate flight searches for the outbound and return legs, using each leg’s departure date and reversing the outbound route for the return; never treat the return date as another outbound date. For a multi-city itinerary, search each explicitly stated leg separately using its route and date. A specific date stated with wording such as “around” or “possibly” is an available date candidate, not a missing value, unless the user says no date can yet be selected. If multiple outbound date options are given, use those as outbound candidates and keep the return search separate. For lodging clearly tied to the same trip, use the established outbound date as check-in and the return date as checkout when unambiguous, and carry forward known party size. Ask for an unknown endpoint or genuinely missing or ambiguous required date rather than assuming it.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Prioritize the broadest recurring fixes: [2] prevents schema and field-mapping errors, [3] strengthens cache matching and updates across requests, and [0] clarifies required inputs while allowing independent work to proceed. [1] adds useful date and itinerary handling beyond the existing basic round-trip rule. The remaining edits are narrower or overlap more with current guidance.",
+    "selected_indices": [
+      2,
+      3,
+      0,
+      1
+    ]
+  }
+}

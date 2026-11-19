@@ -1,0 +1,45 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "cache_refinement_delta_omission",
+      "count": 2,
+      "description": "Agents failed to apply and save the newly stated restaurant neighborhood or budget constraint to the relevant cached results."
+    },
+    {
+      "failure_type": "round_trip_and_domain_completion",
+      "count": 2,
+      "description": "Agents mishandled stated return dates as outbound criteria and failed to complete all requested travel domains."
+    },
+    {
+      "failure_type": "tool_execution_format",
+      "count": 1,
+      "description": "An agent imported unavailable tools and printed a no-planning message after already performing planning actions."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add short pre-emission checks for complete per-domain updates and flight-leg mapping, clarify how round-trip dates support a requested hotel stay, and reinforce the direct-tool execution contract. These target recurring omissions without changing existing schemas or duplicating broad tool guidance.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "Before writing calls, make a per-domain checklist from the full conversation of requested actions and every newly stated criterion, including a reply to an assistant question. For a valid cached base, retrieve it into a local variable, pass every new criterion as a supported filter argument, and save the refined result under a new key. A filter call with only `prior_results`, or a fresh search that merely repeats criteria already represented in cache, does not apply the update."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Represent flight legs separately",
+        "content": "Before finalizing flight calls, verify that each stated outbound and return segment has its own route/date pair, with the return route reversed and its date used as that leg’s `departure_date`. Do not encode a return date as an alternative outbound date or an `arrival_date`, and do not pass parameters absent from the flight tool schema."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "\n- If the user also requests a hotel for the same round trip and gives no separate lodging dates, use the outbound date as hotel check-in and the return date as check-out, in the trip destination city; do not omit the hotel search just because the latest turn discussed flights."
+      },
+      {
+        "op": "append",
+        "content": "\n## Execute tools directly\n- Call the provided tool functions directly; do not import tools, alter module paths, or redefine tools or their models. Use `print(\"No planning needed\")` only instead of planning calls when valid cache results already satisfy the entire request—never append it after performing searches, filters, sorts, or nearest-results calls."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

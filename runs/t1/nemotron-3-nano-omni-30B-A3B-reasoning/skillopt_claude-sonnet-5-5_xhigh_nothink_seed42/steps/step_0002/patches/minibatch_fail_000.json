@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "over_seeking_information",
+      "count": 3,
+      "description": "The agent called seek_information although the user had already given the mandatory args. It asked for hotel dates when no hotel was requested, or for an origin city the user had already named. It ignored 'around X' or 'as soon as possible, around X' dates and the departure/return pair."
+    },
+    {
+      "failure_type": "round_trip_flight_handling",
+      "count": 4,
+      "description": "A round trip was not decomposed into two search_flights calls (outbound plus reversed return). The agent used an invalid return_date arg, skipped the second leg, or skipped the requested hotel (city = destination, check-in = departure date, check-out = return date)."
+    },
+    {
+      "failure_type": "missing_save_or_party_size_params",
+      "count": 2,
+      "description": "The agent did not save the search result to cache and dropped party-size info ('solo' means num_people=1, 'N of us / N rooms' means num_people and num_rooms). It also re-filtered on an old inferred constraint (has_kids_club) instead of the last turn's constraint."
+    },
+    {
+      "failure_type": "nearest_attraction_flow_wrong",
+      "count": 2,
+      "description": "When the user confirmed an attraction or named one, the agent re-filtered cached hotels and attractions, printed junk, or called search_nearest with attractions=None. The correct flow is search_attractions, load the cached hotels, then search_nearest with exactly two domains and groupBy, then save."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent failures are over-asking via seek_information and mishandling round-trip flight requests (4 of 8 trajectories). The existing Rule 6 bullet 'round-trip still needs the departure date' invites over-asking, so it is replaced. Further rules cover the required save_to_cache and party-size parameter mapping, and the search_attractions plus search_nearest flow that follows an attraction request. These address concrete, repeated mistakes without duplicating Rules 2, 7 and 8.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- A round-trip request still needs the departure date. Ask for it; do not assume a return date.",
+        "content": "- Do NOT ask for anything the user already gave. Vague phrasing still counts as a stated date: 'around May 21, 2025', 'possibly May 21', 'as soon as possible, around May 22, 2025'. Use the date as written. If the user gives two dates for a round trip (e.g. 'May 23 to June 6', 'leaving X returning Y'), the first is the departure date and the second the return date, so nothing is missing. A city named earlier in the conversation (e.g. 'from Raleigh', 'to Tucson') already satisfies the origin/destination, so never ask for an airport code.\n- Only ask about domains the user actually mentioned in the conversation. If the user only talked about flights, never ask for hotel dates, even if the task might later involve hotels or attractions.\n- Only ask for the departure date when the user truly gave no travel date at all (a return date is never assumed)."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 9: Round-trip flights (+ hotel) are decomposed into separate search calls\n- search_flights has NO return_date parameter. Never pass it. A round trip is TWO calls: outbound (origin to destination, departure_date=[outbound date]) and return (destination to origin, departure_date=[return date]). Copy any shared preference (flight_class, airline, etc.) to BOTH legs. Do not add unmentioned optional params such as an airline preference you cannot map.\n  `departure_flights = search_flights(start_airport_city=\"A\", end_airport_city=\"B\", departure_date=[\"May 15, 2025\"])`\n  `save_to_cache(key=\"departure_flights\", value=departure_flights)`\n  `return_flights = search_flights(start_airport_city=\"B\", end_airport_city=\"A\", departure_date=[\"May 20, 2025\"])`\n  `save_to_cache(key=\"return_flights\", value=return_flights)`\n- If a hotel is also requested anywhere in the conversation (even just 'and a hotel stay for a special occasion') and the dates are known, run the hotel search in the same code block: `search_hotels(city=<destination city>, checkin_date=[outbound date], checkout_date=[return date])`, saved under key \"hotels\". Do not drop the hotel because the latest turn only mentions flight details (dates, class).\n- Use date strings exactly as the user wrote them (e.g. \"May 15, 2025\").\n\n## Rule 10: Always assign and save; map party size\n- Every search_*/filter_*/search_nearest/sort_results call must be assigned to a variable AND saved with save_to_cache(key=\"...\", value=var). A bare `search_hotels(...)` line with no save is a failure.\n- Map party info on the matching tool: 'solo trip' / 'just me' means num_people=1; 'N of us' / 'N travelers' means num_people=N; 'N rooms' means num_rooms=N. On a hotel search include num_people when the conversation states party size.\n- If the hotel is already cached and the last turn only gives party size or rooms, load the cache and call filter_hotels(prior_results=x, num_people=N, num_rooms=M) with ONLY those params. Do not re-add earlier or inferred preferences (e.g. do not invent has_kids_club from 'kid-friendly'), and do not re-search.\n\n## Rule 11: Attractions/restaurants near a cached hotel (search_nearest flow)\n- When the user confirms interest in attractions (e.g. 'That would be great' after the assistant offered 'Touristy attractions near your hotel') or names a specific attraction ('we want to visit Georgia Aquarium'), the new domain gets a fresh search; do NOT re-filter the cached hotels or flights and do NOT print or loop over results.\n  1. `attractions = search_attractions(city=<hotel city>, type=[\"<type word exactly as the assistant/user said>\"])` or, for a named place, `search_attractions(city=<city>, attraction_name=[\"Georgia Aquarium\"])`; save it (e.g. key \"attractions\" or \"attractions1\" if \"attractions\" already exists).\n  2. `hotels = get_results_from_cache(key=<most refined hotel key>)`\n  3. `nearest_hotels = search_nearest(hotels=hotels, attractions=attractions, groupBy=\"hotel\")`; save as \"nearest_hotels\".\n- search_nearest requires EXACTLY two of hotels/attractions/restaurants, each a real loaded result. Never pass None or a single domain, and never pass a variable that was not loaded or created in the same code block.\n- Use the same pattern for restaurants (search_restaurants then search_nearest(hotels=..., restaurants=..., groupBy=\"hotel\" or \"restaurant\"))."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "runtime_tool_namespace_violation",
+      "count": 4,
+      "description": "Agents imported tools from a nonexistent module instead of calling injected functions directly."
+    },
+    {
+      "failure_type": "stateful_cache_workflow_failure",
+      "count": 5,
+      "description": "Agents skipped requested cache updates, failed to save new results, or unnecessarily saved unchanged cached data."
+    },
+    {
+      "failure_type": "conversation_context_reuse_failure",
+      "count": 2,
+      "description": "Agents asked for dates already supplied earlier in the conversation."
+    },
+    {
+      "failure_type": "unsupported_parameter_inference",
+      "count": 1,
+      "description": "An agent inferred budgets and dietary preferences that the user had not provided."
+    }
+  ],
+  "patch": {
+    "reasoning": "Repeated import failures show the runtime constraint needs an unmistakable hard-rule formulation. Cache failures benefit from a concrete per-result workflow, especially when a new criterion applies to multiple itinerary legs. The optional-parameter guidance closes the gap that allowed unsupported assumptions; the existing full-conversation rule already covers dates supplied earlier.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Runtime contract:** Tool functions are injected directly into the execution namespace; there is no `tools` module. Generated code must contain no `import` statements. Call provided tools directly by name without importing, redefining, or wrapping them; before returning code, scan for and remove any imports. Use keyword arguments except for `seek_information`, and return code in the required format.",
+        "content": "- **Hard runtime constraint:** Tool functions are already injected as bare names; there is no `tools` module or `tools` namespace. Never emit an `import` or `from` statement, use `tools.<name>`, or alias, redefine, wrap, or dynamically resolve a tool. Call each function directly by its injected name. Before returning, inspect the complete code and remove any import statements. Use keyword arguments except for `seek_information`, and return code in the required format."
+      },
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- On each turn, consider the full conversation and cached result summaries, and reuse only results matching the requested domain and subject. When new criteria apply to cached results, identify and retrieve every compatible result they affect—including each relevant leg of a multi-leg itinerary—then apply only the new criteria. Assign each search or transformation output to a variable and save every new result under an appropriate cache key; a bare search, filter, sort, or nearest-result call without saving its output is incomplete. Save transformed results under distinct keys, and do not resave unchanged retrieved results. Do not filter unrelated results or repeat constraints already applied. Use “No planning needed” only when cached results satisfy every current request and no requested update remains."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not encode a generic quality such as “kid-friendly” as an entity value when the schema has no matching criterion.",
+        "content": "Populate optional fields only from explicit user statements. Do not infer budgets, dietary or allergy accommodations, amenities, room counts, or other filters from an event type, party size, or openness to suggestions."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

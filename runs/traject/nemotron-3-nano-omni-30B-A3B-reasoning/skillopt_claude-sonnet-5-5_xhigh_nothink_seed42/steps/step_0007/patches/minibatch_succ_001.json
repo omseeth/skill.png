@@ -1,0 +1,35 @@
+{
+  "batch_size": 4,
+  "success_patterns": [
+    "All four trajectories copied the exact `Provider: API` heading as the tool name and made exactly one call per query clause. Long narrative queries with 8-9 clauses were handled as a checklist.",
+    "Clauses naming no-input or 'random' endpoints (Uncovered Treasure /random, Rocket League Challenges, Greek News Get All Sources) still got their own call with the right required parameters. Sibling endpoints were told apart by the verb and object (math fact vs trivia fact, Radical meaning vs Radical position vs Onyomi reading).",
+    "Qualifiers were mapped to optional fields (min_duration=300, from_record_date=2017-01-01, subtitle_lang=tr, per_page/page, sides=20, sort-by=value, country/language). Optional-list mismatches remain: a duplicate trailing `\"optional parameters\": []` key (T1, T4) wiped filled lists, and a count word was mapped to `limit` instead of the schema's `pageSize` (T2).",
+    "Missed optionals in these successes: the speaker slug, `fragment`/`json` when the query asked for JSON format and fragments, and `amount`=1 for 'a random word'."
+  ],
+  "patch": {
+    "reasoning": "The batch shows the core format and tool-selection rules working. The recurring leaks are in optional parameters. Two successful answers emitted a second empty `optional parameters` key that overwrote real values, and the skill's blanket 'do not invent fragment/json' rule contradicts a query that explicitly asks for JSON format with fragments. Speaker slugs and singular 'a random X' -> amount 1 were also missed. A clause that names a no-input tool must still get a call. Prior large rewrites were rejected, so these edits are small and targeted.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Put ALL optional parameters for a call in the single `optional parameters` list.",
+        "content": " Wrong: `\"optional parameters\": [{...}], \"optional parameters\": []`. Never add a trailing empty `optional parameters` after a filled one. Once the list closes, end the object with `}`."
+      },
+      {
+        "op": "replace",
+        "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+        "content": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, notfound). But when the query explicitly asks for it ('in JSON format', 'with fragments included'), include `json`=`true` and `fragment`=`true`. Never emit a parameter with an empty value."
+      },
+      {
+        "op": "insert_after",
+        "target": "  - A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).",
+        "content": "\n  - A named person or speaker -> the speaker/author field, in the slug form its description asks for (`Yuval Noah Harari` -> `yuval_noah_harari`). 'A random word' with an `amount` field -> amount `1`. Use the schema's own count name (`pageSize`, not `limit`, if that is what it lists)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "\n- A clause that does name one ('a random biblical insight', 'current seasonal challenges', 'list of Greek news sources') still gets its call, even with `[]` parameter lists. In long narrative queries ('The user first..., then...'), make one call per described action and ignore closing commentary."
+      }
+    ]
+  },
+  "source_type": "success"
+}

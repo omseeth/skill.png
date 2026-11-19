@@ -1,0 +1,25 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Part-of-name clue ('First name of the man elected chancellor...'): the agent gave only the requested part ('Helmut'), not the full name 'Helmut Kohl'. The skill has no explicit rule for this.",
+    "Colon-format or pun clue ('A comedienne: \"Ball of Fire\"'): the archive snippet cut off before the answer. The agent saw that the quoted phrase contains the answer's surname and answered 'Lucille Ball'. It did not pick Barbara Stanwyck, who starred in the film Ball of Fire, and it did not echo the phrase.",
+    "Pronoun-led or 'this <noun>' clues (Howard Hughes, Counting Crows, Pablo Picasso, Buffalo, The Red Badge of Courage): the agent picked the entity that recurs across many passage titles and snippets together with the clue's distinctive details. It answered with the bare category member in the short standard form, keeping 'The' only for a title.",
+    "Foreign-term clue ('Known as \"corrida de toros\", this sport'): the agent answered with the English generic name from the passage titles ('bullfighting'), not the foreign term in the clue."
+  ],
+  "patch": {
+    "reasoning": "Two concrete patterns recur in successes and are not explicit in the skill. The first is that 'First name / Last name / Surname of ...' clues want only the requested part. The second is that a quoted phrase after a role descriptor often hides the answer's name, as a pun or an alias, and the agent should answer with the person it points to. Both are narrow, low-risk additions that reinforce what already worked. Earlier rejected steps bundled many large, overlapping rules, so these are kept short and limited to patterns confirmed by this batch.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Give the bare name ('Ronald Reagan'), not the event, the place or the date.",
+        "content": "\n- Part-of-name clues ('First name of the man elected chancellor of a reunified Germany in 1990', 'Last name of...', 'Surname of...', 'Initials of...'): first identify the person from the passages (Helmut Kohl), then output ONLY the requested part ('Helmut'). Do not give the full name, a title, or a group label."
+      },
+      {
+        "op": "insert_after",
+        "target": "A word in quotation marks inside the clue (a 'drag', a nickname) is usually a pun or hint tied to the answer. Look for passages where that word appears next to a candidate and answer with that candidate.",
+        "content": "\n- Short descriptor-plus-quote clues ('A comedienne: \"Ball of Fire\"') ask for the person, work or thing that the quoted phrase points to. The phrase may contain the answer's own name ('Ball' -> 'Lucille Ball') or be her known nickname. Pick the candidate whose name or alias is inside the phrase AND who fits the descriptor. A film or work that merely shares the title (such as a different actress who starred in Ball of Fire) is not the answer. Never answer with the quoted phrase itself. This works even when an archive snippet stops right after the clue."
+      }
+    ]
+  },
+  "source_type": "success"
+}

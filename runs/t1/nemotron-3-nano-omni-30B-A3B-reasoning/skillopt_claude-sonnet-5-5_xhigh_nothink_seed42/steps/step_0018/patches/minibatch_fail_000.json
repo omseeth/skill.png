@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "ignored_cache_state_or_wrong_domain",
+      "count": 2,
+      "description": "Re-filtered already-filtered flights while the new hotel and attraction requests got no search or search_nearest (T1). Re-ran search_restaurants although a 'restaurants' key existed (T5)."
+    },
+    {
+      "failure_type": "flight_leg_handling",
+      "count": 3,
+      "description": "Filtered only one of two cached flight legs (T2). Called seek_information for a date-range reply and dropped the stated 'first' class (T3). Built the wrong legs for an A->B->C->A multi-city trip (T8)."
+    },
+    {
+      "failure_type": "wrong_param_or_missing_new_constraint",
+      "count": 2,
+      "description": "Used the nonexistent has_pool kwarg (T4). Ignored '2 rooms for 3 people' and re-passed old amenities instead of num_rooms/num_people (T7)."
+    },
+    {
+      "failure_type": "malformed_pure_retrieval",
+      "count": 1,
+      "description": "A 'sounds good' retrieval turn added an invented save_to_cache under the key 'nearest_hotels' (T6)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Each edit targets a distinct, repeated miss. (1) CACHE GATE: new domains with no key must be searched, domains with a key must be filtered, and flight-preference replies must touch every leg. (2) Rule 9: multi-city leg construction, date-range replies, and explicit class from earlier turns (this overrides the 'no flight_class' line). (3) Rule 27: exact hotel kwarg names such as pool_present, and count replies mapping to num_rooms/num_people. (4) Rule 8: a pure retrieval is one line with no invented save. All are short and anchored with concrete examples taken from the failures.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "0. LAST-TURN DOMAIN CHECK (the most common misses):\n- A domain the user now describes that has NO key in CACHE gets a first search NOW, even when other domains' keys exist. Never spend the turn re-filtering cached flights. Example: CACHE holds only departure_flights/return_flights (May 19, 2025 and May 24, 2025, St. Louis, solo trip) and the last turn is 'A 2 star hotel with a gym and wifi. And I'm interested in Culinary attractions and visiting City Museum.' -> `hotels = search_hotels(city=\"St. Louis\", checkin_date=[\"May 19, 2025\"], checkout_date=[\"May 24, 2025\"], stars=[2, 2], gym_present=True, free_wifi_included=True, num_people=1)` + save 'hotels'; `attractions = search_attractions(city=\"St. Louis\", type=[\"Culinary\"], attraction_name=[\"City Museum\"])` + save 'attractions'; `nearest_hotels = search_nearest(hotels=hotels, attractions=attractions, groupBy=\"hotel\")` + save 'nearest_hotels'. Hotel check-in/check-out are the outbound/return flight dates, and 'solo' means num_people=1. When a hotel and a named attraction are first-searched in the same turn, always add the search_nearest call.\n- A domain that HAS a key is never searched again, even for the first mention of a cuisine, rating or neighborhood. CACHE 'restaurants' (Colorado Springs, no cuisine) + 'Something professional, with a good Latvian menu.' -> `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, cuisine=[\"Latvian\"])`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`. Style words like 'professional' add no param.\n- A flight class, airline, time or budget reply must be applied to EVERY flight leg in CACHE: two legs means two load/filter/save triples (six lines). CACHE has departure_flights, return_flights, filtered_departure_flights, filtered_return_flights + 'Yes, we prefer first' -> load filtered_departure_flights and filtered_return_flights, call `filter_flights(prior_results=x, flight_class=[\"first\"])` on each, and save as filtered_departure_flights2 and filtered_return_flights2. Filtering only one leg is always wrong."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 9: Round-trip flights (+ hotel) are separate search calls",
+        "content": "- A reply that is only a date range ('We're looking at May 22, 2025 to June 5, 2025') after origin and destination were given is NEVER answered with seek_information. Occasion words ('birthday', 'anniversary') are context, not missing info. Run the two round-trip searches. Any flight class stated in ANY earlier turn ('I need a first flight from Anchorage') goes in as flight_class=[\"first\"] on BOTH legs. This overrides the 'Add no other params' sentence below for a class the user literally stated. Never invent airline, budget, times or num_people.\n- Multi-city trips ('flights from Colorado Springs to St. Louis and then St. Louis to Lexington', dates 'September 4, 2025 to September 10, 2025 and then September 22, 2025 I head back to Colorado Springs'): one search per leg, each departing on the date the traveler leaves that city. Dates are used in order: leg 1 (A->B) departs on the first date, leg 2 (B->C) departs on the second date (the day they leave B), and the final leg back to the origin (C->A) departs on the last date. That is three searches, saved as first_departure_flights, second_departure_flights and first_return_flights: `first_departure_flights = search_flights(start_airport_city=\"Colorado Springs\", end_airport_city=\"St. Louis\", departure_date=[\"September 4, 2025\"])`, `second_departure_flights = search_flights(start_airport_city=\"St. Louis\", end_airport_city=\"Lexington\", departure_date=[\"September 10, 2025\"])`, `first_return_flights = search_flights(start_airport_city=\"Lexington\", end_airport_city=\"Colorado Springs\", departure_date=[\"September 22, 2025\"])`. Never drop the middle leg and never reuse the generic 'return_flights' leg for it."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 27: Exact value shapes and parameter names (check every kwarg before sending)",
+        "content": "- Hotel kwargs that never take has_: 'pool' -> pool_present=True (NEVER has_pool or has_pool_present), 'gym' -> gym_present=True, 'wifi' -> free_wifi_included=True, 'breakfast' -> breakfast_included=True, 'pet friendly' -> is_pet_friendly=True. 'Our budget is around 1075 per night, and a pool would be fantastic' -> `filter_hotels(prior_results=x, budget=1075, pool_present=True)`.\n- A reply that only gives counts ('2 rooms for 3 people', 'we need 4 rooms') is the new constraint. Load the most refined hotels key and call `filter_hotels(prior_results=x, num_rooms=2, num_people=3)`, then save under a new key. The counts must appear in the call. Do not replace them with amenities or stars from earlier turns (for example pool_present or has_kids_club)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 8: Act on the latest turn and the cache",
+        "content": "- A pure retrieval turn ('Okay, that sounds good', 'No preference', with nothing new to apply) is exactly ONE line: `attractions = get_results_from_cache(key=\"attractions\")` (use the domain's key). Never add save_to_cache after it, never save under an invented key such as 'nearest_hotels', and never call search_nearest unless hotels and attractions were both searched this turn. Example: CACHE 'attractions' + 'filtered_attractions' (Downtown Lexington already applied), assistant proposed Downtown Lexington, user says 'Okay, that sounds good.' -> only the single get_results_from_cache line."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

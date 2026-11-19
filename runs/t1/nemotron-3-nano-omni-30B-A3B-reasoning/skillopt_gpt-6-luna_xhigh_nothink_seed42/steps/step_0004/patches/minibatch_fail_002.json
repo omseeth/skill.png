@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "intent_scope_and_criterion_attribution",
+      "count": 5,
+      "description": "Agents added unrelated work or applied a preference to the wrong domain instead of resolving it from the conversation context."
+    },
+    {
+      "failure_type": "cached_result_refinement",
+      "count": 5,
+      "description": "Agents treated cached base results as satisfying new preferences or failed to include a newly requested filter."
+    },
+    {
+      "failure_type": "flight_leg_and_time_interpretation",
+      "count": 2,
+      "description": "Agents confused return dates with outbound alternatives and encoded an arrival deadline as an invalid exact time range."
+    },
+    {
+      "failure_type": "tool_argument_schema_mismatch",
+      "count": 4,
+      "description": "Agents used unsupported amenity or domain arguments, or called nearest-results without the required inputs."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers cache retrieval, refinement, and saving, so repeating those lifecycle instructions would not address a documented gap. These edits clarify how to scope conversational answers and date spans, and make common tool-schema constraints explicit.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "- Resolve short answers against the assistant's preceding question and keep each criterion attached to its intended domain and item. For example, a hotel budget stated per night does not become a restaurant budget, and a restaurant rating does not become a hotel rating. Do not add searches or other work for domains the user did not request."
+      },
+      {
+        "op": "replace",
+        "target": "## Represent flight legs separately\n- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip, search outbound and return separately, reversing the route for the return; do not use an unsupported `return_date` argument or treat the return date as another outbound date. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "## Represent flight legs separately\n- Search each flight segment as its own leg, matching its origin, destination, and departure date. When a round trip is intended and the user gives a trip span such as “from X until Y,” use X for the outbound departure and Y for the reversed return departure; do not treat both dates as alternatives for one outbound leg. Preserve any separately stated arrival-date or arrival-time constraint on the applicable leg.\n- If the user requests only the return flight, search only the reversed route on the return date; if they request only an outbound or one-way flight, do not add a return. Apply an explicitly requested flight class and other non-directional preferences to every applicable leg, filtering cached directional results independently.\n- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates."
+      },
+      {
+        "op": "replace",
+        "target": "## Hotel proximity to attractions\n- If the user explicitly requests hotel access or proximity to an attraction, check whether relevant attraction results are available; search for any missing results, then call `search_nearest` with both the hotel and attraction result objects, grouped by the requested primary domain. Interest in visiting an attraction alone does not imply a request for proximity or require a nearest-results call.",
+        "content": "## Hotel proximity to attractions\n- Call `search_nearest` only for a requested proximity comparison between supported domains, and provide exactly two of its result objects (`hotels`, `attractions`, or `restaurants`); never call it with only one or all three. For hotel-to-attraction proximity, retrieve or search for both hotel and attraction results before calling it, and group by the requested primary domain. Interest in visiting an attraction alone does not imply a proximity request. When the user wants beach access, use the supported hotel amenity `has_beach_access`; do not call nearest with hotels alone or invent an attraction result."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- Map explicit numeric party size to hotel `num_people`, not `num_rooms`; do not infer a room count. Use exact supported amenity names, such as `has_room_service`, `airport_shuttle_present`, and `has_beach_access`; do not shorten them to unsupported aliases or send flight criteria to hotel tools.\n- For time-window fields, provide two valid bounds in the format accepted by the tool. Interpret “arrive by X” as a window ending at X, not as two identical endpoints; use the accepted AM/PM time format rather than appending seconds when that format is rejected."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

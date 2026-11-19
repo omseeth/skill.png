@@ -1,0 +1,160 @@
+{
+  "reasoning": "fallback: failure first, then success",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "saved as filtered_attractions.",
+      "content": "saved as filtered_attractions. Attractions cached (e.g. searched by state) + the user names one or more cities ('thinking of visiting X and Y') -> load the attractions key ONCE, then one `filter_attractions(prior_results=a, city=\"X\")` and one `filter_attractions(prior_results=a, city=\"Y\")`, each assigned and saved under its own new key (filtered_attractions1, filtered_attractions2). Never call search_attractions for it and never drop a named city.",
+      "source_type": "failure",
+      "support_count": 2,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "and do not add city to a filter.",
+      "content": "and do not add city to a hotel/restaurant filter. Exception: cached attractions + a city the user names -> `filter_attractions(prior_results=a, city=\"<city>\")`, one call per named city.",
+      "source_type": "failure",
+      "support_count": 2,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Do not add checkin_date/checkout_date or city to a filter,",
+      "content": "Do not add checkin_date/checkout_date to a filter (city is allowed only in filter_attractions when the user names a city for cached attractions),",
+      "source_type": "failure",
+      "support_count": 2,
+      "merge_level": 1
+    },
+    {
+      "op": "delete",
+      "target": "- Every search_*, filter_*, sort_results and search_nearest call is assigned to a variable and followed by `save_to_cache`, even for a one-turn attraction or restaurant request. Correct: `attractions = search_attractions(city=\"Tucson\", type=[\"Culinary\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. A bare `search_attractions(...)` with no assignment and no save is wrong.",
+      "source_type": "failure",
+      "support_count": 2,
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Conversely, when the last message is about hotels or restaurants, write no flight line.",
+      "content": "\n   - TWO-LEG CHECK (flight class / airline / time / ticket price replies): list every CACHE key that holds flights (e.g. 'flights' + 'return_flights', or 'departure_flights' + 'return_flights'). The output must contain one load/filter/save block per such key, with the identical kwarg in each block. Two flight keys means six lines. Stopping after the first leg is the most common error. Example shape: `a = get_results_from_cache(key=<first flight key>)`, `a2 = filter_flights(prior_results=a, <kwarg>)`, `save_to_cache(key=<unused name>, value=a2)`, then `b = get_results_from_cache(key=<second flight key>)`, `b2 = filter_flights(prior_results=b, <same kwarg>)`, `save_to_cache(key=<another unused name>, value=b2)`. A time-of-day phrase ('flexible, but preferably in the afternoon') is a flight time reply, so use departure_time on every leg. Hotel, restaurant and attraction replies still get zero flight lines.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "search_flights never takes num_people or num_layovers.",
+      "content": "\n- CITY / PARTY-SIZE GATE: before search_restaurants, find the city literally in the conversation (the flight destination or hotel city counts). If there is none (e.g. only 'I'm gluten-free and want a restaurant'), the whole output is `seek_information(\"We need the city for the restaurant.\")`. Never write a placeholder such as city=\"<city>\". num_people / num_rooms come only from a NUMBER that appears in the conversation, in the user's words or in the assistant's recap (e.g. 'rooms for 4 people' -> num_people=4). Words like 'family', 'kids', 'anniversary' or 'couple' give no number, so omit num_people for them.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "plus any earlier-stated constraint that the CACHE summary text (\"Additionally filtering for ...\" / search description) does not show as applied. Do NOT repeat filters or search parameters the summary already lists.",
+      "content": "and nothing else: every earlier turn (its search and each filter) is already inside the cached entry, so never re-pass an earlier amenity, stars, budget, class, cuisine or neighborhood, and never re-filter another domain's key (a hotel amenity reply touches only the hotels key).",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+      "content": "\n- ROUND-TRIP SHAPE: when the user gives an outbound date and a return date for a flight ('depart X and return Y') and the origin and destination are known, write exactly these four lines using the dates as the user wrote them: `departure_flights = search_flights(start_airport_city=<origin>, end_airport_city=<destination>, departure_date=[<X>])`, `save_to_cache(key=\"departure_flights\", value=departure_flights)`, `return_flights = search_flights(start_airport_city=<destination>, end_airport_city=<origin>, departure_date=[<Y>])`, `save_to_cache(key=\"return_flights\", value=return_flights)`. search_flights has no return_flights, return_date or other keyword for the return, and no undefined variable may appear as an argument. Add a hotel or attraction search only if that domain was requested. A US state or two-letter code (CA, NV, OR...) always goes in state=, never city=.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "-1. FLIGHT REPLIES = ONE BLOCK PER FLIGHT KEY. This applies only when the assistant's last question or the user's last message is about flight class, airline, flight time or ticket price (a class word such as 'economy'/'first', an airline code, 'under N' answering a flight-price question), even if a 'hotels' key is also in CACHE. Count the flight keys in CACHE (flights, return_flights, flights2, first_departure_flights, ...), take each leg's most refined key, and write a three-line block for EACH: `x = get_results_from_cache(key=\"<flight key>\")`, `y = filter_flights(prior_results=x, <kwarg>)`, `save_to_cache(key=\"<new key not in CACHE>\", value=y)`, with the same new kwarg in every block. 2 keys -> 2 blocks, 3 keys -> 3 blocks; stopping after the first key is wrong. Write no hotel line for that reply. Every value comes from the user's last message ('I'd prefer economy' -> `flight_class=[\"economy\"]` on each flight key; 'keep it under 1150' after a flight-price question -> `budget=1150` on each key). Conversely, when the last message is about hotels or restaurants, write no flight line.",
+      "content": "-1. FLIGHT FILTER TRIGGER. Write flight filter lines ONLY when the user's LAST message itself holds a flight word (a class such as 'economy'/'first'/'business', an airline code, a departure/arrival time, or a price cap answering the assistant's flight-price question; a per-night price answers a hotel question). Then list every flight key in CACHE (flights, return_flights, flights2, departure_flights, ...) and write one load/filter/save block per key (2 keys = 2 blocks, 3 keys = 3 blocks), each using that key's most refined name, a new unused save key, and the same new kwarg. Stopping after the first key is wrong. Write no hotel line for that reply. When the last message is about stars, amenities, neighborhood, a hotel, a restaurant or an attraction, write ZERO flight lines, even if flight keys sit in CACHE and an earlier turn said 'business' or 'first': the flight entries already hold it.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Look up that domain's OWN key in CACHE, write code only for that domain (plus any domain the reply newly requests), and never load or filter another domain's key to apply the reply.",
+      "content": "Look up that domain's OWN key in CACHE. Key present -> load its most refined key, filter, save. Key ABSENT -> it is a first search (carry every constraint stated in any turn; hotel dates may be the flight dates; the city is the trip destination) or, when a mandatory arg is missing, one seek_information. Never substitute another domain's key: a cuisine, allergy or restaurant reply is never applied to hotels, a hotel reply (stars, amenities, per-night price, rooms) is never applied to attractions or flights, and the domain whose key was saved most recently is irrelevant. Write code only for that domain (plus any domain the reply newly requests).",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "no stray tags such as `</parameter>`. All tools are already defined.",
+      "content": "no stray tags such as `</parameter>`. All tools are already defined. Only search_hotels / filter_hotels accept num_people and num_rooms: never put num_people, a party size ('2 travelers', 'around 20 people') or an occasion into search_flights, search_restaurants or any other call, and never invent a budget the user did not state. Every line starts with `name = tool(...)`, `save_to_cache(...)` or `seek_information(...)`; a bare search call is invalid.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "If the user names an airport code (e.g. 'I normally fly from SJC'), add start_airport=\"SJC\" on the outbound leg and end_airport=\"SJC\" on the return leg.",
+      "content": "If the user names an airport code (e.g. 'I normally fly from SJC'), keep the CITY name in start_airport_city / end_airport_city ('San Jose', never 'SJC') and add start_airport=\"SJC\" on the outbound leg and end_airport=\"SJC\" on the return leg (a one-way gets start_airport only).",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- SEARCH GATE (do this first): read the CACHE dict. If a domain's key is present, search_* is forbidden for that domain, whatever the reply adds",
+      "content": "- SEARCH GATE (do this first): (a) Name the domain(s) the LAST user message is about (hotel: hotel/stay/stars/neighborhood/amenity/per-night budget/rooms; flight: flight/class/airline/time/ticket price; restaurant; attraction), plus any domain requested in an earlier turn that still has no key. (b) A cached domain the last message does not touch gets NO lines: a hotel request or reply with only flight or attractions keys cached never loads, filters or re-saves those keys, and never re-applies an earlier turn's class, budget or neighborhood. (c) A touched domain with NO key is a first search when every mandatory arg is literally known (hotel dates may be the flight dates); otherwise the output is seek_information for the missing args (hotel with only one known date: ask for the other; hotel with no dates: ask for both). (d) A touched domain whose key is present: read the CACHE dict; search_* is forbidden for that domain, whatever the reply adds",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- DATE GATE (before any search_flights / search_hotels): find the date the user literally wrote in the conversation (e.g. 'May 16, 2025'). Found -> search with it. Not found -> that domain gets `seek_information(...)` naming only the missing date(s) and NO search call.",
+      "content": "- MANDATORY-ARG GATE (before ANY search_*): flight = origin + departure date; hotel = city + check-in + check-out; restaurant = city. Each value must be literally in a user message. A value you would have to guess, infer from an occasion or trip type ('birthday', 'weekend getaway', 'round-trip', 'family vacation'), or write as a bracketed placeholder is MISSING: that domain gets `seek_information(...)` naming only the missing items and NO search call. DATE GATE: find the date the user literally wrote in the conversation. Found -> search with it. Not found -> that domain gets `seek_information(...)` naming only the missing date(s) and NO search call.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "(May 16/18/19/26, 2025 and similar)",
+      "content": "(any date the user did not type is invented)",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Pass only values the user literally stated. Never invent an airline from words like 'kid-friendly'.",
+      "content": "- Pass only values the user literally stated. Hotel params: 'customer rating' / 'rating' -> rating=[..] only; stars only when the user says 'star'; 'family', 'vacation', 'kids club' never produce num_people, num_rooms or stars. Never invent an airline from words like 'kid-friendly'.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Criteria to pass to filter_*: the constraints introduced in the LAST user turn, plus any earlier-stated constraint that the CACHE summary text (\"Additionally filtering for ...\" / search description) does not show as applied. Do NOT repeat filters or search parameters the summary already lists. Never call filter_* with only prior_results.",
+      "content": "- Criteria to pass to filter_*: only the constraints introduced in the LAST user turn. Earlier turns are already inside the cached entry, so never re-pass them. Never call filter_* with only prior_results.",
+      "source_type": "success",
+      "support_count": 8
+    },
+    {
+      "op": "replace",
+      "target": "- The key to SAVE must be a name that does NOT appear in CACHE. If 'filtered_<domain>' exists, save as 'filtered_<domain>1', then 'filtered_<domain>2', and so on. Never save a filter result under the key you loaded or under any existing key.",
+      "content": "- Save under any name that does NOT appear in CACHE. Key names are not scored, but overwriting an existing key is. Never save under the key you loaded.",
+      "source_type": "success",
+      "support_count": 8
+    },
+    {
+      "op": "replace",
+      "target": "Add no other params: no airline, flight_class, budget, times or num_people.",
+      "content": "Add no params the user did not state (a class or airline the user did state goes into both legs; flight searches never take num_people).",
+      "source_type": "success",
+      "support_count": 8
+    },
+    {
+      "op": "replace",
+      "target": "traveler count), and do not add city to a filter.",
+      "content": "traveler count).",
+      "source_type": "success",
+      "support_count": 8
+    }
+  ]
+}

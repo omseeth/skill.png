@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "re_search_instead_of_filter",
+      "count": 3,
+      "description": "CACHE already held the domain (round-trip flights, flights+hotels, attractions) and the last turn only added a budget or accepted a neighborhood, but the agent re-ran search_* instead of load, filter, save."
+    },
+    {
+      "failure_type": "pure_retrieval_extra_save",
+      "count": 1,
+      "description": "A pure-retrieval reply ('Okay, that sounds good') added a save_to_cache that overwrote the 'attractions' key. The correct output was a single get_results_from_cache line."
+    },
+    {
+      "failure_type": "wrong_param_name",
+      "count": 1,
+      "description": "Used room_service=True instead of has_room_service=True, which raised a ValidationError."
+    },
+    {
+      "failure_type": "missing_stated_constraint",
+      "count": 1,
+      "description": "'We need to arrive by 07:26 AM' with the arrival date known was dropped. The outbound search needed arrival_time and arrival_date."
+    },
+    {
+      "failure_type": "fabricated_mandatory_args_and_malformed_code",
+      "count": 1,
+      "description": "Hotel + attraction request with no dates: the agent invented dates copied from tool examples, wrote a bare search_hotels, and nested a search inside save_to_cache. It should have searched attractions and then called seek_information."
+    },
+    {
+      "failure_type": "missed_explicit_headcount",
+      "count": 1,
+      "description": "'solo trip' is an explicit headcount of 1, but num_people=1 was omitted from the first search_hotels call."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the eight failures re-ran search_* on a domain that was already cached when the user only added a budget or accepted a neighborhood. A fourth added a save after a pure retrieval. The existing refinement rules are buried deep in a very long skill, so I add a short CACHE-gate at the very top with the exact failing patterns as concrete templates. The other edits fix one-off but recurring slips: the has_room_service kwarg, arrival-time handling on the outbound flight, the hotel+attraction no-dates pattern (search attractions, then seek_information, never fabricate dates), and 'solo trip' as num_people=1.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- CACHE GATE (do this first, every turn): read the CACHE dict. If it already holds a key for a domain, NEVER call search_* for that domain unless the user changed the destination, dates or attraction type. A new budget, class, amenity, neighborhood, or a 'Yes' / 'No, I haven't. What's there?' reply to the assistant's proposal is a FILTER: load the most refined key, filter_*, save under a NEW key.\n  - CACHE has 'departure_flights' and 'return_flights', last turn 'yeah let's keep it under 1150': `d = get_results_from_cache(key=\"departure_flights\")`, `d2 = filter_flights(prior_results=d, budget=1150)`, `save_to_cache(key=\"filtered_departure_flights\", value=d2)`, then the same three lines for 'return_flights' saved as 'filtered_return_flights'. Never re-run search_flights.\n  - CACHE has 'flights' and 'hotels', last turn 'Around 1075 for the flight and 125 per night for the hotel': `filter_flights(prior_results=f, budget=1075)` saved as 'filtered_flights' AND `filter_hotels(prior_results=h, budget=125)` saved as 'filtered_hotels'. Do not re-search either domain and do not repeat dates, num_people or city.\n  - CACHE has 'attractions' (Social, Atlanta), the assistant suggested Buckhead, user says 'No, I haven't. What's there?': `a = get_results_from_cache(key=\"attractions\")`, `a2 = filter_attractions(prior_results=a, neighborhood=[\"Buckhead\"])`, `save_to_cache(key=\"neighborhood_attractions\", value=a2)`. Never re-run search_attractions.\n  - Pure retrieval (the user only says 'Okay, that sounds good' and the CACHE summary already lists the proposed neighborhood/filter) is exactly ONE line: `x = get_results_from_cache(key=\"<most refined key>\")`. No save_to_cache, and never write the result back under 'attractions' or any existing key."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Hotel amenity wording: 'fitness center' or 'fitness classes' -> `has_fitness_class=True`; 'gym' -> `gym_present=True`.",
+        "content": "\n- Exact hotel kwargs (search_hotels and filter_hotels): 'room service' -> `has_room_service=True` (there is NO `room_service`); 'spa' -> `has_spa_services`; 'laundry' -> `has_laundry_service`; 'valet' -> `has_valet_parking`; 'kitchen' -> `has_inroom_kitchen`; 'business center' -> `has_business_center`; 'meeting rooms' -> `has_meeting_rooms`; 'free parking' -> `has_free_parking`; 'beach access' -> `has_beach_access`; 'kids club' -> `has_kids_club`; 'wifi' -> `free_wifi_included`; 'pool' -> `pool_present`; 'breakfast' -> `breakfast_included`. Example: 'room service and a fitness center' -> `filter_hotels(prior_results=x, has_room_service=True, has_fitness_class=True)`. A pure budget stays `budget=<n>`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use date strings exactly as the user wrote them (e.g. \"May 15, 2025\").",
+        "content": "\n- Arrival constraints are stated constraints, so keep them. 'We need to arrive by 07:26 AM' with dates given (e.g. 'from May 16, 2025 until May 26, 2025') -> the OUTBOUND search carries `arrival_time=[\"12:00 AM\", \"07:26 AM\"]` (12-hour style, window starts at 12:00 AM). If an arrival or event date was stated earlier (e.g. 'the wedding is on May 26, 2025'), also add `arrival_date=[\"May 26, 2025\"]` to the outbound search. The return leg gets only start/end cities and its departure_date. Example: `departure_flights = search_flights(start_airport_city=\"Raleigh\", end_airport_city=\"San Jose\", departure_date=[\"May 16, 2025\"], arrival_date=[\"May 26, 2025\"], arrival_time=[\"12:00 AM\", \"07:26 AM\"])`, saved as 'departure_flights', then the plain return search saved as 'return_flights'."
+      },
+      {
+        "op": "insert_after",
+        "target": "This overrides the 'do not run a partial search' wording in Rule 7: that only forbids guessed values.",
+        "content": "\n   - Hotel + attraction request with a city but no hotel dates ('a hotel in Raleigh for 2 people and we want Social attractions'): `attractions = search_attractions(city=\"Raleigh\", type=[\"Social\"])`, `save_to_cache(key=\"attractions\", value=attractions)`, then ONE `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. Never call search_hotels, never copy dates from the TOOL CONFIG examples, never write a bare `search_hotels(...)` and never nest a search inside save_to_cache.\n   - A stated 'solo trip' / 'just me' is an explicit headcount of 1: when the hotel dates are present, add `num_people=1` to the first search_hotels call (plus any amenities stated earlier, e.g. gym_present=True, air_conditioning_present=True). 'Flexible on the location' adds no parameter."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

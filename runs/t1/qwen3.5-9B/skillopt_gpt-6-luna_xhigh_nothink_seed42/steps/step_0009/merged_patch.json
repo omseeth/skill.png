@@ -1,0 +1,40 @@
+{
+  "reasoning": "Preserved all four failure-driven edits, which address distinct tool-field and location-handling errors. Added the success-driven clarification to pending-result handling because it reinforces an earlier request when a reply adds no preference, without conflicting with the failure edits. No edits target protected content.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+      "content": "For numeric `rating` requests, a single value without minimum or “at least” language is exact `[x, x]`; “exactly x” is `[x, x]`, and “at least x” is `[x, 5]`. For hotel star-count requests, use the `stars` field, not `rating`: a bare count or “exactly x stars” is `[x, x]`, “at least x stars” is `[x, 5]`, and explicit ranges should be preserved.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results. Do not pass the attraction name as a `neighborhood` value or approximate proximity with a neighborhood filter. If a later constraint changes an underlying domain result, such as filtering the hotel set, recompute and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call.",
+      "content": "\n- When a hotel or restaurant is requested “near” a named district or neighborhood, treat it as a location constraint and use `neighborhood` where supported, preserving the full provided area name. Do not use `search_nearest` for an area; reserve it for proximity to a named attraction or landmark, and provide exactly two domain result sets as required by its schema.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+      "content": "\n- For `flight_class`, use the supported lowercase values `economy`, `business`, or `first`.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- **Retrieve accepted pending offers from cache:** Treat an affirmative reply that accepts an earlier offer to provide recommendations or results as a request to deliver them. Retrieve the relevant latest cached result, even if no new search or filter is needed; use the no-planning response only when there is no pending deliverable.",
+      "content": "- **Retrieve pending results from cache after conversational follow-ups:** Treat an affirmative reply accepting an earlier offer to provide recommendations or results as a request to deliver them. If the user responds to a clarification with no additional preference or declines optional specificity (for example, “not really,” “I’m flexible,” or “anything”), keep the earlier requested deliverable and scope active rather than treating the reply as cancellation or broadening the request. Retrieve the relevant latest cached result when it already satisfies the request; do not repeat the search or apply an unnecessary filter. Use the no-planning response only when there is no pending deliverable.",
+      "support_count": 11,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant names a specific area, attraction, or other travel option and the user asks what is there or available, or asks for details, treat the response as a request to explore that referent when the user is clearly taking up the suggestion. Retrieve the latest suitable cached result and apply the corresponding same-domain filter when needed. Use `search_nearest` only if the user requests proximity.",
+      "content": "- **Resolve follow-ups about assistant-suggested places or options:** If the assistant suggests an area or neighborhood and the user asks what is there or available, retrieve the latest suitable cached results for that domain and filter by `neighborhood`, preserving the full area name; do not search for the area as an `attraction_name`. If the suggestion is a specific attraction and the user asks for details, use the suitable cached attraction result or search for it if absent, supplying the established city or state required by the tool. Use `search_nearest` only if the user requests proximity.",
+      "support_count": 8,
+      "source_type": "failure"
+    }
+  ]
+}

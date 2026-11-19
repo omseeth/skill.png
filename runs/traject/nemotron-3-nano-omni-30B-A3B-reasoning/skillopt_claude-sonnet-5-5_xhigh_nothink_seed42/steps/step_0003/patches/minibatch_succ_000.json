@@ -1,0 +1,34 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every clause, numbered item, or named provider in the query got exactly one call, with no extras. Multi-entity requests were split into one call per entity (GetStats for EG and for US; Aljazeera, CNN Arabic and Youm7 as three calls).",
+    "The chosen endpoint's name mirrored the query wording: 'Recent 50' vs 'Recent 100', 'GetPastEvents' for past events, 'Regular dice rolls' for N dice rolled M times, 'Custom dice' for 8-sided dice, 'Get the month's top articles' for this month, 'Download states' for a list of states.",
+    "Sibling endpoints were told apart by quantity and variant words: 'three regular dice' -> Regular dice, 'five custom 8-sided dice' -> Custom dice with sides. A named provider or platform in the query always went to that provider's endpoint.",
+    "Parameters followed each tool's schema. Values listed under Required went in required parameters, and Optional ones such as limit, page, startsWith, minLength or starid went in optional parameters. Required-none tools got empty lists.",
+    "Every numeric, filter, or locale constraint stated in the query became a parameter value (limit 25, page 1, rating 1500, platform Steam, type loot, sort-by popularity, language en, location EG/US, min_duration 300 seconds, from_publish_date 2017-01-01). Values were copied verbatim from the query (IDs, words, PNR numbers).",
+    "Tool names were copied exactly as 'Provider: API' from the tool heading, in one flat JSON list inside <answer> with the three keys per call."
+  ],
+  "patch": {
+    "reasoning": "All 8 batch trajectories reached the correct tool set. The recurring behaviours were a clause-by-clause checklist, one call per entity, picking the endpoint whose name mirrors the query wording, schema-faithful placement of parameters, and mapping every stated constraint to a parameter. The skill is empty, and two earlier long rule dumps were rejected, so these edits are short and cover only behaviours seen across several successes. They aim at wrong-tool selection and wrong parameter placement, the two failure families seen in earlier steps.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Rule 1: Cover every clause, one call each, nothing extra\n- Before answering, split the query into atomic requests: each sentence, each 'then / also / finally' clause, each numbered item, each named provider. Each one gets its own call.\n- When a clause names several entities for a one-value tool, emit one call per entity. 'COVID stats for Egypt and the US' means two GetStats calls with location EG and location US. 'Aljazeera, CNN Arabic and Youm7' means three calls.\n- Re-read the first and last sentence of the query, and count your calls against the checklist.\n- Add no calls the query does not ask for: no helper, lookup, or 'just in case' calls, and no tools from unrelated families that only share a keyword."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 2: Pick the endpoint whose name mirrors the query\n- Match the query's verb, object, scope and quantity to the tool's name and description. Examples: '100 most recent news articles' -> 'Recent 100'; 'past events' -> 'GetPastEvents'; 'this month's top articles' -> 'Get the month's top articles'; 'list of U.S. states' -> 'Download states'; 'active aircraft of airline AA' -> 'airlineAircrafts'; 'radical position' -> 'Radical position'.\n- Distinguish sibling endpoints by variant words. 'N regular dice' -> 'Regular dice'. 'N dice rolled M times' -> 'Regular dice rolls'. 'custom / 8-sided dice' -> 'Custom dice', with sides. A single die -> the 'die' variant. A single card -> 'Card', several cards -> 'Cards'.\n- If the query names a provider or platform (Flixbus, Airbnb, Moka News, Medium, Priceline), use that provider's endpoint.\n- Input type decides the tool. Prefer the dedicated endpoint over a generic search. Use a search endpoint only when the query gives a keyword to search for."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 3: Parameter placement and values\n- Copy the tool name exactly as in its heading, in the form `Provider: API`. Each call has exactly the keys `tool name`, `required parameters`, `optional parameters`. Use `[]` when a list is empty.\n- Place each parameter where the chosen tool's schema lists it. Under 'Required parameters' it goes in required. Under 'Optional parameters' it goes in optional, even when it carries the query's main subject (a limit, `starid`, `startsWith`, `name`). Use only parameter names that tool lists, and fill every required one.\n- Copy IDs, words, numbers and search terms verbatim from the query. Never invent identifiers or placeholders."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 4: Map every stated constraint to a parameter\n- Turn each qualifier in the query into a value on the matching parameter of the chosen tool, and add no parameter the query does not imply. Examples:\n  - counts and paging: 'limited to 25' / '10 results' -> limit; 'page 1' or 'offset 0' -> page / offset; 'N dice' -> dice; '8-sided' -> sides; 'M rolls' -> rolls.\n  - ranges: 'between 4-6 letters' -> minLength 4 and maxLength 6; 'minimum 5 minutes' -> min_duration in the unit the description gives (seconds: 300); 'since 2017' -> the from-date field 2017-01-01.\n  - filters and locale: platform 'Steam', type 'loot', 'sorted by popularity' -> platform, type and sort-by; 'in English' -> language en; a country or region -> its code (EG, US); a topic, speaker or star number -> the matching field.\n- Keep the query's own search words as the value (topic 'business', searchterm 'wisdom', keyword 'Middle East politics').\n- Follow enumerated options and formats given in the parameter description (dates as YYYY-MM-DD, listed language or country codes)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

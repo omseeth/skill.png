@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Agents used an over-specific label or a nearby retrieval detail instead of following the clue's requested answer level or explicit referent."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 2,
+      "description": "Granularity and completion rules were too categorical, encouraging agents to omit words that are integral to a canonical name or title."
+    },
+    {
+      "failure_type": "other",
+      "count": 3,
+      "description": "The expected answer conflicted with the clue, the prompt lacked a clear answer slot, or the gold answer was broader than the context-supported answer."
+    }
+  ],
+  "patch": {
+    "reasoning": "The evidence-check and requested-slot rules already address the retrieval and clue-selection errors, so they need no duplication. The recurring patchable issue is that concise-answer and blank-completion guidance can remove integral parts of canonical names; qualify both rules while preserving their usual preference for concise answers.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Give the shortest unambiguous answer at the requested granularity. When the context supplies a concise answer label, use that form rather than expanding it into a fuller name, title, or role description merely because the expansion is also correct. When a category is already specified in the question, provide the distinguishing value rather than repeating the category.",
+        "content": "- Give the shortest unambiguous answer at the requested granularity. When the context supplies a concise answer label, use it rather than adding merely descriptive expansions. When a category is already specified, normally give the distinguishing value rather than restating the category; however, retain a category-like word when it is integral to the context-supported canonical proper name or title."
+      },
+      {
+        "op": "replace",
+        "target": "- For completion or compound clues, identify the missing shared component that makes the alternatives fit; do not repeat a clue-supplied component or return one full compound.",
+        "content": "- For completion or compound clues, normally provide only the missing component. If the clue is asking for an established proper name, title, or other named entity, give its context-supported canonical full form when that is the requested referent, even if the clue supplies one component. For alternatives that share a component, provide the shared component rather than one full alternative."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

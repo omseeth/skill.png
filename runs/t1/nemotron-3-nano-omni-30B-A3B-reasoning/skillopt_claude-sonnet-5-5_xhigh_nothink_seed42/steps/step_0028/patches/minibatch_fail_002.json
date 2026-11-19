@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_or_dropped_domain",
+      "count": 3,
+      "description": "Hotel-describing or amenity replies were applied to the wrong domain's key (flight keys in T1, filtered_restaurants in T3). In T5 the hotel was dropped even though dates and nights were known."
+    },
+    {
+      "failure_type": "parameter_mapping_or_form_error",
+      "count": 2,
+      "description": "An airport code was passed as a list to end_airport_code (T2). A state code 'MO' went in city= and the search call was bare, with no assignment or save (T7)."
+    },
+    {
+      "failure_type": "multi_city_misread_as_round_trips",
+      "count": 1,
+      "description": "A multi-city opener with per-city date ranges was turned into four round-trip searches instead of one search per leg (T4)."
+    },
+    {
+      "failure_type": "changed_constraint_filtered_instead_of_researched",
+      "count": 1,
+      "description": "The user replaced the cuisine ('Actually only Pakistani') but the agent filtered the cache, which would intersect with the old Japanese filter. Gold runs a fresh search (T6)."
+    },
+    {
+      "failure_type": "missing_search_nearest",
+      "count": 1,
+      "description": "A hotel amenity filter was written with no search_nearest, although the assistant had offered 'a hotel near <cached attraction>' (T8)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the eight failures are the same cross-domain routing and dropped-hotel problem. The existing rules sit deep in the document and are ignored, so edit 1 promotes them to a short positive DOMAIN LOCK and HOTEL TRIGGER at the very top. Edit 2 adds a narrow exception to the SEARCH GATE for 'Actually only X' replacements, which a filter would intersect with the old value. Edit 3 covers the parameter-shape errors: airport code, two-letter state token with the assigned-and-saved form, and per-city date ranges in a multi-city trip. Edit 4 adds the missing search_nearest step after a hotel refinement when the assistant offered a hotel near a cached attraction or restaurant. Each edit pairs its prohibition with a positive trigger, and none duplicates existing text.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- DOMAIN LOCK (do this before the SEARCH GATE). Classify the LAST user message by its words. Hotel words (hotel, stars, gym, wifi, laundry, pool, kids club, spa, breakfast, shuttle, a hotel neighborhood, per-night price, rooms, nights, check-in/out) -> hotels. Cuisine, dietary words, restaurant rating, per-person price -> restaurants. Class, airline, flight time, ticket price -> flights. Attraction type or name -> attractions. Write code for that domain only, and load only that domain's keys. A reply such as 'a gym and laundry service' loads the newest HOTELS key (hotels2, filtered_hotels...), never filtered_restaurants and never a flight key, even when that key is newer or an earlier turn said 'economy'.\n  HOTEL TRIGGER: a hotel was requested in any turn, CACHE has no 'hotels' key, and check-in and check-out are known or derivable (outbound/return flight dates, or a stated start date plus 'N nights' via adjust_date). Then this block must contain `hotels = search_hotels(city=<destination>, checkin_date=[...], checkout_date=[...], <stars / neighborhood / amenities stated in any turn>, num_people only from a stated number)` followed by `save_to_cache(key=\"hotels\", value=hotels)`. This holds when only flight keys are cached (a message describing a hotel with stars and a neighborhood becomes a hotel search using the flight dates, with no filter_flights). It also holds when the message is only a date plus party size plus nights: save the flight search as 'flights' first if no flight key exists, then `checkout_date = adjust_date(...)`, then the hotel search."
+      },
+      {
+        "op": "insert_after",
+        "target": "saved as filtered_attractions.",
+        "content": "\n\n- CHANGED-MIND EXCEPTION to the SEARCH GATE: when the user REPLACES a value already applied in that domain's cache ('Actually we want only Pakistani' after a Japanese filter, 'instead', 'switch to', 'only X' contradicting the CACHE summary), a filter would intersect with the old value. Write a fresh search instead: `restaurants1 = search_restaurants(city=<established city>, cuisine=[\"<new cuisine>\"], <other constraints still wanted, e.g. budget from the same message>)` followed by `save_to_cache(key=\"restaurants1\", value=restaurants1)`. Do not pass the replaced value. Use the next unused key (restaurants1, hotels1, attractions1). The same applies to every domain. A plain additional constraint still goes through filter_*."
+      },
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- PARAMETER SHAPES: (1) An airport CODE the user names ('ANC is our preferred choice') is a plain string on the airport kwarg: arrival -> `end_airport=\"ANC\"`, departure -> `start_airport=\"XXX\"`. Never `end_airport_code=[\"ANC\"]`; a list raises a ValidationError. (2) A capitalized two-letter US state token in a location phrase ('attractions in MO') -> `state=\"MO\"` with no city, and the line is `attractions = search_attractions(type=[\"Art\"], state=\"MO\")` followed by its save_to_cache. (3) A multi-city opener ('flights from A to B and then B to C') followed by two date ranges: each range is the stay window in a city. This overrides the round-trip reading of Rule 9. Write exactly one search per named leg, with departure_date = the START of that leg's range. Save the A->B leg as \"first_flights\" and the B->C leg as \"second_flights\". Write no reversed legs."
+      },
+      {
+        "op": "insert_after",
+        "target": "Without a hotels key, 'near the hotel' needs no search_nearest. Just run the normal first search.",
+        "content": "\n- HOTEL NEAR A CACHED ATTRACTION OR RESTAURANT: when CACHE holds a hotels key AND an attractions (or restaurants) key, and the assistant's last message offered 'a hotel near <that attraction/restaurant>', the user's hotel-amenity reply needs ONE block. Load the hotels key and the other domain's key. Run `filtered_hotels = filter_hotels(prior_results=hotels, <only the amenity kwargs in the last message>)` and save it. Then run `nearest_hotels = search_nearest(hotels=filtered_hotels, attractions=attractions, groupBy=\"hotel\")` and save it as nearest_hotels. Use `restaurants=` in place of `attractions=` for a restaurant. A hotel filter with no search_nearest is incomplete here."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

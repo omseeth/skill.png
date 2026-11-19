@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection",
+      "count": 3,
+      "description": "Some calls used a less-specific or semantically mismatched endpoint, such as a generic operation for a dedicated mode or top headlines for a latest-news feed."
+    },
+    {
+      "failure_type": "argument_mapping",
+      "count": 6,
+      "description": "Calls dropped or altered explicit query terms and filters, omitted compatible settings, or serialized a compound value in the wrong order."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already gives broad guidance on endpoint eligibility and schema-grounded arguments, so the edits add only discriminative tie-breakers missing from those rules: prefer a dedicated operation over an approximate generic one, distinguish chronological latest news from ranked headlines, and follow the endpoint's stated order for coordinate pairs.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Treat endpoint eligibility as a gate: confirm the endpoint's own operation and schema support the requested result kind and granularity, and can represent every compatible explicit qualifier. A topical neighbor or broader operation is not sufficient. A named provider or source is a hard constraint for that outcome; do not fulfill or supplement it with another provider when a fitting named-source endpoint exists.",
+        "content": "\n- When two endpoints are otherwise eligible, prefer the one dedicated to the exact requested operation or mode over a generic/custom endpoint that only approximates it; do not add the generic alternative. Interpret recency words operationally: for “latest/current/recent” news, choose a chronological recent-feed operation rather than a “top” or ranked-headlines operation unless the user asks for top stories. Separate latest global news from explicitly requested top/category headlines when an appropriate recent feed exists."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Check temporal scope explicitly: current conditions are not forecasts, and location-specific active alerts are not aggregate alert counts. When coordinates are supplied and a matching coordinate-based endpoint exists, use it rather than inferring a city or changing the location form.",
+        "content": "\n- For a coordinate pair serialized as one value (for example, an endpoint's `point` field), follow the order stated in that endpoint's schema or parameter description exactly; do not assume the conventional longitude-first order. For separate fields, bind latitude and longitude by their exact field names."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

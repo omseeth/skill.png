@@ -1,0 +1,45 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Answer repeated words the clue already supplied: the foreign word 'Ananas' (answer 'Pineapples'), the first name 'Chester A. Arthur' (answer 'Arthur'), and the role noun 'Madge the Manicurist' (answer 'Madge', which Rule 3 even uses as its example)."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 2,
+      "description": "The singular default conflicts with clues whose subject is plural. 'canvas-covered blades' -> key 'Sails', agent gave 'sail'. 'Coupes ... made with this fruit' -> key 'Pineapples', agent gave 'Ananas'."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A bare quoted title with a short descriptor ('A 1961 classic: \"West Side Story\"') asks for the source or related work (Romeo and Juliet). The agent echoed the quoted title."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the five failures are the same slip: the answer contains something the clue already states (a foreign-language form, a first name, a role noun). The skill has rules against this, but they are scattered and the agent ignores them, so a short final checklist at the very end should help. The plural cases ('Sails', 'Pineapples') show that the number rule is incomplete, so it is replaced with one that follows the clue's grammatical subject. The 'West Side Story' miss is a new clue shape, a quoted title as an anchor, that needs its own rule.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Use the singular form for a generic single object ('Well', not 'wells'), but keep the plural for crops, commodities and mass categories ('Bananas') or when the clue says 'these'/'ones'.",
+        "content": "- Number: match the clue's grammatical subject. If the clue's subject or described items are plural ('the canvas-covered blades of a windmill' -> 'Sails'; 'Coupes A L'Ananas are desserts made with this tropical fruit' -> 'Pineapples'; 'these ...'; 'ones'), give a countable answer in the plural form. Use the singular only when the clue describes one single item ('this fruit' for one object, 'one of these' for a single thing) -> 'Well', not 'wells'. Keep the plural for crops, commodities and mass categories ('Bananas')."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Anchor on the clue's most specific unique detail (a named person, capital, rare term such as 'Helots' or 'Khartoum') and choose the entity the passages repeatedly tie to it.",
+        "content": "\n- A clue that is only a descriptor plus a quoted title ('A 1961 classic: \"West Side Story\"', 'A 1990 film: \"Pretty Woman\"') uses the title as an ANCHOR. The answer is NOT the quoted title. It is the related work or person the passages link to it with words like 'adaptation of', 'based on', 'inspired by', 'retelling of', 'written by'. 'West Side Story' -> 'Romeo and Juliet', because the passages say 'a modern-day retelling of Shakespeare's Romeo and Juliet'. Scan the passages for that link phrase and answer with the thing it points to. Never answer with the title already in the clue."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Put only the bare answer in the answer tags. Do not write a sentence, restate the clue, or add dates, qualifiers or alternatives. Brief reasoning belongs before the tags.",
+        "content": "\n- Part of the entity already in the clue: if the clue gives part of a name or title ('the only U.S. President named Chester', 'this man, first name John'), answer only the REMAINING part as an answer key would ('Arthur', not 'Chester A. Arthur'). If the clue gives a role or descriptor noun ('this manicurist in Palmolive ads', 'this president'), answer with the bare name ('Madge', not 'Madge the Manicurist'). If the clue contains a foreign-language or untranslated word ('Coupes A L'Ananas ... this tropical fruit'), the answer is the English common name for it ('Pineapples'), never the foreign word."
+      },
+      {
+        "op": "append",
+        "content": "\n## Final check before writing <answer> (run every time)\n1. Strike from the answer every word the clue already states, including first names, role nouns ('manicurist', 'president', 'fruit') and foreign-language forms of a clue word. A word may stay only when it is the head noun of a proper name, per the Rule 4 exception.\n2. If a passage repeats the clue verbatim with an archived answer, the answer must be that archived form. Do not extend it with a descriptor taken from other passages.\n3. Check the number: plural clue subject -> plural answer.\n4. The answer must not equal the title, name or term quoted or named in the clue. It must be the thing the clue points to."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

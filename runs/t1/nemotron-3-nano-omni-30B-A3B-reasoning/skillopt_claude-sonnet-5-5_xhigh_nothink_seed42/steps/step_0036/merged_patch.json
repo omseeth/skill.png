@@ -1,0 +1,82 @@
+{
+  "reasoning": "Failure-driven edits take priority and all nine are kept. Two of them overlap with success edits: (1) Both groups replace the same DATE GATE sentence 'search_flights never takes num_people or num_layovers.' They disagree on num_layovers. The failure version passes num_layovers=[0] only for 'non-stop' or 'direct', and that is the corrective one, so it wins. I folded the success edit's useful part into it, which is that neither search_flights nor filter_flights takes num_people and that an 'N of us' reply is not a flight filter. This produces one edit instead of two competing replacements. (2) The two other success edits cover points no failure edit addresses, so they are preserved. One forbids num_people on flight tools in the party-size-only branch, worded without any print() instruction. The other relaxes Rule 23's key-naming scheme to 'any unused name', because key names are not scored. That also removes a conflict with the slow block's final_* scheme and fits the meta-skill's advice to delete contradictions. No new gates or examples were added. The failure edits were already de-conflicted: they use placeholders, replace text in place, and resolve the Rule 9, Rule 10 and Rule 14 contradictions with the slow block and Rules 25/26.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "search_flights never takes num_people or num_layovers.",
+      "content": "search_flights and filter_flights never take num_people (an 'N of us' reply is not a flight filter); pass num_layovers=[0] on every leg only when the user said 'non-stop' or 'direct'. FLIGHT DATE CHECK: a date string in the LAST user message ('We're thinking of <Month D, YYYY>', 'around <date>') IS the departure date, so search at once when origin and destination appear anywhere in the conversation. An occasion word ('anniversary', 'special') never turns it into seek_information. Two dates ('X to Y', 'going X, returning Y') are a round trip: TWO assigned and saved search_flights calls, outbound departure_date=[\"X\"] and the return with cities swapped departure_date=[\"Y\"]. Never write `return_flights=...` or `return_date`, and never put the return date in arrival_date or departure_time. A class or airline stated in any turn (a list if several) goes inside BOTH searches.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Add no other params: no airline, flight_class, budget, times or num_people.",
+      "content": "Add only params the user stated anywhere in the conversation: a stated flight_class or airline goes into BOTH legs (a class named in turn 1 -> flight_class=[\"<class>\"] on departure_flights and return_flights). Never invent an airline, budget, times or num_people.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "If the user names an airport code (e.g. 'I normally fly from SJC'), add start_airport=\"SJC\" on the outbound leg and end_airport=\"SJC\" on the return leg.",
+      "content": "If the user names an airport code (e.g. 'I normally fly from SJC'), add start_airport=\"SJC\" on the outbound leg and end_airport=\"SJC\" on the return leg. A preferred arrival airport is end_airport=\"<code>\" on the leg flying there (start_airport on the return leg). Airport arguments are plain strings, never lists.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Do not touch the hotel cache for that turn.",
+      "content": "Do not touch the hotel cache for that turn, unless a hotels key is in CACHE and the user wants to visit the named attraction: then Rule 26 applies (load the latest hotels key, search by name only with NO type, save under a new key such as attractions1, then `search_nearest(..., groupBy=\"hotel\")` saved as nearest_hotels).",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Search only the domain whose mandatory args just became complete. Leave other domains' existing cache entries untouched (e.g. restaurants already cached, now the hotel dates arrive: call search_hotels only).",
+      "content": "- Search every requested domain that has no key and complete args in the same block (flights + hotel, hotel + attractions + search_nearest when asked). Leave domains that already have a key untouched (e.g. restaurants already cached, now the hotel dates arrive: call search_hotels only).",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Never repeat a search call, and never nest a search inside save_to_cache.",
+      "content": "Never repeat a search call, and never nest a search inside save_to_cache. Save the exact variable name you assigned, and every variable passed to filter_* or search_nearest must be assigned earlier in the same block (a cached hotels result needs its own `h = get_results_from_cache(key=\"<hotels key in CACHE>\")` line first).",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "attractions cached + a neighborhood the assistant proposed",
+      "content": "an area the assistant proposed ('Yes', '<Area> would be great', 'What's there?') on whichever cached domain is being discussed (restaurants, hotels or attractions) uses ONLY neighborhood=[\"<area exactly as the assistant wrote it>\"]: not city=, not a new search_*, and not the budget, rating or type of an earlier turn. Example: attractions cached + the proposed area",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Never load another domain's key and re-save it as a stand-in for the missing search.",
+      "content": "Never load another domain's key and re-save it as a stand-in for the missing search. A reply with ONE date plus a stay length ('N nights') also completes the hotel: `checkout_date = adjust_date(date=\"<X>\", delta_days=N)`, then search_hotels with checkin_date=[\"<X>\"] and checkout_date=[checkout_date] in the same block, after the flight search. 'Weekend getaway' is context and does not cancel the hotel.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "reply 'around 80 per night' -> seek_information, no search_hotels).",
+      "content": "reply 'around 80 per night' -> seek_information, no search_hotels). The same holds for a 'Yes' to a hotel amenity when CACHE has no hotels key and no dates are known: the whole output is the one seek_information for the dates, never a filter on an attractions, restaurants or flight key.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "At most `x = get_results_from_cache(key=\"<flight key>\")` for each cached flight key.",
+      "content": "At most a plain `x = get_results_from_cache(key=\"<flight key>\")` for each cached flight key. Never write `filter_flights(..., num_people=N)` or `search_flights(..., num_people=N)` for a party-size reply.",
+      "support_count": 1,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- The key to SAVE must be a name that does NOT appear in CACHE. If 'filtered_<domain>' exists, save as 'filtered_<domain>1', then 'filtered_<domain>2', and so on. Never save a filter result under the key you loaded or under any existing key.",
+      "content": "- The key to SAVE can be any name that does NOT appear in CACHE (key names are not scored, so do not spend effort on the scheme). Never save under the key you loaded or under any existing key.",
+      "support_count": 1,
+      "source_type": "success"
+    }
+  ]
+}

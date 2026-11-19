@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_persistence_omission",
+      "count": 4,
+      "description": "Search or filter calls were emitted without assigning and saving their results."
+    },
+    {
+      "failure_type": "date_context_misinterpretation",
+      "count": 3,
+      "description": "Agents requested dates that were already supplied instead of binding date ranges to the stated flight legs."
+    },
+    {
+      "failure_type": "cached_update_skipped",
+      "count": 1,
+      "description": "A new hotel party-size and room-count request was treated as complete because compatible hotel results were already cached."
+    },
+    {
+      "failure_type": "location_or_criterion_value_mismatch",
+      "count": 1,
+      "description": "An attraction search substituted a city for a supplied state and changed the user's category wording."
+    },
+    {
+      "failure_type": "unrequested_domain_added",
+      "count": 1,
+      "description": "A hotel search was added for a getaway even though lodging had not been requested."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already directly requires saving results, updating compatible cache entries, avoiding unrequested domains, and mapping state values correctly, so repeating those instructions would not address a guidance gap. The edits clarify ambiguous date-range binding in trip context and preserve user-supplied string criteria when the schema provides no explicit vocabulary.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Associate dates with explicitly stated itinerary legs in the order and context given, and do not ask again for dates already supplied.",
+        "content": " For a single-destination flight-and-hotel itinerary, when the user answers a question about the trip's travel dates with a start-to-end range, use the start for the outbound departure and hotel check-in, and the end for the return departure and hotel checkout, unless the conversation indicates one-way travel or distinct lodging dates. For sequential multi-city legs paired with multiple ranges (for example, joined by “then”), bind each range's start to the corresponding stated leg; do not create extra flight legs from range endpoints unless a return leg is stated or established by context."
+      },
+      {
+        "op": "insert_after",
+        "target": "For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name.",
+        "content": " When a schema field is a plain string or list of strings and declares no controlled vocabulary or canonical mapping, preserve the user's criterion wording exactly; do not normalize it to a similar category label."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

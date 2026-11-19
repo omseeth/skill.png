@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache and domain misuse",
+      "count": 5,
+      "description": "Agents re-searched when relevant same-domain cached results should be retrieved and filtered, or used a result from the wrong domain as filter input."
+    },
+    {
+      "failure_type": "runtime/tool-code misuse",
+      "count": 3,
+      "description": "Agents imported libraries or redefined runtime-provided models, causing execution errors and unnecessary calls."
+    },
+    {
+      "failure_type": "incomplete domain-wise execution",
+      "count": 2,
+      "description": "Agents either omitted a seek request for a domain with missing required information or skipped another requested domain whose required inputs were available."
+    },
+    {
+      "failure_type": "round-trip flight handling",
+      "count": 2,
+      "description": "Agents failed to search the return leg separately or treated its departure date as an outbound arrival-date constraint."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add focused operating rules for the recurring cache, runtime, missing-input, and round-trip errors. In particular, handle missing required information per domain rather than blocking valid work in other domains.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Learned rules\n\n- **Use runtime tools directly:** Tools and result models are already provided. Do not import libraries, redefine models, or wrap tool calls. Keep code minimal; use keyword arguments (except for `seek_information`), assign each new result, and save it to cache.\n- **Reuse only relevant same-domain cache results:** If a cached result is a useful base for new criteria, retrieve it and use that domain's filter tool, then cache the filtered result. Never pass hotels as prior results to an attraction filter, or otherwise mix domains. Search afresh only when no suitable same-domain result exists.\n- **Check required inputs independently for each requested domain:** Seek information for missing required inputs, but still perform other requested searches whose required inputs are available. Do not omit a valid domain search just because another domain needs clarification. Preserve user-provided dates and entity values; map a specified neighborhood to the neighborhood field, not the city field. Treat an exact rating as `[x, x]` and “at least x” as `[x, 5]`.\n- **Search round trips as two legs:** Make a separate flight search for each leg, reverse origin and destination for the return, and use that leg's date as its `departure_date`. Do not use the return date as the outbound `arrival_date`; cache each leg separately."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

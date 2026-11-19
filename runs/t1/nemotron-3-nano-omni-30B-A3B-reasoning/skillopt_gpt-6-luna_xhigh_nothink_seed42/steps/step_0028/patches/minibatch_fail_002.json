@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_binding_and_cache_persistence",
+      "count": 5,
+      "description": "Searches were left unbound or their results were not saved, including searches performed alongside other actions."
+    },
+    {
+      "failure_type": "incremental_planning_and_cache_refinement",
+      "count": 5,
+      "description": "Agents skipped pending actions, refined from an unsuitable cache state, repeated represented criteria, or failed to apply a new preference."
+    },
+    {
+      "failure_type": "schema_and_argument_mismatch",
+      "count": 4,
+      "description": "Calls confused state and city fields, passed unsupported or already represented arguments, or otherwise mismatched user intent."
+    },
+    {
+      "failure_type": "flight_leg_coverage",
+      "count": 2,
+      "description": "Round-trip legs were not handled as separate directional actions with their own dates."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most recurring failures are already addressed by explicit rules in the skill, so repeating them would add little. The batch also shows agents printing “No planning needed” after executing requested actions; clarify that this is only a no-op response when existing cache results make all tool actions unnecessary.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. Use `print(\"No planning needed\")` only as a no-op response when compatible listed cache results already satisfy every pending request and no tool action is needed for this turn. Never append it after executing a search, filter, sort, or nearest-results call, or use it to mask a blocked action; ask for missing mandatory inputs instead."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

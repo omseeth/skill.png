@@ -1,0 +1,45 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "malformed_code_structure",
+      "count": 2,
+      "description": "First flight searches were emitted as bare calls, or a duplicate search was nested inside save_to_cache, with no variable assignment (trajectories 1 and 2). This ignores Rules 9 and 21."
+    },
+    {
+      "failure_type": "missing_domain_or_params",
+      "count": 2,
+      "description": "Trajectory 1 dropped the hotel search although the round-trip dates supplied both hotel dates and a neighborhood. It also missed 'non-stop' -> num_layovers=[0]. Trajectory 4 emitted only seek_information and skipped the implied restaurant search (hotel request with a nearby cuisine restaurant)."
+    },
+    {
+      "failure_type": "flight_time_param_mapping",
+      "count": 1,
+      "description": "'Arrive on DATE by TIME' was dropped instead of becoming arrival_date and arrival_time. 'Depart by 04:33 AM' became a degenerate range [T, T] instead of [12:00 AM, T]."
+    },
+    {
+      "failure_type": "wrong_cache_key_and_param",
+      "count": 1,
+      "description": "The reply 'There are 3 of us' was treated as a filter on the raw 'hotels' key with an attraction name in neighborhood. It should filter the most refined nearest_hotels key with num_people=3."
+    }
+  ],
+  "patch": {
+    "reasoning": "Each edit targets one failure pattern from this batch and uses a short worked example in the correct straight-line form. (1) A full round-trip + hotel example shows assigned and saved searches, non-stop mapping, and a hotel built from the same dates plus neighborhood. (2) Time-window mapping covers arrival and departure constraints. (3) The nearest_* key and party-size reply rule fixes the wrong key and wrong param. (4) The implicit nearby-restaurant rule requires a search for the complete domain plus one seek_information for the incomplete hotel domain. All edits are compact because earlier long checklists were rejected.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 9: Round-trip flights (+ hotel) are separate search calls",
+        "content": "- Worked example. User: 'non-stop flight from Tucson to San Antonio, a hotel in Downtown San Antonio', then 'depart May 22, 2025 ... returning on May 28, 2025'. Correct output is straight-line, every search assigned to a variable and then saved. NEVER write a bare `search_flights(...)` and NEVER nest a search call inside save_to_cache:\n  `departure_flights = search_flights(start_airport_city=\"Tucson\", end_airport_city=\"San Antonio\", departure_date=[\"May 22, 2025\"], num_layovers=[0])`\n  `return_flights = search_flights(start_airport_city=\"San Antonio\", end_airport_city=\"Tucson\", departure_date=[\"May 28, 2025\"], num_layovers=[0])`\n  `save_to_cache(key=\"departure_flights\", value=departure_flights)`\n  `save_to_cache(key=\"return_flights\", value=return_flights)`\n  `hotels = search_hotels(city=\"San Antonio\", checkin_date=[\"May 22, 2025\"], checkout_date=[\"May 28, 2025\"], neighborhood=[\"Downtown San Antonio\"])`\n  `save_to_cache(key=\"hotels\", value=hotels)`\n- 'non-stop' / 'direct' -> `num_layovers=[0]` on every flight search. A hotel named anywhere in the conversation is always searched once the outbound and return dates are known (check-in = outbound date, check-out = return date). Carry its neighborhood in the user's wording and the city as the base city."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 26: Flight time windows, and nearest_* keys with party-size replies\n- Time constraints go into the FIRST flight search, in 12-hour style as the user wrote them (\"04:33 AM\", \"09:01 PM\"). Never leave out a stated arrival constraint.\n  - 'arrive on May 21, 2025 by 09:01 PM' -> `arrival_date=[\"May 21, 2025\"], arrival_time=[\"12:00 AM\", \"09:01 PM\"]`.\n  - 'depart as early as possible on May 15, 2025, definitely by 04:33 AM' -> `departure_date=[\"May 15, 2025\"], departure_time=[\"12:00 AM\", \"04:33 AM\"]`. Never use [T, T], and do not sort.\n  - 'by' / 'before' T -> [\"12:00 AM\", T]; 'after' T -> [T, \"11:59 PM\"].\n  - Arrival details from an earlier turn still apply when a later turn supplies the departure date. Full example: `flights = search_flights(start_airport_city=\"Anchorage\", end_airport_city=\"San Antonio\", arrival_date=[\"May 21, 2025\"], arrival_time=[\"12:00 AM\", \"09:01 PM\"], departure_date=[\"May 15, 2025\"], departure_time=[\"12:00 AM\", \"04:33 AM\"])`, then `save_to_cache(key=\"flights\", value=flights)`.\n- If the CACHE contains a `nearest_hotels` (or other nearest_*) key, it is the most refined hotel key, because it already ties the hotels to the named attraction. Later hotel refinements load THAT key. Example: the last turn is 'There are 3 of us.' -> `nearest_hotels = get_results_from_cache(key=\"nearest_hotels\")`, `filtered_nearest_hotels = filter_hotels(prior_results=nearest_hotels, num_people=3)`, `save_to_cache(key=\"filtered_nearest_hotels\", value=filtered_nearest_hotels)`.\n- A headcount reply ('There are 3 of us', 'for 4 people') -> `num_people=N` only. A room-count reply -> `num_rooms=N` only. Never put an attraction name into `neighborhood`; attraction names belong in search_attractions(attraction_name=[...]). The attraction is already applied if a nearest_* key exists."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 7: Writing seek_information, including multi-domain requests",
+        "content": "- A hotel request that also mentions a restaurant ('a hotel in Colorado Springs with a good restaurant nearby that serves Bangladeshi') is TWO domains. The restaurant domain is complete (city taken from the hotel city, cuisine from the user) and the hotel domain lacks dates. Output the restaurant search plus ONE seek_information, never seek_information alone:\n  `restaurants = search_restaurants(city=\"Colorado Springs\", cuisine=[\"Bangladeshi\"])`\n  `save_to_cache(key=\"restaurants\", value=restaurants)`\n  `seek_information(\"We need the check-in and check-out dates for the hotel.\")`\n  Do not turn 'good' into a rating or budget, and do not search hotels. The same pattern applies to a hotel plus a named or typed attraction in a known city: run `search_attractions(...)` with its save, then ask only for the hotel dates."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

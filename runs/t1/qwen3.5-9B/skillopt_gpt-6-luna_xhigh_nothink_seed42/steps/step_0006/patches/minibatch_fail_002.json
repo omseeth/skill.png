@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "parameter_mapping",
+      "count": 4,
+      "description": "State abbreviations were passed as cities, or a neighborhood was passed as the hotel city instead of using the city and neighborhood fields."
+    },
+    {
+      "failure_type": "incremental_cache_handling",
+      "count": 5,
+      "description": "Agents skipped an unsatisfied update or repeated searches and filters for domains or constraints already handled."
+    },
+    {
+      "failure_type": "result_lifecycle",
+      "count": 3,
+      "description": "Initial search results were left unsaved or duplicated in extra bare calls."
+    },
+    {
+      "failure_type": "unnecessary_or_incorrect_tool_arguments",
+      "count": 3,
+      "description": "Agents added avoidable date conversions or extra flight date constraints not requested by the user."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most cache, persistence, and date-handling problems are already explicitly covered by the skill, so repeating those rules would not fill a gap. The recurring field-mapping errors warrant clearer location examples, and the hotel star request exposes that the exact-value rule currently names ratings but not star counts.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value.",
+        "content": "Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value. A two-letter U.S. state abbreviation supplied as a location belongs in `state`, with `city` unset unless a city was also provided. For a city plus neighborhood, keep them separate (for example, `city=\"Atlanta\"` and `neighborhood=[\"Midtown Atlanta\"]`), rather than using the neighborhood as the city."
+      },
+      {
+        "op": "replace",
+        "target": "For ratings, treat a single numeric rating without minimum or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`.",
+        "content": "For numeric ratings and hotel star counts, treat a single numeric value without range, minimum, or “at least” language as exact `[x, x]`; “exactly x” is `[x, x]`, and an explicit “at least x” request is `[x, 5]`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

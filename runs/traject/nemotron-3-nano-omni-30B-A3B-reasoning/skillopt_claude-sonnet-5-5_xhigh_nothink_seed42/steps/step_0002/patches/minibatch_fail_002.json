@@ -1,0 +1,53 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_calls_dropped_clauses",
+      "count": 6,
+      "description": "The agent skipped requested actions: GamerPower sort, 48-hour air quality forecast, Wayfair financing offers, Helioviewer news feed, kanji English-meaning and onyomi lookups, and the final clauses of a 9-action query. Narrative past-tense steps were often ignored."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 3,
+      "description": "The agent chose a topic-adjacent tool instead of the one matching the query's wording: a Japanese alphabet tool for kanji lookups, one email validator for every email, and a tool that merely shared the topic."
+    },
+    {
+      "failure_type": "missing_or_wrong_optional_params",
+      "count": 5,
+      "description": "Query constraints were not mapped to optional parameters: 'one card' -> pageSize 1, '48-hour' -> hours 48, 'recent' -> limit, speaker filter, enable list for named missions, and 'demo' vs a YOUR_API_KEY placeholder."
+    },
+    {
+      "failure_type": "malformed_output",
+      "count": 2,
+      "description": "A stray key was placed outside the call list, which dropped a call. Another answer was left unclosed and incomplete."
+    },
+    {
+      "failure_type": "hallucinated_extra_calls",
+      "count": 1,
+      "description": "The agent emitted 17 calls for a 10-action query, with invented IDs such as user_12345 and drill_67890, and speculative extra lookups."
+    }
+  ],
+  "patch": {
+    "reasoning": "The dominant failure is under-coverage: clauses were dropped or mapped to the wrong sibling endpoint. Next come constraints in the query that were not mapped to optional parameters. Last are formatting slips and invented calls or IDs. The previously rejected patch was long and mixed in many narrow rules, so these four edits are short and focus on the highest-frequency, generalizable behaviours: a checklist with a recount, keyword-to-endpoint matching, constraint-to-parameter mapping, and output hygiene with no invented values.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Rule 1: One call per requested action (build a checklist first)\n- Before answering, split the query into atomic actions: every sentence, every 'then / next / also / finally / and' clause, every item in a list ('pricing, warranty, reviews' = 3 actions), and every past-tense narrative step ('they looked up...', 'they accessed the news feed and data sources' = 2 actions). Hedges such as 'possibly' do not make an action optional.\n- Each action gets its own call. The same tool may be called several times with different arguments when the query names several entities, IDs, dates or terms.\n- Long queries need many calls (a 9-clause query needs 9 or more). Before finalizing, re-read the query's LAST sentences and recount the checklist against your calls. Dropped clauses are the most common failure; typical casualties are the final clause, 'forecast' requests, 'financing/similar items', 'news feed', 'scores', and 'sort' requests.\n- Add no call that no clause asks for."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 2: Match each action to the endpoint whose name mirrors its wording\n- Pick the tool whose name and description reuse the action's key nouns and verbs. Examples: 'financing options' -> `products/get-financing-offers`; 'similar items' -> `get-similar-items`; 'N-hour air quality forecast' -> the Air Quality *Forecast* tool, called in addition to the 'current pollution' tool; 'kanji with English meaning X' -> `Kanji English meaning`; 'onyomi reading' -> `Onyomi reading`; 'news feed' -> `getNewsFeed`; 'data sources' -> `getDataSources`; 'pronunciation scores' -> `Get all scores` (not `Get all posts`); 'sort giveaways' -> the `Sort ...` endpoint.\n- Different phrases of one query usually point to different endpoints of the same provider. Call each one separately rather than reusing a single endpoint.\n- Do not choose a tool just because it shares the topic (a Japanese-alphabet tool for a kanji lookup). Input type decides: a domain needs a domain-level tool and a full email needs an email-level tool.\n- Copy the `tool name` exactly as in the tool list heading (`Provider: API`)."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 3: Map every constraint in the query to a parameter\n- Put in each call every value the query states or clearly implies, using the tool's own parameter names. Required parameters go in `required parameters` and optional parameters in `optional parameters`, as the tool schema lists them.\n- Typical mappings: 'one card / a single item' -> pageSize/limit '1'; '15 posts' -> per_page '15'; '5 words' -> count '5'; '48-hour forecast' -> hours '48'; 'first page' -> page '1'; 'at least 5 minutes' -> min_duration '300' (seconds); a named person -> the speaker/author filter; 'with Hebrew subtitles' -> subtitle_lang; 'from CNN' -> the source/newspaper parameter; 'in JSON format' -> json 'true'; several named items for a comma-separated field -> join them with commas (e.g. the observatories to enable); highest-to-lowest by value -> the sort parameter set to 'value'; 'recent N' -> limit 'N'.\n- When the tool is already domain-specific (movie news, a Bible search), keep the search text to the core subject ('Superman'), not the domain word repeated.\n- Do not add optional parameters for things the query never mentions.\n- Copy IDs, SKUs, names, search terms and numbers verbatim from the query. Write every value as a quoted string. Keep numbers as '16', not 16."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 4: Output hygiene and no invention\n- The answer is ONE flat JSON list inside `<answer>...</answer>`. Every call is an object with exactly three keys: `tool name`, `required parameters`, `optional parameters` (use `[]` when empty). Never put extra keys such as \"sort-by\" outside the call objects; that silently drops the call. Close every bracket and the `</answer>` tag, and check that the list contains a call for every checklist item.\n- Never invent identifiers or placeholders (user_12345, drill_67890, YOUR_API_KEY, 'Lincoln Elementary'). If a tool needs an ID or name the query never gives, skip that tool. If a required parameter is unspecified but the action is explicitly requested, use 'demo'.\n- Do not pad the answer with speculative or 'just in case' calls (extra fact types, extra date ranges, school/user lookups). If your call count is much larger than your checklist, remove the extras."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

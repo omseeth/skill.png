@@ -1,0 +1,26 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "Task decomposition and endpoint selection",
+      "count": 3,
+      "description": "Calls did not fully match the expected task coverage: a multi-part request omitted the separate faith topic, a user-playlist request used generic search, and one result set covered only a fraction of the verifier's expected calls."
+    },
+    {
+      "failure_type": "Argument value and constraint handling",
+      "count": 2,
+      "description": "One response emitted parameter names without values and omitted an explicit top-10 range; another used noncanonical casing for a marketplace code."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add a compact preflight for decomposing requests, choosing the most specific endpoint, and validating concrete argument values and explicit constraints. Do not encode unrelated expected calls or unrequested empty optional arguments as rules.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Request coverage and endpoint choice\n- Split a request into its distinct requested results before selecting tools. For each result, prefer the endpoint whose documented function most specifically matches the action (for example, retrieve a user's collection through a user-specific collection endpoint rather than generic search). Make separate calls for distinct requested results, but do not add calls merely because their topics overlap.\n- Pass explicit result constraints, such as a requested top-N count, through the corresponding supported range or limit parameter rather than silently relying on a default.\n\n## Argument validation\n- Populate every argument with a concrete value. In the required and optional parameter arrays, use `{\\\"name\\\": \\\"...\\\", \\\"value\\\": ...}` entries; never emit bare parameter names. Check that all query-provided values and explicit constraints are present, and use the tool's declared types and accepted canonical casing or format for codes and enums."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

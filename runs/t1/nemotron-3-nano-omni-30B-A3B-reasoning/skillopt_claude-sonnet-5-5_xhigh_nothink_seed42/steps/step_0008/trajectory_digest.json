@@ -1,0 +1,63 @@
+{
+  "step": 8,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 25,
+  "failure_patterns": [
+    {
+      "pattern": "cache_not_reused_or_stale_key_on_refinement: A single-answer follow-up was handled with a fresh or bare search_*, a full re-search of every domain, or the raw key plus a repeated filter, instead of load -> filter -> save on the most refined key. Examples: 'Finnish' with 'restaurants' cached, 'Around 125' with hotels cached, a flight time answer with filtered_departure_flights cached. A 'before 04:39 AM' answer was also given in 24h format.",
+      "count": 25,
+      "task_ids": [
+        "flight:train:18:47:2",
+        "attraction:train:15:12:0",
+        "hotelattraction:train:16:52:3",
+        "hotel:train:15:31:1",
+        "flighthotel:train:12:7:1",
+        "attraction:train:21:12:0",
+        "hotel:train:10:15:3",
+        "restaurant:train:21:8:1",
+        "hotelrestaurant:train:11:24:0",
+        "attraction:train:14:32:0",
+        "hotelrestaurant:train:3:10:0",
+        "flight:train:10:18:3",
+        "flighthotelattraction:train:23:27:1",
+        "flight:train:2:35:1",
+        "hotelattraction:train:17:17:1",
+        "flighthotelrestaurant:train:16:13:3",
+        "attraction:train:16:57:0",
+        "hotelattraction:train:2:10:4",
+        "flighthotelattraction:train:8:59:1",
+        "hotel:train:8:21:1",
+        "flighthotelrestaurant:train:18:42:1",
+        "hotelattraction:train:4:42:2",
+        "attraction:train:16:32:0",
+        "flight:train:2:40:4",
+        "hotelattraction:train:5:52:1"
+      ]
+    }
+  ],
+  "score_before": 0.41,
+  "score_after": 0.395,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "\n- A layover city ('with a layover in St. Louis'), a 'specific arrival airport', a multi-city route or a preferred class are also only context. Without an explicit departure date, still output only the departure-date seek_information.",
+      "target": "Do not search, and do not ask about class, airline, time, return date, or passenger count."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- A restaurant request whose only content is a dietary need or allergy ('gluten-free', 'nightshade allergy'), an occasion ('birthday') or a cuisine, with no city anywhere in the conversation, is missing the city. Output only `seek_information(\"We need the city for the restaurant.\")`. Do not call search_restaurants with a guessed or example city. Once the user gives the city, search with the stated dietary flag or cuisine.",
+      "target": "Drop descriptors that have no parameter ('great view', 'romantic', 'business conference')."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- If the user has not named any domain yet (only a destination or an occasion, e.g. 'I'm planning a trip to Colorado Springs for my birthday'), output ONE seek_information asking what they need, e.g. seek_information(\"We need to ask whether the user wants flights, a hotel, or something else.\"). Do not search, and do not print(\"No planning needed\").",
+      "target": "- Keep it to one short sentence, e.g. seek_information(\"We need to ask for the check-in and check-out dates\") or seek_information(\"We need the departure date for the flight\")."
+    },
+    {
+      "op": "append",
+      "content": "\n## Rule 23: 'Hotel near an attraction' means search_nearest (never a neighborhood filter)\n- Trigger: the user wants a hotel near a named attraction, or the assistant offered 'a hotel near <attraction>' and the user keeps answering hotel details (amenities, party size, budget). The attraction name is NEVER a `neighborhood` value.\n- CACHE has 'hotels' and 'attractions' but no nearest_* key, and the last turn adds hotel constraints (e.g. 'a hotel with a gym and wifi'): load both keys, filter the hotels, then call search_nearest and save it. `hotels = get_results_from_cache(key=\"hotels\")`, `attractions = get_results_from_cache(key=\"attractions\")`, `filtered_hotels = filter_hotels(prior_results=hotels, gym_present=True, free_wifi_included=True)`, `save_to_cache(key=\"filtered_hotels\", value=filtered_hotels)`, `nearest_hotels = search_nearest(hotels=filtered_hotels, attractions=attractions, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`.\n- CACHE already has a `nearest_hotels` key and the last turn adds a hotel constraint (party size '4 of us', budget, amenity): chain from that key. `n = get_results_from_cache(key=\"nearest_hotels\")`, `n2 = filter_hotels(prior_results=n, num_people=4)`, `save_to_cache(key=\"filter_nearest_hotels\", value=n2)`. Do NOT filter the raw 'hotels' key and do NOT add a neighborhood.\n- Hotel dates arrive (or a hotel and a named attraction are searched in the same block) and the CACHE already holds 'attractions' for that attraction: run the hotel search, load the attractions (do not search the attraction again), and call search_nearest. `hotels = search_hotels(city=\"San Antonio\", checkin_date=[...], checkout_date=[...])`, `save_to_cache(key=\"hotels\", value=hotels)`, `attractions = get_results_from_cache(key=\"attractions\")`, `nearest_hotels = search_nearest(hotels=hotels, attractions=attractions, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`. Later hotel refinements chain from 'nearest_hotels'.\n\n## Rule 28: First-search parameter mapping (flights and hotels)\n- 'non-stop' or 'direct' flight -> `num_layovers=[0]` on every flight search, including both legs of a round trip. Add num_layovers only when the user says so.\n- Round-trip first-search keys are exactly \"departure_flights\" and \"return_flights\". Never use outbound_flights, first_flights or similar names.\n- Hotel neighborhood: copy the user's wording including the city. 'a hotel in Downtown Memphis' -> neighborhood=[\"Downtown Memphis\"], never [\"Downtown\"]. Never put view or amenity words in neighborhood. 'city view' -> has_city_view_rooms_present=True. 'ocean view' -> has_ocean_view_rooms_present=True. 'rooftop bar' -> has_rooftop_bar=True. Words like 'luxurious' or 'anniversary' add no parameter.\n- Party size or room count that the user states or confirms anywhere in the conversation maps to num_people / num_rooms on search_hotels. This includes a number the assistant asked about and the user answered ('how many rooms for 4 people?' + 'we'll need 4 room' -> num_rooms=4, num_people=4; 'there are 4 of us' + a hotel request -> num_people=4). Pass only stated numbers. Never default num_people=1.\n\n## Rule 29: 'N nights' gives the checkout date; flight + hotel in the same turn\n- Check-in (or the flight departure date) is known and the user says 'for 3 nights'. This is a reference date plus an offset, so derive the checkout with adjust_date. This is the one case where a checkout date may be derived rather than asked for (see Rule 6):\n  `checkout_date = adjust_date(date=\"May 19, 2025\", delta_days=3)`\n  `hotels = search_hotels(city=\"Tucson\", checkin_date=[\"May 19, 2025\"], checkout_date=[checkout_date], num_people=4)`\n  `save_to_cache(key=\"hotels\", value=hotels)`\n- If both a flight and a hotel were requested and this turn completes both, emit BOTH searches. Each is `x = search_*(...)` followed by save_to_cache: flights saved as \"flights\" (one-way) and hotels as \"hotels\". Never drop the hotel because the last turn mentions a flight date.\n\n## Rule 30: Turns with nothing to run\n- If the last turn only supplies information that no tool parameter can hold, output exactly `print(\"No planning needed\")`. Example: a party size for flights, restaurants or attractions ('There are 4 of us.' with flights1/flights2/flights3 already cached). Do not reload, rename or re-save cached keys, do not call filter_* with invented args, and never pass num_people to a flight, restaurant or attraction tool. This is the one exception to the retrieval bullet of Rule 8.",
+      "target": ""
+    }
+  ]
+}

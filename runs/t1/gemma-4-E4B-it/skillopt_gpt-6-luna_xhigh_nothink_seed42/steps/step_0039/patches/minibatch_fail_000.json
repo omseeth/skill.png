@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_lineage_and_filter_selection",
+      "count": 3,
+      "description": "Budget or amenity updates triggered fresh searches or used a broader cached result instead of the most-filtered compatible result."
+    },
+    {
+      "failure_type": "assistant_offer_and_scope_resolution",
+      "count": 2,
+      "description": "Agents missed a newly accepted recommendation offer or repeated a search when the user declined further specificity."
+    },
+    {
+      "failure_type": "flight_arrival_date_mapping",
+      "count": 1,
+      "description": "An event date explicitly tied to arriving on time was omitted from the outbound search's arrival-date constraint."
+    },
+    {
+      "failure_type": "tool_call_completeness",
+      "count": 1,
+      "description": "An attraction search was not saved to cache after the search call."
+    },
+    {
+      "failure_type": "required_input_and_optional_value_handling",
+      "count": 1,
+      "description": "A hotel search guessed an unstated party size and calculated checkout directly instead of using the required date-adjustment tool."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify cache lineage so follow-up filters start from the deepest compatible cached result and apply only constraints not already embodied. Make the two distinct outcomes of assistant questions explicit: accepting an offer activates that scope, while declining extra specificity leaves the cached scope unchanged. Add the missing distinction between an event date used as an explicit flight-arrival deadline and an event date that is merely context. Existing save-to-cache, date-adjustment, and time-format rules already address the remaining isolated failures, so they are not duplicated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Choose the most constrained cached result that still covers the request: its domain, location, dates or leg, and original scope must be compatible, and it must not be narrower than the requested scope. Prefer a result that already embodies the greatest number of still-active criteria, and retrieve it by its exact cache key. A result restricted to a different category or entity does not establish that a newly requested specific entity is included; search if the cached scope cannot cover it. Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result.",
+        "content": "Choose the most constrained compatible cached result covering the request, including the same domain, location, dates or leg, and entity scope. When the summary shows a base result and one or more filtered results, prefer the compatible filtered result that already embodies the greatest number of active constraints; retrieve it using its exact cache key. Apply the matching `filter_*` tool only for newly supplied constraints and any still-active constraints not embodied in that result—do not reapply constraints already embodied or start again from a broader base result. A result restricted to a different category or entity does not establish that a newly requested specific entity is included; search only if no compatible cached scope can cover the request."
+      },
+      {
+        "op": "insert_after",
+        "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+        "content": "\n- Resolve direct answers to assistant questions by their offered scope. If the assistant offers recommendations in an additional domain and the user accepts, activate and search that domain using established trip context; continue with any independent complete requests while seeking only mandatory details still missing for other requests. If the assistant asks whether the user wants more specificity within an already-covered scope and the user declines or says they have no specific preference, do not broaden, re-search, refilter, or duplicate-save that scope: retrieve the compatible cached result for use. Treat an unsupported qualitative answer as no additional filter."
+      },
+      {
+        "op": "insert_after",
+        "target": "For an established origin-destination route, treat a two-date travel span (for example, “from [date] to [date]”) as the outbound date and return date unless the conversation indicates otherwise.",
+        "content": "\n- If the conversation explicitly ties a previously stated event date to a flight arrival deadline (for example, the user must arrive by the wedding date), include that date as `arrival_date` on the outbound-direction search, in addition to its departure date. This is an arrival constraint, not a hotel date or a substitute for a separately described reverse-direction return leg. An event date without a clear connection to flight arrival or departure remains context."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "re_searched_or_misused_cached_attractions",
+      "count": 3,
+      "description": "Attractions key was cached but the agent re-ran search_attractions (T7 hotel-near-attractions 'Yes', T8 'What's there?' for a proposed neighborhood) or loaded and re-saved the unchanged result under an invented key (T2)."
+    },
+    {
+      "failure_type": "date_handling_error",
+      "count": 2,
+      "description": "T1 searched flights with a date copied from the skill's own example (May 16, 2025) when no date was given, instead of asking. T5 asked for dates again after the user supplied them, instead of calling search_hotels."
+    },
+    {
+      "failure_type": "stale_constraints_on_yes",
+      "count": 1,
+      "description": "A 'yes' to a balcony proposal re-passed beach access and pool from the cache summary instead of passing only has_balcony."
+    },
+    {
+      "failure_type": "missed_second_domain_or_leg",
+      "count": 2,
+      "description": "T3: 'ideal for both' was applied to hotels only. T6: a flight-class reply filtered only the departure leg, although return_flights was also cached."
+    }
+  ],
+  "patch": {
+    "reasoning": "Seven of the eight failures were on turns that depend on the cache and the assistant's last proposal. Four edits target the recurring causes. (1) A cached-attractions check, placed at the top, covers T7, T8 and T2. It maps a proposed place to a neighborhood filter, makes an already-applied 'sounds good' a single bare load, and sends 'hotel near attractions' to search_nearest. (2) A reply-scope check covers T4, T3 and T6. A 'yes' passes only the amenity the assistant just named, 'for both' produces one block per domain, and flight replies get one filter per cached leg. (3) A reply-with-dates rule fixes T5 by pairing the first-turn seek_information example with the search that follows once dates arrive. The same rule fixes T1 by sending a flight-class reply with no dates to seek_information. (4) Replacing the literal 'May 16, 2025' in Rule 24's example removes the date the agent copied in T1. Each prohibition is paired with the positive action to take.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- CACHED-ATTRACTIONS CHECK (an 'attractions' key in CACHE means search_attractions is off unless the user names a NEW attraction type like Cultural/Scenic or a NEW attraction name):\n  - The assistant proposed a place or area ('Have you considered Ashland Park?', 'Downtown Anchorage?') and the user says 'No, I haven't. What's there?' / 'Yes' / 'Sure'. The place is a NEIGHBORHOOD, not a type: `a = get_results_from_cache(key=\"<most refined attractions key>\")`, `a2 = filter_attractions(prior_results=a, neighborhood=[\"<place as proposed>\"])`, `save_to_cache(key=\"filtered_attractions\", value=a2)` (next unused name if taken). Never re-run search_attractions.\n  - The summary of the most refined attractions key already lists that neighborhood and the user only says 'Okay, that sounds good': the whole output is the single line `x = get_results_from_cache(key=\"<that key>\")`. No save_to_cache and no invented key such as nearest_attractions.\n  - Hotels AND attractions keys are both cached, the assistant asked about hotels near the attractions (or 'near any specific ... attractions?'), and the user accepts ('Yes, that would be great'): `h = get_results_from_cache(key=\"<most refined hotels key>\")`, `a = get_results_from_cache(key=\"<most refined attractions key>\")`, `n = search_nearest(hotels=h, attractions=a, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=n)`. No search_attractions and no filter."
+      },
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\n-3. REPLY-SCOPE CHECKS (apply before KWARG TRACE):\n   - 'Yes' / 'That sounds amazing' answering a proposal: the ONLY kwarg is the thing named in the assistant's LAST sentence ('Would you prefer a hotel with a balcony?' -> `has_balcony=True` only). Amenities shown in the loaded summary ('Additionally filtering for pool_present, has_beach_access') were answered in earlier turns and are never re-passed.\n   - 'for both', 'ideal for both', 'both of them' with hotels AND restaurants (or attractions) in play: write one load -> filter -> save block per domain with the same new value. Example: hotels2 and nearest_restaurants cached, 'Downtown Colorado Springs would be ideal for both' -> `filter_hotels(prior_results=<hotels2>, neighborhood=[\"Downtown Colorado Springs\"])` AND `filter_restaurants(prior_results=<nearest_restaurants>, neighborhood=[\"Downtown Colorado Springs\"])`, each saved. For restaurants, a nearest_restaurants key is the most refined key when it is the newest.\n   - Flight preference (class, airline, time, price): count the most refined key of each leg in CACHE (filtered_departure_flights + filtered_return_flights = 2). The output must contain that many filter_flights lines, each followed by its own save_to_cache. One filter_flights line when two legs are cached is wrong."
+      },
+      {
+        "op": "insert_after",
+        "target": "search_flights never takes num_people or num_layovers.",
+        "content": "\n  REPLY-WITH-DATES CHECK: when the user's latest message literally gives the dates the assistant just asked for ('Check-in is <X> and check-out is <Y>') and a hotel was requested anywhere, the output is `hotels = search_hotels(city=\"<city from any turn>\", checkin_date=[\"<X as written>\"], checkout_date=[\"<Y as written>\"], <every hotel constraint stated in any turn>)` + `save_to_cache(key=\"hotels\", value=hotels)`. Asking again is wrong. 'view of the ocean' -> has_ocean_view_rooms_present=True; 'city view' -> has_city_view_rooms_present=True. The 'hotel in Tucson with a view of the ocean' seek_information example below applies ONLY to the turn before any dates are given. The reverse also holds: a flight class/airline/time reply ('I'm looking at business.') with CACHE `{}` and no date anywhere in the conversation is NOT a flight search. Output only `seek_information(...)` naming the flight departure date, plus the hotel check-in and check-out dates if a hotel was requested."
+      },
+      {
+        "op": "replace",
+        "target": "end_airport_city=\"<destination>\", departure_date=[\"May 16, 2025\"])",
+        "content": "end_airport_city=\"<destination>\", departure_date=[\"<the date exactly as the user wrote it>\"])"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

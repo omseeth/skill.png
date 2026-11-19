@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "follow-up delta tracking",
+      "count": 3,
+      "description": "Agents treated short answers to assistant questions or new preferences as no-ops instead of updating suitable cached results."
+    },
+    {
+      "failure_type": "required-input and domain readiness",
+      "count": 2,
+      "description": "Agents either skipped a requested search whose required inputs were available or searched for a domain with required information missing."
+    },
+    {
+      "failure_type": "tool-call and value fidelity",
+      "count": 4,
+      "description": "Agents made redundant calls, omitted cache saves, or changed/inferred argument values despite existing skill rules."
+    }
+  ],
+  "patch": {
+    "reasoning": "The main recurring gap is failure to turn follow-up answers into actions, even though the skill already describes incremental cache use. Replacing that rule with an explicit per-domain decision sequence makes it clear when to retrieve and filter, search, ask for missing required inputs, or do nothing; it also preserves independent progress across requested domains.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Handle follow-ups incrementally through the cache:** On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns. Use the cache summary to identify the latest suitable base for each affected result, then retrieve it with `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only newly stated or changed constraints not already reflected in the base, using the appropriate same-domain filter. A broad search summary that does not reflect a new constraint does not satisfy it. If an update applies to multiple cached results, such as outbound and return flight legs, retrieve, filter, and process each independently. Do not mix domains, repeat already-applied constraints, rerun completed work, or touch unrelated results. Search afresh only when no suitable cached base exists; do nothing only when the cached results satisfy all current constraints. Save each updated result under a relevant fresh key, following the persistence rule.",
+        "content": "- **Handle follow-ups incrementally through the cache:** Treat a short answer to an assistant's clarification question as an explicit user-provided value or preference; an affirmative answer accepting an offered domain or option is a request to proceed. On each turn, reconcile the full conversation and cache, then decide separately for every newly requested or clearly pending domain: if a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using its exact cache-summary key, apply only the new same-domain filter, and save the update under a fresh relevant key; if no suitable base exists and required inputs are available, search and save; if required inputs are missing, ask for them while still completing other requested domains whose required inputs are available. A result summary satisfies a request only when it reflects all current constraints. For updates affecting multiple results, such as outbound and return legs, process each independently. Do not repeat completed work, reapply constraints, or touch unrelated results. Return no-planning only when every requested or pending deliverable is already satisfied and the latest turn introduces no new request or constraint."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

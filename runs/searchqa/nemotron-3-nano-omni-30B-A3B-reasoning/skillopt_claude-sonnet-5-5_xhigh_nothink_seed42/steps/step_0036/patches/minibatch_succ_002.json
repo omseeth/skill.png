@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Verbatim archive hits (J! Archive and GitHub question dumps in the form 'CATEGORY | clue | answer. right: Name.') were copied exactly, ignoring decoy passages that matched stray clue words (Pam Lawler, Flash Fiction, Jack Branning).",
+    "Where there was no archive line, the agent picked the entity that recurs across many independent passages together with the clue's distinctive details: Boeing, China, James Clavell, Phil Simms's team, Gorky Park.",
+    "The agent answered the slot's type and treated named works, players or policies as anchors: the author, not 'Gai-Jin' or 'Tai-Pan'; the country, not 'one-child policy'; the team, not Phil Simms.",
+    "Team and proper-name answers kept the standard full form from the passages ('New York Giants', 'Gorky Park', 'Swiss cheese') rather than a bare modifier or a shortened nickname.",
+    "'X refer to Y as this' clues were solved by finding the sentence in the passages that states the alternate name and copying that name as written."
+  ],
+  "patch": {
+    "reasoning": "The skill already covers the verbatim-archive rule and the type-check rule, and both worked in this batch. Three small gaps remain, and each shows up in more than one success. First, 'this team' clues should get the city plus nickname form, which sits awkwardly beside the 'this city's Sabres' -> 'Buffalo' example. Second, 'X is called / referred to as this' clues are a slot-fill on a passage sentence, and the full multiword common name should be copied. Third, the delete-clue-words test could wrongly strip the type word from names like 'Gorky Park'. The edits are short and conditional, so they should not affect the stable passes.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 2: Answer the referent, not a word from the clue",
+        "content": "- 'This team's <player>' / 'this company' / 'this country' with a player, product or policy as the descriptor: the player, product or policy is only an anchor. Answer the owning entity in its standard full form from the passages. For a pro team that means city plus nickname ('New York Giants', not 'Giants' and not the quarterback). For a company use the short common name ('Boeing'). Check that every numeric or place detail in the clue fits this owner."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 3: Look for the clue repeated verbatim in the context",
+        "content": "- 'X is called / referred to / known as this' clues: find the passage sentence that states the alternate name ('Americans refer to Emmentaler as Swiss cheese') and copy that name as written, with its full standard wording. Do not substitute a related term, a synonym or the bare modifier. Ignore passages that only share a stray word with the clue, such as 'flash', 'Pam' or 'killed'. Prefer the two or three passages that match most of the clue's distinctive details."
+      },
+      {
+        "op": "replace",
+        "target": "Pure category labels ('play', 'king', 'spacecraft', 'novel') are still dropped: 'this play' -> 'Henry V'.",
+        "content": "Pure category labels ('play', 'king', 'spacecraft', 'novel') are still dropped: 'this play' -> 'Henry V'. A place or landmark whose standard name ends in its type word keeps that word when the bare modifier would name something else: 'Moscow park' -> 'Gorky Park' (the DELETE-CLUE-WORDS test strips only separate modifiers stated in the clue, such as 'Moscow', not the head word of the name)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

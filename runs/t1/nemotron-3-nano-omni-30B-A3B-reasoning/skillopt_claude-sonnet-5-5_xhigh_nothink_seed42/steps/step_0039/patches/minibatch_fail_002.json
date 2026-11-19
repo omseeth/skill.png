@@ -1,0 +1,51 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "filter_overpassed_earlier_context",
+      "count": 1,
+      "description": "Restaurant budget reply re-passed the cached cuisine and added num_people=20 (not a restaurant param), which raised a ValidationError."
+    },
+    {
+      "failure_type": "requested_domain_without_key_not_first_searched",
+      "count": 2,
+      "description": "A requested restaurants domain had no key. One run re-filtered the flights key with an old budget. The other wrote '<date>' placeholders instead of search_restaurants plus one seek_information."
+    },
+    {
+      "failure_type": "compound_reply_incomplete_or_wrong_kwarg",
+      "count": 1,
+      "description": "'Budget around N per night, and fitness center' was filtered with gym_present only. The budget was dropped and the amenity was mapped to the wrong kwarg (should be has_fitness_class)."
+    },
+    {
+      "failure_type": "date_interpretation",
+      "count": 2,
+      "description": "An event date ('the reunion is on ...') was treated as the departure date, so the agent searched instead of seeking the departure date. A same-day hotel range was treated as missing a checkout (the gold itself looks unlearnable)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Per the optimizer meta-notes, these edits modify or de-conflict existing rules rather than add new gates. (1) The top SEARCH GATE only covers domains that already have a key. Edit 1 makes it start with a domain inventory, which covers T2 and T6: a requested domain with no key gets a first search, or a seek_information if args are missing. It is never replaced by filtering another domain's key, and never filled with a placeholder. (2) Rule 2's clause 'plus earlier-stated constraints the summary does not list' conflicts with the protected block and caused T1's re-passed cuisine and invented num_people, so Edit 2 replaces it. (3) Edit 3 adds a 'fitness center -> has_fitness_class' row to the single kwarg table and requires number+amenity replies to go in one filter call, which covers T4. (4) Edit 4 narrows the 'a date reply is the departure_date' rule so an event-date answer is not mistaken for a departure date (T5).",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- SEARCH GATE (do this first): read the CACHE dict. If a domain's key is present",
+        "content": "- SEARCH GATE (do this first): list every domain requested anywhere in the conversation and read the CACHE dict. A requested domain with NO key is never filtered, and is never replaced by filtering another domain's key. Search it now if its mandatory args are literally in the conversation (restaurants asked, city known, CACHE holds only flight keys -> `search_restaurants(city=..., <stated cuisine / rating / dietary flag>)` + save; do not touch the flight keys). If args are missing, put ONE seek_information for the missing items after the searches of every searchable domain (first turn with flight + hotel + restaurant, city known, no dates -> `search_restaurants` + save, then one seek_information for the dates; never a placeholder such as '<date>'). If a domain's key is present"
+      },
+      {
+        "op": "replace",
+        "target": ", plus any earlier-stated constraint that the CACHE summary text (\"Additionally filtering for ...\" / search description) does not show as applied.",
+        "content": ". Earlier turns are already inside the cached entry: never re-pass an earlier cuisine, dietary flag, stars, neighborhood, amenity, budget, class or party size. Party size (num_people) exists only on hotel tools, never on restaurant or flight calls."
+      },
+      {
+        "op": "replace",
+        "target": "- Hotel amenity wording -> parameter: 'laundry facilities' or 'laundry' -> has_laundry_service=True.",
+        "content": "- A reply holding a number AND an amenity ('around <n> per night, and <amenity> would be great') is ONE filter call containing both: budget=<n> plus the amenity kwarg. Dropping either one fails.\n- Hotel amenity wording -> parameter: 'fitness center' / 'fitness class(es)' -> has_fitness_class=True (gym_present only when the user literally says 'gym'; if the assistant's question named 'fitness classes', use has_fitness_class). 'laundry facilities' or 'laundry' -> has_laundry_service=True."
+      },
+      {
+        "op": "replace",
+        "target": "- A date in the user's reply to the assistant's date question IS the departure_date, even when the conversation also mentions an occasion.",
+        "content": "- A date in the user's reply to the assistant's travel/departure date question IS the departure_date, even when the conversation also mentions an occasion. Exception: if the assistant asked for the EVENT's date ('What's the reunion date?', wedding or meeting date) and no travel date was given, the answer is the event date and not a departure_date. Output only seek_information for the departure date, and do not search."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

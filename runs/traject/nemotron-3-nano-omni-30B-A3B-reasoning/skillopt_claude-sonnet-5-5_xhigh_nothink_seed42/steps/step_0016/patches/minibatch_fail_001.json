@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_tool_name",
+      "count": 4,
+      "description": "Tool name not the exact `### ` line: loose query label with no provider (BestBuy Product Data; Zappos product detail by Product ID), hybrid provider+endpoint (RapidWeather: Current conditions (basic) instead of Easy Weather), dash names (Lost Ark — get stats), bare endpoint (Get Specific Pokemon). Also invented/mismatched tools in the Election2020 task."
+    },
+    {
+      "failure_type": "dropped_clause",
+      "count": 3,
+      "description": "A named facet got no call: Lost Ark engravings (last item of a comma list), Aliexpress store search by storeId/sellerId (hedged 'attempted to search'), and the Election2020 clauses."
+    },
+    {
+      "failure_type": "extra_call",
+      "count": 1,
+      "description": "Added Wayfair get-financing-offers although the query asked only for images and pricing."
+    },
+    {
+      "failure_type": "duplicate_optional_key",
+      "count": 1,
+      "description": "Asos calls wrote a filled `optional parameters` list followed by a second `\"optional parameters\": []`, which erased the values. The skeleton-first two-pass layout probably encourages this."
+    },
+    {
+      "failure_type": "value_form",
+      "count": 3,
+      "description": "Amazon domain `amazon.de` instead of `de`; Pokedex values not lowercased; Card `value` for 'Ace' omitted; Stars `starid` put in required instead of optional."
+    }
+  ],
+  "patch": {
+    "reasoning": "The two highest-cost patterns are wrong tool names (zero tool_em) and dropped or extra calls. The skill already says to copy `### ` headings, but the name rule is buried and still allows 'ignore the Provider line', so I replace it with a short paste rule using this batch's three failure shapes. I add a count-style provider sweep with an explicit boundary against extra facets, which also fixes the dropped store and engravings calls and the added financing call. The duplicate-key bug survives repeated warnings, so I replace the skeleton-first two-pass instruction with a single-write canonical filled example instead of adding another warning. A small value-form exception covers code/suffix values (amazon.de -> de, lowercase Pokedex values, Ace -> A). The edits replace or merge existing text and add only one new bullet.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "NAME CHECK: copy the name from the `### ` heading line only, and ignore the `Provider: X — blurb` line under it.",
+        "content": "NAME = THE `### ` LINE, PASTED. Never assemble a name from the query's wording or from the `Provider:` line under the heading (that line is a blurb containing ` — `; never type `—` in an answer). Query labels are loose: `'BestBuy Product Data' tool` -> `BestBuy Product Data: BestBuyProductData`; `'Zappos product detail by Product ID' tool` -> `Zappos Realtime Data: Zappos product detail by Product ID`. Take the endpoint words, find the ONE `### ` line containing them, and keep that line's own provider: `Current conditions (basic)` sits under `Easy Weather:`, so `RapidWeather: Current conditions (basic)` is invented; `Lost Ark — get stats` -> `Lost Ark: get stats`; `Get Specific Pokemon` -> `Pokedex: Get Specific Pokemon`. If no `### ` line fits a tool the query mentions, use the listed sibling that fits the clause; never emit a name that is not in the list."
+      },
+      {
+        "op": "replace",
+        "target": "Build the answer in two passes. Pass 1: write an empty skeleton for every checklist call, `{\"tool name\": \"<### heading>\", \"required parameters\": [], \"optional parameters\": []}`. Pass 2: put the parameter objects INSIDE those two existing brackets (decide all optionals first; never add a third list or a second key).",
+        "content": "Write each object ONCE, left to right, with its optionals already decided. `\"optional parameters\"` is the last key, and its list is written filled (or `[]`) in that single place; never write `[]` first and fill it later. Copy this shape for a call with both lists filled: `{\"tool name\": \"Asos: v2/auto-complete\", \"required parameters\": [{\"name\": \"q\", \"value\": \"iPhone case\"}], \"optional parameters\": [{\"name\": \"country\", \"value\": \"US\"}, {\"name\": \"lang\", \"value\": \"en-US\"}]}`. After the optional list's closing `]` comes `}` and nothing else."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "- PROVIDER SWEEP (output-count rule). After drafting, list the `### ` endpoints of every provider you called and tick each one whose noun appears in the query. Every ticked endpoint needs an object, and every object needs a ticked noun. 'Retrieving statistics, character classes, and the engraving system' = `Lost Ark: get stats` + `Lost Ark: get classes` + `Lost Ark: get engravings` (three nouns, three calls; the last item of a list is the one dropped). 'Attempted to search an Aliexpress store (storeId X, sellerId Y) and checked base regions' = `Aliexpress DataHub: Aliexpress - Store Item Search 2` (optional `storeId`, `sellerId`) + `Aliexpress DataHub: Aliexpress - User Basic Parameters`. Hedged verbs ('attempted', 'explored', 'checked') are still calls. Boundary: a facet the query does not name gets no call. 'Its images and current pricing' = `get-images` + `get-pricing` only, with no `get-financing-offers`."
+      },
+      {
+        "op": "replace",
+        "target": "Copy values verbatim from the query.",
+        "content": "Copy values verbatim from the query, except when the param is a code, suffix or slug. 'German marketplace (amazon.de)' on `Amazon Pricing and Product Info: Main Endpoint` -> `domain`=`de` (not `amazon.de`). 'UK Pokédex, Pikachu' on `Pokedex: Get Specific Pokemon` -> `country`=`uk`, `pokemon`=`pikachu` (lowercase). 'Draw an Ace' on `Card Draw Simulator: Card` -> optional `value`=`A`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

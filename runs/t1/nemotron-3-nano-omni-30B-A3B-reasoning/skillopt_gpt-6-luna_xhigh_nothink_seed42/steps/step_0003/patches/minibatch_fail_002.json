@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_result_lifecycle",
+      "count": 8,
+      "description": "Agents generally failed to bind and save tool results, or failed to retrieve cached results into usable local variables."
+    },
+    {
+      "failure_type": "incremental_scope_and_cache_coverage",
+      "count": 4,
+      "description": "Agents missed new requested work or constraints, repeated already-cached searches, or performed unnecessary nearest-result calls."
+    },
+    {
+      "failure_type": "flight_leg_modeling",
+      "count": 3,
+      "description": "Agents failed to process each itinerary leg independently or apply a new constraint to each cached direction."
+    },
+    {
+      "failure_type": "unsupported_inference",
+      "count": 2,
+      "description": "Agents inferred preferences or party details from context such as a business trip or family vacation."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already gives explicit guidance on saving results, handling flight legs, and avoiding inferred preferences, so repeating those instructions would not patch a document gap. The missing guidance is that nearest-result planning also applies to explicit proximity requests involving restaurants and hotels, not only hotels and attractions.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "## Hotel proximity to attractions\n- If the user explicitly requests hotel access or proximity to an attraction, check whether relevant attraction results are available; search for any missing results, then call `search_nearest` with both the hotel and attraction result objects, grouped by the requested primary domain. Interest in visiting an attraction alone does not imply a request for proximity or require a nearest-results call.",
+        "content": "## Proximity between requested domains\n- If the user explicitly requests proximity between result types (for example, a restaurant near a hotel or a hotel near an attraction), check cache coverage for both relevant result objects, retrieve valid cached results or search for missing ones, then call `search_nearest` with both objects and group by the requested primary domain. Merely expressing interest in visiting or finding items in a domain does not imply a proximity request; do not call `search_nearest` without an explicit relationship."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

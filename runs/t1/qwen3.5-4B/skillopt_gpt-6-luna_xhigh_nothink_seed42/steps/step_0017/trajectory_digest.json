@@ -1,0 +1,68 @@
+{
+  "step": 17,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 35,
+  "failure_patterns": [
+    {
+      "pattern": "tool_namespace_import: Agents imported the nonexistent `tools` module, despite the skill explicitly requiring direct calls to injected functions.",
+      "count": 35,
+      "task_ids": [
+        "hotelrestaurant:train:21:60:4",
+        "hotelrestaurant:train:13:51:0",
+        "hotelattraction:train:21:7:0",
+        "flighthotelrestaurant:train:1:52:1",
+        "hotelattraction:train:4:42:2",
+        "attraction:train:17:27:2",
+        "hotelattraction:train:8:17:1",
+        "flighthotelrestaurant:train:17:4:1",
+        "flight:train:23:16:2",
+        "hotelrestaurant:train:13:12:1",
+        "hotel:train:9:35:1",
+        "hotelrestaurant:train:3:60:3",
+        "hotelrestaurant:train:22:59:4",
+        "hotel:train:12:44:1",
+        "attraction:train:17:12:0",
+        "attraction:train:3:53:0",
+        "restaurant:train:2:41:2",
+        "flighthotel:train:1:6:1",
+        "restaurant:train:11:15:0",
+        "flighthotel:train:11:50:5",
+        "hotelattraction:train:5:52:1",
+        "flighthotelattraction:train:4:34:3",
+        "flighthotel:train:23:29:1",
+        "flighthotelattraction:train:6:24:1",
+        "attraction:train:21:15:2",
+        "flighthotel:train:3:7:2",
+        "restaurant:train:19:41:1",
+        "flighthotel:train:17:15:3",
+        "flighthotel:train:8:39:3",
+        "hotel:train:15:3:1",
+        "hotel:train:2:25:3",
+        "attraction:train:18:42:0",
+        "flighthotelrestaurant:train:1:59:3",
+        "hotelattraction:train:25:9:5",
+        "flight:train:7:30:4"
+      ]
+    }
+  ],
+  "score_before": 0.23,
+  "score_after": 0.215,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "- Resolve replies in context against the immediately preceding assistant question or proposal. Carry forward entities and criteria the user accepts, and treat answers to clarification questions as active plan inputs even when they are not phrased as new requests: map a stated traveler count to `num_people` for hotel searches or filters, and each explicitly requested amenity to its matching schema field. A reply declining optional specificity or saying the user is flexible (for example, “not really, just something fun”) adds no filter; retain the existing request and do not infer a category from vague wording. If the user asks a follow-up about a specific proposed place or category (for example, “What’s there?” after a suggested neighborhood), treat the proposal as an active request, not a no-op or rejection. When compatible cached results cover a broader domain, retrieve and filter them using supplied criteria or the proposed place or category, then save the updated result. When the user accepts an offer to provide recommendations and compatible cached results already address the request, retrieve the closest matching result with `get_results_from_cache` for continuity; do not rerun a search, apply an unchanged filter, or return “No planning needed.” Handle any explicit new criterion under the cache and filtering rules.",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated."
+    },
+    {
+      "op": "replace",
+      "content": "- Preserve user-provided dates, entity values, and casing. For a round trip—including when the wording explicitly gives the overall trip span from one date through another—make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg solely by setting `arrival_date` on the outbound search. Ask for an unknown endpoint rather than assuming a route. For lodging requested for that same full trip, use the trip start and end as check-in and checkout only when the wording indicates the stay covers that span; do not infer hotel dates from an event date or from a trip span that does not establish the stay dates. When a hotel stay is given as a check-in date plus an unambiguous duration in nights rather than a checkout date, call `adjust_date(date=<check-in date>, delta_days=<number of nights>)` and use its returned date as checkout; do not treat the duration as missing.",
+      "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg by setting `arrival_date` on the outbound search. Ask for an unknown endpoint rather than assuming a route. When a hotel stay is given as a check-in date plus an unambiguous duration in nights rather than a checkout date, call `adjust_date(date=<check-in date>, delta_days=<number of nights>)` and use its returned date as checkout; do not treat the duration as missing."
+    },
+    {
+      "op": "insert_after",
+      "content": " For a one-sided time bound, encode the full interval rather than a single exact time: “by T” means midnight through T, and “after T” means T through the end of the day, using the time format expected by the tool.",
+      "target": "Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`)."
+    }
+  ]
+}

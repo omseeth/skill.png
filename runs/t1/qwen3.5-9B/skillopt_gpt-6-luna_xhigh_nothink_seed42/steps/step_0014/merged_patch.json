@@ -1,0 +1,53 @@
+{
+  "reasoning": "Retained all six non-redundant clarifications because each addresses a distinct gap not already covered by the skill. Existing rules on assigning and saving results, location mapping, and proximity were not duplicated. Each edit is supported by one of the two source patches, and no edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Do not import libraries, redefine models or schemas, or add helper code.",
+      "content": "Do not import libraries or tool functions (including `from tools import ...`): runtime tools and cache functions are already available directly. Do not redefine models or schemas, or add helper code.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save.",
+      "content": "Use predictable, fresh keys: name initial results by domain (for example, `attractions`, `hotels`, or `restaurants`) and flight leg (for example, `departure_flights` or `return_flights`); name updated results with an operation prefix and base key (for example, `filtered_attractions`), adding a distinct suffix when keeping multiple outputs for the same domain. Keep results for separate domains, legs, and updates distinct; never leave a result-producing call bare or omit its save.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "When a domain is newly requested during an ongoing trip, use the already-established destination as its location when that context clearly applies rather than asking for a city already known.",
+      "content": "When a domain is newly requested during an ongoing trip, use the already-established destination as its location when clearly applicable rather than asking for a city already known. When a user later names one or more cities to refine a cached state- or region-wide result, retrieve that result and filter separately for each city; do not search again retaining the broad region alongside the cities.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Preserve complete names, categories, criteria, and date strings unless a tool requires a format conversion.",
+      "content": "Preserve complete names, categories, criteria, date strings, and user-supplied casing unless the tool schema requires a conversion. Do not synonymize or change the case of a valid controlled value (for example, change “Scenic” to “Scenery” or “first” to “First”); when conversion is required, use the exact accepted schema value.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "content": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. When updating a cached result, apply all newly supplied active criteria for that domain together in the same filter call (for example, both a neighborhood and a star range), rather than applying only one of several new constraints. For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+      "content": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date for the itinerary. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg. For an itinerary with multiple explicitly directed city-to-city legs, search each leg on its stated departure date; date ranges associated with individual legs do not imply a reverse flight for each leg. If an overall return is clearly requested, search one return from the itinerary's final destination to its origin.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

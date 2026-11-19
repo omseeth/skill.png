@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_and_result_lifecycle",
+      "count": 8,
+      "description": "Calls were left unsaved, cached results were re-searched instead of refined, or cache entries were handled incorrectly."
+    },
+    {
+      "failure_type": "schema_mapping",
+      "count": 3,
+      "description": "Attraction searches used a state as the city or passed an inflected category instead of the schema label."
+    },
+    {
+      "failure_type": "pending_action_and_missing_input_handling",
+      "count": 2,
+      "description": "Agents omitted a ready domain or fabricated hotel dates rather than handling each domain’s required inputs independently."
+    },
+    {
+      "failure_type": "tool_execution_misuse",
+      "count": 1,
+      "description": "The agent imported tools that are already defined in the execution environment."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the recurring cache workflow a concrete code invariant, sharpen the state/category mappings that were missed, and make per-domain readiness checks operational. Also clarify direct tool invocation without changing protected content.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- Treat result persistence and cache refinement as mandatory steps, not optional bookkeeping. Never emit a bare search, filter, sort, or nearest-results call: bind its exact return value to a variable and immediately save that object with `save_to_cache` under a unique descriptive key. Do this separately for every flight leg and every refined result. When a compatible listed cache result exists but needs a new criterion, retrieve it using its exact listed key, pass it as `prior_results` to the appropriate filter with only the new criterion, and save the refinement under a new key; do not repeat the base search or save an unchanged cached object as the refinement. Search only when no compatible cache result is available. Do not substitute hand-built dictionaries or redefined models for tool result objects."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+        "content": "\n- For U.S. attraction searches, a state name or postal abbreviation belongs in `state`, not `city`. For categorical values, use the documented schema label rather than an inflected form from the user (for example, map “touristy” to `type=[\"Tourist\"]` when that is the supported label). Tools are already defined in the execution environment: call them directly and never import tools, modules, or models."
+      },
+      {
+        "op": "replace",
+        "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness independently for each requested domain and, where applicable, each city or leg: proceed with searches or refinements for domains whose required inputs are available even if another domain is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across blocked domains. Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood. Optional preferences are not mandatory inputs.",
+        "content": "Before acting, check required-input slots separately for every requested domain, location, and flight leg using values explicitly supplied in the full conversation. Related context, tool examples, and defaults do not supply missing mandatory inputs. Do not invent hotel dates: if a hotel request lacks explicit check-in or check-out dates, do not call `search_hotels`; include the missing dates in one `seek_information` call. At the same time, complete every other requested search or refinement whose required inputs are available—for example, search restaurants when their city is known even if hotel dates are missing. Ask only for missing mandatory inputs, not optional preferences."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

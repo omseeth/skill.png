@@ -1,0 +1,54 @@
+{
+  "step": 32,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 26,
+  "failure_patterns": [
+    {
+      "pattern": "wrong_domain_routing: Reply was applied to the wrong domain or key. Flights were re-filtered with an old class on a hotel reply (T4, T7). A hotels key that does not exist was loaded (T7). A hotel budget reply was applied to attractions (T8). A restaurant cuisine/allergy reply was applied to hotels instead of a first restaurant search (T5).",
+      "count": 26,
+      "task_ids": [
+        "hotel:train:14:49:1",
+        "flighthotel:train:22:15:2",
+        "restaurant:train:7:58:0",
+        "flighthotelrestaurant:train:12:13:4",
+        "flighthotelrestaurant:train:1:52:1",
+        "flighthotelrestaurant:train:24:27:1",
+        "hotelattraction:train:8:17:1",
+        "attraction:train:22:10:0",
+        "flighthotelattraction:train:7:34:1",
+        "attraction:train:19:56:0",
+        "flighthotel:train:25:15:3",
+        "flight:train:20:8:2",
+        "flighthotelrestaurant:train:25:1:3",
+        "restaurant:train:7:3:0",
+        "hotel:train:15:31:1",
+        "flighthotelrestaurant:train:6:39:2",
+        "flighthotel:train:1:7:1",
+        "flighthotel:train:10:9:2",
+        "hotelattraction:train:19:7:2",
+        "flighthotelattraction:train:11:12:2",
+        "hotel:train:8:28:1",
+        "attraction:train:10:8:1",
+        "restaurant:train:8:4:3",
+        "flighthotelrestaurant:train:7:4:0",
+        "flighthotelattraction:train:11:26:1",
+        "attraction:train:16:10:0"
+      ]
+    }
+  ],
+  "score_before": 0.545,
+  "score_after": 0.53,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "- Criteria to pass to filter_*: only the constraints introduced in the LAST user turn. Earlier turns are already inside the cached entry, so never re-pass them. Never call filter_* with only prior_results.",
+      "target": "- Criteria to pass to filter_*: the constraints introduced in the LAST user turn, plus any earlier-stated constraint that the CACHE summary text (\"Additionally filtering for ...\" / search description) does not show as applied. Do NOT repeat filters or search parameters the summary already lists. Never call filter_* with only prior_results."
+    },
+    {
+      "op": "replace",
+      "content": "-1. FLIGHT FILTER TRIGGER. Write flight filter lines ONLY when the user's LAST message itself holds a flight word (a class such as 'economy'/'first'/'business', an airline code, a departure/arrival time, or a price cap answering the assistant's flight-price question; a per-night price answers a hotel question). Then list every flight key in CACHE (flights, return_flights, flights2, departure_flights, ...) and write one load/filter/save block per key (2 keys = 2 blocks, 3 keys = 3 blocks), each using that key's most refined name, a new unused save key, and the same new kwarg. Stopping after the first key is wrong. Write no hotel line for that reply. When the last message is about stars, amenities, neighborhood, a hotel, a restaurant or an attraction, write ZERO flight lines, even if flight keys sit in CACHE and an earlier turn said 'business' or 'first': the flight entries already hold it.",
+      "target": "-1. FLIGHT REPLIES = ONE BLOCK PER FLIGHT KEY. This applies only when the assistant's last question or the user's last message is about flight class, airline, flight time or ticket price (a class word such as 'economy'/'first', an airline code, 'under N' answering a flight-price question), even if a 'hotels' key is also in CACHE. Count the flight keys in CACHE (flights, return_flights, flights2, first_departure_flights, ...), take each leg's most refined key, and write a three-line block for EACH: `x = get_results_from_cache(key=\"<flight key>\")`, `y = filter_flights(prior_results=x, <kwarg>)`, `save_to_cache(key=\"<new key not in CACHE>\", value=y)`, with the same new kwarg in every block. 2 keys -> 2 blocks, 3 keys -> 3 blocks; stopping after the first key is wrong. Write no hotel line for that reply. Every value comes from the user's last message ('I'd prefer economy' -> `flight_class=[\"economy\"]` on each flight key; 'keep it under 1150' after a flight-price question -> `budget=1150` on each key). Conversely, when the last message is about hotels or restaurants, write no flight line."
+    }
+  ]
+}

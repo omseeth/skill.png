@@ -1,0 +1,20 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Agents anchored on the clue's most distinctive details (Freedom 7 and May 5 1961, Franklin and 1796, Miss Havisham's dress, Lit and Balder) and chose the single entity that recurs across many passage titles and snippets.",
+    "Agents matched the category noun after 'this' (woman, coin, book, state, man, nursery rhyme) and answered with an instance of it, not an anchor from the clue.",
+    "Agents trimmed the answer to the short common form: 'Pyre' with no 'funeral', 'Alan Shepard' with no middle initial or 'Jr.', and 'Mary Had a Little Lamb' with no 'nursery rhyme' label.",
+    "When the slogan or clue wording appeared inside the proper name itself ('Ace Hardware' for 'the helpful hardware folks'), the agent kept the full official name instead of stripping the repeated word."
+  ],
+  "patch": {
+    "reasoning": "Most successes were straightforward and already covered by the skill. The one nuance worth encoding is a guard on the DELETE-CLUE-WORDS TEST. The Ace Hardware trajectory (slogan clue about 'hardware folks' -> 'Ace Hardware') and the Mary Had a Little Lamb trajectory show that a word the clue repeats must stay when it is part of the official brand or title. Only separate category labels and modifiers get dropped. This prevents over-stripping to 'Ace' without adding any new broad rule.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "The 'do not repeat clue words' rule is for a separate modifier already stated in the clue ('hasty' + pudding).",
+        "content": "\n- Brand, company and title names keep every word of their official form even when the clue echoes one of those words. 'If you need a hammer, this is \"The Place With the Helpful Hardware Folks\"' -> 'Ace Hardware' (bare 'Ace' is incomplete; the passages repeat 'Ace Hardware'). 'this nursery rhyme' -> 'Mary Had a Little Lamb' (drop only the category label 'nursery rhyme', not words inside the title). The delete-clue-words test removes separate category labels and modifiers, not words that belong to the proper name."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,29 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "tool_resolution_and_coverage",
+      "count": 5,
+      "description": "Calls were omitted, mapped to an endpoint with the wrong capability, or used an incorrect endpoint identity instead of matching each requested operation to the available tools."
+    },
+    {
+      "failure_type": "parameter_binding_and_scope",
+      "count": 4,
+      "description": "Parameters were assigned to the wrong schema section or call, mapped to the wrong field or representation, or copied into a call that did not request them."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch shows recurring difficulty resolving natural-language operations to the correct listed endpoint and binding each constraint to the right call. These additions provide a capability-based mapping and schema-focused audit without hardcoding any particular API or values.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Tool mapping and completeness\n- Break the request into distinct operations, then match each to an endpoint by its documented capability and parameters—not merely by provider or broad topic. If a named endpoint is unavailable, use an alternative only when it can genuinely perform the requested operation; do not substitute a tangential endpoint from the same provider.\n- For a request with multiple checks, prefer an endpoint whose documented scope covers all of them; use separate calls when no single endpoint covers the full request. Keep distinct operations separate unless the same endpoint explicitly supports batching the same kind of resource with the same options.\n- Use the exact full tool identifier from the available-tools list. Before answering, check that every requested operation has an appropriate call and that no call is unrelated."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Parameter binding and scope\n- Bind each constraint only to the call it modifies; do not carry limits, dates, filters, or pagination from one requested operation into another.\n- Use parameter names and required/optional placement exactly as listed for the chosen endpoint. Interpret directional constraints against the field semantics (for example, a lower date bound versus an upper date bound), and follow documented value formats, enums, and API-specific representations. Preserve user-provided identifiers unless the schema requires a documented conversion.\n- Audit each call against its own schema before answering, checking that every supplied value belongs to that call and is represented in the appropriate parameter section."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

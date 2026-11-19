@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_filtering",
+      "count": 4,
+      "description": "Agents treated existing broad or partially filtered cache results as complete instead of applying newly requested hotel or flight criteria."
+    },
+    {
+      "failure_type": "location_field_mapping",
+      "count": 2,
+      "description": "Agents mapped a state abbreviation to city or asked for a city even though the attraction search could use the provided state."
+    },
+    {
+      "failure_type": "independent_domain_planning",
+      "count": 1,
+      "description": "A missing flight or hotel date blocked a restaurant search whose required inputs were already available."
+    },
+    {
+      "failure_type": "derived_date_handling",
+      "count": 1,
+      "description": "The agent asked for hotel checkout dates despite the user providing a check-in date and an explicit stay length."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make cache completeness an explicit constraint-by-constraint check, clarify that complete domains can be planned while another domain needs information, and specify how to map state-only attraction requests and derive checkout dates from an explicit stay length.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied in a search. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- On each turn, consider the full conversation and cache summaries, and reuse results only when their domain and subject match. Before returning “No planning needed,” compare every current request and constraint with the cached results: a broad search or the mere presence of a result for that domain does not satisfy a newly requested criterion that is not reflected in the result. Retrieve the closest compatible result, apply only the new criteria to every affected result set (including each affected flight leg), and save each transformation under a unique key. Do not filter unrelated results or repeat constraints already applied in a search; search for an entity or category the cache does not cover."
+      },
+      {
+        "op": "replace",
+        "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available.",
+        "content": "- Check mandatory inputs against the full conversation and relevant cache. Flight searches require a departure date; hotel searches require check-in and checkout dates. If check-out is missing but the user explicitly gave a stay length and check-in date, derive check-out with `adjust_date` rather than asking; do not infer an unstated stay length. If any requested domain still lacks required inputs, make exactly one `seek_information(...)` call listing only those missing values. In the same turn, proceed with independent searches for requested domains whose required inputs are complete, and defer only the incomplete domains; do not partially search an incomplete domain. Do not guess values or ask for optional preferences as if required."
+      },
+      {
+        "op": "replace",
+        "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "- Match arguments to the tool schema’s expected type and cardinality. Map state names and abbreviations to the `state` field, not `city`; for attraction searches, a supplied state is sufficient when no city is given, so do not ask for a city. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

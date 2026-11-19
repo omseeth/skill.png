@@ -1,0 +1,47 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_or_wrong_operation_on_accepted_proposal",
+      "count": 3,
+      "description": "A 'yes' to a proposal was answered with the wrong operation. Hotel filters with invented amenities replaced search_nearest when hotels and attractions were both cached (T6). Filtering cached attractions replaced a fresh search for a new attraction type (T8). In T3, cached flights were re-filtered although the turn was about hotels."
+    },
+    {
+      "failure_type": "incomplete_multi_leg_flight_refinement",
+      "count": 1,
+      "description": "A flight-class reply filtered only the departure leg and skipped the return leg (T5)."
+    },
+    {
+      "failure_type": "extra_or_missing_calls_on_cache_turns",
+      "count": 2,
+      "description": "A pure-retrieval turn got an invented save_to_cache (T7). A rating reply with a restaurants key cached triggered a fresh search_restaurants and dropped the rating (T2)."
+    },
+    {
+      "failure_type": "parameter_mismatch",
+      "count": 2,
+      "description": "'solo trip' did not map to num_people=1 on a hotel search (T1). An unrequested num_layovers=[0] was added to a flight search (T4). 'business facilities' was turned into has_business_center (T3)."
+    }
+  ],
+  "patch": {
+    "reasoning": "The failures cluster around turns where several domains are cached: the wrong cached domain gets touched, or only part of the right one. Rule 26 covers a named attraction but not 'near the hotel' accepted when both keys are cached. Rule 10 does not cover a new attraction type after a name-only attraction search. Flight-leg enumeration and one-line retrieval are stated but not followed, so they get worked examples. Two small param fixes (solo trip headcount, no num_layovers) round out the batch. All edits are appended as short, concrete rules and do not touch the protected block.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Rule 28: A 'yes' to a proposal when several domains are cached\n- Hotels AND attractions both in CACHE and the assistant just asked about hotels 'near' the attractions (or attractions near the hotel), and the user says 'Yes, that would be great': do NOT filter hotels and do NOT invent amenities or budget. Load both most refined keys and call search_nearest: `hotels = get_results_from_cache(key=\"hotels\")`, `attractions = get_results_from_cache(key=\"attractions\")`, `nearest_hotels = search_nearest(hotels=hotels, attractions=attractions, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`. Use the most refined hotels key if a filtered one exists. A hotel budget already shown in the CACHE summary is never re-applied.\n- The assistant proposed a new attraction TYPE (e.g. 'Would you like to explore any Scenic attractions?') and the user accepts. If the cached 'attractions' entry was a different search (a named attraction such as [Fountains of Bellagio], or another type), do not filter it. Run a fresh search: `attractions = search_attractions(city=\"<established city>\", type=[\"Scenic\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. Add no search_nearest and no hotel or flight calls. Only when the cached attractions summary already lists that type is a filter or retrieval appropriate.\n- Touch only the domain the last turn is about. A turn describing a hotel (stars, neighborhood, amenities) never re-filters cached flights, even if the flight summary lists nothing about that hotel request.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 29: Flight preference replies need one filter per cached flight key\n- Before writing code, list every flight key in CACHE (e.g. filtered_departure_flights AND filtered_return_flights, or first_/second_ legs). The number of load -> filter -> save blocks must equal the number of legs. A class, airline, time or budget reply with two legs and only one block is wrong.\n- Example: CACHE has departure_flights, return_flights, filtered_departure_flights, filtered_return_flights (time filter applied) and the user says 'Yes, we prefer first': `d = get_results_from_cache(key=\"filtered_departure_flights\")`, `r = get_results_from_cache(key=\"filtered_return_flights\")`, `d2 = filter_flights(prior_results=d, flight_class=[\"first\"])`, `save_to_cache(key=\"filtered_departure_flights2\", value=d2)`, `r2 = filter_flights(prior_results=r, flight_class=[\"first\"])`, `save_to_cache(key=\"filtered_return_flights2\", value=r2)`. Pass the class only, not the time range already applied.\n- A first flight search with only origin, destination and date carries exactly those arguments. Never add num_layovers, flight_class, time windows or budget the user did not say, even for a one-way trip or a party size ('2 travelers').\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 30: Pure retrieval is one line; ratings on a cached domain are filters\n- When the user only agrees ('Okay, that sounds good') and the CACHE summary already shows the proposal applied, the entire output is a single `x = get_results_from_cache(key=\"<key>\")` line. Do NOT add save_to_cache, search_nearest or any other call, and never save under an invented key such as nearest_*.\n- A restaurants/hotels/attractions key in CACHE plus a reply that only gives a rating, budget or similar value is a filter, never a new search. Example: CACHE 'restaurants' (Tucson, cuisine French) + 'okay with at least 3.0' -> `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, rating=[3.0, 5])`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 31: Headcount and amenity-wording pitfalls\n- 'solo trip', 'just me', 'by myself' or 'traveling alone' alongside a hotel request is an explicit headcount: pass num_people=1 on search_hotels (hotel tools only). Example: 'solo trip to Memphis, need a hotel' then 'June 29, 2025 to July 11, 2025' -> `hotels = search_hotels(city=\"Memphis\", checkin_date=[\"June 29, 2025\"], checkout_date=[\"July 11, 2025\"], num_people=1)` then `save_to_cache(key=\"hotels\", value=hotels)`. Other context words ('birthday', 'family vacation') still give no headcount.\n- 'business facilities' or 'business amenities' is a style phrase, not an amenity parameter. Pass has_business_center=True only when the user says 'business center'. Example: 'A 3 star hotel in Downtown Raleigh with business facilities' -> `filter_hotels(prior_results=h, stars=[3, 3], neighborhood=[\"Downtown Raleigh\"])`.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

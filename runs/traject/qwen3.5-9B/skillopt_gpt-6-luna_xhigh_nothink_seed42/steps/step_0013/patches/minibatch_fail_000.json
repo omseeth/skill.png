@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_identity_and_capability_selection",
+      "count": 6,
+      "description": "Several trajectories used an abbreviated or incorrect tool identifier, or chose a sibling endpoint that did not match the requested operation."
+    },
+    {
+      "failure_type": "facet_coverage_and_multi_input_decomposition",
+      "count": 4,
+      "description": "Calls missed requested filters or checks, or failed to cover each input against each requested diagnostic."
+    },
+    {
+      "failure_type": "schema_binding_and_value_serialization",
+      "count": 3,
+      "description": "Some calls promoted optional fields to required parameters or serialized numeric values contrary to the response contract."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make two existing principles more operational: track coverage across every input and requested diagnostic, and validate each emitted tool identifier and its arguments against one exact tool entry. Leave parameter-placement and serialization guidance unchanged because it is already explicit.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Before selecting calls, make a coverage ledger: list each requested result and its explicit constraints and facets (for example, geographic levels, time horizon, price or shipping filters, and requested metrics). Map each entry to the endpoint and schema field that provides it. Count an entry as covered only when the endpoint documents that exact result and scope; related or adjacent data do not suffice. If no single endpoint covers every entry, use separate appropriate calls. In the final audit, verify that every ledger entry is covered and every requested constraint is bound to a supported field.",
+        "content": "\n- When a request has multiple inputs and multiple requested checks or facets, track coverage for each input-check combination. A call for one input or one diagnostic does not cover another combination unless the endpoint explicitly supports that batch and scope."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Break the request into distinct operations and match each to an endpoint by its documented capability and parameter schema—not merely by provider or broad topic. Use the exact full tool identifier from the available-tools list. Do not substitute a tangential endpoint or call several similar alternatives for the same requested result.",
+        "content": "\n- Treat each available-tool entry as atomic: copy its full identifier verbatim, including the exact endpoint name or path, and validate every parameter against that same entry's schema. Do not emit a provider name alone, synthesize a similar endpoint name, or borrow parameters from a neighboring endpoint."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

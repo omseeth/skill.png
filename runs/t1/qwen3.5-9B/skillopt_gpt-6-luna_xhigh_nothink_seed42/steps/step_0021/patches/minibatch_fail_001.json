@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_and_tool-call protocol",
+      "count": 4,
+      "description": "Two searches were left unsaved, one cached hotel result was searched again instead of filtered, and one area preference triggered an invalid nearest search."
+    },
+    {
+      "failure_type": "pending-deliverable reconciliation",
+      "count": 4,
+      "description": "Agents omitted earlier requested work, blocked ready searches on unrelated missing details, or skipped a leg in a multi-city itinerary."
+    },
+    {
+      "failure_type": "schema and location interpretation",
+      "count": 3,
+      "description": "A state abbreviation was mapped to city, a flight headcount was treated as required, and a district preference was mistaken for an anchor-based proximity request."
+    },
+    {
+      "failure_type": "unnecessary or speculative code",
+      "count": 2,
+      "description": "Agents added imports, explanatory output, or unnecessary date adjustments instead of emitting only the needed tool calls."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the result-saving audit more prominent and concise, and clarify three ambiguities exposed by the batch: a narrow reply should not cancel other pending domains, a district is a neighborhood constraint rather than a nearest-search anchor, and multi-city itineraries require their intermediate flight legs. Also state directly that group size is not a flight prerequisite.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Write every result-producing search, filter, sort, or `search_nearest` call in two steps: assign its returned result to a variable, then save that exact, complete result object with `save_to_cache` under a fresh, descriptive key. Do not extract `.search_results`, rebuild, or merge tool output before saving. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Retrieve cached results by assigning `get_results_from_cache(...)` to a variable before passing them to another tool; do not nest the retrieval call. Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+        "content": "- **Tool-call audit (before output):** Use runtime tools and schemas only—no imports, helper code, prints, or invented arguments. Emit only necessary operations. For every search, filter, sort, or `search_nearest` call, assign the complete return value to a variable and save that exact object under a fresh, descriptive key; never leave the call bare or extract, rebuild, or merge its result. Assign each cache retrieval to a variable before using it; never nest retrievals. Use keyword arguments except for `seek_information`, and pass list-valued fields as lists. Check that keys are distinct, calls are not duplicated, and every intended result is saved. Flight tools have no passenger-count input: do not pass or ask for group size as a flight prerequisite."
+      },
+      {
+        "op": "insert_after",
+        "target": "Treat a short answer to an assistant's clarification question as an explicit user-provided value or preference; an affirmative answer accepting an offered domain or option is a request to proceed.",
+        "content": "Scope a negative or narrowing reply to the question and domain it answers; it does not withdraw other explicitly requested or pending domains unless the user clearly says so. Continue ready work in those domains even if a required input is missing for another."
+      },
+      {
+        "op": "insert_after",
+        "target": "A new neighborhood or area preference is a location constraint, not by itself a request to run `search_nearest`: apply and save same-domain filters to each explicitly targeted domain independently, using the latest suitable cached result for each, including a combined nearest result when it is a suitable filter base.",
+        "content": "A request for a hotel near a named neighborhood or district (for example, Downtown) is still an area constraint: retain the full area phrase in `neighborhood` and filter the hotel result. Use `search_nearest` for proximity to a distinct anchor, such as an attraction, not to search within a district."
+      },
+      {
+        "op": "insert_after",
+        "target": "If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+        "content": "For a multi-city flight itinerary, search every requested consecutive segment separately and in route order, including intermediate legs. Map each explicit date to the leg it describes; when the user gives an initial-to-intermediate date range followed by a later date for returning home, use the range endpoint for the intermediate leg when the route sequence establishes that transfer, and use the later date for the homebound leg. Do not omit a dated segment or ask for a date already established by the itinerary; seek genuinely missing leg dates rather than inventing them."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

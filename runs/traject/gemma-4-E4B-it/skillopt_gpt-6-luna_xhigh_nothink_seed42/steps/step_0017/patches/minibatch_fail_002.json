@@ -1,0 +1,41 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "schema_semantic_mapping",
+      "count": 2,
+      "description": "Geographic levels and search terms were mapped by label or phrasing rather than by the endpoint's documented field semantics."
+    },
+    {
+      "failure_type": "overlapping_endpoint_disambiguation",
+      "count": 3,
+      "description": "When tools had overlapping capabilities, the selected endpoint did not consistently match the requested check or outlet scope."
+    },
+    {
+      "failure_type": "final_schema_and_scope_drift",
+      "count": 2,
+      "description": "The final call list included an invalid null argument or calls that were not tied to a requested result."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify two recurring mapping gaps: misleading geographic parameter names and search fields that separate the target from its mode or attributes. Add guidance for distinguishing a publisher-wide source from a similarly named regional edition. Existing rules already cover schema checks, removing unrequested calls, and separating email check types, so those are not duplicated; the email examples do not establish a consistent, generalizable tie-breaker among equivalent validators.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Use a canonical country code only when the field or documentation expects one; keep subarea names in their matching fields.",
+        "content": "If a required geographic parameter's label appears to conflict with the endpoint's location hierarchy, resolve its role from the endpoint description and related documented location schemas rather than guessing from the label or forcing a city into it; some APIs use a field such as `state` for country scope. Put supplied region, county, and city values in their documented admin-level fields, and do not duplicate a place across levels merely to satisfy a required argument."
+      },
+      {
+        "op": "insert_after",
+        "target": "Preserve query values and their entity associations, converting them only to documented formats such as API codes, list syntax, or canonical enum spelling.",
+        "content": "For search APIs with separate query and mode or attribute selectors, put the searched entity's name in the query field and use documented selectors for its artist, category, or search mode. Do not retain possessive or contextual wording as part of a title when the schema separates those concepts; use a canonical selector when the intended entity type clearly corresponds to a documented option."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not fan out across generic tools or marketplaces merely because the user did not specify a source. Use a fallback only when it genuinely satisfies the action; do not choose a contradictory endpoint or add unrelated calls merely because they share a topic.",
+        "content": "When a publisher has both a source-wide endpoint and a similarly named regional- or language-specific edition, use the source-wide endpoint for an unqualified publisher request; select an edition only when the user specifies it. For by-source endpoints, use the documented source identifier."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

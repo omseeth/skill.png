@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 4,
+      "description": "The answer repeated or over-qualified words the clue already supplies or defines, which the existing 'give only the MISSING part' rule forbids: 'The Outcasts of Poker Flat' vs 'The Outcasts', 'Bull Moose Party' vs 'Bull Moose', 'funeral boat' vs 'Pyre', 'hot air balloon' vs 'balloon'."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "The answer used the wrong name form: a nickname or foreign form ('Patty Hearst', 'Palazzo Pitti') instead of the formal or English form the answer key uses ('Patricia Hearst', 'the Pitti Palace')."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A bare list of fictional character names was answered with one actor ('Max Gail') instead of the show that links them ('Barney Miller')."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A crossword-style clue with a trailing letter count '(4)' was answered with a 6-letter word ('FLOOSIE') instead of the 4-letter 'Moll' (from 'Moll Flanders')."
+    }
+  ],
+  "patch": {
+    "reasoning": "Half the batch fails because the answer echoes or elaborates on clue wording, even though a 'missing part only' rule exists. A concrete delete-clue-words test with examples should make the agent apply it. The remaining failures are three recurring gaps: name form (formal and English names for the answer key), lists of character names that link to a work, and crossword-style clues with a letter count. Each edit is small and generalizable, to avoid the diffuse bundles that were rejected earlier.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "do not append that role word to the answer.",
+        "content": "\n- DELETE-CLUE-WORDS TEST: before answering, strike from your candidate every word or phrase the clue already states, and keep only the remaining head. 'Bret Harte wrote about these exiles \"of Poker Flat\"' -> 'The Outcasts' (not 'The Outcasts of Poker Flat'). 'Robert La Follette called it the Progressive party, but it was nicknamed this' -> 'Bull Moose' (not 'Bull Moose Party'). 'This funeral structure' -> 'Pyre' (not 'funeral pyre', and not 'funeral boat', which echoes the clue's 'funeral' and ignores that the passages say 'funeral pyre').\n- When the clue says 'one of these' / 'this <generic noun>' and the answer is a common noun, give the plain common noun with no added modifiers: 'a back shaped like one of these' -> 'Balloon' (not 'hot air balloon'). Modifiers copied from passages (hot air, synthetic, funeral, speech) are usually wrong unless part of the standard proper name."
+      },
+      {
+        "op": "insert_after",
+        "target": "Still apply the person-name rule above.",
+        "content": "\n- Name form: for a plain biographical clue ('She was convicted in 1976 ...'), use the formal full name that the passages give, not a nickname or diminutive: 'Patricia Hearst', not 'Patty Hearst'. Use the nickname form only when the clue itself uses it. For foreign landmarks, palaces, museums and places, use the standard English name that the clue's wording implies ('Pitti Palace', not 'Palazzo Pitti'; 'Florence', not 'Firenze'), unless a verbatim archive hit shows another form."
+      },
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- A clue that is only a list of fictional character names, roles or catchphrases ('Inspector Luger, Wojo, Fish') asks for the WORK they all belong to (the TV series, film, book or play: 'Barney Miller'). Do not answer with one actor, one character, or the list items. Pick the title that every passage pairs with all the names. If the list is of real people, answer with the team, state or other entity they share."
+      },
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- A trailing number in parentheses, e.g. 'Flirtatious floozy Flanders (4)', is a crossword-style LETTER COUNT for the answer. The answer MUST have exactly that many letters (ignoring spaces), so reject any candidate that does not ('FLOOSIE' has 6 letters). Such clues often define one half of a famous name or phrase using the other half or a related word: 'floozy' + 'Flanders' -> 'Moll' (Moll Flanders), the 4-letter word that pairs with the clue word in the passage titles. Answer with only that missing word. If a bare number appears in parentheses, treat it only as this hint, not as part of the question."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

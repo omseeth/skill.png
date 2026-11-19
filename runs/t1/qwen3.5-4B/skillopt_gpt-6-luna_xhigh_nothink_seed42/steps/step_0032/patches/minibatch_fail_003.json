@@ -1,0 +1,36 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "clarification_context_not_carried_forward",
+      "count": 2,
+      "description": "Replies supplying hotel criteria or multiple attraction locations were treated as no-ops instead of continuing the pending request."
+    },
+    {
+      "failure_type": "unnecessary_information_request",
+      "count": 1,
+      "description": "Asked for city and dates although the supplied state and attraction category were enough for a state-level search."
+    },
+    {
+      "failure_type": "result_not_persisted",
+      "count": 1,
+      "description": "Ran a hotel filter but omitted saving its result to the cache."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify how answers to assistant questions inherit the pending domain, including how to handle multiple locations independently. Make the no-date requirement explicit for attraction searches. The existing skill already requires saving transformed results, so duplicating that rule is unwarranted.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "- Interpret replies against the immediately preceding clarification or proposal and the pending request: when the user supplies a requested criterion or location, apply it to that earlier domain even if the reply does not repeat the domain; do not treat it as a no-op. If one reply supplies multiple distinct locations for one request, run a separate search or filter for each, using the same compatible cached base independently rather than combining locations in a scalar field or sequentially narrowing one result by another. Resolve brief affirmations against the proposal and carry forward its stated entity, category, preference, or action."
+      },
+      {
+        "op": "replace",
+        "target": "For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+        "content": "Attraction searches do not require travel dates. Use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

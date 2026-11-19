@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "runtime_tool_import",
+      "count": 2,
+      "description": "Agents imported tools or cache helpers instead of calling the runtime-provided functions directly, causing execution errors."
+    },
+    {
+      "failure_type": "incremental_cache_refinement",
+      "count": 4,
+      "description": "Agents re-searched or treated cached base results as satisfying new preferences rather than applying the required refinement."
+    },
+    {
+      "failure_type": "missed_latest_request",
+      "count": 2,
+      "description": "Agents failed to apply a newly stated action or preference, including a new restaurant request and a preferred flight time."
+    },
+    {
+      "failure_type": "result_persistence",
+      "count": 3,
+      "description": "Search or filter results were not consistently bound and saved to cache."
+    },
+    {
+      "failure_type": "unsupported_or_inferred_parameters",
+      "count": 3,
+      "description": "Agents added unstated criteria or invented missing hotel dates instead of following schema support and mandatory-input requirements."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already addresses direct tool calls, cache refinement, result saving, schema discipline, and missing mandatory inputs, so repeating those rules would not fill a skill gap. It does not specify how to encode qualitative time-of-day preferences; adding that mapping prevents a stated preference such as “preferably in the afternoon” from being mistaken for no constraint.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- Interpret explicit qualitative time-of-day preferences as time-range constraints, even when qualified by flexibility (for example, “flexible, but preferably in the afternoon”). Pass the appropriate supported range to `departure_time` or `arrival_time` for each applicable leg; use the tool’s time format and two endpoints (for example, afternoon as `[\"12:00 PM\", \"5:00 PM\"]` where that convention applies)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

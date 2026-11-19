@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "selector_and_market_value_mapping",
+      "count": 5,
+      "description": "Explicit units, modes, and regional settings were not consistently mapped to the endpoint's native selectors or canonical values."
+    },
+    {
+      "failure_type": "schema_group_and_argument_validation",
+      "count": 4,
+      "description": "Some calls put optional fields in the required group, supplied empty or unsupported arguments, or omitted expected parameter groups."
+    },
+    {
+      "failure_type": "unrequested_or_wrong_purpose_calls",
+      "count": 3,
+      "description": "Some trajectories added adjacent endpoints or chose a related lookup that did not perform the requested action."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers parameter grouping, avoiding empty placeholders, and rejecting unrelated calls, so those failures do not warrant duplicating existing rules. These additions clarify two narrower gaps: prefer endpoints that expose distinct requested facets directly, and translate regional values into the exact vocabulary supported by each selector.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Choose the most directly fitting documented endpoint using its exact `Provider: endpoint` name.",
+        "content": "When plausible endpoints overlap, prefer the one whose documented fields directly represent each requested facet separately (for example, forecast duration and distinct temperature and wind units) over one that approximates them through a generic combined preset."
+      },
+      {
+        "op": "insert_after",
+        "target": "When a request specifies a market or locale, populate directly corresponding documented parameters (such as country, store, currency, or language) when their values are documented or unambiguously implied; use canonical codes and a market-specific locale when a documented mapping establishes one.",
+        "content": "Normalize regional values to the selector's documented vocabulary rather than copying surface text blindly: map a marketplace hostname to a country-market code when the API convention establishes that mapping, and use the exact supported language token (for example, `en` when listed), not an unsupported locale variant such as `en-US`. Do not make either conversion when the mapping is not established."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

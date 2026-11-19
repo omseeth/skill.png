@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 4,
+      "description": "Answer did not match the slot type. The agent gave 'segregated school' for 'this man', 'University of Guam' for 'the university of this territory', 'country music backwards' for 'this way', and 'Ben Bradlee' for 'this person, like Ben Bradlee'. Each answer repeated a clue anchor or a derived thing instead of the referent."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 2,
+      "description": "Number and specificity were wrong. The agent gave singular 'hamstring' for 'this group of muscles' and generic 'pelican' where the context names 'Brown pelican'. The 'shortest form' and 'singular' rules pushed it the wrong way."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "The preferred person-name form was wrong: 'James Doolittle' instead of the popular nickname form 'Jimmy Doolittle'."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "A bare fragment clue ('Henry Ward Beecher ... for adultery') had a category-level answer (era). The agent copied a truncated phrase ('Tilton v') from a passage. This is hard to generalise."
+    }
+  ],
+  "patch": {
+    "reasoning": "Half the failures are slot-type errors. The agent answered with a larger or related thing (a university, a school, a phrase containing the clue word, the example person) instead of the thing the clue's noun phrase stands for. One edit makes this concrete with strip-the-owned-thing, 'this way' and 'like X' patterns. Two more edits fix number and specificity, where the current 'singular' and 'shortest form' guidance misled the agent, and the preferred form of people's names. The remaining fragment-clue failure is too idiosyncratic to patch.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "- Strip the thing that is merely attached to the answer. 'The university of this U.S. territory is home to X' -> the territory ('Guam'), not 'University of Guam'. 'This man sued ... over his daughter's school' -> the man's name ('Oliver Brown'), not the school or the issue. 'This state's flag / this city's team / this author's novel' -> the state, city or author.\n- 'This way / this kind / this many / this often' asks only for the adverb, adjective or number ('backwards'), not the phrase it modifies ('country music backwards'). Test: substitute your answer for 'this way' in the clue; it should read naturally without repeating clue words.\n- 'This person/thing, like X' or 'a letter to this person, like X': X is only an example. The answer is the role or category noun that X belongs to ('the editor' for Ben Bradlee), not X itself. Read the passages for X's job or title."
+      },
+      {
+        "op": "replace",
+        "target": "- Use the singular form for a generic single object ('Well', not 'wells'), but keep the plural for crops, commodities and mass categories ('Bananas') or when the clue says 'these'/'ones'.",
+        "content": "- Match the grammatical number of the clue's noun. Use the singular for a generic single object ('Well', not 'wells'). Use the plural when the clue says 'these', 'ones', 'group of ...', 'muscles', 'set of ...', and for crops, commodities and mass categories ('Bananas'). 'This group of muscles at the back of the thigh' -> 'the hamstrings'.\n- Specificity: when the context repeatedly gives a more specific official or standard name for the referent (a species, a state symbol, a named variant), use that full name, e.g. 'Brown pelican' rather than just 'pelican'. This overrides 'shortest form' when the qualifier is part of the standard name in the passages. Still drop pure descriptor words such as 'song', 'film' or 'band'."
+      },
+      {
+        "op": "insert_after",
+        "target": "Still apply the person-name rule above.",
+        "content": "- For people, give first name plus surname. If the passages or headlines use a well-known nickname form of the first name (Jimmy, Bill, Babe), use that popular form ('Jimmy Doolittle') rather than the formal first name. Do not give a surname alone unless the context's verbatim answer is just the surname."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_scope_and_result_lifecycle",
+      "count": 8,
+      "description": "Agents omitted requested refinements or cache saves, selected an unsuitable cached result, or repeated unrelated work despite explicit incremental-planning rules."
+    },
+    {
+      "failure_type": "location_field_mapping",
+      "count": 2,
+      "description": "State abbreviations were passed as attraction cities instead of using the schema's state field."
+    },
+    {
+      "failure_type": "proximity_target_resolution",
+      "count": 2,
+      "description": "Agents used broad or stale attraction results for a named target, or chose the reference domain rather than the requested result domain for groupBy."
+    },
+    {
+      "failure_type": "tool_implementation_misuse",
+      "count": 1,
+      "description": "An agent imported libraries and redefined a result model instead of calling the provided tools directly."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most cache-lifecycle, incremental-refinement, location-field, and direct-tool-use failures already have explicit guidance in the skill, so repeating those rules is not warranted. The proximity guidance leaves two specific ambiguities exposed here: whether cached results cover the exact named target, and which domain groupBy should represent.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "## Hotel proximity to attractions\n- If the user explicitly requests hotel access or proximity to an attraction, check whether relevant attraction results are available; search for any missing results, then call `search_nearest` with both the hotel and attraction result objects, grouped by the requested primary domain. Interest in visiting an attraction alone does not imply a request for proximity or require a nearest-results call.",
+        "content": "## Proximity between travel domains\n- Call `search_nearest` only when the user explicitly requests proximity between supported domains. Before calling it, verify that each cached result covers the specific requested target, not merely the same domain or city. For example, a generic city attraction search does not cover a separately named attraction; search for the named attraction using `attraction_name` unless the cache summary shows that exact target is already covered.\n- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain), not the reference domain: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`.\n- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

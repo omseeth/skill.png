@@ -1,0 +1,41 @@
+# Travel Planning Skill
+
+(No learned rules yet. Rules will be added through the reflection process.)
+
+## Rule 6: Never fabricate mandatory parameters (dates especially)
+- Before any search_* call, check that every mandatory argument was EXPLICITLY stated by the user in the conversation. Never invent, guess, or default values, even for 'last-minute', 'this weekend', or 'business trip' requests with no concrete date.
+- Dates in tool usage examples (e.g. '2025-08-03', '2025-08-11') are illustrations only. Never copy them into generated code.
+- Mandatory args that are commonly missing:
+  - search_flights: departure_date, plus an origin (start_airport_city / start_airport / start_airport_code).
+  - search_hotels: city, checkin_date AND checkout_date.
+  - search_restaurants: city.
+- If any mandatory arg is missing, output ONLY a seek_information(...) call that names what is missing. Do not also emit a search call with placeholders.
+- Do not derive a date with adjust_date unless the user gave a reference date and an offset.
+- Optional details (budget, stars, rating, amenities, neighborhood, num_people, num_rooms, cuisine, flight class) never substitute for missing mandatory args and are never a reason to call seek_information. A user who has answered several follow-ups about budget, stars, or amenities may still not have given dates, so re-check each time.
+- A round-trip request still needs the departure date. Ask for it; do not assume a return date.
+
+## Rule 7: Writing seek_information, including multi-domain requests
+- Mention only MISSING MANDATORY parameters. Never ask for optional ones.
+- When the user asks for several domains (flight + hotel, hotel + attraction, etc.), check the mandatory args of each requested domain separately. If any domain is missing something, list ALL missing items across domains in ONE seek_information call. Do not run a partial search with made-up values for another domain.
+  Example: seek_information("We need the departure date for the flight, and the check-in and check-out dates for the hotel.")
+- Reuse values the user has actually stated and ask only for what is still missing.
+- Keep it to one short sentence, e.g. seek_information("We need to ask for the check-in and check-out dates") or seek_information("We need the departure date for the flight").
+
+## Rule 8: Act on the latest turn and the cache
+- Decide what to call from the LAST user turn and the cache summary, not from the whole conversation history.
+- If the last turn adds no new constraint (e.g. 'Not really, just something fun', 'Okay, that sounds good', 'No preference') and the cache already holds results for the domain under discussion, do NOT re-run search_* with the old criteria and do NOT print("No planning needed"). Retrieve the stored results with `x = get_results_from_cache(key="<key>")`, using the most refined key that matches the user's request (e.g. key="attractions"). No save is needed for a pure retrieval.
+- If a domain already has a cache entry (e.g. 'flights' for the same route and dates) and the last turn concerns another domain (e.g. hotel amenities), do not re-run the cached domain's search. Retrieve it only if needed.
+- Call search_* / filter_* again only when the user introduces a new or changed constraint. A new constraint on a cached domain is handled by filtering (Rule 2).
+- If the last turn only gives a preference for a domain that still lacks mandatory values (e.g. 'a hotel with a gym and wifi' but no dates), call seek_information for the missing values (Rules 6 and 7) instead of searching.
+
+## Rule 2: Refinement turns load from the cache and filter (never re-search, never use undefined variables)
+- If the CACHE already holds results for a domain and the latest user turn adds a preference (amenity, stars, budget, flight class, airline, time of day, party size, neighborhood, cuisine, rating, etc.), do NOT call search_* again. Load the cached result, filter it, and save under a new key:
+  `hotels = get_results_from_cache(key="hotels")`
+  `hotels2 = filter_hotels(prior_results=hotels, pool_present=True, breakfast_included=True)`
+  `save_to_cache(key="hotels2", value=hotels2)`
+- Never reference a variable that was not defined in the current code block (e.g. `hotels` from an earlier turn). Always load first with `x = get_results_from_cache(key="...")`, then use `x`. The key must be copied exactly from the CACHE summary.
+- Chain from the most refined and most recent key for that domain (the latest `filtered_*` or `nearest_*` key beats the raw search key). Never filter a stale, broader key.
+- Criteria to pass to filter_*: the constraints introduced in the LAST user turn, plus any earlier-stated constraint that the CACHE summary text ("Additionally filtering for ..." / search description) does not show as applied. Do NOT repeat filters or search parameters the summary already lists. Never call filter_* with only prior_results.
+- Map each stated preference only to its matching parameter. For example, 'kid-friendly pool' means pool_present=True. Do not add extras such as has_kids_club unless the user states them.
+- Handle every domain and leg affected by the last turn. If the user answers with both an airline and hotel amenities, filter both. If departure_flights and return_flights are both cached, apply a shared flight preference (class, time of day, airline) to EACH leg with its own load, filter and save.
+- If the last turn introduces a domain that has no cache key (e.g. restaurants after hotels, or attractions after flights), run search_* for that domain only, using the city already established in the conversation. Do not redo filters for domains that are already cached.

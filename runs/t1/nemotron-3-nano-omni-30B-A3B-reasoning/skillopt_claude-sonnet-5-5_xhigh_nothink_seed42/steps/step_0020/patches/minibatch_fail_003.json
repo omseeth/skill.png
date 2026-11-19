@@ -1,0 +1,41 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "stale_constraint_replay_wrong_domain",
+      "count": 2,
+      "description": "The agent re-loaded and re-filtered flights with constraints already shown in the CACHE summary (budget, business class) instead of acting only on the domain the last turn answered or introduced. In one case the hotel neighborhood and attraction request were skipped; in the other the hotel budget filter was buried among extra flight filters."
+    },
+    {
+      "failure_type": "redundant_filter_param",
+      "count": 1,
+      "description": "Restaurant budget reply re-passed has_gluten_free_options, which the cached restaurants summary already listed."
+    },
+    {
+      "failure_type": "fabricated_mandatory_param",
+      "count": 1,
+      "description": "The flight origin was missing, so the agent copied 'Fayetteville' from a tool usage example and searched flights. The gold output was seek_information for the departure city plus a hotel search for Anchorage."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the four failures replay constraints from earlier turns on cached domains that the last turn did not touch, or re-pass filters the CACHE summary already lists. The fourth invents a mandatory flight origin. Edit 1 adds a scope-first step at the top of the CACHE GATE with concrete examples of the 'Around 125' hotel-budget and gluten-free restaurant-budget cases. Edit 2 covers a hotel neighborhood plus attraction type and name arriving together when no attractions key exists. Edit 3 forbids borrowing an origin from tool examples and gives the hotel-search-plus-seek_information pattern.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "0. SCOPE FIRST: read the assistant's LAST question and the user's reply. The reply belongs to that one domain (hotel budget/stars/amenities/neighborhood -> hotels; restaurant budget/rating/cuisine -> restaurants; class/airline/time -> flights). Write code only for that domain, plus any domain the reply newly requests. Other cached domains are finished: never reload, re-filter or re-save them because an earlier turn mentioned a class, budget or amenity. Before filtering, read the summary of the key you load. Anything it shows ('flight classes: [business]', 'Additionally filtering for budget: $300', 'has_gluten_free_options', 'neighborhood(s): [...]') is already applied and is never passed again.\n   - CACHE 'departure_flights' and 'return_flights' (both show 'flight classes: [business]') + 'hotels' (shows Midtown Atlanta); the assistant asked the hotel budget and the user says 'Around 125.' -> exactly `h = get_results_from_cache(key=\"hotels\")`, `h2 = filter_hotels(prior_results=h, budget=125)`, `save_to_cache(key=\"filtered_hotels\", value=h2)`. No flight lines at all.\n   - CACHE 'restaurants' (summary: 'neighborhood(s): [Midtown Atlanta], cuisine(s): [Livonian], has_gluten_free_options') + 'I'm looking to spend around 125 per person' -> `filter_restaurants(prior_results=r, budget=125)` only. Do not add has_gluten_free_options, even though the user said 'gluten-free' earlier."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Without a hotels key, 'near the hotel' needs no search_nearest. Just run the normal first search.",
+        "content": "- Hotel constraint plus attractions in the SAME turn, with hotels cached and NO 'attractions' key (e.g. 'We'd like to stay in Downtown Raleigh with access to Social attractions. And we're interested in visiting North Carolina State Capitol.'). Never touch or re-filter the flight keys. Write: (a) load the most refined hotels key and filter it with only the new hotel constraints, using the user's wording: `filtered_hotels = filter_hotels(prior_results=hotels, neighborhood=[\"Downtown Raleigh\"], num_people=4)`, saved under a new key. Add num_people or num_rooms when a headcount or room count was stated in ANY earlier turn and the hotels summary does not list it. (b) ONE first attractions search carrying both type and name: `attractions = search_attractions(city=\"Raleigh\", type=[\"Social\"], attraction_name=[\"North Carolina State Capitol\"])`, saved as 'attractions'. (c) `nearest_hotels = search_nearest(hotels=filtered_hotels, attractions=attractions, groupBy=\"hotel\")`, saved as 'nearest_hotels'. 'Access to attractions' or 'visit <attraction>' means proximity, so search_nearest is required. The 'name only' rule above applies only when an 'attractions' key already exists."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 7: Writing seek_information, including multi-domain requests",
+        "content": "- An origin city is never invented, guessed, or copied from a TOOL CONFIG example (Key West, Fayetteville, Phoenix, ...). If the user named only a destination for flights ('a trip to Anchorage, I need flights and hotels') and later supplies dates, the flight is still missing its origin: do NOT call search_flights. If the hotel city and both dates are known (the destination is the hotel city, the outbound date is check-in, the return date is check-out), still search the hotel: `hotels = search_hotels(city=\"Anchorage\", checkin_date=[\"May 18, 2025\"], checkout_date=[\"May 31, 2025\"])` plus `save_to_cache(key=\"hotels\", value=hotels)`. Add exactly one `seek_information(\"We need to ask for flight's departure city\")`. Never fill the origin with a guessed city and never create departure_flights / return_flights in that turn."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

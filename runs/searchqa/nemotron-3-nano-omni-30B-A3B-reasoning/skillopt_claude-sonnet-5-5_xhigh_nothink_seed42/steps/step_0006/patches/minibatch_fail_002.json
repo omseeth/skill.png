@@ -1,0 +1,51 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "The agent appended a noun already in the clue to the answer ('Yalta Conference' for 'conference in this Crimean city'; 'Giblet gravy' for 'gravy made with these innards'). The answer should be the bare referent ('Yalta', 'Giblets')."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "'Her home ... is now a museum' calls for the person. The agent answered with the museum's title from the passages ('Susan B. Anthony Museum & House') instead of the person ('Susan B. Anthony')."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A clue that gives a foreign word ('an orzel in Poland') asks for its English meaning. The agent copied the foreign term from the context ('Orzel Bialy') instead of translating it ('an eagle')."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A short definition clue ('An Anglican parish priest') needs the standard term the passages equate with it ('parish priest (usually called a vicar or rector)'). The agent answered 'Curate' from its own knowledge, which is an assistant role and not the priest in charge."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four of the five failures are the agent answering with a nearby string from the clue or context (clue noun, museum title, foreign word) rather than the bare referent. The fifth is picking a wrong related term for a definition clue. Earlier broad bundles of edits were rejected, so these four are narrow and each targets one observed pattern, with a substitution test and a concrete example. The edits cover: bare referent without the clue's own noun; possessive 'her home/museum' clues -> the person; foreign-word clues -> English meaning; definition clues -> the term the passages equate with the description.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "do not append that role word to the answer.",
+        "content": "\n- Never attach a noun that the clue already supplies to the answer. Test: substitute your answer for 'this X' / 'these X' in the clue; if the sentence now repeats a word ('the 1945 conference in Yalta Conference', 'gravy made with giblet gravy'), delete the repeated word. 'The 1945 conference in this Crimean city' -> 'Yalta' (not 'Yalta Conference'). 'Gravy made with these turkey innards' -> 'Giblets' (not 'Giblet gravy'). Give the bare head noun or name, in the plural if the clue says 'these'."
+      },
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- 'Her/His home / birthplace / house / tomb / museum / statue ... is now a museum / landmark / park' asks for the PERSON the place is about, not the place. Passages are titled with the place ('Susan B. Anthony Museum & House'), but the answer is the name inside it ('Susan B. Anthony'). Strip words like Museum, House, Home, Park, Memorial."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Honor qualifiers when the context offers several names for the same thing: 'Greek god of erotic love' -> 'Eros' (not Roman 'Cupid').",
+        "content": "\n- Foreign-word clues: when the clue gives a foreign term and says what it is 'in Poland / in French / in Spanish' ('This, an orzel in Poland, is seen on some of our coins'), the foreign word is only the anchor. The answer is its ENGLISH meaning ('an eagle'), the common noun that fits the rest of the clue. Never reply with the foreign word or its longer phrase ('Orzel Bialy')."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not choose one that fits only some.",
+        "content": "\n- Short definition-style clues ('An Anglican parish priest', 'A hasty dessert'): answer with the standard term that the passages directly equate with the description, such as the phrase 'parish priest (usually called a vicar or rector)' -> 'Vicar'. Prefer that term over a related but different role ('Curate' is an assistant, not the priest in charge) or one drawn from your own memory. Check that the term's definition matches every word of the clue before answering."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

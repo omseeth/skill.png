@@ -1,0 +1,34 @@
+{
+  "reasoning": "Failure-driven edits take priority, and I carried them forward with tightening. (1) Both failure 'replace' edits targeted the same 4b sentence, so I merged them into one replace. It uses the shorter target string and the per-domain-split wording, and drops the duplicated example. (2) The VALUE TRACE and PER-DOMAIN SPLIT edits shared an anchor and overlapped, so I merged them into one edit. The 'hotel + restaurant, no hotel dates' bullet inside the split was a duplicate of the 'good restaurant nearby' edit, so I kept it once as a trigger at step 0 of the Quick decision order, worded 'hotel AND restaurant requested'. This follows the meta-skill advice to place it at step 0 and trigger on the domain pair, not on example wording. (3) Conflict on 'solo': one failure edit said solo gives no num_people, while two said solo / just me gives num_people=1. I resolved it as a stated number or 'solo' / 'just me' -> 1, and 'couple', 'family' and 'group' are not numbers. I removed the duplicate statements and the duplicated neighborhood-reply example, since the LAST-MESSAGE LITERAL rule already covers it. (4) From the success group, 'load only keys that exist' duplicated the failure PRE-SEND CHECKS item 2, which already pairs the prohibition with a positive fallback (search or seek_information). The 'naming tie-break' reconciling Rule 23 with the final_* scheme was folded into PRE-SEND CHECKS item 3. Both success edits are therefore absorbed, not added as extra rules. (5) No edits touch the protected SLOW_UPDATE block. Each prohibition is paired with its positive trigger, and I did not add new task-specific sibling examples. [optimizer-ranked: selected 3/10 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "1. Copy the CACHE keys of each domain the LAST user turn touches (flights / hotels / restaurants / attractions, including filtered_*, nearest_*, hotels2, final_* names).",
+      "content": "\n   - DOMAIN WORDS IN THE REPLY DECIDE THE KEY. 'Downtown X is preferred for hotel', 'a hotel near Y', or stars / amenities / rooms -> hotels. Load the most refined HOTELS key (e.g. hotels2, even if filtered_restaurants / nearest_restaurants were created later) and run `filter_hotels(prior_results=h, neighborhood=[\"Downtown X\"])`. Save it under the next unused hotels key (e.g. hotels3). Never load a restaurant key for a hotel reply. A get_results_from_cache followed by save_to_cache of the same object (no filter in between) is always wrong.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## CACHE GATE (run this before writing any code, every turn)",
+      "content": "\n- LAST-MESSAGE LITERAL RULE (every filter_* call): split the user's LAST message into its separate values and write exactly one kwarg per value. Values from earlier turns and everything the CACHE summary lists (stars, amenities, class, kids club, rooftop bar...) are already applied, even when the last message is only a number or a place name. Check: the filter has as many kwargs as the last message has values. 'Around 30.' answering a per-night budget question -> `budget=30` only. 'Yes, Downtown San Antonio would be perfect.' answering an area question -> `neighborhood=[\"Downtown San Antonio\"]` only. A 'Yes' plus a place, number or amenity answers the assistant's LAST question, not an older one.",
+      "support_count": 7,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Quick decision order for every turn",
+      "content": "\n- STEP 0 TRIGGER: hotel AND restaurant both requested, restaurant city known, no hotel dates, CACHE has neither key (e.g. 'a hotel in <city> and restaurant recommendations', or 'a hotel with a good restaurant nearby that serves <cuisine>'). Output exactly: `restaurants = search_restaurants(city=\"<city>\"[, cuisine=[\"<cuisine>\"] if stated])`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then ONE `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. Never write the search without `restaurants =` and the save, and never drop the seek_information line. 'Good' and 'nearby' are not parameters (no rating, and no search_nearest until a hotels key exists).",
+      "support_count": 8,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Prioritized the meta-skill's top targets. [3] gives a positive routing rule against cross-domain leakage (the biggest persistent failure) and bans load-then-save of an unmodified object. [2] enforces filter minimality with a checkable 'one kwarg per last-message value' rule that covers bare-number and 'Yes + place' replies. [4] puts the hotel+restaurant first-turn rule at step 0 with a generic trigger, as the meta-skill requests, since the existing rule is ignored. Skipped [6] (overlaps [4], dangling reference to [0]'s section), [0] (large, example-heavy accretion), [5] (duplicates existing hygiene rules), and [7]/[8]/[9] (narrow single-case fixes). [1] is a decent general principle but not tied to a named failure cluster.",
+    "selected_indices": [
+      3,
+      2,
+      4
+    ]
+  }
+}

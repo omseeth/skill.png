@@ -1,0 +1,18 @@
+{
+  "batch_size": 1,
+  "success_patterns": [
+    "A restaurant request that gives a city plus only an occasion or meal-time descriptor ('business lunch', 'somewhere in Fresno') is treated as complete. The code runs search_restaurants with city only and saves it under 'restaurants'. The occasion and meal words are dropped because they have no parameter, and there is no seek_information call.",
+    "The first search for a domain with an empty CACHE is a plain search with no cache loads, filters or extra kwargs. Rules 14 and 21 already cover this."
+  ],
+  "patch": {
+    "reasoning": "The one successful trajectory is a first restaurant search where only the city is mandatory and 'business lunch' is correctly ignored. Rule 21 already covers dropping descriptors, but its list names no meal-time or occasion words, so a small extension helps. This success also scored only 0.8 tool_f1 because the code was malformed (bare call, nested search inside save_to_cache, repeated search). That failure mode is already covered by the HARD OUTPUT RULES and Rule 21, and earlier steps show that adding more rules for it was rejected, so I propose only a minimal wording extension.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Drop descriptors that have no parameter ('great view', 'romantic', 'business conference').",
+        "content": "Drop descriptors that have no parameter ('great view', 'romantic', 'business conference', 'business lunch', 'dinner', 'brunch', 'birthday'). A city alone is a complete restaurant request, so search at once with only `city=` plus the constraints that do map to parameters. Example: 'a restaurant for a business lunch, somewhere in Fresno' -> `restaurants = search_restaurants(city=\"Fresno\")` then `save_to_cache(key=\"restaurants\", value=restaurants)`. No seek_information and no other kwargs."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "runtime_tool_import_error",
+      "count": 3,
+      "description": "Agents imported unavailable tool or cache modules instead of calling runtime-provided functions directly."
+    },
+    {
+      "failure_type": "cache_scope_or_delta_error",
+      "count": 3,
+      "description": "Agents reprocessed unaffected domains or repeated searches instead of applying the requested change to compatible cached results."
+    },
+    {
+      "failure_type": "schema_value_or_encoding_error",
+      "count": 3,
+      "description": "Agents inferred unsupported criteria, mapped a location or category to the wrong value, or encoded a one-sided rating range with one endpoint."
+    },
+    {
+      "failure_type": "incomplete_execution_or_persistence",
+      "count": 3,
+      "description": "Agents omitted required result saves or failed to handle both distinct flight legs."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed failures already contradict explicit skill instructions, including direct tool use, cache scoping, result saving, flight-leg separation, and avoiding inferred criteria; repeating those rules would not patch a gap. The skill is less explicit about preserving controlled category values and encoding one-sided thresholds in two-endpoint ranges, so these edits clarify the two concrete schema/value errors in the batch.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`. For a one-sided minimum or maximum on a range field, use the documented scale endpoint for the unconstrained side (`[x, scale_max]` or `[scale_min, x]`); these fields require both endpoints, so do not pass a scalar or one-item list. Do not widen exact values or guess undocumented limits."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+        "content": "\n- Preserve user-supplied names, codes, and controlled category values literally; do not substitute a guessed synonym or neighboring taxonomy value. Pass the stated value when the schema accepts it (for example, do not change “Scenic” to “Scenery”). If the schema requires controlled values and the mapping is unclear, do not silently substitute."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

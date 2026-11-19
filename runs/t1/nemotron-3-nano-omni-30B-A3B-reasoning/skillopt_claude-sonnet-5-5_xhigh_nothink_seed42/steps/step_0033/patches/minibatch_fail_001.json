@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_domain_routing",
+      "count": 3,
+      "description": "The reply was applied to an already-cached domain (flights or restaurants) with an earlier constraint re-passed. The last message actually called for a first search of an uncached domain (restaurants), or for dates to be searched (flights and hotels). Seen in T4, T5, T7."
+    },
+    {
+      "failure_type": "repassed_earlier_constraint",
+      "count": 1,
+      "description": "'Yeah, Summerlin would be great' produced budget=55 (the previous reply) instead of neighborhood=['Summerlin'] (T2)."
+    },
+    {
+      "failure_type": "dropped_domain_or_leg",
+      "count": 2,
+      "description": "The hotel search was dropped when the reply gave a stay length (T3). Only one leg was filtered when raw and filtered flight keys coexisted, so the return leg was skipped (T8)."
+    },
+    {
+      "failure_type": "fabricated_values",
+      "count": 2,
+      "description": "Hotel dates were copied from the skill's own example dates when none were given (T1). num_people=4 was inferred from the assistant's wording rather than a number the user stated (T6)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures are routing errors: the agent works on whichever domain already has a cache key instead of the domain the last message's words point to. Edit 1 replaces the opening SEARCH GATE sentence with a shorter domain-first gate. It keeps the existing three-line filter instruction and adds the cases the batch missed: a touched domain with no key gets a first search, an untouched domain gets zero lines, a date reply searches the requested flight and hotel domains, 'for N nights' uses adjust_date, and a neighbourhood reply passes only the neighbourhood. Edit 2 fixes the flight-leg count when raw and filtered keys coexist, and covers the flights-only 'under N' budget reply. Edit 3 removes the literal example dates that were named in the skill and copied into T1's search. Edit 4 stops num_people being inferred from the assistant's text. The edits replace or tighten existing sentences rather than adding new gates.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- SEARCH GATE (do this first): read the CACHE dict. If a domain's key is present, search_* is forbidden for that domain, whatever the reply adds (cuisine, rating, budget, time, amenity, neighborhood, or interest in the assistant's proposal such as 'Sure', 'Yes', 'What's there?').",
+        "content": "- DOMAIN-FIRST GATE (do this first): decide which domains the LAST user message touches from its own words. A date, 'X to Y', 'return' or 'for N nights' -> the flight and/or hotel the user requested in any turn that has no key. Cuisine, allergy, dietary word or 'food' -> restaurants. Stars, amenity, rooms, per-night price or neighborhood -> hotels. Class, airline, time of day or ticket price -> flights. Attraction type or name -> attractions. A domain the message does not touch gets ZERO lines, even if its key is in CACHE and an earlier turn said 'business', 'first', a cuisine or a budget: the cached entry already holds it. A touched domain with NO key gets its first search_* now, carrying every constraint stated in any turn (city = trip destination; hotel check-in/out from the flight dates). Example: CACHE has flights + hotels and the message is only a dietary need plus a cuisine -> a single `search_restaurants(city=<trip city>, <dietary flag>=True, cuisine=[...])` + save, and no flight filter. A date reply after the assistant asked for dates searches every requested flight/hotel domain that has no key, even if only 'restaurants' is cached. Several candidate dates for one leg go in one departure_date / checkin_date list. 'for N nights' -> `checkout_date = adjust_date(date=\"<check-in date as written>\", delta_days=N)` and the hotel search goes in the same block as the flight search. A touched domain whose key is present: search_* is forbidden for that domain, whatever the reply adds (cuisine, rating, budget, time, amenity, a 'Yes'). Pass only the NEW constraint from the last message. A place name answering a neighborhood question -> neighborhood=[\"<place>\"] only, never the previous reply's budget."
+      },
+      {
+        "op": "replace",
+        "target": "2 keys -> 2 blocks, 3 keys -> 3 blocks; stopping after the first key is wrong.",
+        "content": "Count LEGS, not keys: a raw key and its filtered_* version are ONE leg (load only the filtered one). departure_flights + return_flights + filtered_departure_flights + filtered_return_flights = 2 legs = 2 blocks, each loading its filtered key. 3 legs -> 3 blocks. Stopping after the first leg is wrong. In a flights-only conversation, an 'affordable under N' / 'under N' reply is budget=N on EVERY leg."
+      },
+      {
+        "op": "replace",
+        "target": "Never use a TOOL CONFIG example date such as '2025-08-03', and never reuse a date that appears only in this skill's examples (May 16/18/19/26, 2025 and similar).",
+        "content": "Never use a TOOL CONFIG example date such as '2025-08-03', and never use any date that is not written in a user message of the CONVERSATION. Dates inside this skill's examples are illustrations only."
+      },
+      {
+        "op": "replace",
+        "target": "- Pass only values the user literally stated. Never invent an airline from words like 'kid-friendly'.",
+        "content": "- Pass only values the user literally stated. num_people / num_rooms come only from a number the USER wrote ('we'll need 2 rooms' -> num_rooms=2 only; the assistant's 'for 2 people' or a 'family / kids' mention gives no num_people). Never invent an airline from words like 'kid-friendly'."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

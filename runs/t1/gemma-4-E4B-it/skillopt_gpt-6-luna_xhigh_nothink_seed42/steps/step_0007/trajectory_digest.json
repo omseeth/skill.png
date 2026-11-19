@@ -1,0 +1,64 @@
+{
+  "step": 7,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 26,
+  "failure_patterns": [
+    {
+      "pattern": "tool_result_persistence: Several trajectories omitted cache writes for search results, including final results and results needed by later calls.",
+      "count": 26,
+      "task_ids": [
+        "flighthotelattraction:train:19:26:3",
+        "flighthotelrestaurant:train:17:39:3",
+        "attraction:train:8:59:0",
+        "flighthotel:train:18:2:3",
+        "restaurant:train:20:47:3",
+        "flight:train:20:12:3",
+        "flight:train:7:30:4",
+        "flight:train:2:18:3",
+        "flighthotel:train:10:57:4",
+        "attraction:train:18:42:0",
+        "hotelattraction:train:14:7:5",
+        "restaurant:train:20:4:4",
+        "hotelrestaurant:train:13:12:1",
+        "hotel:train:8:33:2",
+        "hotel:train:8:28:1",
+        "hotel:train:9:25:3",
+        "flighthotelrestaurant:train:15:42:2",
+        "flighthotelattraction:train:7:36:4",
+        "attraction:train:22:10:0",
+        "flighthotelattraction:train:19:16:3",
+        "flighthotelrestaurant:train:17:4:1",
+        "attraction:train:13:56:0",
+        "flight:train:23:57:2",
+        "hotel:train:16:25:4",
+        "flighthotel:train:4:50:2",
+        "flighthotelattraction:train:9:27:1"
+      ]
+    }
+  ],
+  "score_before": 0.31,
+  "score_after": 0.265,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "\nFor each flight leg, require a `departure_date` and at least one starting-airport identifier: `start_airport_city`, `start_airport`, or `start_airport_code`. Treat this conditional origin requirement as mandatory even though each field is individually optional; ask for any missing required detail before searching.",
+      "target": "## Required-argument checks"
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- Use exact supported field names when mapping criteria: hotel hot tubs and saunas map to `has_hot_tub=True` and `has_sauna=True`; a nightshade-allergy accommodation request maps to the supported restaurant field `has_tomato_allergy_options=True`. For a guest-rating floor, use `[N, 5]`; reserve equal bounds for explicitly exact ratings or categories.",
+      "target": "## Tool results and constraints"
+    },
+    {
+      "op": "replace",
+      "content": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Check argument types against the tool schema: a single airport name or code is a scalar string (for example, `end_airport=\"ANC\"`), not a one-item list. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`): for “at least N stars,” use the inclusive range from N to the field's maximum; for an exact category, use equal bounds. For flight-time constraints, use the format accepted by the flight tool, such as 12-hour AM/PM strings. Do not copy a time verbatim from a cache summary if it is displayed in a different format; express an exact-time request with identical range endpoints and an “arrive by” request as a range from midnight to the stated time. Do not add unrelated preferences.",
+      "target": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences."
+    },
+    {
+      "op": "replace",
+      "content": "- Treat a request to stay “in” or “near” a named neighborhood or district as a hotel `neighborhood` constraint, not a `search_nearest` request. Do not use `search_nearest` as a substitute for an on-site hotel feature or amenity. Use it when the user wants proximity between two distinct domains (hotels, attractions, or restaurants): provide exactly two compatible result objects, one for each domain, and ensure one includes any named target (run a focused exact-name search if needed). For hotels near attractions, search for both hotels and the requested attraction category, then set `groupBy` to hotels. In other cases, set `groupBy` to the domain the user wants prioritized.",
+      "target": "- When the user requests proximity, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized."
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "step": 7,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 25,
+  "failure_patterns": [
+    {
+      "pattern": "invalid_param_name_or_format: Wrong kwarg name or type: end_airport_code passed as a list instead of end_airport string, room_service instead of has_room_service, a state abbreviation passed as city, and a 24h time format that raises a validation error. The airline code 'AM' was also read as morning.",
+      "count": 25,
+      "task_ids": [
+        "flighthotelattraction:train:19:26:3",
+        "flighthotelrestaurant:train:17:39:3",
+        "attraction:train:8:59:0",
+        "flighthotel:train:18:2:3",
+        "restaurant:train:20:47:3",
+        "hotelrestaurant:train:22:31:1",
+        "attraction:train:4:34:2",
+        "flight:train:20:12:3",
+        "hotel:train:12:44:1",
+        "flight:train:7:30:4",
+        "flight:train:2:18:3",
+        "flighthotel:train:10:57:4",
+        "hotelattraction:train:14:7:5",
+        "restaurant:train:20:4:4",
+        "hotelrestaurant:train:13:12:1",
+        "hotel:train:8:33:2",
+        "hotel:train:9:25:3",
+        "flighthotelrestaurant:train:15:42:2",
+        "attraction:train:22:10:0",
+        "flighthotelattraction:train:19:16:3",
+        "flighthotelrestaurant:train:17:4:1",
+        "attraction:train:13:56:0",
+        "flight:train:23:57:2",
+        "restaurant:train:4:17:2",
+        "flighthotelattraction:train:9:27:1"
+      ]
+    }
+  ],
+  "score_before": 0.41,
+  "score_after": 0.41,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "\n- The same holds for hotels. A hotel request with a city plus amenities ('kids club', 'beach access'), a rating, stars, a purpose ('family vacation') or a party size, but no stated check-in/check-out dates, is still missing the dates. Output only `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. Never call search_hotels with invented, example or identical check-in/check-out dates, and never infer num_people from context. An amenity word is not always a valid kwarg ('kids club' is has_kids_club, never kids_club), but with no dates there is no search at all.",
+      "target": "Do not search, and do not ask about class, airline, time, return date, or passenger count."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n  - Exception: if the CACHE summary of a `filtered_*` key already lists the assistant's proposal as applied (e.g. 'Additionally filtering for neighborhood(s): [Downtown Lexington]') and the user only agrees ('Okay, that sounds good', 'Sure'), there is nothing new to filter. Output only `x = get_results_from_cache(key=\"<that domain's key>\")`. Never re-filter, and never re-save under a key that already exists in the CACHE. A 'yes' to a proposal that is NOT yet listed as applied is still a new constraint.\n  - Multi-city itinerary (the CACHE has per-city or per-leg keys such as first_flights/second_flights or first_hotels/second_hotels, or the user named two destinations): a newly accepted attraction type or a newly requested restaurant/attraction domain gets ONE search per city. Use the same type or constraint in each call and save each under its own key that mirrors the existing naming. Example after 'Yes, that sounds amazing' to 'Would you like Sporting attractions?': `first_attractions = search_attractions(city=\"Tucson\", type=[\"Sporting\"])`, `save_to_cache(key=\"first_attractions\", value=first_attractions)`, `second_attractions = search_attractions(city=\"Anchorage\", type=[\"Sporting\"])`, `save_to_cache(key=\"second_attractions\", value=second_attractions)`. Never skip a city, never put two cities in one call, and do not re-filter the cached flights or hotels on that turn.",
+      "target": "  - Only a refusal or 'no preference' ('Not really', 'Anything is fine') with an existing cache entry means pure retrieval."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- Flights added after hotel dates are known ('yeah help me with flights too', CACHE has 'hotels' for May 22-25): the stay dates supply the flight dates (check-in = outbound departure, check-out = return). Only the origin is missing, so output just `seek_information(\"We need the departure city for the flight.\")`. If the origin is already known, search the outbound leg on the check-in date and the return leg on the check-out date (Rule 9). Never answer by re-filtering or re-saving the hotels key, and never write import lines.",
+      "target": "- Search only the domain whose mandatory args just became complete. Leave other domains' existing cache entries untouched (e.g. restaurants already cached, now the hotel dates arrive: call search_hotels only)."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- Trip descriptors are not parameters. 'Suitable for a family with kids', 'weekend getaway', 'business trip' and 'special occasion' add no search kwargs. Only literal numbers or amenities (e.g. '3 people', 'with a gym') are passed. Example: the user wanted a hotel in Memphis suitable for a family with kids, and the last turn gave 'Check-in is January 16, 2026 and check-out is January 25, 2026'. Output `hotels = search_hotels(city=\"Memphis\", checkin_date=[\"January 16, 2026\"], checkout_date=[\"January 25, 2026\"])` + `save_to_cache(key=\"hotels\", value=hotels)` with no has_kids_club or num_people.",
+      "target": "- Include optional details the user explicitly stated (num_rooms, num_people, budget, amenities, cuisine, ...) as keyword args in the search call, and nothing the user did not say."
+    }
+  ]
+}

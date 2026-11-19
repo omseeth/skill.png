@@ -1,0 +1,34 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_and_scope_mismanagement",
+      "count": 4,
+      "description": "Agents repeated base searches, regenerated unrelated or derived results, or skipped filtering compatible cached results after a constraint-only follow-up."
+    },
+    {
+      "failure_type": "schema_value_mapping",
+      "count": 2,
+      "description": "Attraction searches substituted a near-synonym for the requested type and mapped a state abbreviation to the city field."
+    },
+    {
+      "failure_type": "conversation_state_and_required_arguments",
+      "count": 2,
+      "description": "Agents invented missing flight dates or return requests, or dropped an active supported preference while adding an unsupported one."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains broad cache, constraint-tracking, and required-argument rules. The most useful additions are a sharper operational branch for follow-up turns and concrete examples for the observed attraction field/value mistakes. The existing required-argument rules already cover the remaining failures, so they are not repeated.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Follow-up action decision boundary\n\n- When the latest turn adds only a filterable constraint to an already requested domain (such as budget, amenity, cuisine, rating, or neighborhood), and a compatible cached result covers that domain and location, treat it as a refinement: retrieve the most constrained compatible result by its exact cache key, call the matching `filter_*` tool once, and save that exact returned object. Do not repeat the base search.\n- If the latest turn supplies a missing mandatory input and no compatible result exists, make the newly enabled base search with all still-active supported criteria from earlier turns. Omit criteria the tool does not support. Do not regenerate unchanged domains or rerun proximity calculations as a side effect of a filter-only turn; do so only when the current request asks for that work.\n\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key>\")\nupdated = filter_<domain>(prior_results=prior, <new_filter>=<user_value>)\nsave_to_cache(key=\"<descriptive new key>\", value=updated)\n```"
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Literal attraction field mapping\n\nFor attraction searches, preserve the user's requested type literally rather than substituting a similar label from tool examples: `Scenic` means `type=[\"Scenic\"]`, not `type=[\"Scenery\"]`. A state abbreviation belongs in `state`, not `city` (for example, `AZ` maps to `state=\"AZ\"`)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

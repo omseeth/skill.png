@@ -1,0 +1,45 @@
+{
+  "reasoning": "Combined the three proposals on cache follow-ups into one explicit decision boundary and retrieve-filter-save pattern. Added focused clarifications for trip-window hotel dates, rating thresholds, exact attraction type mapping, and saving the assigned result. The existing skill already gives detailed required-argument gates and separate reverse-route searches, so those proposals would be redundant.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "## Cache-aware tool workflow",
+      "content": "\n\n**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Tool results and constraints",
+      "content": "\n\n- Before finalizing tool code, verify that each `save_to_cache(value=...)` names the local variable assigned the corresponding tool result—not a guessed name derived from the domain or cache key. For example, assign `hotels = search_hotels(...)` and save with `value=hotels`.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "For example, put a state abbreviation in `state`, not `city`.",
+      "content": " For attractions, put the requested category in `type` with its exact value (for example, if the requested type is `Scenic`, pass `type=[\"Scenic\"]`).",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+      "content": "For restaurant ratings and hotel guest ratings, a bare request for an “N-star rating,” a “rating of N,” or “N or higher” means a minimum threshold, not an exact rating. Use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only when the user clearly requests an exact rating.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Use a date as a required travel date only when the conversation clearly ties it to the relevant flight leg or hotel stay; an event date alone does not establish a departure or stay date. Treat vague timing or occasion language (such as “last-minute,” “for my birthday,” “weekend getaway,” or “vacation”) as context, not as a calendar date or explicit stay length. Do not guess travel dates or duration; ask for any required date that remains missing or unclear.",
+      "content": "\n\nWhen a hotel is an active request for the same trip and the user explicitly gives a two-date trip window, use the first date as check-in and the second as checkout unless they provide different hotel dates. Do not ask for those dates again. If only one trip date is known, do not infer checkout or stay length.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

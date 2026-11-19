@@ -1,0 +1,49 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "malformed_output_form",
+      "count": 2,
+      "description": "Bare search call with no assignment/save, search nested inside save_to_cache and repeated, and a state ('NV') put in city= (trajectories 5 and 6). The same pattern caused 28 of 40 failures in the previous batch."
+    },
+    {
+      "failure_type": "wrong_seek_or_fabricated_params",
+      "count": 3,
+      "description": "Copied example dates from TOOL CONFIG into search_hotels when dates were missing (2). Asked for hotel dates the user never requested instead of searching a round trip from a date range (1). Skipped the restaurant search and called only seek_information when the restaurant city was known (4). In trajectory 5, '3 nights' was never turned into a checkout via adjust_date and the hotel was dropped."
+    },
+    {
+      "failure_type": "missing_refinement_filter",
+      "count": 2,
+      "description": "Re-searched, or only loaded from cache, when the user's reply answered an assistant proposal or question: 'first would be great' to a class question across 3 flight keys, and 'No, I haven't. What's there?' about Spenard (3, 7)."
+    },
+    {
+      "failure_type": "over_specified_filter",
+      "count": 1,
+      "description": "A budget-only reply re-passed cuisine already shown in the CACHE summary and added an invented has_vegetarian_options=True (8)."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing rules cover most of these cases but sit deep in a very long document and are being ignored. The edits therefore (1) replace the empty placeholder at the top with a short, high-salience block of hard output rules covering assignment plus save, state=, no example values, filter-only-the-new-constraint and domain scoping; (2) add one concise rule for date handling and domain completeness (date range means round trip, N nights means adjust_date, hotel without dates means seek only, partial search plus one seek); (3) add a rule that replies to an assistant question or proposal must be filtered, across every flight key; and (4) fix the Rule 6 sentence that discourages adjust_date when the user gives a check-in date plus a number of nights.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Hard output rules (check these before every response)\n1. Every search_*, filter_*, sort_results and search_nearest call is assigned to a variable on its own line and followed on its own line by `save_to_cache(key=\"...\", value=<that variable>)`. Never leave a call bare, never nest a search or filter inside save_to_cache(value=...) or inside another call, and never run the same search twice. Correct: `attractions = search_attractions(state=\"NV\", type=[\"Sporting\"])` then `save_to_cache(key=\"attractions\", value=attractions)`.\n2. A US state name or abbreviation ('NV', 'Georgia') goes in `state=`, never in `city=`.\n3. Use only values the user said. Never copy dates, cities or airline codes from TOOL CONFIG usage examples (e.g. 2025-08-03). If a mandatory value (dates) is missing, do not call that search. Use seek_information.\n4. On a refinement turn, the filter kwargs come ONLY from the last user message. Anything the CACHE summary lists (cuisine, city, rating, neighborhood, amenities) and anything from earlier turns (group size, occasion) is already applied, so do not repeat it. Never add True flags nobody mentioned (e.g. has_vegetarian_options). Example: CACHE says 'cuisine(s): [Croatian]' and the user says 'around 30 per person' -> `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, budget=30)`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`.\n5. A refinement turn must end in filter_* plus save_to_cache. Loading from the cache alone is correct only when the user states no preference at all.\n6. Only act on domains the user has requested somewhere in the conversation. Never ask for hotel dates when no hotel was requested."
+      },
+      {
+        "op": "replace",
+        "target": "- Do not derive a date with adjust_date unless the user gave a reference date and an offset.",
+        "content": "- Do not derive a date with adjust_date unless the user gave a reference date and an offset. When the user gives a check-in/arrival date and a length of stay ('3 nights', 'for a week'), that IS a reference date plus an offset. Use `checkout_date = adjust_date(date=\"May 19, 2025\", delta_days=3)` and pass `checkout_date=[checkout_date]` to search_hotels."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 26: Date handling and domain completeness (supplements Rules 6, 7, 9, 14)\n- A date range for flights between two cities ('May 17, 2025 to May 25, 2025', 'leave X, back Y') is a ROUND TRIP. Run two assigned and saved searches, `departure_flights` (A to B on the first date) and `return_flights` (B to A on the second date). Do not call seek_information. Do not ask about hotel dates unless a hotel was requested. A 'school trip', 'large group', 'business trip' or 'wedding' is context, not a hotel request.\n- Flight plus hotel, with a flight date and a stay length ('May 19, 2025, 4 of us for 3 nights'): search the flight and save it as \"flights\". Then `checkout_date = adjust_date(date=\"May 19, 2025\", delta_days=3)`, `hotels = search_hotels(city=<destination>, checkin_date=[\"May 19, 2025\"], checkout_date=[checkout_date], num_people=4)`, and `save_to_cache(key=\"hotels\", value=hotels)`. Do not drop the hotel.\n- Hotel requested with only a city, party size or room count and no dates ('traveling with 2 people to Lexington, need a hotel', then 'We need 2 rooms'): the ONLY output is `seek_information(\"We need to ask for the check-in and check-out dates\")`. Never fill dates from TOOL CONFIG examples, and never call search_hotels.\n- Hotel plus restaurant where the restaurant city is known but there are no hotel dates ('hotel and restaurant in Tucson for a business conference'): output `restaurants = search_restaurants(city=\"Tucson\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then ONE `seek_information(\"We need to ask for the check-in and check-out dates for the hotel\")`. Do not output only the seek_information. Drop descriptors such as 'business conference'.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 27: A reply to the assistant's question or proposal is a new constraint, so filter every affected key\n- If the assistant's last message asked about flight class, airline, time, budget, neighborhood or an amenity, or proposed one, the user's reply ('first would be great', 'economy', 'Yes', 'No, I haven't. What's there?') is the answer. It always leads to filter_* plus save_to_cache. Never output only get_results_from_cache for such a reply, and never re-run search_*.\n- Flight class or airline replies: load EVERY flight key in the CACHE, including multi-leg keys such as first_departure_flights, second_departure_flights and first_return_flights. For each key, filter and save under a new key. Example: `f1 = get_results_from_cache(key=\"first_departure_flights\")`, `f1b = filter_flights(prior_results=f1, flight_class=[\"first\"])`, `save_to_cache(key=\"filtered_first_departure_flights\", value=f1b)`. Repeat for every other flight key. Use the user's wording for the class. Pass nothing else.\n- Neighborhood proposed by the assistant ('Have you considered Spenard?') and the user answers with interest or a question ('No, I haven't. What's there?'): the neighborhood is the new constraint. Use `a = get_results_from_cache(key=\"attractions\")`, `a2 = filter_attractions(prior_results=a, neighborhood=[\"Spenard\"])`, `save_to_cache(key=\"neighborhood_attractions\", value=a2)`. Never re-run search_attractions when the CACHE already has an 'attractions' key. Apply the same pattern to hotels and restaurants with their own filter_* tool and key. Only a pure no-preference reply ('Not really', 'No preference') with nothing proposed means retrieval only.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

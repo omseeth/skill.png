@@ -1,0 +1,54 @@
+{
+  "reasoning": "Preserved all failure-driven corrections as the higher-priority replacements. Added the compatible success-driven clarification that proximity must be explicitly requested, along with common required-input reminders that are not covered by the failure edits.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- At each turn, inspect cache summaries and identify which domains or itinerary legs the latest turn changes. For each changed request, retrieve by exact key a compatible cached result for the same domain, location, dates, and leg whenever its candidate set can be narrowed to the request. It need not already include newly supplied filterable criteria such as cuisine, budget, rating, or amenities. Apply the matching `filter_*` tool to that result with the new constraints, retaining constraints already embodied in the cached result. Do not repeat a base search just to add filterable criteria. Search only when no compatible cached result exists or the request's scope has changed; leave unaffected domains and legs alone.",
+      "content": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.\n- Identify only the domains or itinerary legs changed by the latest user turn. For each changed request, if a compatible cached result exists, retrieve it with `get_results_from_cache(key=\"<literal cache key shown in the summary>\")` and assign the returned object to a local variable; cache keys and summaries are not Python result variables. Choose a result whose domain, location, dates or leg, and original scope can cover the request: a broader candidate set may be filtered, but do not use a narrower result for a broader request. Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result. A cached proximity result may also be used as filter input when its candidate set remains valid. Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no cached result can cover the changed scope.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Assign every search, filter, sort, and nearest-results call to a variable and immediately save that same result with `save_to_cache` under a unique, descriptive key, even when it is the final call. For example, use `results = search_restaurants(...)` followed by `save_to_cache(key=\"restaurants\", value=results)`. Do not call these tools inline, print their results instead of saving them, or save an assumed or differently named variable. Pass the assigned result to later filters or nearest calls, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally.",
+      "content": "- Assign every search, filter, sort, and nearest-results call to a variable holding that call's returned result, then immediately save that same variable with `save_to_cache` under a unique, descriptive key, even when it is the final call. For example: `results = search_restaurants(...)` followed by `save_to_cache(key=\"restaurants\", value=results)`. Never pass a tool function itself (for example, `value=search_hotels`) or a guessed, unassigned, or differently named variable as the cache value. Do not call these tools inline or print results instead of saving them. Pass the assigned result to later filters or nearest calls, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally. Before returning generated code, audit that every such call is assigned and immediately followed by saving that exact result.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+      "content": "- Pass only criteria supported by the conversation and map each value to the field that expresses it. Preserve the user's entity text and supported category or filter values exactly; do not normalize or substitute a near synonym, including for an attraction `type`. For example, put a state abbreviation in `state`, not `city`. For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; do not treat a request to stay in a named district as a proximity search. Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed; do not mix 12-hour suffixes with 24-hour values (for example, represent midnight as `00:00:00`, not `00:00 PM`). Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+      "content": "- Map explicit traveler descriptors and counts established anywhere in the full conversation to supported party-size fields. For hotel searches, “solo” or “traveling alone” means `num_people=1`; use a clearly established people count from earlier dialogue even if the latest reply only supplies a room count. Keep `num_people` and `num_rooms` distinct: use each only for its stated count, and do not infer one from the other or infer an exact count from vague terms such as “family.”",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "## Flight itinerary legs\n\nDo not infer a return leg or ask for a return date solely because the user mentions a vacation, getaway, or destination. Request a return date only when the user explicitly asks for a round trip or return leg, or supplies a return date.\nTreat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to both legs, and do not combine distinct legs by repeating keyword arguments in one call.",
+      "content": "## Flight itinerary legs\n\nDo not infer a return leg or ask for a return date solely because the user mentions a vacation, getaway, or destination. Request a return date only when the user explicitly asks for a round trip or return leg, or supplies a return date.\nWhen a flight request gives a trip date window explicitly as a range from an earlier date to a later date, treat the earlier date as the outbound departure date and the later date as the reverse-direction return departure date, unless the user specifies one-way travel or requests only one leg. Do not treat a list of alternative departure dates as a return date.\nTreat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to both legs, and do not combine distinct legs by repeating keyword arguments in one call.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- When the user requests proximity, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "content": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Required-argument checks",
+      "content": "- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs.",
+      "support_count": 5,
+      "source_type": "success"
+    }
+  ]
+}

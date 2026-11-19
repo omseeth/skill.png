@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Partial-name clue ('First name of the man elected chancellor...') answered with only the requested part ('Helmut'), even though the guidance says a first name alone is never acceptable. The existing guidance conflicts with this and needs a scoped override.",
+    "Definition-style clue ('It can mean to emit vapor or to show irritation') answered with the single dictionary headword in base form ('fume'). The agent took the word whose entries in the passages listed both senses, not a synonym or an inflected form like 'fuming'.",
+    "Counting clue ('rise 5 ranks from Tenderfoot') solved by finding the ordered list in the passages (Scout, Tenderfoot, Second Class, First Class, Star, Life, Eagle), counting exactly N steps from the anchor, and answering with the title reached ('Eagle Scout').",
+    "Verbatim sentence echo: passages repeat the clue sentence with the answer entity in the blank ('famed horticulturist Luther Burbank developed the Santa Rosa plum'). Passages that only restate the anchors (Dijon/Bordeaux route planners, a 'trial' dictionary entry) carry no answer, so the agent used its own knowledge of the shared category (French, the Test) and still got it right.",
+    "Fragment lists of fictional characters were resolved to the shared work ('Barney Miller'). A caption-style 'She's the subject of ...' was resolved to the full name ('Marilyn Monroe'). Both are already covered by existing rules."
+  ],
+  "patch": {
+    "reasoning": "Most successes are already covered by Rules 1-3: character lists, double meanings, verbatim echoes and place fragments. Three patterns are not. (1) 'First name of' clues are contradicted by the existing 'a first name alone is never acceptable' guidance, so the agent may over-extend to the full name. A scoped override fixes this. (2) 'It can mean X or Y' definition clues need the headword in base form, not a synonym or inflection. (3) Counting-steps clues need an explicit procedure: find the ordered list, count N steps from the anchor, and answer with the item reached. All three are short, key on visible clue features, and add no template or blanket shorten/lengthen rule, which the optimizer notes warn against.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 4: Exact-match formatting of the final answer",
+        "content": "\n- PARTIAL-NAME ASKS: when the clue itself says 'First name of', 'last name of', 'surname', 'nickname' or 'initials', give ONLY that part ('First name of the man elected chancellor of a reunified Germany in 1990' -> 'Helmut', not 'Helmut Kohl'). This overrides the full-name and 'first name alone is never acceptable' guidance, which applies only when the clue asks for the person himself."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 1: Questions are Jeopardy-style clues; always answer with the missing entity",
+        "content": "\n- DEFINITION CLUES ('It can mean to emit vapor or to show irritation', 'Term for ...', 'To ...'): the answer is the single word that dictionary-style passages define with ALL the listed senses. Pick the headword that appears next to each sense in the passages, not a synonym. Give it in the base form that matches the clue's part of speech ('fume', not 'fuming' or 'fumes'). If one sense fits only some passages, keep looking for the word that fits every sense."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 1: Questions are Jeopardy-style clues; always answer with the missing entity",
+        "content": "\n- COUNTING / ORDINAL CLUES ('rise 5 ranks from Tenderfoot', 'three places after X', 'the 14th one of these'): find the passage that lists the full ordered sequence (e.g. Scout, Tenderfoot, Second Class, First Class, Star, Life, Eagle). Count exactly N steps from the anchor, where the anchor itself is step 0, and write the count out before answering. The answer is the item you land on, in the form the list uses ('Eagle Scout'). Do not answer with the anchor or an off-by-one neighbour."
+      }
+    ]
+  },
+  "source_type": "success"
+}

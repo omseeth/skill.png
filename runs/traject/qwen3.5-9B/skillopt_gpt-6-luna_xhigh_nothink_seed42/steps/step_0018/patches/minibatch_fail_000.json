@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_or_operation_selection",
+      "count": 4,
+      "description": "Some calls used an adjacent check or feed, or missed an operation exposed through a configurable endpoint."
+    },
+    {
+      "failure_type": "workflow_coverage",
+      "count": 2,
+      "description": "Explicit search or analysis operations in multi-step workflows were omitted."
+    },
+    {
+      "failure_type": "parameter_binding_and_canonicalization",
+      "count": 5,
+      "description": "Calls misbound fields or values, including date direction, enum casing, parameter placement, and contextual selectors."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed coverage and schema-binding issues are already addressed by the skill's ledger, schema, and final-audit rules, so repeating them would add little. These edits target two narrower gaps: deriving the operation selector for configurable endpoints and mapping temporal language to the correct date-bound field.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- For multiple requested checks, use an endpoint that covers them all only when its documented scope supports that. Otherwise, make separate calls. Batch multiple items only when the endpoint explicitly supports batching those resources with the applicable options; do not pack multiple calls into a scalar parameter.",
+        "content": "\n- For configurable or multi-operation endpoints, treat a function/action selector as part of endpoint selection: derive its canonical documented value from the requested result and bind it, rather than overlooking the endpoint because the operation is expressed through a selector."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Preserve user-provided identifiers and meaningful free text unless the schema requires a documented conversion. For categorical filters, codes, and selectors, map the request to the documented parameter meaning—not a similarly named field—and use the endpoint's canonical accepted token and casing from its enums or examples. Do not pass a descriptive word as a category value when it changes the field's meaning; preserve original wording when no conversion is documented. Interpret directional constraints according to field semantics.",
+        "content": "\n- Bind temporal language to the matching date-bound field: since, after, or from indicates a start/from bound; until, through, or before indicates an end/to bound. Verify the direction against the schema instead of treating date fields as interchangeable."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

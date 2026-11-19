@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "invented_or_misplaced_params",
+      "count": 4,
+      "description": "Parameter names not in the schema (BestBuy min_price/max_price/free_shipping, Yahoo start=0), empty-string values (Asos, Wayfair star), a required param placed under optional (BestBuy page), and domain=amazon.de instead of de."
+    },
+    {
+      "failure_type": "wrong_sibling_tool_or_extra_calls",
+      "count": 5,
+      "description": "Wrong sibling or padding calls: flightInfo/flightSearch swapped and tripled, an extra Wayfair get-pricing, a stacked email validator, v2/detail (Deprecating) instead of get-common-info, Homepage and Create Email tools, and Yahoo growth_technology_stocks instead of Alpha Vantage OVERVIEW."
+    },
+    {
+      "failure_type": "missing_calls",
+      "count": 4,
+      "description": "Dropped deliverables: Aliexpress named in a retailer list, the disposable-domain check (MailCheck: Domain), the company-overview call, and the domain-level checks in an email-plus-domain request."
+    },
+    {
+      "failure_type": "tool_name_form",
+      "count": 1,
+      "description": "Provider prefix dropped: 'Zappos product detail by Product ID' instead of 'Zappos Realtime Data: Zappos product detail by Product ID'."
+    }
+  ],
+  "patch": {
+    "reasoning": "Parse success was 1.0 on all eight tasks; the losses are tool choice, completeness and parameter grounding. Four edits target the repeated patterns with concrete before/after examples rather than restating existing prose. (1) A qualifier-fit rule routes price and shipping filters to the sibling tool that has those fields and stops invented params. (2) A sibling-pair and no-utility-endpoint rule fixes the flight, email, overview and Wayfair facet mistakes. (3) A named-platform rule stops retailers dropping out of lists. (4) Three new self-check items at the end of the answer cover the name prefix, schema-only/non-empty/correctly-placed params, and value form (Amazon de, SBB lowercase). Each is aimed at rules already in the skill that were still violated.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "and a location field that accepts the given ID format).",
+        "content": "\n- QUALIFIER FIT. If a clause carries a price range, free shipping, rating or similar filter, pick the sibling whose schema has those fields. Never use a tool without them and invent parameter names. 'iPhone 13 Pro between $600-$900 with free shipping' -> `Aliexpress DataHub: Aliexpress - Item Search 2` with `q`, `startPrice`=`600`, `endPrice`=`900`, `switches`=`freeShipping`, `region`=`US`, `currency`=`USD`, `page`=`1`. `BestBuy Product Data: BestBuyProductData` only takes `keyword` and `page`. When two siblings both fit, prefer the one not marked '(Deprecating)': 'detailed/common product information' for a Wayfair SKU -> `Wayfair: products/get-common-info`, not `products/v2/detail (Deprecating)`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "\n- SIBLING PAIRS (one call per clause, no spare call 'to be safe'). 'Looking up flight X between date A and date B' -> `Flightera Flight Data: flightSearch` (`flnr`, `dtFrom`, `dtTo`). 'Detailed information about flight Y on date D' -> `Flightera Flight Data: flightInfo` (`flnr`, `date`). Two flights means two calls, not three. 'Is domain X classified as disposable' -> `MailCheck: Domain` as its OWN call, even when a later clause validates an email. 'Valid AND disposable' for a full address -> ONE email tool, not two. 'Key company overview metrics' for a ticker -> `Alpha Vantage: Customizable Endpoint` with required `function`=`OVERVIEW` and optional `symbol`. 'Product with its images and financing options' -> exactly `get-images` + `get-financing-offers`; do not add `get-pricing` or any facet the query did not name. Never call Homepage, Help Page, Heartbeat, Create Email, Send Mail, List Domains or Rules endpoints unless the query asks for that action. 'Comprehensive checks on an email and its domain' = an email-level validator with the full address plus domain-level tools with the bare domain (`MailCheck: Domain`, `fast Email verifier: Role Account`, `fast Email verifier: disposable Domain and Suggest Domain`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "Add any missing call and delete any call that no clause asks for.",
+        "content": "\n- NAMED PLATFORMS ARE DELIVERABLES. In 'compare X across retailers including BestBuy, Wayfair, Zappos and Aliexpress', every named retailer that has a search or list tool in the tool list gets a call (BestBuy -> `BestBuyProductData`, Aliexpress -> `Aliexpress - Item Search 2`). The LAST name in such a list is the one most often dropped. A retailer for which the query already gives a specific SKU or ID gets only the detail calls named for it."
+      },
+      {
+        "op": "insert_after",
+        "target": "with no padding calls.",
+        "content": "\n7. NAME PREFIX: the name starts with the same provider words as its `### ` heading. BAD `Zappos product detail by Product ID`. GOOD `Zappos Realtime Data: Zappos product detail by Product ID`.\n8. SCHEMA-ONLY PARAMS: every `name` appears verbatim in the chosen tool's own Required/Optional list, and sits in the list the schema uses (BestBuy `page` is REQUIRED). No empty values: an empty Asos `store` or Wayfair `star` is dropped, or filled with the market default (`US`, `en-US`). No invented names: BAD BestBuy `min_price`, `max_price`, `free_shipping`; BAD `start`=`0` when the query gives no start. If the tool cannot express a qualifier, switch to a sibling that can.\n9. VALUE FORM: Amazon `domain`=`de` even when the query writes amazon.de. SBB Autocomplete `query`=`zurich` (lowercase). A count such as 'list of 500 cities' stays a quoted string `\"500\"`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

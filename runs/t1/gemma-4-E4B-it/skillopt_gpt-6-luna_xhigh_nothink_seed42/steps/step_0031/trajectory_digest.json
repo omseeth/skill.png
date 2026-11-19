@@ -1,0 +1,49 @@
+{
+  "step": 31,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 21,
+  "failure_patterns": [
+    {
+      "pattern": "cache-state selection and constraint resolution: Follow-ups re-searched or chose a less-constrained cache result, or failed to interpret the latest preference using the preceding question.",
+      "count": 21,
+      "task_ids": [
+        "flighthotel:train:20:16:1",
+        "restaurant:train:2:4:4",
+        "hotelrestaurant:train:4:27:4",
+        "restaurant:train:8:21:3",
+        "flighthotel:train:21:6:1",
+        "flighthotel:train:8:39:3",
+        "flighthotelattraction:train:3:59:4",
+        "flighthotel:train:10:57:4",
+        "hotelrestaurant:train:11:24:0",
+        "attraction:train:8:59:0",
+        "flight:train:14:40:3",
+        "attraction:train:11:29:0",
+        "attraction:train:23:15:2",
+        "flighthotelrestaurant:train:4:1:2",
+        "hotelattraction:train:21:43:2",
+        "flight:train:1:47:2",
+        "attraction:train:2:2:0",
+        "hotelattraction:train:16:52:3",
+        "attraction:train:13:2:0",
+        "flight:train:10:18:3",
+        "hotelrestaurant:train:13:51:0"
+      ]
+    }
+  ],
+  "score_before": 0.505,
+  "score_after": 0.505,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "**Turn classifier (apply before any tool call):** Read the full conversation, preceding assistant offer, and cache summary; identify only the scopes changed by the latest turn.\n1. Resolve replies against the offer before interpreting an affirmative: carry out the offered operation and scope. Accepting an offer for a new category or entity starts that search; accepting a proximity offer means retrieving compatible cached hotel and attraction or restaurant results and running `search_nearest`, not searching a new category. Set `groupBy` to the domain the user wants recommended. Preserve earlier explicit proximity requests unless withdrawn; merely mentioning domains together does not imply proximity.\n2. For each changed scope, select the most constrained cached result that still covers the full requested domain, location, dates or leg, and entity scope, and embodies the most active criteria. If it covers the request, retrieve it by its literal cache key, retain criteria already embodied, apply new and other active supported filterable constraints, and save the filtered result. Apply updates such as party size or amenities to the relevant compatible cached or composite results. Do not base-search a covered scope or regenerate unaffected scopes.\n3. Base-search only for a genuinely new or uncovered scope, with all active supported criteria. Combine same-domain criteria in one call when supported, such as a category and a named attraction. If there is no supported actionable change and compatible cached results cover all active requests, take the no-op path.",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```"
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- Resolve hotel dates and city from itinerary context only when clear. If a hotel is requested as part of a round trip and the outbound and return dates define the trip span, use the destination as the hotel city and those dates as check-in and check-out unless the user specifies otherwise. For a multi-city itinerary, do not infer hotel dates or location from flight-leg dates; keep the hotel request pending and seek only its missing mandatory details. Do not silently omit an explicitly requested hotel domain.",
+      "target": "## Required-argument checks"
+    }
+  ]
+}

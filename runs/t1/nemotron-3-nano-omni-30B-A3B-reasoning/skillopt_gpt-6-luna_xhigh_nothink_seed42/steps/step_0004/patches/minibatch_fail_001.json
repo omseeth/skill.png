@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle_and_type_safety",
+      "count": 7,
+      "description": "Search, filter, or sort calls were left unsaved, or hand-built results were passed to the cache instead of tool result objects."
+    },
+    {
+      "failure_type": "cache_coverage_and_incremental_refinement",
+      "count": 3,
+      "description": "Agents skipped a needed refinement, treated an incomplete cached result as complete, or repeated work already covered by cache."
+    },
+    {
+      "failure_type": "request_scope_and_mandatory_inputs",
+      "count": 2,
+      "description": "Agents omitted requested domains or flight legs, or invented missing hotel dates instead of seeking them."
+    },
+    {
+      "failure_type": "schema_and_semantic_argument_mismatch",
+      "count": 3,
+      "description": "Agents used unsupported argument names or substituted a similar but different amenity."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent execution failure calls for a concrete tool-result workflow that also prevents saving hand-built lists. The batch also exposes two narrower gaps: proximity guidance covers hotels and attractions but not restaurants, and schema validation could more explicitly forbid guessed aliases or approximate feature mappings. The existing cache-coverage and missing-information rules already state the relevant principles, so they are not duplicated here.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- For every search, filter, sort, and nearest-results call, assign the exact returned result object to a variable and save that same object with `save_to_cache` under a unique, descriptive key. Do not leave calls as bare expressions, save `.search_results` or a hand-built list/dictionary, or manually filter or reshape tool results; use the domain tools and cache their returned objects. For a refinement, retrieve the cached base, call the appropriate filter with `prior_results`, then save the filter's returned object under a new key. For example: `base = get_results_from_cache(key=\"...\"); refined = filter_restaurants(prior_results=base, budget=...); save_to_cache(key=\"...\", value=refined)`."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- Before calling a tool, verify every argument name is in that tool's schema. Do not turn the user's wording into a guessed parameter alias or approximate a feature with a merely similar one. If no supported field unambiguously represents a preference, omit that unsupported criterion."
+      },
+      {
+        "op": "replace",
+        "target": "## Hotel proximity to attractions\n- If the user explicitly requests hotel access or proximity to an attraction, check whether relevant attraction results are available; search for any missing results, then call `search_nearest` with both the hotel and attraction result objects, grouped by the requested primary domain. Interest in visiting an attraction alone does not imply a request for proximity or require a nearest-results call.",
+        "content": "## Proximity between travel domains\n- If the user explicitly requests proximity between domains supported by `search_nearest` (for example, a hotel near a restaurant or attraction), check whether the relevant result objects are available; search for missing results when their mandatory inputs are present, then call `search_nearest` with both result objects and group by the requested primary domain. Interest in visiting or dining at a place alone does not imply a proximity request."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

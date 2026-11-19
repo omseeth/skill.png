@@ -1,0 +1,41 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "schema_group_placement",
+      "count": 1,
+      "description": "A requested optional parameter was placed in the required-parameter group."
+    },
+    {
+      "failure_type": "call_format_serialization",
+      "count": 1,
+      "description": "Numeric parameter values were emitted as JSON numbers although the call format represented values as strings."
+    },
+    {
+      "failure_type": "unit_token_canonicalization",
+      "count": 1,
+      "description": "The requested temperature unit was spelled out instead of using the endpoint's canonical unit token."
+    }
+  ],
+  "patch": {
+    "reasoning": "The endpoint choices and request-to-location mapping were correct. The edits clarify how to keep schema-requiredness separate from user-requested parameters, resolve the ambiguity in string-valued call examples, and map unit names to canonical endpoint tokens.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Use exact parameter names, satisfy the schema's semantic types, include every required parameter, and put parameters in the required or optional group specified by the tool.",
+        "content": "Use exact parameter names and satisfy the schema's semantic types. Place each parameter in the required or optional group exactly as the endpoint schema declares; a user-requested optional parameter stays optional and does not become required merely because it is requested. Include every schema-required parameter."
+      },
+      {
+        "op": "replace",
+        "target": "Serialize values according to the required call-format convention: follow explicit examples that consistently encode values as strings, even for numeric or boolean parameters; otherwise follow the declared schema types.",
+        "content": "Serialize values according to the required call-format convention. If the required format's `{name, value}` examples represent values as strings and do not show type-specific exceptions, encode numeric and boolean values as strings too, even when the endpoint schema declares NUMBER or boolean; otherwise follow the declared schema types."
+      },
+      {
+        "op": "insert_after",
+        "target": "Match the representation expected by each field: use a canonical slug when the schema requires one and convert quantities to documented units (for example, 5 minutes to 300 seconds).",
+        "content": "For requested units, use the endpoint's documented canonical token. If allowed values are not listed but the unit mapping is unambiguous and conventional, use its standard API abbreviation (for example, Fahrenheit as `F`) rather than expanding it into prose; do not guess ambiguous tokens."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

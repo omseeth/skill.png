@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_result_reuse_or_filtering_failure",
+      "count": 8,
+      "description": "Agents either repeated a base search despite compatible cached results or retrieved cached results without applying the newly requested filter."
+    },
+    {
+      "failure_type": "hotel_star_vs_guest_rating_mapping",
+      "count": 1,
+      "description": "A hotel property-star threshold was also passed as a guest-rating constraint."
+    },
+    {
+      "failure_type": "hotel_room_count_mapping",
+      "count": 1,
+      "description": "An explicit hotel room count was not applied alongside the stated number of guests."
+    },
+    {
+      "failure_type": "unrequested_domain_and_proximity_calls",
+      "count": 1,
+      "description": "The agent regenerated unrelated restaurant results and requested proximity without an explicit proximity request."
+    }
+  ],
+  "patch": {
+    "reasoning": "The dominant cache-reuse failures are already directly addressed by the skill, so repeating those instructions would not patch a content gap. These edits clarify the distinct hotel parameter-mapping gaps: explicit room counts and the separation of property stars from review ratings.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+        "content": "- For hotel requests, map “solo” or “traveling alone” to `num_people=1`; map each explicitly stated room count to `num_rooms` and each explicitly stated guest count to `num_people`. Apply newly supplied counts when filtering compatible cached hotel results unless the selected result already embodies them. Do not infer an exact guest count from vague terms such as “family.”"
+      },
+      {
+        "op": "replace",
+        "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+        "content": "For hotels, `stars` means the property's star classification: “at least N stars” uses `stars=[N, 5]`, and exactly N stars uses `stars=[N, N]`. Use hotel `rating` only for guest-review scores; do not set it for a property-star request unless the user separately asks for a review-rating threshold. For restaurant ratings and hotel guest-review ratings, a minimum of N uses `rating=[N, 5]`; an explicitly exact rating uses `rating=[N, N]`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

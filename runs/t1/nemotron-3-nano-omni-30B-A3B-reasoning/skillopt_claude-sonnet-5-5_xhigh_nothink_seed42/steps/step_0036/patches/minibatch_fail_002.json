@@ -1,0 +1,61 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "flight_date_turn_mishandled",
+      "count": 3,
+      "description": "Round-trip date replies were mishandled. One trajectory sent the return date through arrival_date and wrote a single search. One wrote the invalid `return_flights=departure_date`. One saw 'May 21, 2025' in the user's last turn but still output seek_information because of the 'anniversary' occasion word."
+    },
+    {
+      "failure_type": "stated_class_dropped_from_flight_search",
+      "count": 1,
+      "description": "The user said 'either business or economy', but the flight_class list was dropped from the searches. Rule 9 says 'Add no other params: no airline, flight_class...', which contradicts the top rule that a stated class goes into both legs."
+    },
+    {
+      "failure_type": "named_attraction_overwrote_cache_key",
+      "count": 1,
+      "description": "Hotels and attractions were cached and the user said 'Yes, we want to visit Georgia Aquarium'. The agent re-searched attractions with type plus name and overwrote 'attractions', instead of searching by name only, saving under a new key, and calling search_nearest. The Rule 10 bullet ('Do not touch the hotel cache') contradicts Rules 25/26."
+    },
+    {
+      "failure_type": "wrong_kwarg_type_airport",
+      "count": 1,
+      "description": "The user named a preferred arrival airport and the agent wrote end_airport_code=[\"ANC\"], a list for a string argument. It should be end_airport=\"ANC\"."
+    },
+    {
+      "failure_type": "wrong_domain_refiltering",
+      "count": 1,
+      "description": "After a hotel-only reply, the agent also re-filtered both cached flight keys with the earlier 'economy'. Earlier edits to this area regressed, so no edit is proposed here."
+    },
+    {
+      "failure_type": "hygiene_state_vs_city_and_unsaved_call",
+      "count": 1,
+      "description": "'a trip to TN' became `city=\"TN\"` and the call was left unassigned and unsaved. The existing rules already cover this, so this looks like a sampling slip and no edit is proposed."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the seven failures are flight-date turns, so the first two edits go there. The first puts a short, high-attention check into the DATE GATE. If the last message holds a date, search. Two dates mean two calls with swapped cities. Never use return_flights=, return_date or arrival_date as stand-ins. A stated class goes into both searches. The second edit removes the Rule 9 sentence that contradicts that. The third edit removes the conflict between Rule 10 and Rules 25/26 for 'visit <named attraction>' when a hotels key exists. The fourth tells the agent that airport arguments are plain strings. I skip the hotel-reply-refilters-flights pattern because earlier edits there regressed. I also skip the hygiene slip because the existing rules already cover it, and adding length would dilute attention.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "search_flights never takes num_people or num_layovers.",
+        "content": "search_flights never takes num_people or num_layovers. FLIGHT DATE CHECK: scan the LAST user message first. A month-day-year string there ('We're thinking of May 21, 2025', 'around May 22', 'possibly') IS the departure date, so search at once when origin and destination appear anywhere in the conversation. An occasion word ('anniversary', 'special') never turns it into a seek_information. Two dates ('X to Y', 'going X ... returning Y') mean a round trip, which is TWO assigned and saved search_flights calls: outbound departure_date=[\"X\"], and the return with the cities swapped departure_date=[\"Y\"]. Never write `return_flights=...` or `return_date`, and never put the return date in arrival_date or departure_time. A class or airline the user stated in any turn ('either business or economy' -> flight_class=[\"business\", \"economy\"]) goes inside BOTH searches."
+      },
+      {
+        "op": "replace",
+        "target": "Add no other params: no airline, flight_class, budget, times or num_people.",
+        "content": "Add only a flight_class / airline / budget the user actually stated (e.g. 'okay with either business or economy' -> flight_class=[\"business\", \"economy\"] on BOTH legs), and no times or num_people."
+      },
+      {
+        "op": "replace",
+        "target": "Do not touch the hotel cache for that turn.",
+        "content": "That applies only when NO hotels key is in CACHE. When a hotels key IS in CACHE (e.g. 'Yes, we want to visit <attraction>'), Rule 26 wins: load the latest hotels key, run `search_attractions(city=..., attraction_name=[\"<name>\"])` with NO type and save it under a new key such as attractions1 (never overwrite 'attractions'), then `search_nearest(hotels=<hotels>, attractions=<attractions1>, groupBy=\"hotel\")` saved as nearest_hotels."
+      },
+      {
+        "op": "replace",
+        "target": "If the user names an airport code (e.g. 'I normally fly from SJC'), add start_airport=\"SJC\" on the outbound leg and end_airport=\"SJC\" on the return leg.",
+        "content": "If the user names an airport code (e.g. 'I normally fly from SJC'), add start_airport=\"SJC\" on the outbound leg and end_airport=\"SJC\" on the return leg. A preferred arrival airport ('ANC is our preferred choice') is end_airport=\"ANC\" on the leg flying there (start_airport on the return leg). Airport arguments are plain strings, never lists. Do not use start_airport_code or end_airport_code."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

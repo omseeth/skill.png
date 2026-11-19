@@ -1,0 +1,52 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_assign_and_save",
+      "count": 3,
+      "description": "First-turn search_* was emitted as a bare call, with no variable and no save_to_cache. Two of these were attraction searches."
+    },
+    {
+      "failure_type": "attraction_state_vs_city",
+      "count": 3,
+      "description": "A two-letter state code ('MO', 'OR') was put in city= instead of state=. Narrowing a cached state-level attraction search to a city was done with a fresh search_attractions instead of filter_attractions(city=...)."
+    },
+    {
+      "failure_type": "re_search_instead_of_filter_on_cached_domain",
+      "count": 3,
+      "description": "The CACHE already held the domain (flights/return_flights, attractions), but the agent re-ran search_* (or re-searched flights in a hotel turn) instead of loading the cache and filtering."
+    },
+    {
+      "failure_type": "cross_domain_or_missing_dates",
+      "count": 1,
+      "description": "Hotel amenities were answered with no hotel dates and no hotel cache key. The agent filtered the attractions cache with filter_hotels instead of calling seek_information for the check-in and check-out dates."
+    },
+    {
+      "failure_type": "incomplete_multi_leg_filter_and_key_overwrite",
+      "count": 1,
+      "description": "A flight class preference was applied to only one leg. The result was saved over an existing cache key. Also, a single star value was passed as stars=[2] instead of [2, 2]."
+    }
+  ],
+  "patch": {
+    "reasoning": "These edits target the new systematic errors. Unsaved bare search calls are the easiest to fix and the most common in this batch. Attraction state codes and city narrowing are a distinct domain-specific error. A strict cache gate fixes three re-search failures and the cross-domain filter. Multi-leg completeness, new-key naming and the [N, N] star format cover the remaining misses. Rule 13's 'do not add city to a filter' is explicitly overridden for attractions.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Rule 15: Every tool call is assigned and saved (including the very first search)\n- Write every search_*, filter_*, sort_results and search_nearest call as `x = tool(...)` followed by `save_to_cache(key=\"<key>\", value=x)`. A bare line such as `search_attractions(city=\"X\", type=[\"Art\"])` or `search_flights(...)` with no variable and no save_to_cache is always wrong. This holds on turn 1 and for single-domain requests.\n- First-search keys are simple domain names: \"flights\" (or \"departure_flights\" and \"return_flights\" for a round trip), \"hotels\", \"restaurants\", \"attractions\". Refinement keys are new and unique, e.g. \"filtered_hotels\" or the old key plus \"2\".\n- The only call without a save is a pure cache retrieval (Rule 8).\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 16: Attractions - state vs city, and narrowing a cached search\n- A US state code or state name ('MO', 'OR', 'CA', 'California') goes in `state=`, never `city=`. Use `city=` only for actual cities. Example: `attractions = search_attractions(state=\"OR\", type=[\"Social\"])` then `save_to_cache(key=\"attractions\", value=attractions)`.\n- If the CACHE holds an attractions search for a state or broad area and the user then picks a city inside it ('I am thinking of going to San Jose'), this is a narrowing refinement. Do NOT call search_attractions again. Write `a = get_results_from_cache(key=\"attractions\")`, `b = filter_attractions(prior_results=a, city=\"San Jose\")`, then `save_to_cache(key=\"filtered_attractions\", value=b)`. Do not repeat the type listed in the cache summary. This overrides the 'do not add city to a filter' line of Rule 13 for attractions narrowed by city.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 17: Cache gate - check CACHE keys before ANY search_*\n- Before writing a search_* call, read the CACHE keys. If a key already exists for that domain (flights, departure_flights, return_flights, hotels, restaurants, attractions) and the last turn only adds a preference, load that key and filter it. Preferences include flight class ('We prefer business class'), airline, time, amenities, stars, budget, neighborhood, cuisine and city narrowing. Never re-search it, even if the message is short or reads like a new request. Flight example with keys 'flights' and 'return_flights': `f = get_results_from_cache(key=\"flights\")`, `f2 = filter_flights(prior_results=f, flight_class=[\"business\"])`, `save_to_cache(key=\"filtered_flights\", value=f2)`, then the same three lines for 'return_flights' saved as \"filtered_return_flights\".\n- In a flight+hotel conversation, when the last turn gives hotel details (stars, neighborhood, amenities) and flights are already cached, do not touch flights. Only hotels change. If hotels have no cache key and city plus both dates are known, make one `search_hotels(...)` carrying every stated hotel preference and save it as \"hotels\".\n- Never pass one domain's cached result into another domain's filter (e.g. the attractions result into filter_hotels). If the domain you need to filter has no cache key, either run its first search (when all mandatory args are known) or, when check-in/check-out dates were never given, output only `seek_information(\"We need to ask for the check-in and check-out dates\")`. Stars, budget, amenities and party size never replace missing hotel dates.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 18: Multi-leg filters, new keys, and range params\n- If the CACHE has one key per flight leg, including already-filtered keys, a flight preference ('Yes, we prefer first') applies to BOTH legs. Load the most refined key of each leg (e.g. filtered_departure_flights and filtered_return_flights), filter each with the new constraint, and save each under a NEW key (e.g. filtered_departure_flights2 and filtered_return_flights2). Filtering one leg only is wrong.\n- Never save under a key that already appears in the CACHE, because that overwrites it. Always pick a new unique name.\n- A single stated star count is a min/max pair: '2 star' -> stars=[2, 2]; 'at least 3 stars' -> stars=[3, 5]. Never pass a one-element list like stars=[2].\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

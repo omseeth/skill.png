@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "Incremental planning and cache-state handling",
+      "count": 6,
+      "description": "Agents ignored new preferences, chose an irrelevant cached result, restarted a search unnecessarily, or skipped a newly requested domain."
+    },
+    {
+      "failure_type": "Per-call cache persistence",
+      "count": 8,
+      "description": "Expected search, filter, or nearest results were not saved as the actual tool-result objects under cache keys."
+    },
+    {
+      "failure_type": "Intent, argument, and code grounding",
+      "count": 5,
+      "description": "Agents omitted relevant constraints or domains, inferred unrequested filters, mapped a value to the wrong field, or referenced an undefined variable."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill has no learned rules yet. These rules clarify how to plan the latest turn as a change to existing trip state, preserve each tool result, and ground calls in the user's intent and the tool's semantic fields.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet.)",
+        "content": "## Incremental planning and cache use\n- Treat the latest user turn as an update to the trip plan. Check cache summaries and retrieve the most relevant, latest result for each affected domain. Apply new constraints to that result with the corresponding filter; search only when a needed result is unavailable. A cached base result is not a reason to skip a newly requested filter. Do not redo unaffected domains or reference variables from earlier executions.\n- Cover every domain affected by the update, using accumulated conversation details where relevant. If the user explicitly asks for hotel access or proximity to attractions, search for any missing attraction results and call `search_nearest` with both result objects, grouping by the requested primary domain. Mere interest in visiting an attraction does not by itself require a nearest-results call.\n\n## Tool results and arguments\n- Bind each search, filter, or nearest result to a variable and save that exact result object under a unique, descriptive cache key. Do not replace tool results with hand-built dictionaries or redefined models.\n- Map values to arguments by meaning: a state or region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Preserve the user's entity values, pass only explicitly stated optional constraints, and do not invent amenities, ratings, or other preferences."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

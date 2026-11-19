@@ -1,0 +1,51 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "follow_up_scope_or_cache_subject_mismatch",
+      "count": 3,
+      "description": "Follow-ups used an unrelated cached result, skipped a requested update, or ran proximity work without a current proximity request."
+    },
+    {
+      "failure_type": "independent_requested_search_omitted",
+      "count": 1,
+      "description": "A restaurant search with a destination city available was omitted while asking for missing hotel dates."
+    },
+    {
+      "failure_type": "cache_write_omission",
+      "count": 1,
+      "description": "A new attraction search result was not saved to cache."
+    },
+    {
+      "failure_type": "runtime_import_error",
+      "count": 1,
+      "description": "The generated code imported tools from a nonexistent module instead of calling injected functions."
+    },
+    {
+      "failure_type": "date_or_argument_mapping_error",
+      "count": 1,
+      "description": "The agent calculated a hotel checkout date directly and inferred unsupported hotel party and room details."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify two underspecified boundaries that contributed to incorrect follow-up actions: co-requested lodging and attractions do not imply proximity, and a cached category search does not satisfy a newly named attraction request. Also make explicit how to locate a restaurant search when it is requested alongside lodging. Existing cache-save, date-adjustment, and no-import requirements already cover the other failures, so they are not repeated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- Call `search_nearest` only when the current user explicitly requests proximity or affirms a proposal for nearby results; merely requesting lodging and attractions or restaurants in the same destination does not imply proximity. Ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not filter unrelated results; search for a requested entity or category that the cached results do not cover.",
+        "content": "Match cached results at the granularity of the current request: a broad category result does not satisfy a request for a specifically named attraction. Search for and cache that named entity; use it for `search_nearest` only if proximity is requested or affirmed."
+      },
+      {
+        "op": "insert_after",
+        "target": "Still perform every independent requested search or update whose own required inputs are complete in the same turn.",
+        "content": "When restaurants are explicitly requested alongside lodging in a named destination and no separate restaurant city is given, use the lodging destination city for the restaurant search. Perform that complete restaurant search even if required hotel dates are still missing, then seek only the missing hotel inputs."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

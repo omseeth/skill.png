@@ -1,0 +1,44 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "malformed_code_structure",
+      "count": 3,
+      "description": "First searches emitted as bare calls with no variable assignment or save_to_cache (attractions x2, round-trip flights). One call also used the nonexistent return_date kwarg, and one put a state abbreviation in city= ('AZ'). The existing Rule 21 and Rule 9 sit deep in a long document and are ignored."
+    },
+    {
+      "failure_type": "wrong_domain_scope",
+      "count": 2,
+      "description": "Re-searched an already-cached domain instead of filtering it. Attractions in CA were re-searched with city=San Jose instead of filter_attractions(city=...). In a multi-domain turn, flights and restaurants were re-searched when only hotels needed searching and restaurants needed a cuisine filter."
+    },
+    {
+      "failure_type": "over_inference_of_params",
+      "count": 2,
+      "description": "Invented num_people=4 from '2 rooms' plus 'family vacation'. On a hotel refinement, re-passed earlier-turn amenities (hot tub) and used the wrong amenity for 'fitness center' (has_spa_services instead of has_fitness_class)."
+    },
+    {
+      "failure_type": "noisy_gold",
+      "count": 1,
+      "description": "The hotel refinement with the correct filters failed only because of a quirk in the gold output (it saves the unfiltered result). Not actionable."
+    }
+  ],
+  "patch": {
+    "reasoning": "The largest cluster is the missing assignment and save_to_cache on first searches, plus city/state confusion and return_date. Those rules exist but are buried, so the placeholder line at the top of the skill is replaced with a short, concrete output-form rule using templates that match the failing cases. A separate short rule covers the second cluster: a cached domain plus a narrowing constraint must be filtered, and in a multi-domain turn only the domain whose mandatory args just completed is searched. A third short rule covers num_people inference and refinement amenity mapping. The earlier large checklist was rejected, so these edits are kept small and non-overlapping.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Rule 0: Output form. Check before EVERY response (most common failures)\n- Every search_*, filter_*, sort_results and search_nearest call is ASSIGNED to a variable and followed on its own line by `save_to_cache(key=..., value=<that variable>)`. A bare line such as `search_attractions(city=\"Fresno\", type=[\"Scenic\"])` is always wrong, even for a one-call, first-turn request. Correct:\n  `attractions = search_attractions(city=\"Fresno\", type=[\"Scenic\"])`\n  `save_to_cache(key=\"attractions\", value=attractions)`\n- A US state name or abbreviation ('AZ', 'CA', 'Georgia') goes in `state=`, never in `city=`. 'Scenic attractions in AZ' -> `attractions = search_attractions(state=\"AZ\", type=[\"Scenic\"])` then `save_to_cache(key=\"attractions\", value=attractions)`.\n- search_flights has NO return_date kwarg. 'Depart May 14, 2025 and return May 16, 2025' from city A to city B is TWO assigned and saved calls: `departure_flights = search_flights(start_airport_city=\"A\", end_airport_city=\"B\", departure_date=[\"May 14, 2025\"])`, `save_to_cache(key=\"departure_flights\", value=departure_flights)`, `return_flights = search_flights(start_airport_city=\"B\", end_airport_city=\"A\", departure_date=[\"May 16, 2025\"])`, `save_to_cache(key=\"return_flights\", value=return_flights)`.\n- No import lines, no print, no multi-line reasoning comments; only direct tool calls inside <CODE></CODE>."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 26: A cached domain is never re-searched; narrow it with filter_*\n- If CACHE already has a key for a domain, a later narrowing constraint is load -> filter -> save, never a new search_*. Example: CACHE 'attractions' = 'Attraction search results in CA. attraction type(s): [Scenic]' and the user says 'I am thinking of going to San Jose' -> `a = get_results_from_cache(key=\"attractions\")`, `a2 = filter_attractions(prior_results=a, city=\"San Jose\")`, `save_to_cache(key=\"filtered_attractions\", value=a2)`. Do not repeat type or state.\n- Example: CACHE 'restaurants' = 'Restaurant search results in Lexington.' (city only) and the user later adds 'Japanese and Thai food' -> `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, cuisine=[\"Japanese\", \"Thai\"])`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`. Do not call search_restaurants again.\n- Multi-domain turn: search only the domain whose mandatory args just became complete (e.g. the checkout date arrives -> `search_hotels` with every hotel preference stated in earlier turns, saved as 'hotels'). Do NOT re-run search_flights when a 'flights' (or departure/return) key exists, and do not re-run any other cached domain. Cached domains are touched only through filter_* when the last turn adds a constraint for them."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 27: Hotel party size and refinement amenities\n- num_people comes ONLY from an explicit headcount ('4 of us', '5 people'). A room count ('we need 2 rooms') gives num_rooms=2 and nothing else. 'Family vacation', 'kids' or rooms x 2 never give num_people. Example: 'family vacation', hotel with a kitchen, dates, 'we need 2 rooms' -> `search_hotels(city=..., checkin_date=[...], checkout_date=[...], num_rooms=2, has_inroom_kitchen=True)` with no num_people.\n- On a hotel refinement, pass only amenities named in the LAST user turn. Amenities from earlier turns (e.g. sauna, hot tub asked before the dates were known) belong to the first search_hotels call. The raw 'hotels' CACHE summary does not list amenities, so do not re-pass them as new filters.\n- Map each amenity word to its own parameter: 'fitness center' / 'fitness classes' -> has_fitness_class=True (never has_spa_services or gym_present), 'gym' -> gym_present=True, 'sauna' -> has_sauna=True, 'hot tub' -> has_hot_tub=True, 'spa' -> has_spa_services=True, 'room service' -> has_room_service=True. Example: last turn 'Yes, a fitness center and room service.' -> `filter_hotels(prior_results=h, has_fitness_class=True, has_room_service=True)` only, loaded from the most refined hotels key and saved under a new key."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

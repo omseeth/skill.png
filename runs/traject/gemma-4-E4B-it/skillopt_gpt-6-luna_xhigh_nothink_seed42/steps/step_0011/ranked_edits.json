@@ -1,0 +1,34 @@
+{
+  "reasoning": "Kept all failure-driven clarifications as higher priority, including per-endpoint schema checks, output-format-aware serialization, and conditional canonical market-code handling. Preserved the success-driven count clarification because no failure edit addresses it. Retained the enum insight with a guardrail: include a directly requested value only when its canonical form is documented or reliably known, avoiding guessed tokens. Omitted the identifier edit because it targets content already covered in the protected section. [optimizer-ranked: selected 3/5 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Cross-check every parameter against the tool schema: place required parameters only in the required array and optional parameters only in the optional array, even when the user explicitly requests an optional field.",
+      "content": "For each call, check that exact endpoint's schema independently: place only parameters declared required in the required array and only parameters declared optional in the optional array, even when the user explicitly requests an optional field. Do not infer a parameter's group from another endpoint, its use in the query, or its JSON value type.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Never invent enum tokens, identifiers, credentials, or empty placeholders.",
+      "content": "If a request directly and unambiguously supplies an enum value matching the field's meaning, include its canonical value even when the tool listing omits the allowed choices, provided that canonical form is documented or reliably known. Do not guess synonyms, codes, or unsupported tokens, and do not omit the constraint solely because the choices are unlisted.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "Map a requested count to the documented count field or `per_page`/`limit`; when the user asks for one result and the endpoint has a count field, set it to 1. If no count is requested, use the smallest conventional value needed.",
+      "content": "Map an explicit requested count to the documented count field or `per_page`/`limit`. When the user requests one result and the endpoint has a count field, set it to 1 unless the documentation already guarantees one result by default, in which case omit the redundant count. If no count is requested or implied, use the smallest conventional value needed.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 1 directly reinforces endpoint-specific schema validation, a recurring failure pattern and an explicit optimizer priority. Edit 4 fills a gap by preserving explicitly supplied canonical enum values without permitting guesses. Edit 3 is a useful but narrower refinement to count handling; edits 0 and 2 largely duplicate existing guidance or add less-supported selector advice.",
+    "selected_indices": [
+      1,
+      4,
+      3
+    ]
+  }
+}

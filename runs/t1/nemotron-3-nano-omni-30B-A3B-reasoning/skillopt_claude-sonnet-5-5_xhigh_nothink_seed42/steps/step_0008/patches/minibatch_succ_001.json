@@ -1,0 +1,26 @@
+{
+  "batch_size": 7,
+  "success_patterns": [
+    "Restaurant-only first turn with only a dietary need (gluten-free, nightshade allergy) or an occasion (birthday) and no city anywhere: the agent output only seek_information for the city, with no search and no guessed city (3 of 7 trajectories).",
+    "Flight request with origin and destination but no date: the agent output only seek_information for the departure date. A stated arrival-time limit does not supply a date.",
+    "First turn that names only a destination and an occasion ('trip to Colorado Springs for my birthday'): the agent output a single seek_information and made no search call.",
+    "Budget answer on a round trip with two cached flight keys: the agent loaded each leg's key, ran filter_flights(prior_results, budget=N) on each, and saved each under a new filtered_* key. It passed no search_* call and no already-applied params.",
+    "Every successful seek_information was one short sentence naming only the missing mandatory items."
+  ],
+  "patch": {
+    "reasoning": "Most successful behaviours are already covered by Rules 6, 7, 13 and 17. Two small gaps remain, both seen across the batch. Several restaurant turns driven only by a dietary need or an occasion were handled correctly by asking for the city. A destination-only or occasion-only first turn, with no domain named, was handled by one clarifying seek_information. Stating both explicitly should stop the agent from guessing a city or dates, or from printing 'No planning needed', in these situations. Both edits are short to keep prompt bloat low.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Drop descriptors that have no parameter ('great view', 'romantic', 'business conference').",
+        "content": "\n- A restaurant request whose only content is a dietary need or allergy ('gluten-free', 'nightshade allergy'), an occasion ('birthday') or a cuisine, with no city anywhere in the conversation, is missing the city. Output only `seek_information(\"We need the city for the restaurant.\")`. Do not call search_restaurants with a guessed or example city. Once the user gives the city, search with the stated dietary flag or cuisine."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Keep it to one short sentence, e.g. seek_information(\"We need to ask for the check-in and check-out dates\") or seek_information(\"We need the departure date for the flight\").",
+        "content": "\n- If the user has not named any domain yet (only a destination or an occasion, e.g. 'I'm planning a trip to Colorado Springs for my birthday'), output ONE seek_information asking what they need, e.g. seek_information(\"We need to ask whether the user wants flights, a hotel, or something else.\"). Do not search, and do not print(\"No planning needed\")."
+      }
+    ]
+  },
+  "source_type": "success"
+}

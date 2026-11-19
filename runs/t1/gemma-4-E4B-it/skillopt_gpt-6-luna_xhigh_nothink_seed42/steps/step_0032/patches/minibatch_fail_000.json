@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_turn_resolution",
+      "count": 7,
+      "description": "Agents re-searched cached results for filter updates, regenerated unaffected scopes, or treated a non-acceptance as a new operation."
+    },
+    {
+      "failure_type": "schema_mapping_and_result_persistence",
+      "count": 1,
+      "description": "An attraction search put a state abbreviation in city, substituted a category value, and failed to save the result."
+    }
+  ],
+  "patch": {
+    "reasoning": "The dominant issue is choosing the wrong action for the latest turn despite compatible cached results. A concise precedence rule makes the cache/filter, cache-only, and new-search cases explicit, prevents unrelated scopes and unaccepted offers from triggering operations, and clarifies when a conversational follow-up should retrieve rather than regenerate results. The isolated schema and save errors are already addressed by explicit requirements elsewhere in the skill, so no duplicate edit is needed.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "**Turn-action precedence (apply before any tool call):** Resolve the latest user turn against the preceding question or offer, the full conversation, and the cache summary. An offer is not accepted merely because the user answers a different question; a proximity suggestion alone does not authorize `search_nearest`. For each changed scope independently:\n1. If a compatible cached result covers the same domain, location, dates or leg, and entity scope, and the user adds or changes a filterable preference, retrieve it by its exact literal cache key, apply the matching filter, and save the filtered result. Do not repeat the base search.\n2. If the user is continuing an already-covered request but adds no supported filter or new scope (for example, declining to specify a more particular attraction), retrieve the compatible cached result only; do not search or filter again.\n3. Base-search only for a genuinely new or uncovered domain, category, entity, location, date, or leg, including all active supported criteria. Leave unaffected domains and legs untouched.\nA no-op is appropriate only when no request is being continued and compatible cached results already fulfill all active requests."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

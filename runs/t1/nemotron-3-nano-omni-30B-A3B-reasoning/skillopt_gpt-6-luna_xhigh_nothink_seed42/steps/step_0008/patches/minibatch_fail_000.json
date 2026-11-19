@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle",
+      "count": 8,
+      "description": "Every trajectory left at least one result-producing call without assigning and saving its result to cache."
+    },
+    {
+      "failure_type": "cache_delta_refinement",
+      "count": 3,
+      "description": "Agents re-searched instead of refining a compatible cached result, or retrieved a result without applying the new constraint."
+    },
+    {
+      "failure_type": "conversation_scope_and_leg_coverage",
+      "count": 3,
+      "description": "Agents treated the latest reply as the whole request and omitted an earlier domain or a distinct return leg."
+    },
+    {
+      "failure_type": "schema_argument_mapping",
+      "count": 2,
+      "description": "Agents omitted or mis-mapped explicit constraints, including a non-stop request and a hotel party-size field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch repeatedly shows a gap between general instructions and executable call planning: results are not saved, new constraints are not actually applied to cached objects, and follow-up replies cause earlier work or flight legs to be dropped. A full-request checklist and more explicit call contracts address these repeated omissions; a brief schema mapping rule covers the remaining explicit-field errors.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "- Before planning, enumerate all still-active requested actions from the full conversation, including each requested domain/item and each one-way flight leg. Treat a reply to an assistant follow-up as filling or refining the plan, not replacing earlier requests. For every checklist entry, identify valid cache satisfaction, a needed refinement/search, or missing mandatory information; do not finish with an uncovered entry. Apply a direction-neutral flight preference to each applicable leg separately."
+      },
+      {
+        "op": "replace",
+        "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+        "content": "- For a new constraint on a cached result, retrieve a compatible listed cache key into a local variable and pass that exact object as `prior_results` to the matching filter. Include each newly introduced, schema-supported constraint as its named filter argument: passing only `prior_results` or merely retrieving the result does not apply the constraint. Save the filtered output under a new key. If no compatible base exists, search when mandatory inputs are available."
+      },
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- Treat every result-producing call as an indivisible sequence: assign the exact return value of each search, filter, sort, or nearest-results call to a local variable, then immediately save that same object with `save_to_cache` under a unique, descriptive key before proceeding. Do this for every call, including each flight leg and each refinement; never leave a result-producing call bare or overwrite a base-result key with a refinement. Do not substitute hand-built dictionaries or redefined models for tool result objects."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- Map an explicit “non-stop,” “direct,” or “no stops” flight request to `num_layovers=[0]` for each applicable leg. For hotel calls, map an explicitly stated people count to `num_people` and a stated room count to `num_rooms`; keep these fields separate."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

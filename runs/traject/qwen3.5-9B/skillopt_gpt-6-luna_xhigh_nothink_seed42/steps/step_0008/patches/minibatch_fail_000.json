@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "parameter_schema_placement",
+      "count": 3,
+      "description": "Schema-optional parameters were placed in the required list, including a requested puzzle ID and word-length filter."
+    },
+    {
+      "failure_type": "operation_coverage_or_source_mapping",
+      "count": 2,
+      "description": "Requested searches or named-source news were omitted or not mapped to an endpoint that could provide them."
+    },
+    {
+      "failure_type": "parameter_semantics_or_token",
+      "count": 3,
+      "description": "Some calls used a neighboring location field or a noncanonical selector or code value."
+    }
+  ],
+  "patch": {
+    "reasoning": "The schema-placement errors recur despite the general instruction to follow schemas, so the edit makes list construction explicit. The named-source omission shows a gap when a source is available only through a generic source-ID endpoint. Existing guidance already covers parameter meanings and canonical tokens, so those rules are not duplicated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Use each endpoint's exact parameter names and required/optional placement. Bind every constraint only to the call it modifies; do not carry dates, limits, filters, or pagination across operations.",
+        "content": "- Use each endpoint's exact parameter names and required/optional placement. Build the required-parameter list from fields the schema marks required, and put schema-optional fields only in the optional list—even when the user explicitly requests them. A requested value does not make an optional parameter required. Bind every constraint only to the call it modifies; do not carry dates, limits, filters, or pagination across operations."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For overlapping endpoints, compare the exact input type and every requested output facet, not just the broad topic. If the user explicitly names a source or issuing authority, treat it as a constraint and prefer its matching endpoint over a different provider's similar result.",
+        "content": "\n- For a named publication or source, also consider generic endpoints that return content scoped by a source identifier, even if the source is not named in the endpoint title. Use the source's canonical identifier when it is documented or unambiguously known; do not omit the requested source merely because its endpoint is generic."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

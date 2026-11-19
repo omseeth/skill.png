@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every success had a clue-anchored passage set (an archive line, a dictionary headword page, or a repeated sentence). The agent picked the entity that every passage tied to the clue's distinctive words and wrote it as a bare, short answer.",
+    "Slot-type matching worked when the clue's own noun fixed the type: 'She played...' -> the actress's name, 'this city's Sabres' -> Buffalo, 'this Utah city' -> Salt Lake City (no state, no suffix).",
+    "Verbatim archive hits ('ROCK \"E\" | In titles it preceded... | Endless', 'The adverb in \"think fast\". $200') directly gave the answer. The shared-word-in-titles clue was solved by finding the one word common to every listed full title.",
+    "'The adverb in \"think fast\"' was answered 'fast', a word that appears in the clue. This is a legitimate exception to the 'never echo a clue word' guard: when the clue asks for a part of its own quoted phrase, the answer is one of that phrase's words.",
+    "A paraphrased dictionary definition ('the cry of a sheep or goat') was answered with the single headword that the dictionary passages define in the clue's own words, in the grammatical form of the clue's noun ('bleat')."
+  ],
+  "patch": {
+    "reasoning": "The agent usually emits a bare answer, so the rules deep in the list are never applied. A short mandatory three-field line at the very top of the editable part makes the type, evidence and echo checks visible. Two success patterns are not covered. The first is 'part of speech in a quoted phrase', which is currently blocked by the 'never answer with a clue word' guard in the protected block, so a narrow exception is needed in Rule 2. The second is the shared-word clue ('it preceded X's ... & Y's ...'). A definition-paraphrase clue is a third pattern that is only implicitly covered. All edits sit outside the SLOW_UPDATE block and add no per-task facts.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Question Answering Skill",
+        "content": "\n## Mandatory answer line (write it before the answer tags)\n`Type: <noun the clue asks for> | Evidence: <quoted passage line, or own fact> | Check: <candidate fits the type, reads correctly in the clue's blank, and is not just a clue word>`\nThen give only the bare answer. Prefer a verbatim archive line (Rule 3) as Evidence. If no passage matches, name the own-knowledge fact you are relying on. The one case where a clue word is allowed as the answer is described in Rule 2 ('The <part of speech> in \"phrase\"').\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 2: Answer the referent, not a word from the clue",
+        "content": "\n- 'The <noun / verb / adverb / adjective / preposition> in \"quoted phrase\"' (or 'the first word of...') asks for one WORD OF THAT QUOTED PHRASE. This is the only case where answering with a clue word is correct ('The adverb in \"think fast\"' -> 'fast'). Pick the word that has the requested part of speech and give only that word, with no quotes and no rest of the phrase.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "- If the clue is a fragment, work out what single thing connects it to the context.",
+        "content": "\n- Shared-word clues ('In titles it preceded X's \"Nights\" & Y's \"Summer Nights\"', 'It follows ___ in A, B and C'): search the passages for the FULL titles or phrases that contain each listed item, and find the one word that sits in the same position in every one. Answer with that single word only (not the full title, and not a word from the clue). Check it against every listed item, not just one.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "- Jokes, asides and filler in the clue",
+        "content": "\n- Definition-paraphrase clues ('It's the cry of a sheep or goat', 'Term for...'): look for dictionary-style passages whose definition repeats the clue's words, and answer with that one headword. Match the grammatical class of the clue's noun phrase: a noun definition gets a noun ('bleat'), not a related verb or a longer phrase. When many independent dictionary passages give the same headword, commit to it. Likewise, for 'this <city/state> ... <landmark or event>' clues, answer with the plain place name that the passages tie to that landmark ('Salt Lake City'), without state or suffix.\n"
+      }
+    ]
+  },
+  "source_type": "success"
+}

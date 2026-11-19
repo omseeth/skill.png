@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection",
+      "count": 3,
+      "description": "When tools overlapped, agents chose a broader or generic endpoint over one more specifically aligned with the requested operation."
+    },
+    {
+      "failure_type": "parameter_binding",
+      "count": 3,
+      "description": "Some calls omitted exposed selectors or context fields, or placed an optional field among required parameters."
+    },
+    {
+      "failure_type": "canonicalization",
+      "count": 2,
+      "description": "Country or marketplace values were passed without converting them to the endpoint's canonical code or casing."
+    },
+    {
+      "failure_type": "coverage",
+      "count": 2,
+      "description": "Agents abandoned an entire workflow when named tools were unavailable or omitted an alert check when only a summary endpoint was available."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers optional-field audits and exact scope matching, so those rules should not be duplicated. These edits address narrower gaps shown in the batch: tie-breaking between otherwise plausible endpoints, interpreting coded market and locale fields, continuing supported parts of a workflow, and using a relevant alert summary when point-filtered alerts are unavailable.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Before answering, check that every requested operation has an appropriate call and that no call serves an unrelated operation.",
+        "content": "\n- If an exact endpoint is unavailable, continue with other requested ledger entries that do have exact-capability endpoints; do not abandon supported operations or replace an unsupported one with a merely topical substitute."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For overlapping endpoints, compare the exact input type and every requested output facet, not just the broad topic. If the user explicitly names a source or issuing authority, treat it as a constraint and prefer its matching endpoint over a different provider's similar result.",
+        "content": "\n- If candidates still overlap, prefer the endpoint whose documented operation and input mode are most narrowly aligned with the request (for example, a regular-dice endpoint for ordinary dice rolls or a current-conditions endpoint for current weather). Use a generic/custom or broader endpoint only when its added capability is requested."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For geographic fields that encode administrative hierarchies, follow the endpoint's documented hierarchy rather than treating city, province/state, metro area, and country as interchangeable. Use canonical codes where expected and provide the divisions needed to identify the requested place; use documented geographic lookup data to resolve names when available.",
+        "content": "\n- Treat country, locale, and marketplace fields as coded selectors when their schema or documentation indicates codes: convert a clear country or storefront reference to the endpoint's accepted code and casing. Pass a full hostname only when the parameter expects a hostname."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For location-specific weather alerts, use a supported `point` filter for a named locality or area; use a state filter only when the requested scope is state-wide. Supply coordinates from the request or resolve them with a reliable geographic lookup rather than substituting the broader state or inventing coordinates.",
+        "content": "\n- If no available active-alert listing can be filtered to the requested locality but an active-alert summary/count endpoint reports data by region, area, or zone, call it as a best-available summary rather than silently dropping the alert operation; do not treat its unfiltered result as point-specific."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

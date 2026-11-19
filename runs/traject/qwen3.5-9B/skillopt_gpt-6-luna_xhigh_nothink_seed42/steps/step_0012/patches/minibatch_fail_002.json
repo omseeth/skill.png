@@ -1,0 +1,36 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "response_serialization",
+      "count": 2,
+      "description": "One trajectory used keyed shorthand instead of named parameter objects; another emitted a numeric value where the response contract requires a string."
+    },
+    {
+      "failure_type": "scope_and_geographic_coverage",
+      "count": 2,
+      "description": "One trajectory missed distinct topic- and province-scoped results; another failed to bind the full requested administrative hierarchy."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers schema selection, required-versus-optional placement, and scalar string values. These edits address the remaining demonstrated gaps: making the parameter-item shape explicit, preserving every requested scope as a separate coverage requirement, and mapping each geographic level according to endpoint semantics.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- In this answer format, encode scalar `value` fields as JSON strings, including numeric and boolean-like parameter values, unless the task's response contract explicitly requires native JSON numbers or booleans.",
+        "content": "- Serialize every parameter-list item as an object with exactly `name` and `value` keys, for example `{\"name\":\"limit\",\"value\":\"10\"}`. Do not use keyed shorthand such as `{\"limit\":\"10\"}`; keep scalar values as strings when required by this response contract."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For geographic fields that encode administrative hierarchies, follow the endpoint's documented hierarchy rather than treating city, province/state, metro area, and country as interchangeable. Use canonical codes where expected and provide the divisions needed to identify the requested place; use documented geographic lookup data to resolve names when available.",
+        "content": "- Bind each explicitly named geographic level to its own supported field and preserve the full requested path. Check endpoint-specific field semantics rather than relying on labels alone: a field named `state`, for example, may represent a country selector, with region and city supplied through separate administrative fields. Do not substitute one level for another or omit named levels."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Before selecting calls, make a coverage ledger: list each requested result and its explicit constraints and facets (for example, geographic levels, time horizon, price or shipping filters, and requested metrics). Map each entry to the endpoint and schema field that provides it. Count an entry as covered only when the endpoint documents that exact result and scope; related or adjacent data do not suffice. If no single endpoint covers every entry, use separate appropriate calls. In the final audit, verify that every ledger entry is covered and every requested constraint is bound to a supported field.",
+        "content": "- Keep explicitly requested broad and scoped results distinct in the ledger. When the prompt asks for a general collection as well as a topic-filtered subset, or for results at multiple administrative levels, cover each with the appropriate documented endpoint or call; do not treat the broader result as covering the narrower one."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

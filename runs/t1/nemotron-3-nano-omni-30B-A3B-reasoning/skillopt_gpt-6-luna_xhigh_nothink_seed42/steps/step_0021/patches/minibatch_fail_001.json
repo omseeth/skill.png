@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_cache_and_constraint_handling",
+      "count": 4,
+      "description": "Agents omitted new hotel constraints, treated an unsatisfied request as complete, or failed to refine from the most relevant cached result."
+    },
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 3,
+      "description": "Attraction searches were called without binding and saving their returned result."
+    },
+    {
+      "failure_type": "schema_location_mapping",
+      "count": 2,
+      "description": "State abbreviations were incorrectly passed as city values instead of using the state field."
+    },
+    {
+      "failure_type": "tool_api_and_argument_misuse",
+      "count": 2,
+      "description": "Agents imported or redefined unavailable tool models and added unsupported or speculative calls and criteria."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains broad incremental-planning and tool-schema guidance, but the trajectories show those rules need to be made more operational: force a cache-summary diff before choosing calls, enforce a bind-and-save check for every result, and explicitly distinguish state abbreviations from cities. The direct-tool requirement addresses the invalid imports and model definitions without repeating unrelated schema guidance.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "- Before writing code, create a per-domain diff from the full conversation and cache summaries: list each pending action or new constraint, its target and schema field, which prior criteria the listed results already cover, the exact most-refined compatible cache key, and whether required inputs are ready. For each ready unmet constraint, retrieve that exact key into a local variable and apply only the new constraint with the appropriate filter; if no compatible result exists, search rather than filtering. Never treat a base result as satisfying a later constraint or choose an older base when a compatible refinement exists. Emit a tool action for every remaining request; use `print(\"No planning needed\")` only when none remain."
+      },
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- Call the provided tools directly; do not import them or define, redefine, or synthesize tool/result models or result objects. Bind the exact return value of every search, filter, sort, and nearest-results call to a local variable, and save it with `save_to_cache` under a unique descriptive key. For a refinement, retrieve the exact compatible listed cache key into a local variable, pass that object as `prior_results`, and save the refined object under a new key. Before finalizing, verify that every requested action is included, every tool result is bound and saved, and no no-op print accompanies pending work."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+        "content": "\n- When a location is a state, including a state abbreviation such as `GA` or `NV`, pass it to `state`, not `city`. Use `city` for a stated city; do not treat a state abbreviation as a city merely because the field accepts strings."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

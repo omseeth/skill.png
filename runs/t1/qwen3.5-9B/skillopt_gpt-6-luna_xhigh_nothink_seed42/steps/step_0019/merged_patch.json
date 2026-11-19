@@ -1,0 +1,44 @@
+{
+  "reasoning": "Consolidated overlapping guidance about clarification replies and accepted offers into one edit, preserving the distinct rules about concrete constraints, pending work, unrelated completed results, and proximity. Kept the independent corrections for flight airport fields, hotel occupancy context, proximity grouping, and non-stop flight criteria. Existing date, cache, and result-saving rules already cover the other proposed issues, so they are not duplicated. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Preserve complete names, categories, criteria, and date strings unless a tool requires a format conversion. Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value.",
+      "content": "Preserve complete names, categories, criteria, and date strings unless a tool requires a format conversion. Map cities to `city`, states or regions to `state`, and neighborhoods to `neighborhood` while retaining the full provided name; do not put a state abbreviation in `city` or truncate a location value. In flight calls, pass a user-supplied airport identifier or code in the corresponding `start_airport` or `end_airport` field, alongside its known city; do not substitute `*_code` fields for this convention.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed.",
+      "content": "Search for a hotel only when lodging is explicitly requested; a flight route, travel dates, or party count alone does not request lodging. For a hotel search, map a party size stated for the hotel accommodations to `num_people` (for example, “solo” in that context means `num_people=1`); wording such as “solo flight” alone does not establish hotel occupancy. Apply a newly supplied hotel-party count with a same-domain filter on a suitable cached hotel result when needed.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain.",
+      "content": "Use `search_nearest` only when the user asks about proximity, with the two relevant domain results and `groupBy` set to the target domain—the results the user wants listed or grouped, not the anchor (for example, hotels near restaurants uses `groupBy=\"hotel\"`; restaurants near hotels uses `groupBy=\"restaurant\"`).",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion.",
+      "content": "- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion. A decline or no-preference answer about the field just asked about does not cancel a separate concrete constraint in the same reply; apply each explicit new constraint to every relevant cached result, processing itinerary legs independently. An answer to a clarification does not by itself accept a separate assistant offer. An offer alone is not a request; proceed with it only when the user clearly accepts it or independently asks for that deliverable. Acceptance of a newly offered domain authorizes only that deliverable, in addition to explicitly requested pending deliverables; do not reopen already-satisfied unrelated results unless they are required inputs for the accepted task. Accepting an offer to explore an attraction or category is not a proximity request; do not run or refresh a separate proximity operation unless the user asks about proximity.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "append",
+      "content": "\n- **Carry non-stop requirements into every requested flight leg:** For explicit “non-stop,” “nonstop,” “direct,” or “no layovers/stops” requests, pass `num_layovers=[0]` to each applicable flight search or filter. Do not rely on a default that also permits connections; apply the requirement to both legs of a requested round trip unless the user changes it.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

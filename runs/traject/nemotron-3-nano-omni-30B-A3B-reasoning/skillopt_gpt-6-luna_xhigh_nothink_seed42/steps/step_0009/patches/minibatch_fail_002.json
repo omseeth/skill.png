@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "call_coverage",
+      "count": 4,
+      "description": "Compound requests lost earlier or coordinated deliverables, including separate outputs embedded in a single clause."
+    },
+    {
+      "failure_type": "endpoint_selection",
+      "count": 3,
+      "description": "Some calls used an endpoint with a related topic but the wrong operation or target granularity."
+    },
+    {
+      "failure_type": "serialization",
+      "count": 1,
+      "description": "One response closed the top-level JSON array before all call objects, so the output could not be parsed."
+    },
+    {
+      "failure_type": "redundant_calls",
+      "count": 1,
+      "description": "Overlapping validators were called for outcomes that could be covered by a more suitable single endpoint."
+    },
+    {
+      "failure_type": "evaluation_mismatch",
+      "count": 1,
+      "description": "The call matches the explicit request, while the gold requires unrelated news feeds; this is not an actionable agent failure."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify how to count independently requested outcomes when they are coordinated within one clause, and guard against substituting an unavailable or merely related endpoint. Make the single-array serialization requirement operational. The redundant-call behavior is already addressed by the skill's existing instruction against duplicate or alternative calls.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Turn each explicit clause into a requested action, target, and set of qualifiers. In one-turn tasks, narrated sequences such as “first,” “then,” and “finally” describe requested actions, not actions already completed.",
+        "content": "- A clause can contain multiple requested outcomes: split coordinated operations or deliverables joined by “and,” “also,” or equivalent wording into separate actions unless one endpoint explicitly returns them together. Shared subject matter does not make distinct outcomes interchangeable."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Choose an endpoint by its documented operation, output, target, and support for the requested qualifiers—not merely by a shared topic or entity name. Prefer the most specific endpoint that fits the request; use separate endpoints when distinct deliverables require them.",
+        "content": "- If the requested operation is not available, do not invent a tool or substitute a merely related operation. Use an available endpoint only when its documented output actually satisfies the requested result and scope; otherwise, do not present a different result as coverage."
+      },
+      {
+        "op": "replace",
+        "target": "- Before submitting, reconcile the calls against the requested actions and qualifiers, then verify that the output is valid JSON when JSON is required, with no stray fields, nested call objects, or extra prose that violates the contract.",
+        "content": "- Before submitting, reconcile the calls against the requested actions and qualifiers, then verify that the output is valid JSON when JSON is required, with no stray fields, nested call objects, or extra prose that violates the contract. For a list-of-calls format, keep every call object inside one outer array and close that array only after the final call."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

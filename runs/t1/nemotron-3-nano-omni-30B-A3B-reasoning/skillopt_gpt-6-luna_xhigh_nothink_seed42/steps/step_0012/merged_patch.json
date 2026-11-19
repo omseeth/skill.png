@@ -1,0 +1,53 @@
+{
+  "reasoning": "Merged repeated range, flight-date, and checkout guidance into single edits. Preserved distinct improvements for per-domain missing inputs, hotel argument mapping, and follow-ups about assistant-suggested places. Support counts reflect the number of the four source patches that proposed each correction.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "## Represent flight legs separately",
+      "content": "\n- For an already-established single origin-to-destination itinerary, if the user supplies a two-date range in response to a request for travel dates, treat the first date as outbound departure and the second as return departure unless they state one-way travel or a different leg sequence. Search the return as a separate leg with the route reversed; do not put both dates on one outbound call or use the return date as `arrival_date`. For multi-city trips, apply a new flight constraint to every affected segment, not only the first or last leg.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Validate tool arguments and preserve user intent",
+      "content": "\n- For range-valued list arguments, check the schema’s required length and endpoint order; provide exactly the required endpoints, never a scalar or singleton when a two-endpoint range is required. For a one-sided minimum threshold, use the stated threshold and the documented or schema-supported maximum. For an exact value, use it for both endpoints when the tool defines a closed range. Do not invent an endpoint or bound; consult the schema or documentation if the supported bound is unclear.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+      "content": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Use `state` for a state-level location, including an abbreviation, and `city` only for a city. For hotel searches, use a city only when the conversation clearly establishes it, such as through a stated trip destination. Do not infer exact party or room counts from broad descriptions such as “family.” Do not populate hotel `num_people` or `num_rooms` from “solo” alone; include either only when the user explicitly supplies the corresponding numeric count. A traveler count is not a flight-search parameter unless the schema provides one.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+      "content": "\n- When no checkout date is given and the conversation explicitly provides a hotel check-in date (or clearly establishes a trip-start date as the hotel check-in) and an exact number of nights, calculate checkout with `adjust_date(date=<check-in date>, delta_days=<number of nights>)`, then pass both dates in the schema-required format. Do not ask for a checkout date or invent a stay duration when these values are explicit.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+      "content": "- Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Check mandatory inputs separately for each requested domain. If any are missing for one domain, still search or refine other requested domains whose required inputs are available, and make one `seek_information` call asking only for the missing mandatory information across the requested domains. Optional preferences are not mandatory inputs.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+      "content": "\n- Resolve follow-up references using the full dialogue, including places most recently suggested by the assistant. If the user asks what is at or around a suggested place, identify it as the target for the active domain and use an appropriate supported field (for example, an attraction’s `neighborhood`) to refine a compatible cached result. If no suitable cached result exists, search when mandatory inputs are available; do not conclude that no planning is needed solely because the place was suggested by the assistant.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

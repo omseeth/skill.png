@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "structure_error",
+      "count": 2,
+      "description": "Unparseable answers scoring 0. Param objects were truncated (`}, \"value\": \"1\"}` with the `{\"name\": ...` half missing), the answer ended `}</answer>` without the closing `]`, and a required param (`end`) was put in `optional parameters`."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 4,
+      "description": "A generic or unfillable sibling was chosen over the endpoint the clause's own words name. Examples: Top Headlines plus a language filter instead of `Arabic news API: BBC Arabic`; `EmailVerifications` instead of `email Check SMTP`; unfiltered `Hotel Collection` instead of Priceline hotels with `state_code`; an Airbnb tool with an invented required `offset`; no `Moka News: Recent 50` for 'general global news'."
+    },
+    {
+      "failure_type": "missing_qualifier_params",
+      "count": 4,
+      "description": "Adjective and place qualifiers were not mapped to schema optionals or the correct value form. Missed: 'helpful reviews' -> sort_order=HELPFUL, 'active alerts' -> active=1, 'technology headlines' -> category=technology, 'hotels in Massachusetts' -> state_code=MA. Guessed lat/lon was used where the tool accepts the place name."
+    },
+    {
+      "failure_type": "extra_calls",
+      "count": 2,
+      "description": "Calls with no clause behind them: `Asos: categories/list` for 'check if Asos carries similar products', a duplicate Top Headlines for 'languages', and a Search call beside a Top Headlines call that already covers technology."
+    },
+    {
+      "failure_type": "tool_name_form",
+      "count": 1,
+      "description": "Truncated `National Weather Service: /alerts` instead of `/alerts?{parameters}`. The rule already exists but was ignored."
+    }
+  ],
+  "patch": {
+    "reasoning": "Structure failures zero the whole task, and the two seen here are new forms: truncated param objects and a missing final `]`. So edit 1 adds those as literal anti-patterns in the self-check. Tool-selection misses share one cause: the agent picked a generic or unfillable tool instead of the endpoint whose name matches the clause's words (outlet, protocol, state filter). Edit 2 adds that matching rule with short before->after examples. Edit 3 extends the number audit to adjectives and place names, which were repeatedly left out or turned into guessed coordinates. Edit 4 stops over-calling (an Asos categories call, a duplicate headlines call) without weakening the existing 'do not drop calls' rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "If a line looks like any of these, rewrite the whole object instead of splicing.",
+        "content": "\nMORE REAL ZERO-SCORE OUTPUTS (check for these before sending):\n- Truncated param object: `{\"name\": \"keyword\", \"value\": \"sofa\"}, \"value\": \"1\"}` or `{\"name\": \"asin\", \"value\": \"B07\"}, \"value\": \"B07\"}`. Every `\"value\"` must sit inside its own complete `{\"name\": \"...\", \"value\": \"...\"}`. Rewrite as `{\"name\": \"keyword\", \"value\": \"sofa\"}, {\"name\": \"page\", \"value\": \"1\"}`.\n- Missing final bracket: an answer that ends `...]}\\n</answer>` or `...\"optional parameters\": []}` with no `]`. The last two lines must be `{...last object...}` and then `]</answer>`.\n- Required param moved to optional: for a tool such as `Bybit: Get Mark Price Kline` every param listed under 'Required parameters' (`interval`, `start`, `end`, `symbol`, `category`) goes in `required parameters`. Use the schema's token (`category`=`linear`, not `linear inverse`) and a named function verbatim (`function`=`DIGITAL_CURRENCY_DAILY`, not `daily`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n- NAMED SOURCE OR CHECK -> THE ENDPOINT WITH THAT NAME. A clause that names an outlet ('Arabic news from BBC') takes the per-outlet endpoint (`Arabic news API: BBC Arabic`), not a generic headlines tool plus a language filter. A clause that names a protocol or check ('verify the SMTP configuration for sales@x.org') takes the tool whose heading contains that word (`fast Email verifier: email Check SMTP`, `username`=`sales`, `domain`=`x.org`), not a list verifier such as `EmailVerifications`. 'General global news' with no topic takes a no-input latest feed (`Moka News: Recent 50`), not Search with an invented `q`.\n- FILTERABLE OVER UNFILTERED. 'Hotels in Massachusetts' needs a hotel list tool that has a location filter (`Priceline com Provider: Downalods hotels`, `state_code`=`MA`), not a no-parameter 'Get all the Hotels'.\n- FILLABLE REQUIRED PARAMS. If a sibling's required param (e.g. `offset`) has no value in the query, pick the sibling whose required params the query can fill. 'Airbnb in Boston (Suffolk County), 2 bedrooms, 4 guests' -> `Airbnb listings: Count Listings by administrative divisions` with `state`=`US` (country code), optional `admin1`=`Massachusetts`, `admin2`=`Suffolk County`, `admin3`=`Boston`, `bedrooms`=`2`, `maxGuestCapacity`=`4`. Do not make up `offset`=`0`."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Parameters",
+        "content": "\n- QUALIFIER AUDIT (adjectives and places, in addition to the number audit). For each clause, turn every modifier into the schema optional that carries it. Never leave `optional parameters` empty when the clause has modifiers. 'helpful customer reviews' -> `reviews/list` `sort_order`=`HELPFUL`. 'active weather alerts' -> `National Weather Service: /alerts?{parameters}` with `active`=`1` (copy the full heading including `?{parameters}`). 'US technology headlines' -> `News API_v2: Top Headlines` with `category`=`technology`, `country`, `language`=`en`. 'hotels in Massachusetts' -> `state_code`=`MA`. If the tool takes a free-text place (`q`, `city`, `location`, `resort`), pass the place name from the query (`q`=`Breckenridge`). Do not replace it with guessed latitude/longitude."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Which calls to make",
+        "content": "\n- EVERY CALL MUST NAME ITS CLAUSE. Before adding a call, write the clause it serves. Delete any call with no clause: 'check if Asos carries similar products' is ONE `Asos: v2/auto-complete` call and gets no `categories/list` call. 'US technology headlines, general global news, Arabic news from BBC' is three different tools, one call each. Do not call Top Headlines twice to cover 'languages', and do not add a Search call next to a Top Headlines call that already carries `category`=`technology`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

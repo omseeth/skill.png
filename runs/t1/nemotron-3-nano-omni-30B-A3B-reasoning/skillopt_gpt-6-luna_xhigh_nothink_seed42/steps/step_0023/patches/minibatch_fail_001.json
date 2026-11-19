@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "unrequested_proximity_and_overgeneration",
+      "count": 2,
+      "description": "Agents invoked nearest-results workflows for independent hotel and restaurant requests, including calls with fewer than two domain inputs."
+    },
+    {
+      "failure_type": "contextual_acceptance",
+      "count": 2,
+      "description": "Agents treated an affirmative reply to a specific attraction-category question as no action rather than searching that category."
+    },
+    {
+      "failure_type": "cache_refinement",
+      "count": 2,
+      "description": "Agents failed to apply newly added restaurant rating or budget criteria to compatible cached results."
+    },
+    {
+      "failure_type": "location_argument_mapping",
+      "count": 1,
+      "description": "A state abbreviation was incorrectly passed as a city instead of using the state field."
+    },
+    {
+      "failure_type": "tool_result_lifecycle",
+      "count": 2,
+      "description": "Search results were not consistently bound to variables and saved to cache."
+    },
+    {
+      "failure_type": "range_encoding",
+      "count": 1,
+      "description": "The agent did not translate a minimum rating and approximate budget into supported filter values."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify the specific gaps behind repeated failures: affirmative acceptance of a proposed category creates a search action, multiple independent recommendations do not imply proximity, and common location and threshold phrasing needs canonical schema mappings. Cache refinement and save-to-cache requirements are already stated explicitly, so they are not duplicated.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "- When the user affirms an assistant question proposing a specific domain or category (for example, “Would you like to explore Cultural attractions?”), treat that as acceptance of a pending search for the named category. Carry forward the relevant destination from the conversation and search using the schema-supported category value; do not treat a bare “yes” as no new action."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Proximity between travel domains",
+        "content": "- Requests for recommendations in multiple domains are independent searches, not an implicit proximity request. For `search_nearest`, the user must request a relationship between two supported domains, and the call must include exactly the two corresponding result inputs; do not call it with only one domain or use it to relate results to an unsupported geographic feature."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- For an explicit state-level location, including a state abbreviation, use `state`, not `city`; reserve `city` for a city. Preserve the location value as stated."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "\n- Encode threshold and approximate wording according to the field semantics: for a minimum rating on a 5-point scale, use `[minimum, 5]` (for example, “at least 4.5” becomes `[4.5, 5]`); when the schema provides only a maximum budget and the user says “around x,” use `budget=x` rather than inventing a range."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,35 @@
+{
+  "reasoning": "fallback: failure first, then success [optimizer-ranked: selected 3/19 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+      "content": "\n\n## CACHE GATE (run this before writing any code, every turn)\n1. Copy the CACHE keys of each domain the LAST user turn touches (flights / hotels / restaurants / attractions, including filtered_*, nearest_*, hotels2, final_* names).\n2. Domain HAS a key -> never call search_* for it, whatever the reply contains (budget, rating, cuisine, class, airline, amenity, neighborhood, a 'yes'). Write exactly three lines: `x = get_results_from_cache(key=\"<most refined key in CACHE>\")`, `y = filter_<domain>(prior_results=x, <only the NEW constraints>)`, `save_to_cache(key=\"<new key not in CACHE>\", value=y)`. Examples:\n   - CACHE 'restaurants' (cuisine German, rating applied) + 'We're looking to spend around 30' -> `filter_restaurants(prior_results=r, budget=30)` only.\n   - CACHE 'flights' (arrival_time already applied) + 'We prefer AM and economy class' -> `filter_flights(prior_results=f, airline=[\"AM\"], flight_class=[\"economy\"])`. A bare two-letter capital code ('AM', 'AG') in an answer to an airline/class question is an airline code. Never re-run search_flights.\n   - CACHE 'hotels' only + 'Something with a 5 star rating and a kids club' -> load 'hotels', `filter_hotels(prior_results=h, stars=[5, 5], has_kids_club=True)`, save as 'filtered_hotels'.\n   - CACHE 'hotels', 'filtered_hotels', 'filtered_hotels1' (budget applied) + 'Yes, wifi and meeting rooms would be essential' -> load 'filtered_hotels1', `filter_hotels(prior_results=h, free_wifi_included=True, has_meeting_rooms=True)`, save as 'filtered_hotels2'. Flights stay untouched.\n3. Load only keys spelled exactly in CACHE. If CACHE shows only 'hotels', load 'hotels', not 'filtered_hotels'; a missing key returns None and crashes save_to_cache. Never write comments or reasoning claiming a summary already applied a filter unless that exact text is in the entry you load. A user reply stating stars, amenities or budget that the entry does not list is always a new filter. Never save a loaded result unchanged. Never put get_results_from_cache inside save_to_cache. Never save under a key already in CACHE (use the next unused name such as filtered_hotels2).\n4. Domain has NO key and all its mandatory args are known -> first search (`x = search_*(...)` then `save_to_cache`).",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "append",
+      "content": "\n## Rule 27: Exact value shapes and parameter names (check every kwarg before sending)\n- `stars` and `rating` always take TWO values. 'a 4 star hotel' -> stars=[4, 4]. 'at least 4 stars' -> stars=[4, 5]. 'a 3.5 rating' -> rating=[3.5, 3.5]. 'at least / minimum 3.5' -> rating=[3.5, 5]. Never pass a one-element list.\n- Hotel amenity wording -> parameter: 'laundry facilities' or 'laundry' -> has_laundry_service=True. 'room service' -> has_room_service=True. 'kids club' -> has_kids_club=True. 'business center' -> has_business_center=True. 'spa' -> has_spa_services=True. 'sauna' -> has_sauna=True. 'hot tub' -> has_hot_tub=True. 'free parking' -> has_free_parking=True. 'meeting rooms' -> has_meeting_rooms=True. 'rooftop bar' -> has_rooftop_bar=True. 'city view' -> has_city_view_rooms_present=True. Only gym_present, pool_present, breakfast_included, free_wifi_included, smoking_allowed, air_conditioning_present, heating_present, airport_shuttle_present and is_pet_friendly lack the has_ prefix. Names such as laundry_service, room_service, kids_club, business_center and spa_services raise a ValidationError.\n- Never write comments, and never leave a filter_* or search_* call unassigned or unsaved.\n",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "append",
+      "content": "\n## Rule 26: Proximity requests ('near the hotel', 'near <attraction>') need search_nearest (overrides the 'do not touch the hotel cache' and 'type if stated' parts of Rule 10)\n- If a hotels key is already in CACHE and the last turn asks for restaurants or attractions 'near the hotel', do all of these in one block: load the MOST REFINED hotels key (e.g. hotels2, filtered_hotels, final_hotels), run the new domain's search with every constraint the user stated, save it, then call search_nearest and save that too.\n  Example (restaurant, hotels2 cached, 'Chinese sounds great, and a restaurant with 3.5 rating near the hotel'): `hotels2 = get_results_from_cache(key=\"hotels2\")`, `restaurants = search_restaurants(city=\"Fresno\", cuisine=[\"Chinese\"], rating=[3.5, 3.5])`, `save_to_cache(key=\"restaurants\", value=restaurants)`, `nearest_restaurants = search_nearest(hotels=hotels2, restaurants=restaurants, groupBy=\"restaurant\")`, `save_to_cache(key=\"nearest_restaurants\", value=nearest_restaurants)`.\n- Named attraction with a hotels key cached ('Yes, we want to visit Fountains of Bellagio'): `hotels = get_results_from_cache(key=\"<latest hotels key>\")`, `attractions1 = search_attractions(city=\"<city>\", attraction_name=[\"<exact name>\"])`, `save_to_cache(key=\"attractions1\", value=attractions1)`, `nearest_hotels = search_nearest(hotels=hotels, attractions=attractions1, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`. Pass the NAME ONLY: no type, even if a type was used for the earlier attractions search. Never overwrite the existing 'attractions' key. Do not re-filter the hotels.\n- Without a hotels key, 'near the hotel' needs no search_nearest. Just run the normal first search.\n",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 8 is the broadest, most systematic fix: it stops re-searching when a domain is cached, forces load/filter/save with exact CACHE keys, and covers several recurring errors (never save unchanged, no nested get in save). It subsumes edits 0 and 13. Edit 12 consolidates exact kwarg names and value shapes (has_ prefixes, two-value stars/rating), which cause hard ValidationErrors across many tasks, and is broader than edit 1. Edit 11 adds new, complementary guidance for proximity requests (search_nearest for restaurants/attractions near the hotel or a named attraction) that existing rules only partly cover and in part contradict. Others mostly duplicate existing rules or are narrow edge cases with low support.",
+    "selected_indices": [
+      8,
+      12,
+      11
+    ]
+  }
+}

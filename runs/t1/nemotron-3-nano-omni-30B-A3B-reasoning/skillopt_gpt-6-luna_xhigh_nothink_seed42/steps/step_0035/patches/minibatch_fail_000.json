@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_or_misapplied_cache_update",
+      "count": 6,
+      "description": "New requests were missed, prior explicit criteria were dropped, or unchanged domains were unnecessarily reprocessed instead of applying only the missing updates."
+    },
+    {
+      "failure_type": "missing_tool_result_persistence",
+      "count": 5,
+      "description": "Search or refinement results were left unbound or were not saved to cache."
+    },
+    {
+      "failure_type": "schema_or_value_mismatch",
+      "count": 5,
+      "description": "Calls used an incorrect field, an unsupported argument, or a substituted category value."
+    },
+    {
+      "failure_type": "proximity_action_error",
+      "count": 2,
+      "description": "Near/access requests were not treated as cross-domain proximity, or nearest search was called without both required domain results."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make cache coverage and completion checks item-specific so cached results cannot hide new targets or omit earlier explicit criteria. Clarify how natural-language proximity requests map to nearest-search inputs, preserve literal category labels, and make result persistence an immediate, auditable step. Existing state-field and flight-argument rules already cover those particular misses, so they are not duplicated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "- Before coding, make a checklist of every pending action by exact target, domain, location or flight leg, relationship, and all still-valid explicit criteria from the full conversation. Assess each item against the cache summary: a result covers only the target and criteria it establishes. Use a fully compatible result directly; if it covers prior criteria but lacks new ones, retrieve the latest compatible result and filter only the missing criteria; if the target or domain differs, or no compatible base exists, search when mandatory inputs are explicit. Do not let a cache hit for one item hide a newly requested item, assume an earlier explicit criterion is covered without evidence, repeat covered actions, or reprocess unchanged domains. Mark an item complete only after its request is covered by a compatible result or required tool action, with required result saves performed. Ask once for missing mandatory inputs across blocked items. Use `print(\"No planning needed\")` only when no requested action remains."
+      },
+      {
+        "op": "replace",
+        "target": "## Proximity between travel domains\n- Call `search_nearest` only when the user explicitly requests proximity between supported domains. Before calling it, verify that each cached result covers the specific requested target, not merely the same domain or city. For example, a generic city attraction search does not cover a separately named attraction; search for the named attraction using `attraction_name` unless the cache summary shows that exact target is already covered.\n- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain), not the reference domain: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`.\n- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+        "content": "## Proximity between travel domains\n- Use `search_nearest` when the user requests proximity between supported domains, including by saying a hotel or restaurant should be near, close to, have access to, or be within walking distance of another domain. Treat this as a cross-domain relationship, not as a `neighborhood` value. A standalone interest in visiting or dining at a place does not imply proximity.\n- Before calling, verify that the candidate and reference results cover the exact requested targets and applicable criteria. A generic city search does not cover a separately named place; search for that target with the appropriate schema-supported field, such as `attraction_name`.\n- Pass exactly two relevant domain results: the nearest-search tool requires exactly two of `hotels`, `attractions`, and `restaurants`; never call it with only one. Set `groupBy` to the domain whose candidates the user wants ranked (the focal domain), such as `hotel` for hotels near an attraction or `restaurant` for restaurants near a hotel."
+      },
+      {
+        "op": "replace",
+        "target": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+        "content": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Preserve user-supplied category and entity labels rather than replacing them with semantic synonyms; map a label only when the schema documents that mapping. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`."
+      },
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- For every search, filter, sort, and nearest-results call, bind the exact return value to a local variable and immediately save that same object with `save_to_cache` under a unique, descriptive key before using it in another step. Do not leave result-producing calls unbound or omit their saves. Save refined results under a new key; do not substitute hand-built dictionaries or redefined models for tool result objects."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

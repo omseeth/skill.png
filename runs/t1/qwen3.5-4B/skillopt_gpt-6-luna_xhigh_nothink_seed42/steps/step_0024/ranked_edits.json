@@ -1,0 +1,37 @@
+{
+  "reasoning": "Prioritize the repeated injected-tool constraint and stateful cache workflow, merging overlapping cache guidance into one operational rule. Clarify contextual affirmations and proximity requests, including preparing and saving filtered inputs and handling named anchors. Preserve targeted schema and date-context fixes, but omit the proposed inference that a flight departure date automatically establishes hotel check-in because it could conflict with the skill’s rule against assuming date meanings. No edits target the protected section. [optimizer-ranked: selected 3/6 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- **Runtime contract:** Tool functions are injected directly into the execution namespace; there is no `tools` module. Generated code must contain no `import` statements. Call provided tools directly by name without importing, redefining, or wrapping them; before returning code, scan for and remove any imports. Use keyword arguments except for `seek_information`, and return code in the required format.",
+      "content": "- **Hard runtime gate:** Tool functions are injected as bare names in the execution namespace. Returned code must contain no `import` or `from` statements and must not use a `tools.` prefix. Call each tool directly by its injected name; never import, alias, redefine, wrap, or dynamically resolve tools. Before returning, inspect the complete code and ensure it contains zero import statements. Use keyword arguments except for `seek_information`, and return code in the required format.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+      "content": "- **Turn-by-turn cache discipline:** Compare the latest turn with the full conversation and cached summaries to identify new or changed criteria and explicit requested work that remains incomplete; do not invent extra domains. Reuse only results compatible by domain and subject, preferring the most specific compatible result. When criteria are added, retrieve the closest compatible result with `get_results_from_cache`, apply only criteria not already included, assign the transformed output, and save it. Assign and save every search, filter, or other result-producing action. Keep established canonical keys for base results (such as `flights`, `return_flights`, `hotels`, `restaurants`, and `attractions`); save transformed or additional same-domain results under distinct descriptive keys when they must coexist. Do not repeat completed searches or filters, filter unrelated results, or retrieve and re-save an unchanged result instead of completing a requested update. If a requested entity or category is not covered by compatible cached results, search for it in the requested domain. Use “No planning needed” only when cached results satisfy every current request and no requested action remains.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+      "content": "- For an explicit request for recommendations “near” or “nearby” another result type, perform `search_nearest` even when compatible results are already cached. Ensure compatible result sets for both the requested target and anchor are available; retrieve or search for each in its matching domain, and apply and save any newly stated filters to the relevant inputs before calling `search_nearest`. Treat a named place as the location anchor, not automatically as a neighborhood or name filter for the target domain. A broad cached category does not satisfy a newly named specific attraction; retrieve or search for that attraction by name. Call `search_nearest` with the prepared inputs and save its result. Set `groupBy` to the requested organizing base; when lodging is the base, group by hotel.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "The runtime constraint is a recurring execution failure and is explicitly prioritized by the optimizer guidance. Cache discipline strengthens stateful follow-up handling and canonical result reuse. The nearest-results edit adds concrete guidance to prepare compatible, newly filtered inputs before the call. The remaining edits address narrower or already-covered cases.",
+    "selected_indices": [
+      0,
+      1,
+      3
+    ]
+  }
+}

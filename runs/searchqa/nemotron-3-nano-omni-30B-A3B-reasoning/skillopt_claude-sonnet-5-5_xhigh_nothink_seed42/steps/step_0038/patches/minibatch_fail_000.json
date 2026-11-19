@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 4,
+      "description": "Answer carried extra echoed or descriptive words even though rules exist: 'President of Vietnam' (not 'Vietnam'), 'vitamin C' (not 'C'), 'Bull Moose Party' (not 'Bull Moose'), and 'three black teens' (a passage description) instead of the show title for a list of character names."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 3,
+      "description": "'A series on these' with examples gave a passage's product ('All Aboard! stamps') instead of the category noun (Trains). A noun-phrase definition clue got a niche term ('Body double') instead of the plain dictionary term (look-alike). A bare film title plus year got the star rather than the director."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 1,
+      "description": "Rule 4 says to keep the plural whenever the clue says 'these', which produced 'tsunamis' where the key is the bare loanword 'tsunami'."
+    }
+  ],
+  "patch": {
+    "reasoning": "Earlier steps that added a mandatory written Type/Evidence/Check line were all rejected, so I avoid that. The accepted step was a small, specific rule patch. This batch has two groups. First, answer-shape errors (extra category words, role phrases, descriptive phrases, a collection noun) where the correct rules sit deep in a long list or in the protected block, so I add a short top block with no required output line and one-line examples. Second, three gaps that are visible from the clue: 'these' plus examples, noun-phrase definitions, and bare film title plus year. I also soften the Rule 4 plural bullet for invariant or loanword nouns, which contradicted the key for 'tsunami'.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Question Answering Skill",
+        "content": "\n## Shape check (apply to the final answer just before the answer tags; no extra output line needed)\n- STRIP ECHOES: the answer never contains a noun the clue already states, nor the clue's own 'this <noun>' label. 'this vitamin' -> 'C' (not 'vitamin C'). 'the Progressive party ... nicknamed this' -> 'Bull Moose' (not 'Bull Moose Party'). The Rule 4 head-noun exception is only for slots like 'this empire' / 'this purchase', where the bare modifier alone cannot name the thing.\n- TITLE + NAME ONLY ('President Tran Duc Luong'): answer what he or she leads -> 'Vietnam', never 'President of Vietnam'.\n- 'these' / 'one of these' with named examples ('A series on these of the 30s & 40s features the Daylight & the 20th Century Limited'): answer the plain CATEGORY NOUN that all the examples belong to (Trains). Do not answer with the series, stamp set, product or exhibit named in a passage title.\n- LIST OF CHARACTER NAMES: answer the show/film/book TITLE found in the passage headings ('What's Happening'). Never a descriptive phrase that happens to precede the names in a passage ('three black teens').\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "'N-word' hints ('this 3-word phrase') work like a letter count: the answer must have exactly N words.",
+        "content": "- NOUN-PHRASE DEFINITION clues with no 'this' ('A double that visually resembles another', 'Sickle-shaped weapon of ...'): the answer is the plain common term that paraphrases the WHOLE clue, found in a dictionary or thesaurus passage (e.g. an entry glossed 'a person who is visually similar to another; a double' -> 'look-alike'). Do not pick a narrower specialist or industry term (a film-making term like 'body double') just because it contains the clue's key word. If an archive line repeats the clue but its answer is cut off, use the dictionary/thesaurus entry that glosses the clue, not the archive page's topic words."
+      },
+      {
+        "op": "replace",
+        "target": "- Use the singular form for a generic single object ('Well', not 'wells'), but keep the plural for crops, commodities and mass categories ('Bananas') or when the clue says 'these'/'ones'.",
+        "content": "- Use the singular form for a generic single object ('Well', not 'wells'), but keep the plural for crops, commodities and mass categories ('Bananas') or when the clue says 'these'/'ones' (a plural category noun such as 'Trains' or 'Sails'). Exception: a foreign loanword or invariant-plural noun whose passage titles and headwords use the bare form ('Tsunami - Wikipedia', moose, sheep) is answered with that bare headword ('tsunami'), not with an added -s."
+      },
+      {
+        "op": "insert_after",
+        "target": "- 'One of these <role/title>' ('the 14th one of these spiritual leaders') asks for the title or category noun itself (Dalai Lama), not the individual named in the clue.",
+        "content": "- A bare quoted FILM / BOOK / ALBUM title with a year and no other words ('\"Rachel, Rachel\"(1968)') asks for the PERSON who made it. Default to the director (or author or artist), the one passages credit as 'directed by' / 'written by', not a cast member named beside the title. Give the plain first + last name."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

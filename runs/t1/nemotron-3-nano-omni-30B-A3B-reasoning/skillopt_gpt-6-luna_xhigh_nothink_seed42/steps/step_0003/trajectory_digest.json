@@ -1,0 +1,67 @@
+{
+  "step": 3,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 29,
+  "failure_patterns": [
+    {
+      "pattern": "result_lifecycle: Tool results were left unassigned or unsaved instead of being stored in cache.",
+      "count": 29,
+      "task_ids": [
+        "flighthotel:train:1:6:1",
+        "flighthotelattraction:train:6:24:1",
+        "attraction:train:24:59:0",
+        "hotelrestaurant:train:3:60:3",
+        "hotelattraction:train:24:13:4",
+        "flighthotelattraction:train:3:12:1",
+        "attraction:train:2:2:0",
+        "flight:train:3:60:3",
+        "flighthotelrestaurant:train:15:23:3",
+        "attraction:train:13:29:2",
+        "flight:train:2:56:3",
+        "flighthotel:train:22:10:2",
+        "flighthotelrestaurant:train:21:27:1",
+        "restaurant:train:20:8:0",
+        "hotel:train:13:3:1",
+        "flight:train:17:8:3",
+        "hotel:train:22:57:2",
+        "flighthotel:train:25:9:2",
+        "flighthotel:train:22:15:2",
+        "flighthotel:train:14:29:1",
+        "flight:train:14:4:1",
+        "flight:train:17:11:1",
+        "restaurant:train:9:60:2",
+        "flighthotelattraction:train:3:40:1",
+        "attraction:train:13:2:0",
+        "restaurant:train:5:28:2",
+        "restaurant:train:19:41:1",
+        "flighthotelrestaurant:train:3:4:1",
+        "hotelattraction:train:25:10:4"
+      ]
+    }
+  ],
+  "score_before": 0.23,
+  "score_after": 0.225,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "- Treat the latest user turn as an update to the full trip plan. Before planning, inventory every requested action and item from the full conversation, including replies to assistant questions, distinct flight legs, and explicitly requested lodging destinations or stays. Check cache coverage separately for each item and constraint. For an affected item, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. When a cached result already represents earlier criteria, apply each newly introduced constraint using the appropriate supported filter argument and ensure the call actually includes it; search when a needed result is unavailable. Do not skip uncovered requested items, redo unaffected domains, or rely on variables from earlier executions.",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions."
+    },
+    {
+      "op": "replace",
+      "content": "## Missing mandatory information\nBuild the requested actions from the full conversation, then check mandatory inputs separately for each requested domain. If information is missing for one or more domains, make one `seek_information` call asking only for those missing mandatory inputs; do not search a domain whose own mandatory inputs are incomplete. Still perform and cache searches for other requested domains whose mandatory inputs are complete. If the user gives an exact hotel check-in date and an explicit stay length in nights, use `adjust_date` to derive check-out; do not ask for a date that can be derived this way. Vague timing such as “a weekend” does not supply exact dates or a stay length. Do not invent values or use defaults; optional preferences are not mandatory inputs.",
+      "target": "## Missing mandatory information\nBefore searching, check the full conversation for all mandatory inputs required by each requested tool. If any are missing, do not invent values, use defaults, or run a partial search. Make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs."
+    },
+    {
+      "op": "insert_after",
+      "content": "- Match location granularity to the schema: use `state` when the user gives a state or region rather than a city. For a named neighborhood within a city, use the containing city in `city` and the named area in `neighborhood`; preserve the user’s supplied entity text, including city qualifiers in compound neighborhood labels. For attraction searches, a state name or abbreviation supplied without a city belongs in `state`, not `city`.\n- When the schema represents a minimum-only rating preference as a range, use that minimum and the scale’s upper bound (for example, on a 1–5 scale, “at least 3” becomes `[3, 5]`). When `stars` is a minimum/maximum pair, encode an exact N-star request as `[N, N]`.",
+      "target": "## Validate tool arguments and preserve user intent"
+    },
+    {
+      "op": "append",
+      "content": "\n## Execute tools directly\n- Call the provided tool functions directly; do not import tools, alter module paths, or define or redefine tool functions or their models. Use `print(\"No planning needed\")` only when valid cached results already satisfy the entire request, and never append it after performing searches, filters, sorts, or nearest-results calls.",
+      "target": ""
+    }
+  ]
+}

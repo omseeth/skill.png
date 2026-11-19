@@ -1,0 +1,40 @@
+{
+  "reasoning": "Kept all five failure-driven edits as the primary guidance. Added the success-driven clarification that an event date does not automatically satisfy a travel-date requirement to the overlapping required-input edit, avoiding a duplicate edit. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available.",
+      "content": "- Check required inputs for each requested domain against the full conversation, compatible cached results, and the tool schema. Flight searches require a known route and departure date; hotel searches require a city, check-in date, and checkout date; restaurant searches require a city. Count a date only when its stated meaning matches the required field: an event date, such as a reunion or celebration, is not automatically a flight departure date or hotel check-in or checkout date. Never fill missing travel dates from examples, defaults, or assumptions. If required values are missing, make exactly one `seek_information(...)` call listing only all missing required values across the requested domains. Do not search or filter an incomplete domain, guess values, or ask for optional preferences as if they were required. Still perform every independent requested search or update whose own required inputs are complete in the same turn.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, search each leg separately, reverse the outbound route for the return, and use the return leg’s departure date. Ask for an unknown endpoint rather than assuming a route.",
+      "content": "- Preserve user-provided dates, entity values, and casing. For a round trip, make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg by setting `arrival_date` on the outbound search. Ask for an unknown endpoint rather than assuming a route. When a hotel stay is given as a check-in date plus an unambiguous duration in nights rather than a checkout date, call `adjust_date(date=<check-in date>, delta_days=<number of nights>)` and use its returned date as checkout; do not treat the duration as missing.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+      "content": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Never pass a preference as an unsupported extra argument or place it in an unrelated field. For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+      "content": "- On each turn, parse the entire latest user turn, including any criteria stated after an affirmation, and compare every active criterion with compatible cached result summaries. A cache is not sufficient merely because it matches the subject or earlier criteria: if even one active criterion is absent or not known to be satisfied, retrieve the closest compatible result, apply the missing criterion(s), and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cache does not cover. Avoid retrieving unrelated results or repeating constraints already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results satisfy every active criterion in the current request.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+      "content": "- Resolve brief affirmations and follow-ups against the immediately preceding assistant question or proposal, carrying forward the referenced entity or category. If the assistant proposed a specific place and the user asks what is there, treat that place as an active search or filter criterion and use compatible cached results when available. A statement that the user has not visited the place does not negate a request to explore it.",
+      "support_count": 2,
+      "source_type": "failure"
+    }
+  ]
+}

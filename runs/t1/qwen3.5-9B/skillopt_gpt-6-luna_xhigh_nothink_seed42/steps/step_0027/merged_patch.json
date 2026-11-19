@@ -1,0 +1,45 @@
+{
+  "reasoning": "Combined the overlapping hotel-count edits into one replacement and included the distinct, concrete domain-to-field mappings. Kept the cache-selection, date-format, missing-input, and established-trip-boundary clarifications as separate edits targeting non-overlapping text. Each edit is outside the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "content": "For hotel searches, map a stated party size to `num_people` only when it is explicitly intended for hotel occupancy; a count specified solely for flight passengers does not automatically set hotel occupancy. Apply a newly supplied hotel count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken hotel counts or pass traveler counts to flight tools. Map criteria only to matching domain fields: “non-stop” flights means `num_layovers=[0]`; “first” or “business” flight class belongs in `flight_class`, not hotel `stars`. For hotels, an explicit request for business facilities maps to `has_business_center=True`; a meeting-room request separately maps to `has_meeting_rooms=True`.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "If a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns.",
+      "content": "If a new constraint is not reflected in cache, choose the latest suitable result that already includes all prior applicable constraints, preferring an updated or filtered result over the original broad search. Retrieve it by its exact cache-summary key into a variable, apply only the new constraint, and save under a fresh key; do not repeat a search when the result can be filtered or rely on variables from earlier turns. For a shared round-trip flight preference, retrieve and update the outbound and return results independently.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Pass user-provided date strings unchanged to date-taking tools unless the schema explicitly requires a different format; do not parse, reformat, or calculate dates in Python or import date libraries.",
+      "content": "Pass user-provided date strings to date-taking tools exactly as given; tool examples in another format do not require converting them. Do not parse or reformat dates in Python or import date libraries. Use `adjust_date` only for the stated checkout-date calculation described above.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "If required inputs are missing, ask for them while still completing other requested domains whose required inputs are available.",
+      "content": "Evaluate required inputs separately for each requested domain. If an itinerary search lacks required dates, ask only for those dates while completing any independent requested search whose required inputs are available—for example, search for restaurants when the destination city is known.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "When lodging is requested for an explicitly planned trip and both trip dates are known, use the trip start and end dates as hotel check-in and check-out.",
+      "content": "An established outbound and return date pair for the same trip supplies those hotel stay boundaries; do not ask the user to restate them. If no stay dates can be established, ask for the missing dates without inventing them, while completing other requested domains that are ready.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

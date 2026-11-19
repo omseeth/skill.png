@@ -1,0 +1,55 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache/refinement lifecycle",
+      "count": 3,
+      "description": "Agents ignored cached restaurant results or refined the wrong domain instead of applying the new cuisine and rating criteria."
+    },
+    {
+      "failure_type": "flight-leg/date modeling",
+      "count": 3,
+      "description": "Agents used an unsupported return-date argument or failed to preserve all alternative dates for the same flight leg."
+    },
+    {
+      "failure_type": "constraint translation",
+      "count": 6,
+      "description": "Agents omitted explicit constraints, used unsupported fields, or invented unrelated preference proxies."
+    },
+    {
+      "failure_type": "mandatory-input handling",
+      "count": 2,
+      "description": "Agents fabricated missing flight or lodging inputs instead of seeking them while proceeding with independently complete domains."
+    },
+    {
+      "failure_type": "tool execution interface",
+      "count": 2,
+      "description": "Agents imported a tools module even though tools were already available in the execution environment."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify the remaining gaps around alternative flight dates, independently complete domains, exact rating language, unsupported qualitative preferences, and the injected-tool runtime. Cache retrieval and saving are already explicit in the skill, so no duplicate cache-lifecycle rule is proposed.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Treat each explicitly described flight segment as its own search, using that leg’s origin, destination, and departure date. For a round trip, search outbound and return separately, reversing the route for the return; do not use an unsupported `return_date` argument or treat the return date as another outbound date. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.",
+        "content": "- Make one `search_flights` call per one-way segment. For a round trip, make the outbound call with origin → destination and the outbound date(s) in `departure_date`, then a second call with destination → origin and the return date in `departure_date`; never pass `return_date` or put the return date in `arrival_date`. If dates are alternatives for the same segment (for example, “May 16 or May 22”), include every alternative in that leg’s `departure_date` list in one call. Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction."
+      },
+      {
+        "op": "replace",
+        "target": "Before searching, check the full conversation for all mandatory inputs required by each requested tool. If any are missing, do not invent values, use defaults, or run a partial search. Make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+        "content": "Before searching, check the full conversation and relevant cache for mandatory inputs separately for each requested domain. If a domain lacks a mandatory input, do not call that domain’s tool, invent a value, or use a default; make one `seek_information` call asking only for missing mandatory information across the incomplete domains. Continue requested actions in other domains when their mandatory inputs are available and their results are not already validly cached. Optional preferences are not mandatory inputs."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- Interpret restaurant rating language as a range: “at least” or “minimum X” means `[X, 5]`; an exact requested rating of `X` means `[X, X]`.\n- If a qualitative preference has no corresponding supported tool field (such as restaurant formality or ambience), do not approximate it with an unrelated criterion or boolean. Use the explicitly stated criteria that the schema supports."
+      },
+      {
+        "op": "append",
+        "content": "\n## Tool execution environment\n- Tools are already available as callable names in the execution environment. Call them directly; do not import a `tools` module, modify `sys.path`, or redefine tools or input models."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

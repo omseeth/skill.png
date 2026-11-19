@@ -1,0 +1,25 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "Parameter schema and output-format errors",
+      "count": 2,
+      "description": "Calls were selected correctly, but parameters were placed in the wrong required/optional bucket or serialized with the wrong structure."
+    },
+    {
+      "failure_type": "Multi-value filter mapping",
+      "count": 1,
+      "description": "A request for multiple categories was split into duplicate calls instead of using one supported combined filter, and an enumerated value did not match its canonical casing."
+    }
+  ],
+  "patch": {
+    "reasoning": "Both trajectories show errors in faithfully mapping arguments to the required output schema. One also shows that supported multi-value filters should be combined and canonical tool values used.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Validate call arguments and output\n- Put each argument in the bucket specified by the tool definition: required parameters in `required_parameters`, optional parameters in `optional_parameters`. Serialize both as arrays of `{ \"name\": ..., \"value\": ... }` objects, including an empty array when there are none.\n- For a request with multiple filters or categories, use one call with a combined value when the endpoint supports that syntax; do not make duplicate calls just to query each value separately. Match enumerated parameter values to the tool's canonical spelling."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

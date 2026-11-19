@@ -1,0 +1,36 @@
+# Mathematical Multiple-Choice Skill
+
+(No learned rules yet. Rules will be added through the reflection process.)
+
+## Match theorem claims to the exact setup
+- Do not choose an asymptotic exponent, regularity level, branching regime, or other conclusion from analogy alone. Verify the exact result under the stated hypotheses and for the stated object; distinctions such as conditioned versus unconditioned laws can change the conclusion.
+- Treat a sharper rate, quantitative estimate, minimality property, changed parameter placement, or threshold behavior as a separate claim requiring support. When choices differ by an exponent shift or equality versus strict inequality, check the exact clause rather than preferring a plausible stronger or weaker claim.
+- For algorithm bounds, distinguish a fixed-parameter form f(k)n^c from n^{O(k)}: polynomial time for each fixed k alone does not establish FPT.
+
+## Check structural assumptions and feasibility
+- Before using a special case or counterexample to reject a claim, verify that it satisfies every structural assumption in the question, such as nondegeneracy, regularity, parameter restrictions, and the stated measure. A case that violates a hypothesis does not refute the claim.
+- Before declaring a parameter case possible or impossible, derive its range from all defining identities and hypotheses; variables in a displayed definition need not vary independently. In valuation cases, use the given equation as well as the stated valuation domains.
+- Do not assume a subgroup has rank at most that of its ambient group: subgroups of a finite-rank free group can have larger rank. Distinguish subgroup rank from free-factor rank.
+
+## Keep pointwise bounds separate from norm bounds
+A pointwise estimate in terms of \(\|f\|_\infty\) does not by itself give a dimension-free \(\ell^2\) operator bound; converting pointwise control to an \(\ell^2\) norm can introduce a factor depending on the size of the domain. Analyze the requested norm and its dependence on dimension directly.
+
+## Audit logical and formula details
+- Translate each option into its logical form before comparing it. Track quantifier order and dependencies: “for every target, there exists a witness” differs from one witness working for every target, and a constant that may depend on a parameter differs from a uniform constant. Distinguish all parameter values from sufficiently large values, and a whole class from a restricted subclass.
+- Preserve the exact form of asymptotic assertions: note cutoffs, the order of iterated limits, and whether the claim uses a limit or limsup. Do not silently replace a truncated approximation with convergence to a full series.
+- For an equivalence, check both implications.
+- Read negated restrictions literally: an option that says not to impose a condition may include cases excluded by an option that imposes it.
+- For competing formulas, compare signs, coefficients, factors, index ranges, and wording such as “only one” versus “at most one.” Use definitions to check which terms and indices should appear; when useful, test a low-dimensional case, specialization, or boundary case rather than relying on plausibility.
+- Separate a claimed conclusion from an offered explanation: a correct conclusion does not by itself establish the proposed mechanism. Once a direct check distinguishes the options, commit rather than adding speculative exceptions.
+
+<!-- SLOW_UPDATE_START -->
+Before choosing, make a compact comparison of the live options: record each exact conclusion, its hypotheses and endpoint ranges, and any added condition, construction, or complexity bound. Rank only claims supported by the setup; “strongest” means the strongest supported implication or estimate, not the most detailed-sounding option. Treat a proposed mechanism or construction as an additional claim that needs its own evidence.
+
+Do not invent meanings for undefined notation, citations, theorem details, exceptions, or improved rates. Do not transfer a remembered result from a related model or operator: verify that its object, normalization, hypotheses, parameter regime, and conclusion match this question. If that match cannot be established, do not use the recollection to strengthen or weaken a claim.
+
+For competing formulas, copy the indices, signs, factors, and case ranges exactly before comparing them. Test boundary values and small admissible instances directly from the definitions; for long algebraic calculations, independently check the sign or result by a second specialization or expansion. Do not let one fragile hand calculation, or a plausible pattern, decide the answer.
+
+In valuation casework, first derive feasible valuations from every defining identity, then check the printed endpoints—including zero and the upper boundary—and the valuation of sums. Do not infer a case from whether a symbol or formula seems likely to be defined. For maps to projective space, distinguish global generation, ampleness, finiteness, and point separation; a finite map alone does not make every rational image point have a rational preimage.
+
+When options compare algorithmic results, compare the actual runtime and output guarantees: a linear-time construction is stronger than a generic polynomial-time decision-and-search claim when both apply. For named operators and sequences, verify the exact operator and preserve index-block order; do not import a threshold or identity from a superficially similar setting.
+<!-- SLOW_UPDATE_END -->

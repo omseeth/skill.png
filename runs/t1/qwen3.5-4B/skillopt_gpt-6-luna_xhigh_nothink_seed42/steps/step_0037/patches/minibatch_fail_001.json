@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_write_omission",
+      "count": 8,
+      "description": "Every trajectory omitted saving the result of its search or filter, despite existing save requirements."
+    },
+    {
+      "failure_type": "pending_context_and_domain_execution",
+      "count": 3,
+      "description": "Agents asked for information already supplied or for unrequested domains, and skipped actions whose inputs were complete."
+    },
+    {
+      "failure_type": "schema_or_location_mapping",
+      "count": 2,
+      "description": "Agents mapped a state and attraction type incorrectly or truncated a city-qualified neighborhood."
+    },
+    {
+      "failure_type": "superseded_criterion_handling",
+      "count": 1,
+      "description": "A replacement restaurant cuisine was treated as a filter on stale results, while the current budget was omitted."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already directly requires saving results, resolving supplied itinerary context, executing independent complete requests, and matching schema fields, so repeating those instructions would not patch a gap. Clarify the uncovered distinction between adding a filter and replacing a prior category, so a changed request is not applied to results restricted by the superseded category and still-applicable criteria are retained.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result.",
+        "content": " If the user explicitly replaces a category or entity criterion (for example, changing the requested cuisine), treat the new value as superseding the conflicting old one, not as an additional filter. Do not filter results already restricted by the superseded value; search anew for the replacement with all still-applicable explicit criteria from the conversation, such as the city and budget."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

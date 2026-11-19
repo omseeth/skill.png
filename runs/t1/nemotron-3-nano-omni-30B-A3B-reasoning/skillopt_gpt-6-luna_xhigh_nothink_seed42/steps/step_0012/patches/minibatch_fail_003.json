@@ -1,0 +1,31 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "invalid_argument_shape",
+      "count": 1,
+      "description": "Passed a one-item rating list even though the filter requires a two-endpoint range."
+    },
+    {
+      "failure_type": "stale_cache_refinement",
+      "count": 1,
+      "description": "Refined the base restaurant results instead of the cached results that already included the neighborhood constraint, then resent that constraint."
+    },
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 1,
+      "description": "Did not bind and save the filtered result under a new cache key."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache-selection and persistence failures are already covered by existing skill instructions, so they do not need duplicative edits. The uncovered gap is explicit handling of range-valued arguments when the user supplies only one bound.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- For range-valued list arguments, satisfy the schema’s required number and order of endpoints. If the user gives a one-sided threshold (for example, “at least X”) for a field requiring a minimum and maximum, use X as the relevant endpoint and the known supported bound for the other endpoint; do not pass a singleton list or invent a bound that cannot be determined."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

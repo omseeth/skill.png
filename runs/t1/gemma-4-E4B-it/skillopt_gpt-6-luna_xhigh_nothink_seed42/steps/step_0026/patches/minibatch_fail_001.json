@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_mismanagement",
+      "count": 4,
+      "description": "Repeated base searches or unnecessary filtering replaced retrieving compatible cached results and filtering the requested follow-up constraints."
+    },
+    {
+      "failure_type": "hotel_scope_and_required_dates",
+      "count": 2,
+      "description": "Failed to carry established trip destination and stay details into a hotel request, or guessed a checkout date instead of asking for missing dates."
+    },
+    {
+      "failure_type": "tool_argument_and_transaction_errors",
+      "count": 2,
+      "description": "Omitted or mis-mapped supported location or airport information and, in one case, failed to save a search result."
+    },
+    {
+      "failure_type": "rating_interpretation",
+      "count": 1,
+      "description": "Treated an unqualified numeric restaurant rating as a minimum rather than an exact score."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent failures ignored the cache decision boundary, so the replacement makes the follow-up action explicit and operational. The remaining edits clarify hotel context and missing-date handling, distinguish exact numeric ratings from thresholds, and resolve two recurring argument-selection ambiguities without modifying the protected section.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Identify only the domains or itinerary legs changed by the latest user turn. For each changed request, if a compatible cached result exists, retrieve it with `get_results_from_cache(key=\"<literal cache key shown in the summary>\")` and assign the returned object to a local variable; cache keys and summaries are not Python result variables. Choose the most constrained cached result that still covers the request: its domain, location, dates or leg, and original scope must be compatible, and it must not be narrower than the requested scope. Prefer a result that already embodies the greatest number of still-active criteria, and retrieve it by its exact cache key. A result restricted to a different category or entity does not establish that a newly requested specific entity is included; search if the cached scope cannot cover it. Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result. A cached proximity result may also be used as filter input when its candidate set remains valid. Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no cached result can cover the changed scope.",
+        "content": "- Identify only the domains or itinerary legs changed by the latest user turn. Use cache summaries to verify the domain, location, dates or leg, original scope, and criteria embodied in each result. For each changed scope, retrieve the exact key of the most constrained compatible cached result that still covers the request; a result limited to a different category or entity does not cover a request it cannot include. If the latest turn adds or reaffirms a filterable preference, apply the matching `filter_*` tool to that retrieved result and save the filtered result—do not repeat the base search. Pass the preference stated in the latest turn and any active criteria not embodied in the retrieved result. If no filterable constraint changed and the compatible cache already covers the request, reuse it without filtering or saving it again. Search only when no compatible result covers the changed scope, and do not regenerate unaffected domains or legs."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs.",
+        "content": "\n- For a hotel explicitly requested as part of an established flight trip, use the trip destination as the hotel `city` unless the user gives a different hotel location. When the trip start date is tied to that hotel stay and no separate check-in date is given, use it as check-in. Derive checkout only from an explicitly stated stay length using `adjust_date`; never assume a one-night stay or invent a checkout date. Seek any hotel date that remains unresolved."
+      },
+      {
+        "op": "replace",
+        "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+        "content": "For restaurant ratings and hotel guest ratings, treat an unqualified numeric score (for example, “3.5 rating”) or an explicitly exact score as exact and use `[N, N]` in `rating`. Use `[N, 5]` only when the user states a minimum, such as “at least N” or “N or higher.” For hotel classification expressed in stars, use `stars`, not guest `rating`; use `[N, N]` for an exact star class and `[N, 5]` for “at least N stars.”"
+      },
+      {
+        "op": "insert_after",
+        "target": "For attractions, put the requested category in `type` with its exact value (for example, if the requested type is `Scenic`, pass `type=[\"Scenic\"]`).",
+        "content": "\n- For a proximity request phrased as “X near Y,” set `search_nearest`'s `groupBy` to X, the domain the user wants returned near the other domain (for example, restaurants near a hotel means `groupBy=\"restaurant\"`). If the user supplies a specific airport as well as its city, preserve it: use `start_airport` for the outbound origin and `end_airport` for that airport as the reverse return destination; do not omit the airport identifier because a city is also known."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

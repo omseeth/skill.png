@@ -1,0 +1,21 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_tool_selection / dropped_provider",
+      "count": 1,
+      "description": "Two different product types (swimwear and floor lamps) were both sent to `Asos: v2/auto-complete`. The home-goods clause should have gone to `Wayfair: products/search`. The agent also omitted the market defaults (country, currency, store) that the slow block already requires."
+    }
+  ],
+  "patch": {
+    "reasoning": "The only failure is tool choice by product category. The agent used the first retailer search tool that accepted free text for every clause, so the lamp clause never reached a home-goods catalog. The skill has rules for sibling endpoints, email, news and kanji, but none for choosing between retail catalogs by product type. One compact rule, with a worked example and a boundary against the 'same tool twice' rule, fills that gap. Formatting and default-parameter rules are already covered, and the slow block cannot be edited, so I add nothing there.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n- ONE RETAILER PER PRODUCT TYPE (when no retailer is named). Judge each product clause separately by whose catalog sells it. Clothing, swimwear and fashion accessories go to `Asos: v2/auto-complete` (`q`). Furniture, home décor, lighting and lamps go to `Wayfair: products/search` (`keyword`). Shoes go to `Zappos Realtime Data: Zappos search product`. Do not send two different product types to one retailer just because its search tool accepts any text. Example: 'search retro bikini tops and modern shaded floor lamps' -> `Asos: v2/auto-complete` (`q`=`retro bikini top`, plus Asos market defaults) AND `Wayfair: products/search` (`keyword`=`modern shaded floor lamps`, `curpage`=`1`). BAD: two Asos calls, which leaves the lamps with a fashion catalog. Boundaries: if the query names a retailer for a clause, use that one. The same product type twice means the same tool twice. Generic marketplaces (`Aliexpress DataHub`, `Lazada DataHub`, `Shopee E-commerce Data`, `Taobao Tmall`) are for queries that name them or a region they serve, not the default for any product search."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

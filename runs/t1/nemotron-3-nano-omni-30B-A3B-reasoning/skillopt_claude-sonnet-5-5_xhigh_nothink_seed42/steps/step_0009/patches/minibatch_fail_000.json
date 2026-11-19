@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "over_refinement_of_unchanged_domains",
+      "count": 3,
+      "description": "On a hotel-only answer (party size and rooms, amenities, nightly budget) the agent reloaded and re-filtered flight keys, re-applied hotel filters the CACHE already lists, loaded keys not in CACHE (departure_flights), and re-saved over existing keys."
+    },
+    {
+      "failure_type": "new_domain_or_missing_leg_not_searched_correctly",
+      "count": 2,
+      "description": "A 'Yes' to a new hotel offer was handled by re-saving flight keys instead of calling search_hotels with the round-trip dates. When only the return date arrived, the agent re-searched the outbound leg and renamed 'flights'."
+    },
+    {
+      "failure_type": "invalid_param_return_date",
+      "count": 1,
+      "description": "search_flights was called with a return_date kwarg, with no assignment and no save, which raises a ValidationError. It should have been two one-way searches."
+    },
+    {
+      "failure_type": "search_instead_of_cache_retrieval",
+      "count": 1,
+      "description": "A 'Not really, I'm flexible' reply with 'attractions' already cached was handled by a fresh search_attractions(city='TN'). The state abbreviation was passed as city and the cache was not retrieved."
+    },
+    {
+      "failure_type": "over_seeking_information",
+      "count": 1,
+      "description": "The user gave both hotel dates and a neighborhood, but the agent still asked for the check-out date. The gold call also used num_people=1 for the 'solo trip'. Not patched because the gold checkout date cannot be derived."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures are the agent regenerating the whole multi-domain plan on a single-domain follow-up (hotel answers triggering flight re-filters, repeated filters, invented cache keys) or mishandling the first search of a newly accepted domain or leg. Edit B adds a last-turn scoping rule with worked examples that are unambiguous about what to emit. Edit C covers the 'yes' to a new domain (hotel dates from round-trip flights) and the return-leg-only case. Edit A puts the return_date ban, the assign-and-save rule and the CACHE-key rule at the very top, where they are most salient, with an exact round-trip example. Edit D adds an example of the no-preference pure-retrieval case. Each edit adds new concrete content and does not restate what existing rules already cover.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Hard stops (violating any of these crashes the run or fails the check)\n- search_flights has NO return_date (or return) parameter. 'Depart May 21, 2025 and return June 2, 2025' is TWO calls: `departure_flights = search_flights(start_airport_city=\"Anchorage\", end_airport_city=\"Raleigh\", departure_date=[\"May 21, 2025\"])` + `save_to_cache(key=\"departure_flights\", value=departure_flights)`, then `return_flights = search_flights(start_airport_city=\"Raleigh\", end_airport_city=\"Anchorage\", departure_date=[\"June 2, 2025\"])` + `save_to_cache(key=\"return_flights\", value=return_flights)` (Rule 9).\n- Every search_* / filter_* call is assigned to a variable and followed by save_to_cache, even on the very first turn.\n- Only load cache keys that literally appear in the CACHE summary, and never re-save an unchanged loaded result."
+      },
+      {
+        "op": "insert_after",
+        "target": "4. Pass only the constraints the user literally stated. Never ask about optional details, and never seek information for a domain the user has not requested.",
+        "content": "\n5. Scope the code to the domain the LAST turn answers (flight + hotel conversations especially). Look at the assistant's last question. Budget per night, stars, neighborhood, amenities, number of people or rooms -> hotels. Flight class, airline, time, price per ticket -> flights. Emit load -> filter -> save for THAT domain only. Do NOT reload, re-filter or re-save the other domains' keys, even if the user mentioned a class or amenity earlier. The CACHE summaries show those are already applied. Never save under a key that already exists in CACHE; use the next free name (filtered_hotels -> filtered_hotels1).\n   - CACHE has flights, return_flights, hotels; last turn 'There are 2 of us and we need 2 rooms' -> `hotels = get_results_from_cache(key=\"hotels\")`, `filtered_hotels = filter_hotels(prior_results=hotels, num_people=2, num_rooms=2)`, `save_to_cache(key=\"filtered_hotels\", value=filtered_hotels)`. Nothing on flights, and never load a key such as 'departure_flights' that CACHE does not list.\n   - CACHE hotels summary already shows 'stars range: [1, 1], neighborhood(s): [Downtown St. Louis], pool_present, has_kids_club'; last turn 'Yes, laundry facilities and room service' -> `filter_hotels(prior_results=hotels, has_laundry_service=True, has_room_service=True)` only. Do not re-pass stars, neighborhood, pool or kids club, and do not filter flights.\n   - CACHE has filtered_hotels (3 stars applied) plus flight keys; assistant asked 'What's your budget per night?'; last turn 'Around 105.' -> `h = get_results_from_cache(key=\"filtered_hotels\")`, `h2 = filter_hotels(prior_results=h, budget=105)`, `save_to_cache(key=\"filtered_hotels1\", value=h2)`. No flight calls, and no stars or has_kids_club."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Search only the domain whose mandatory args just became complete. Leave other domains' existing cache entries untouched (e.g. restaurants already cached, now the hotel dates arrive: call search_hotels only).",
+        "content": "\n- A 'yes' to the assistant's offer of a NEW domain (assistant: 'Are you looking for a family-friendly hotel?' -> user: 'Yes, that sounds wonderful') is a request for that domain. If CACHE has no key for it, search it now. Never just re-load or re-save the flight keys. When the conversation already holds a round trip (outbound date + return date), the outbound date is the hotel check-in and the return flight date IS the check-out (Rule 9). Example: CACHE has departure_flights / return_flights for Fresno -> St. Louis, June 5, 2026 and June 12, 2026 -> `hotels = search_hotels(city=\"St. Louis\", checkin_date=[\"June 5, 2026\"], checkout_date=[\"June 12, 2026\"])`, `save_to_cache(key=\"hotels\", value=hotels)`. Descriptors such as 'family-friendly' or 'kid-friendly' add no kwargs.\n- Return date supplied after the outbound leg is already cached (CACHE has 'flights' for Raleigh -> Atlanta on May 15, 2025; user says 'Round trip, and we'd like to return on May 26, 2025'): search ONLY the return leg. `return_flights = search_flights(start_airport_city=\"Atlanta\", end_airport_city=\"Raleigh\", departure_date=[\"May 26, 2025\"])`, `save_to_cache(key=\"return_flights\", value=return_flights)`. Do not re-search the outbound leg and do not re-save or rename 'flights'."
+      },
+      {
+        "op": "insert_after",
+        "target": "No save is needed for a pure retrieval.",
+        "content": "\n  - Example: the user asked for Art attractions in TN, CACHE has 'attractions', and the last turn is 'Not really, I'm flexible. Give me anything' -> output only `attractions = get_results_from_cache(key=\"attractions\")`. Never re-run search_attractions for this reply. A state abbreviation such as 'TN' never goes in `city=` (use `state=\"TN\"` in a first search)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

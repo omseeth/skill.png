@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "round_trip_leg_decomposition",
+      "count": 3,
+      "description": "Date ranges were treated as outbound arrival dates or multi-stop routes were collapsed instead of searching each leg and the final return."
+    },
+    {
+      "failure_type": "result_call_cache_protocol",
+      "count": 4,
+      "description": "Result-producing calls were left unassigned or unsaved, or an intended search was duplicated."
+    },
+    {
+      "failure_type": "criterion_mapping_or_omission",
+      "count": 3,
+      "description": "Explicit criteria were omitted or mapped incorrectly, including a pool to a kids-club flag and a state abbreviation to city."
+    },
+    {
+      "failure_type": "unrequested_operations",
+      "count": 3,
+      "description": "Agents added proxy filters or proximity searches, or repeated completed domain work."
+    }
+  ],
+  "patch": {
+    "reasoning": "The round-trip rule needs an explicit branch for multi-stop itineraries, which account for repeated missing or misdirected flight legs. A direct amenity-to-flag example clarifies the pool/kids-club substitution. The cache-saving and scope rules already cover the other observed issues, so duplicating them would not address a skill gap.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+        "content": "- **Search round-trip flights as separate legs:** For a simple A↔B trip with outbound and return dates, search A→B using the first date as `departure_date`, then B→A using the return date as `departure_date`; do not put the return date in outbound `arrival_date`. For an explicitly described multi-stop route A→B→C followed by a return to A, search each consecutive route segment and then C→A on the stated return date; do not skip an intermediate leg or return from an earlier stop. Use only dates supplied or clearly associated with each leg, and assign and save every leg separately. Do not infer a return from hotel duration alone. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg."
+      },
+      {
+        "op": "insert_after",
+        "target": "When only a state or region is given, including an abbreviation, use `state`, not `city`.",
+        "content": "\nMap a specifically named hotel amenity to its direct matching flag, not a related substitute: for example, a requested pool means `pool_present=True`, not `has_kids_club=True`. Do not infer an additional amenity from a broad label such as “kid-friendly.”"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

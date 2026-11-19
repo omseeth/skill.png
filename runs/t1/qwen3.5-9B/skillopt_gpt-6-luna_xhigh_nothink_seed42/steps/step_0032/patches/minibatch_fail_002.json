@@ -1,0 +1,46 @@
+{
+  "batch_size": 3,
+  "failure_summary": [
+    {
+      "failure_type": "scope_overreach",
+      "count": 1,
+      "description": "The agent treated an unaccepted hotel-near-attraction offer as a request and added unrelated restaurant, attraction, and proximity operations."
+    },
+    {
+      "failure_type": "unsupported_parameter_inference",
+      "count": 1,
+      "description": "The agent inferred a numeric hotel party size from the description “family with kids.”"
+    },
+    {
+      "failure_type": "cache_delta_tool_selection",
+      "count": 1,
+      "description": "The agent re-searched flight legs despite suitable cached results that needed only a new flight-class filter."
+    },
+    {
+      "failure_type": "result_persistence",
+      "count": 2,
+      "description": "The agent omitted a required cache save or nested a result-producing call directly inside the save call."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that family/group descriptions do not establish a numeric occupancy and that answering a different clarification does not accept an earlier offer. A compact operation template makes the cache-versus-search decision and separate assignment/save steps more actionable without repeating the broader rules.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Do not infer unspoken counts or pass traveler counts to flight tools.",
+        "content": "- Do not infer unspoken counts or pass traveler counts to flight tools; labels such as “family,” “kids,” or “group” do not specify a numeric `num_people` unless the user gives a count."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Resolve follow-ups about assistant-suggested places or options:**",
+        "content": "A reply to a different clarification question is not acceptance of an earlier assistant offer. Treat the offer as accepted only when the reply clearly takes up that specific option; otherwise, do not add its domain or criteria."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Handle follow-ups incrementally through the cache:**",
+        "content": "**Operation template:** For each deliverable, use a suitable cached base that lacks new same-domain constraints: assign its retrieval, call the matching `filter_*` with only the new constraint(s), assign the result, then save it in a separate call. If no suitable base exists and required inputs are complete, make one `search_*` call with known criteria, assign its result, then save it separately. Never nest a result-producing call inside `save_to_cache` or re-search just to apply a delta."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

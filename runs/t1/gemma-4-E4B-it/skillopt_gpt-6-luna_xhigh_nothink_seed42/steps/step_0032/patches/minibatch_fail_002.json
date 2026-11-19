@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_multi-leg_updates",
+      "count": 5,
+      "description": "Agents re-searched cached or unchanged scopes, or applied a new itinerary-wide preference to only one leg."
+    },
+    {
+      "failure_type": "cache_key_and_result_persistence",
+      "count": 5,
+      "description": "Agents used nonstandard keys for base results or failed to save a result; one also saved an undefined variable."
+    },
+    {
+      "failure_type": "natural_language_time_mapping",
+      "count": 1,
+      "description": "The afternoon preference was expanded to an unsuitable time range instead of mapped to a bounded daypart window."
+    },
+    {
+      "failure_type": "conversation_context_resolution",
+      "count": 1,
+      "description": "An exact party size stated in the assistant's clarification was not carried forward when the user answered."
+    },
+    {
+      "failure_type": "field_mapping_and_entity_preservation",
+      "count": 2,
+      "description": "A state abbreviation was placed in the city field, and a requested neighborhood name was shortened."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify how itinerary-wide preferences propagate across cached legs, define a consistent cache-key convention for base and derived results, and make daypart conversion and explicitly established party counts operational. The existing skill already directly covers assigning and saving exact tool results and preserving location fields, so those instructions are not repeated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Apply an explicitly requested flight class to every described leg. If a filterable preference is supplied after compatible per-leg flight results are cached, retrieve and filter each affected leg separately rather than repeating its base search.",
+        "content": "Apply any flight preference asked about the itinerary generally—including class, time window, airline, or budget—to every described leg unless the user explicitly limits it to one leg. If compatible per-leg results are cached, retrieve and filter every affected leg separately, retaining its route, date, and constraints already embodied in the result; do not re-run a covered leg merely to add or change a filter. If the user adds a return leg or date while the outbound leg is already compatibly cached, search only the new return leg."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool results and constraints",
+        "content": "\n**Cache-key naming:** For a first base result, use the conventional domain key (`hotels`, `restaurants`, or `attractions`); for flights, use the established leg-specific key or the outbound/return convention. For a derived filtered result, use a `filtered_<scope>` key. If that key already contains a distinct valid result, keep it and use a unique descriptive key for the new result; do not invent a long task-specific key when the conventional key is available."
+      },
+      {
+        "op": "replace",
+        "target": "Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed.",
+        "content": "Use the exact format accepted by the relevant tool for preferences such as time ranges, converting natural-language times as needed. Map common dayparts to bounded windows rather than broad all-day ranges; for example, interpret “afternoon” as 12:00 PM–5:00 PM and pass it as [\"12:00 PM\", \"05:00 PM\"]."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+        "content": "\n- If an assistant clarification explicitly states an exact party size and the user answers without correcting it, retain that count as established context. Use it only for domains whose tools support party size; do not infer a count from a tentative suggestion or vague description."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

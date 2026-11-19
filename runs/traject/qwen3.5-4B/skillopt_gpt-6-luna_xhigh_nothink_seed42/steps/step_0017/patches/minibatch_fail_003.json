@@ -1,0 +1,31 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection",
+      "count": 2,
+      "description": "Some requested checks were routed to a different endpoint than the direct operation, and several music outcomes were misrouted or omitted despite matching tools."
+    },
+    {
+      "failure_type": "argument_mapping",
+      "count": 3,
+      "description": "Calls omitted implied selectors or used incorrect range syntax, parameter buckets, or API-native values."
+    },
+    {
+      "failure_type": "call_scope",
+      "count": 1,
+      "description": "Unrelated travel endpoints were added even though they served none of the requested outcomes."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already covers operation matching, outcome coverage, call necessity, and schema-based parameter placement, so repeating those rules would not patch a gap. It does not explicitly explain how to encode “top N” when a ranked-list endpoint offers only a range field; the added rule addresses that uncovered mapping.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Translate stated market constraints into API-native values according to the tool schema. Keep each constraint scoped to its requested outcome and carry every compatible constraint into the call. Preserve both bounds of a stated range when corresponding minimum and maximum fields are available; preserve comparison direction and units (for example, map “at least” to a minimum and “at most” to a maximum, converting to the schema's units). For exact quantities, use an exact-value field or matching lower and upper bounds when supported. Map an exact requested result count, including one, to a supported count, limit, or page-size field; for paginated requests, map both the requested page and result count/page size when available. Select the date field corresponding to the event named in the request, and map semantic filters and sorting to documented API flags or enum values. Use the endpoint's accepted locale form and canonical enum, code, or slug; do not guess undocumented values or substitute a semantically different field when the requested distinction is unavailable.",
+        "content": "\n- If a ranked-list endpoint uses a range field as its only sizing control, encode “top N” or “first N” as the inclusive rank interval from 1 through N, using the schema’s accepted range syntax; do not pass N alone as though it were a result limit."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

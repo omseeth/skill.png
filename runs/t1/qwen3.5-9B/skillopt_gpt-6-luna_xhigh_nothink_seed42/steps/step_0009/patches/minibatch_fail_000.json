@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache follow-up and delta handling",
+      "count": 5,
+      "description": "Agents skipped, repeated, or incompletely updated cached results, including failing to apply a new preference to both flight legs."
+    },
+    {
+      "failure_type": "independent domain orchestration",
+      "count": 1,
+      "description": "A missing hotel date prevented the agent from completing a separately actionable attraction search."
+    },
+    {
+      "failure_type": "proximity and location semantics",
+      "count": 1,
+      "description": "The agent treated a named district as a proximity anchor and called nearest without the required second domain result."
+    },
+    {
+      "failure_type": "tool and code discipline",
+      "count": 1,
+      "description": "The agent imported a library, used an undefined variable, and inferred optional hotel details."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most cache and independent-domain failures are already addressed by existing rules, so avoid duplicating them. Clarify two narrower gaps exposed by the batch: apply new flight preferences to every applicable cached leg without re-searching completed legs, and distinguish a neighborhood or district from a proximity anchor. Also state the supported lowercase flight-class values.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+        "content": "\n- **Apply flight follow-ups across cached legs:** When a new flight preference applies to both outbound and return legs, retrieve, filter, and save each leg independently. Do not omit an applicable leg or repeat a search for a leg that is already cached; if only the return leg is missing, search only that leg. Use lowercase `economy`, `business`, or `first` values for `flight_class`."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Distinguish neighborhood location from proximity:** When a hotel or restaurant is requested “near” a named district or neighborhood, treat that area as a location constraint and use the `neighborhood` field where supported. Reserve `search_nearest` for proximity to a named attraction or landmark, and provide exactly two domain result sets as required by its schema."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

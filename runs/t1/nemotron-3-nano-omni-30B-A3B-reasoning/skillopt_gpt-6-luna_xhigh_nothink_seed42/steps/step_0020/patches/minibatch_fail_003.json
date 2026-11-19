@@ -1,0 +1,41 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 3,
+      "description": "Search calls were left unassigned and unsaved, so the expected result objects were missing from cache."
+    },
+    {
+      "failure_type": "missed_incremental_refinement_and_scope",
+      "count": 2,
+      "description": "New preferences were not applied to compatible cached results, or completed domains were searched again."
+    },
+    {
+      "failure_type": "round_trip_leg_conflation",
+      "count": 1,
+      "description": "A two-date trip range for an established route was sent as one outbound search instead of separate directional legs."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the core cache and leg rules, but these failures show that agents need a concrete final code audit, explicit treatment of date ranges in an established itinerary, and clarification that soft preferences still require refinement across affected cached flight legs.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "\n- Before returning code, audit it call by call against the pending plan and cache: apply each new constraint to a compatible cached result (or search if the needed result is unavailable), and do not call tools for unaffected domains already covered by valid cache. Every generated search, filter, sort, or nearest-results call must be assigned and its exact returned object saved; treat a bare result-producing call, a missing save, or an unsatisfied pending action as an incomplete plan."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "\n- When a route is already established and the user gives a two-date range in response to a travel-dates question, treat the first date as outbound departure and the second as return departure unless the conversation specifies one-way travel or another leg sequence. Search each direction separately, using the corresponding date for that leg."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not infer `flight_class` from trip purpose (for example, a business trip); apply a class to both legs only when the user explicitly requests it. Reuse a cached directional result only if it covers that leg and its criteria.",
+        "content": "\n- A soft preference remains actionable: wording such as “I’m flexible, but preferably in the afternoon” adds a criterion. Encode a stated daypart using the supported time-range format (for example, afternoon as `['12:00 PM', '5:00 PM']` when that format is accepted). If a new itinerary-wide flight preference applies to a cached round trip, retrieve and refine each affected direction independently, then save each refinement under a new key."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

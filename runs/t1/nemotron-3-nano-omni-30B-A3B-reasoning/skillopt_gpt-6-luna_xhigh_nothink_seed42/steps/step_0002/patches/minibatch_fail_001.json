@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_cache_refinement_failure",
+      "count": 6,
+      "description": "Agents treated cached base results as satisfying new preferences, omitted new filter criteria, or failed to use the most refined relevant cache entry."
+    },
+    {
+      "failure_type": "unnecessary_calls_and_execution_overreach",
+      "count": 2,
+      "description": "Agents repeated unaffected-domain work or added unnecessary calls; one also imported tools that were already provided."
+    },
+    {
+      "failure_type": "flight_constraint_scope_error",
+      "count": 2,
+      "description": "Agents failed to apply a new trip-level flight preference to each applicable cached leg."
+    },
+    {
+      "failure_type": "argument_semantics",
+      "count": 1,
+      "description": "An exact star count and a neighborhood within a city were not encoded using the appropriate range and location fields."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make cache coverage evidence-based and ensure updates refine the most relevant result instead of being skipped or redundantly replayed. Clarify that trip-level flight preferences apply to each applicable leg, add concise rules for location and exact-star encoding, and keep generated code limited to necessary calls using the provided tools directly.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "- Treat the cache summary as evidence of coverage: count a constraint as already represented only when the summary explicitly shows it. When multiple results exist for a domain, use the most refined relevant result that includes the prior criteria. If a new constraint is not represented, retrieve that result, apply the new constraint with the appropriate filter, and save the refinement under a new key; retrieval alone does not complete the update."
+      },
+      {
+        "op": "replace",
+        "target": "- Apply an explicitly requested flight class to both directions; if directional results are already cached, retrieve and filter each direction.",
+        "content": "- Apply each flight preference stated without a directional limitation (such as class, departure-time window, airline, budget, or layover preference) to every applicable leg. If leg results are cached, retrieve and filter each leg independently for the new preference, then save each refined result under a new key. Apply a direction-specific preference only to the leg it names."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Keep generated code minimal and executable\n- Generate tool calls only for domains affected by the latest update; do not repeat work for unaffected domains just because they appeared earlier in the conversation. Do not call a filter with no new criteria or add unrequested searches, sorts, or narrative output. Print `No planning needed` only when no action remains; do not print it after performing tool calls.\n- Call the tools directly as provided by the runtime. Do not import them, redefine them, or create substitute result objects."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "- For hotel locations, when the user names a neighborhood or district within a city, pass the parent city in `city` and the stated area verbatim in `neighborhood`; do not use the neighborhood as the city. Encode an exact star count as a two-bound range, such as `[n, n]`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

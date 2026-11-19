@@ -1,0 +1,52 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "Cache reuse and incremental refinement",
+      "count": 4,
+      "description": "Agents ignored the most relevant cached results, repeated already-applied filters, or searched again when the cache already satisfied the turn."
+    },
+    {
+      "failure_type": "Unrequested tool-call overgeneration",
+      "count": 5,
+      "description": "Agents added unrelated searches, proximity calculations, or other calls not needed to fulfill the latest request."
+    },
+    {
+      "failure_type": "Round-trip flight handling",
+      "count": 2,
+      "description": "Agents treated a trip date range as one flight search instead of separate outbound and return searches on the respective dates."
+    },
+    {
+      "failure_type": "Parameter extraction and format errors",
+      "count": 5,
+      "description": "Agents omitted explicit conversation details or passed parameters in formats rejected by the tool."
+    },
+    {
+      "failure_type": "Tool-runtime contract violation",
+      "count": 2,
+      "description": "Agents imported or redefined tool schemas, causing runtime errors because the tools are already provided."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill is currently empty. These edits address the recurring gaps: use cache results incrementally, keep tool calls limited to the request, decompose round trips correctly, preserve explicit conversation details, and call only the provided tools in accepted formats.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Tool-use discipline\n- Call only the tools needed to fulfill the user's request. Do not add searches for other domains, proximity calculations, sorting, printing, or other actions unless requested or necessary to answer the request.\n- Tools and their input models are already available in the runtime. Do not import, redefine, or wrap them; call them directly with keyword arguments."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Cache-first follow-up turns\n- Check cache summaries before searching. Reuse the most relevant results, preferring an existing result that already includes earlier filters over a less-refined result.\n- For a follow-up that adds criteria, retrieve the relevant cached results and apply only the new criteria; do not repeat searches or filters for criteria already reflected in that cache entry.\n- If cached results already satisfy the latest request and no new work is needed, retrieve them without generating redundant searches, filters, or saves."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Round-trip flights\n- When the conversation indicates a trip with an outbound and return date, make two flight searches: outbound from origin to destination using the first date, and return from destination to origin using the return date. Do not use the return date as the outbound search's arrival_date. Apply explicit flight preferences to each applicable leg."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Conversation details and tool formats\n- Carry forward all explicit details from the full conversation, including details supplied in earlier turns, and pass each to the corresponding tool when relevant. Do not infer unspecified values.\n- Preserve user-provided entity values, especially dates, rather than changing their spelling or representation unless the tool explicitly requires a different format. For vague time periods, use an appropriate supported time interval and the tool's accepted time format; do not guess an unsupported representation."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

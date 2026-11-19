@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "schema_argument_mapping",
+      "count": 7,
+      "description": "Calls used incorrect parameter names, buckets, values, or omitted compatible settings despite the endpoint schema."
+    },
+    {
+      "failure_type": "endpoint_selection_and_coverage",
+      "count": 4,
+      "description": "Some calls mismatched the requested operation or granularity, used an unavailable endpoint, or missed a requested outcome."
+    },
+    {
+      "failure_type": "response_format_or_tool_identifier",
+      "count": 2,
+      "description": "One response was malformed JSON and another reconstructed a tool name with a duplicated prefix."
+    }
+  ],
+  "patch": {
+    "reasoning": "The schema guidance is already present but long; a schema-first checklist makes exact field names, types, and required/optional placement easier to apply consistently. The other edits address two narrower gaps exposed in the batch: matching a forecast's cadence and horizon, and copying tool identifiers rather than rebuilding them.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- For each selected endpoint, use only its own schema for exact parameter names, declared types, and required/optional placement; never borrow fields from similar operations. For parameters you include, put every required field in the required bucket and every non-required field in the optional bucket, even when the user explicitly requests an optional setting; never duplicate a field. In formats that represent parameters as name/value entries, every entry must contain the exact name and a concrete non-null value—never emit name-only entries or null placeholders. Bind required values to the request or a documented derivation; if a required value is missing, do not call that endpoint rather than fabricate it. Treat documented finite choices as API-native values even if typed STRING, and use documented canonical codes and casing; preserve identifiers and free-text wording except where the endpoint specifies normalization. Include optional settings only when requested or clearly implied; use documented freshness controls for “recent” or “latest” and a modest supported result count for “some.” Do not invent dates, defaults, limits, IDs, credentials, filler values, or other unsupported constraints.",
+        "content": "- For each selected endpoint, build arguments from that endpoint's schema only. Copy its parameter names and declared types exactly; never borrow fields from similar operations. Put every schema-required parameter in the required bucket and every schema-optional parameter in the optional bucket—user emphasis does not change the bucket, and no field may appear twice. Use documented canonical values and casing for enums and codes; preserve identifiers and free text except where the endpoint specifies normalization. Include optional settings only when requested or clearly implied. Bind every required value to the request or a documented derivation; if any required value is missing, do not call that endpoint. Before output, check each entry against the endpoint schema for exact name, type, bucket, and a concrete non-null value. Never invent defaults, limits, dates, IDs, credentials, or filler values."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Check temporal scope explicitly: current conditions are not forecasts, and location-specific active alerts are not aggregate alert counts. When coordinates are supplied and a matching coordinate-based endpoint exists, use it rather than inferring a city or changing the location form.",
+        "content": "\n- For forecasts, match both the requested horizon and cadence (such as daily versus hourly) to the endpoint's documented output. A general summary or hourly forecast is not a substitute for a requested multi-week daily forecast; do not add a second forecast call unless the user requests a distinct forecast outcome."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate before responding",
+        "content": "\n- Copy each tool identifier verbatim from the available tool list, including its displayed provider/endpoint formatting. Do not reconstruct it by concatenating labels or duplicate a provider prefix."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

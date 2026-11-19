@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_namespace_import",
+      "count": 5,
+      "description": "Agents imported injected tools from a nonexistent `tools` module despite the skill’s direct-call instruction."
+    },
+    {
+      "failure_type": "cache_update_and_criterion_lifecycle",
+      "count": 3,
+      "description": "Agents skipped a needed cached-result update, used unfiltered inputs for a nearest search, or repeated criteria already reflected in the cached result."
+    },
+    {
+      "failure_type": "independent_search_blocked_by_missing_inputs",
+      "count": 1,
+      "description": "A missing flight and hotel date led the agent to omit an independent restaurant search whose required inputs were known."
+    },
+    {
+      "failure_type": "itinerary_constraint_mapping",
+      "count": 1,
+      "description": "A round-trip request omitted the return-leg search and did not encode the explicit non-stop constraint."
+    },
+    {
+      "failure_type": "time_range_encoding",
+      "count": 1,
+      "description": "A one-sided time cutoff was encoded in 24-hour format rather than as an AM/PM time range."
+    }
+  ],
+  "patch": {
+    "reasoning": "The repeated import and general cache/independent-search failures are already explicitly addressed by the skill, so duplicating those instructions is unwarranted. These edits clarify uncovered parameter mapping for non-stop flights and one-sided time bounds, and specify that newly filtered inputs must be used for downstream proximity searches.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg by setting `arrival_date` on the outbound search. Ask for an unknown endpoint rather than assuming a route. When a hotel stay is given as a check-in date plus an unambiguous duration in nights rather than a checkout date, call `adjust_date(date=<check-in date>, delta_days=<number of nights>)` and use its returned date as checkout; do not treat the duration as missing.",
+        "content": "- Preserve user-provided dates, entity values, and casing. For a round trip, make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg by setting `arrival_date` on the outbound search. Encode an explicit non-stop or direct request as `num_layovers=[0]` on each applicable leg. Ask for an unknown endpoint rather than assuming a route. When a hotel stay is given as a check-in date plus an unambiguous duration in nights rather than a checkout date, call `adjust_date(date=<check-in date>, delta_days=<number of nights>)` and use its returned date as checkout; do not treat the duration as missing."
+      },
+      {
+        "op": "replace",
+        "target": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Never pass a preference as an unsupported extra argument or place it in an unrelated field. For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does.",
+        "content": "- Match arguments only to fields declared by the selected tool’s schema, with the expected type and cardinality. Never pass a preference as an unsupported extra argument or place it in an unrelated field. For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`. Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`). For time-range arguments, use AM/PM strings; when the only stated bound is “by” a time or “as early as possible,” use midnight through that bound. For attraction searches, use each explicitly provided location field (`city` and/or `state`) in the matching schema field along with the requested category or name. A state alone is usable when the tool supports state-level search; do not ask for a city when it does."
+      },
+      {
+        "op": "replace",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- For recommendations near another result type, ensure compatible results for both types are available. If the user has added criteria for either input, filter and save that input before calling `search_nearest`, and pass the updated result rather than its stale cached version; save the nearest result too. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

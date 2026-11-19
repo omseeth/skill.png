@@ -1,0 +1,36 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "dropped_requested_domain",
+      "count": 2,
+      "description": "A hotel was requested earlier but never searched when its dates became determinable. T1: 'weekend getaway' plus '4 nights' with a flight date, so only the flight was searched and the hotel was skipped. T2: the check-out date was given with a cached one-way flight, but the hotel search was skipped."
+    },
+    {
+      "failure_type": "wrong_domain_routing",
+      "count": 1,
+      "description": "T2 answered a hotel check-out date plus a new cuisine by re-filtering flights for 'first' class (already applied in the cache summary). It never filtered the cached restaurants for Italian and Ethiopian."
+    }
+  ],
+  "patch": {
+    "reasoning": "Both failures drop a hotel that was requested earlier and whose dates were now known. The rules that cover this (-2 DATE ANSWER, Rule 24 nights, Quick order step 0) are buried deep in the document. Two other lines also pull against them: Rule 6's 'weekend getaway gives no dates' and Rule 8's 'decide from the LAST turn, not the whole conversation'. The fix is a short, positive per-domain sweep and hotel trigger at the very top of the hard rules, where past clean wins came from. It is paired with two small replacements that remove the contradictions in Rule 6 and Rule 8, rather than adding more sibling examples.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- DOMAIN SWEEP (before the SEARCH GATE): list every domain requested in ANY turn (flight, hotel/stay, restaurants/food, attractions) and write one block per domain this turn. No key + mandatory args known -> `x = search_*(...)` + save. Key present + the last message adds a constraint on it -> load, filter, save. Args missing -> one closing seek_information. Nothing new -> no lines. One domain's block never stands in for another's. filter_flights is written only when the last message is about flight class, airline, time or ticket price. A check-out date, cuisine or amenity reply is never a flight reply, and a class shown in the flight summary is already applied.\n- HOTEL TRIGGER: hotel requested in any turn + no 'hotels' key + check-in and check-out both determinable -> `hotels = search_hotels(...)` + `save_to_cache(key=\"hotels\", value=hotels)` in THIS block, even when the last message is mostly about something else (a check-out date, a cuisine, a flight class, '4 nights'). Check-in = the stated check-in, else the outbound flight date. Check-out = the stated check-out, else the return flight date, else for 'N nights' `checkout_date = adjust_date(date=\"<check-in>\", delta_days=N)` (do this even if the same message says 'weekend getaway'). Carry every hotel constraint stated in any turn ('gym' -> gym_present=True, 'wifi' -> free_wifi_included=True, stars, neighborhood, budget). num_people only from a stated number. Any other domain the same message touches still gets its own block in the same output (e.g. cached restaurants + 'Italian and Ethiopian food' -> `filter_restaurants(prior_results=r, cuisine=[\"Italian\", \"Ethiopian\"])`, saved as filtered_restaurants). A flight search with a user-stated class comes first when flights still have no key."
+      },
+      {
+        "op": "replace",
+        "target": "give NO check-in or check-out date. Do not compute weekend dates,",
+        "content": "give NO check-in or check-out date by themselves. (Exception: a stay length such as '4 nights' plus a known start date or flight date IS enough: `checkout_date = adjust_date(date=\"<start>\", delta_days=4)`, then search_hotels, even beside 'weekend getaway'. See HOTEL TRIGGER.) Without a stay length, do not compute weekend dates,"
+      },
+      {
+        "op": "replace",
+        "target": "- Decide what to call from the LAST user turn and the cache summary, not from the whole conversation history.",
+        "content": "- Decide what to call from the LAST user turn and the cache summary. Constraints come from the last turn, but a domain requested in an earlier turn that still has no CACHE key and whose mandatory args are now known (e.g. a hotel whose check-out date just arrived) must be searched in this block."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

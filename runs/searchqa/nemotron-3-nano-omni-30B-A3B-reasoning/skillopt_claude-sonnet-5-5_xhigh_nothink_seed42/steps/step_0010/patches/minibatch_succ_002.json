@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Verbatim-match strategy: the agent found the clue's distinctive wording in the passages (a J! Archive line 'clue | Joseph McCarthy.', the quoted 'nature's most labor-intensive fruit', repeated song lyrics) and took the entity or words adjacent to it. It did not substitute its own paraphrase.",
+    "Lyric or quote completion: for '\"...from white\" to this color', the agent copied the full multi-word completion the passages repeat ('rosy red') rather than a trimmed 'red'.",
+    "Where the clue names a generic type noun ('this institution', 'this standard wind scale'), the agent kept the head noun because it is part of the standard name in the passages ('Smithsonian Institution', 'Beaufort scale').",
+    "A terse 'Descriptor:Anchor' clue ('A knighted Englishman:The Golden Hind') was answered with the person the anchor is tied to (Sir Francis Drake). The agent did not answer with the anchor or the descriptor.",
+    "A descriptive noun-phrase clue ('A house with floors that differ by about half a story') was answered with the standard term it defines (split-level), with no description attached."
+  ],
+  "patch": {
+    "reasoning": "Several successes rely on behaviours the skill only partly covers. These are the colon-separated 'Descriptor:Anchor' format, definition-style noun phrases that start with 'A/An', completing a quoted lyric with the full passage wording, and keeping a head noun that the clue's type noun points to. Encoding them reinforces what worked without adding broad 'strip words' rules, which were rejected in earlier steps.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- Colon-separated clues ('A knighted Englishman:The Golden Hind', 'A French painter: Water Lilies') have the form 'Descriptor: Anchor'. The anchor is a hint, not the answer. Answer with the entity that fits the descriptor AND that every passage ties to the anchor (the knighted Englishman who sailed the Golden Hind -> 'Sir Francis Drake'). Use the name form the passages repeat."
+      },
+      {
+        "op": "insert_after",
+        "target": "'Greek god of erotic love' -> 'Eros' (not Roman 'Cupid').",
+        "content": "\n- A clue that is just a descriptive noun phrase ('A house with floors that differ by about half a story') asks for the standard term it defines ('split-level'). Look for the term the passages use for exactly that description, or a glossary line, and answer with that term alone. Use your own knowledge of the term if the passages only describe it. Do not answer with a description."
+      },
+      {
+        "op": "insert_after",
+        "target": "Take the answer that follows the clue, even if the whole context is one short passage.",
+        "content": "\n- Quoted lyric, quote or idiom with a slot ('\"The object of my affection can change my complexion from white\" to this color'): find the passages that repeat the quoted words and copy the full words that follow them ('rosy red', not 'red'). The words belong to the quoted phrase. Likewise, when a distinctive quoted phrase from the clue ('nature's most labor-intensive fruit') sits beside one entity in several passages, that entity is the answer. Give it as a bare noun ('pomegranate')."
+      },
+      {
+        "op": "insert_after",
+        "target": "The 'do not repeat clue words' rule is for a separate modifier already stated in the clue ('hasty' + pudding).",
+        "content": " More examples: 'the largest museum of this institution' -> 'Smithsonian Institution'; 'this standard wind scale' -> 'Beaufort scale'. When the clue's type noun (institution, scale, empire) is the head of the entity's standard name and every passage writes it that way, keep it."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 7,
+      "description": "Result-producing calls were left bare or their returned objects were not saved to cache."
+    },
+    {
+      "failure_type": "cache_reconciliation",
+      "count": 4,
+      "description": "Cached results were treated as complete despite missing new constraints, or were not retrieved and filtered correctly."
+    },
+    {
+      "failure_type": "schema_field_mapping",
+      "count": 1,
+      "description": "A state abbreviation was passed as a city instead of in the state field."
+    },
+    {
+      "failure_type": "round_trip_leg_handling",
+      "count": 1,
+      "description": "The return date was applied to the outbound search rather than searching the reverse-direction return leg."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent errors are missing result assignments and cache writes, followed by failures to update cached results for new constraints. Recasting those existing rules as short, auditable procedures makes the required steps easier to follow without adding duplicate guidance. The round-trip edit clarifies how to handle a return date supplied in a follow-up when the outbound leg is already cached. State mapping is already explicitly covered, so it is not repeated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Write every result-producing search, filter, sort, or `search_nearest` call in two steps: assign its returned result to a variable, then save that exact, complete result object with `save_to_cache` under a fresh, descriptive key. Do not extract `.search_results`, rebuild, or merge tool output before saving. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Retrieve cached results by assigning `get_results_from_cache(...)` to a variable before passing them to another tool; do not nest the retrieval call. Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+        "content": "- **Mandatory tool-call protocol—audit before output:** Use runtime-provided tools and schemas only; do not import or redefine helpers. Use supported arguments with the required types and keyword arguments (except for `seek_information`). For every result-producing search, filter, sort, or `search_nearest` operation: (1) assign the exact returned object to a variable; (2) save that complete, unchanged object with `save_to_cache` under a fresh, descriptive key. Never leave the call bare or extract or rebuild its output before saving. For a cached base, assign `get_results_from_cache(key=...)` to a variable before passing it onward; never nest retrieval. Use distinct keys for separate domains, itinerary legs, and updates. Before output, check that every result-producing operation is assigned and saved, every retrieval is assigned, and there are no duplicate or unrelated calls, unsupported arguments, or invented optional criteria."
+      },
+      {
+        "op": "replace",
+        "target": "- **Handle follow-ups incrementally through the cache:** Treat a short answer to an assistant's clarification question as an explicit user-provided value or preference; an affirmative answer accepting an offered domain or option is a request to proceed. On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns, then decide separately for every requested or clearly pending domain. If a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only the new same-domain filter and save the update under a fresh relevant key. If no suitable base exists and required inputs are available, search and save. If required inputs are missing, ask for them while still completing other requested domains whose required inputs are available. A result summary satisfies a request only when it reflects all current constraints. For updates affecting multiple results, such as outbound and return legs, retrieve, filter, and process each independently. Do not repeat completed work, reapply constraints, or touch unrelated results. Never return no-planning merely because a cache entry exists. Compare the cache summary with the current conversation and follow the cache-update, search, or missing-input rules above for any unmet request or pending deliverable. Return no-planning only when every requested or pending deliverable reflects all current constraints and the latest turn adds no request, accepted offer, or new constraint.",
+        "content": "- **Handle follow-ups incrementally through the cache:** Treat short answers to clarification questions as explicit values and affirmative replies accepting an offer as requests to complete that offer. Reconcile the full conversation and cache, including pending deliverables, and decide separately for each requested domain. For each deliverable, compare the latest suitable cache summary with all current criteria; a same-domain result that lacks a new constraint or matches a different location, category, or filter does not satisfy it. If a suitable cached base needs a new constraint, retrieve it using its exact cache key and assign it to a variable, apply only the new same-domain filter, and save the update under a fresh relevant key. If no suitable base exists and required inputs are available, search and save. If required inputs are missing, seek only those inputs while completing other ready domains. Process multiple results, such as separate itinerary legs, independently; do not repeat completed work, reapply reflected constraints, or touch unrelated results. Return no-planning only when every requested or pending deliverable reflects all current constraints and the latest turn adds no request, accepted offer, or new constraint."
+      },
+      {
+        "op": "replace",
+        "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+        "content": "- **Search round-trip flights as separate legs:** When a round trip or return is requested, search the outbound leg from origin to destination on the first date and the return leg from destination to origin, using the return date as the return leg's `departure_date`. Cache the legs separately. On a follow-up that supplies the return date, check the cache and search the missing return leg only if the outbound leg is already completed; do not repeat the outbound search or encode the return date as its `arrival_date`. Do not infer a return flight from hotel stay duration alone. If the user says the trip is one-way or declines a return flight, search only outbound."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

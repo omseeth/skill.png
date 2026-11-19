@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "call_coverage",
+      "count": 6,
+      "description": "Several responses omitted explicitly requested operations or targets, especially in multi-part requests."
+    },
+    {
+      "failure_type": "endpoint_selection",
+      "count": 6,
+      "description": "Agents chose a related but unsuitable endpoint or failed to distinguish similar operations and platforms."
+    },
+    {
+      "failure_type": "parameter_mapping",
+      "count": 5,
+      "description": "Arguments were omitted, mapped to the wrong schema field, or supplied with unsupported or inaccurate values."
+    },
+    {
+      "failure_type": "format_compliance",
+      "count": 2,
+      "description": "Malformed call objects or incomplete tool names made the response unparsable."
+    }
+  ],
+  "patch": {
+    "reasoning": "The main recurring issues are failing to represent every independent requested action in the call set and confusing endpoints that serve related purposes. A focused action-to-endpoint rule addresses those errors without repeating a broad final-check list; a separate serialization rule addresses the unparsable responses.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Map requested work to calls\n- Treat each explicit action and target as a distinct requested operation. Use a separate call for each operation unless the endpoint explicitly supports handling them together; a call for one target or operation does not cover another merely because it uses the same provider or topic.\n- Choose an endpoint whose documented operation and parameter schema fit the requested action and target, not simply one from the same subject area. Map each requested constraint to the corresponding supported parameter, and do not invent unsupported arguments or values."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Serialize the answer\nFollow the active prompt's answer contract exactly. Use the complete tool name as listed and one call object per operation, with exactly the specified keys and parameter arrays in the correct places. Keep the calls inside the required wrapper, and check that the JSON is valid; do not add prose, stray fields, or nested call objects."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

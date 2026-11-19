@@ -1,0 +1,26 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "tool_argument_or_value_encoding",
+      "count": 2,
+      "description": "One trajectory passed a state abbreviation as a city; the other encoded a requested rating threshold as a one-item list."
+    },
+    {
+      "failure_type": "incomplete_tool_sequence_or_cache_selection",
+      "count": 2,
+      "description": "Both trajectories omitted saving the exact search or filter result; the restaurant refinement also retrieved the older base result instead of the latest compatible result."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly requires correct state/city mapping, retrieving the latest compatible cache result, and saving every tool result, so repeating those rules would not patch a documentation gap. The rating failure exposes ambiguity in how to encode an unqualified requested rating; clarify threshold versus exact-value encoding.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an explicitly exact requested value x as `[x, x]`; do not pass a scalar or singleton list or widen an exact value. For hotel and restaurant ratings on a 0–5 scale, interpret a requested rating threshold—including an unqualified request for options with an x-star rating—as a minimum `[x, 5]`, unless the user explicitly asks for exactly x; encode “at most x” as `[0, x]`. Follow the schema for other bounds and do not invent endpoints."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

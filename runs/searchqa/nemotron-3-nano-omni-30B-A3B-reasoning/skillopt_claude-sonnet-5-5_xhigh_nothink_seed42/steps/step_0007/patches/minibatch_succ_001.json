@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Verbatim archive hits (Jeopardy dumps, trivia pages) were found in noisy contexts and copied as written ('Endless', 'a fall', 'Billie Holiday'). This is already covered by Rule 3.",
+    "A code or abbreviation in the clue ('PHL' in 'Let freedom ring: PHL') was expanded to the full entity it stands for (Philadelphia). The skill does not cover this.",
+    "A pointer to unseen media ('The dipper seen here') was ignored. The agent answered from the remaining textual descriptors ('sticky substance' with 'dipper') and gave 'honey' instead of saying the image was missing.",
+    "For a quoted or 'comic \"network\"' style clue, the agent gave the short name the passages use (SCTV) and did not repeat the clue's own word or lengthen the answer.",
+    "When the clue was a first line or descriptive details, the agent took the entity that recurs next to those details across the passages (Bluebeard, Mary Tyler Moore) and did not refuse."
+  ],
+  "patch": {
+    "reasoning": "Two behaviors that led to correct answers are not in the skill. First, short codes, abbreviations and initialisms in a clue are decoded into the full entity (airport codes, state abbreviations). Second, 'seen here' or 'shown here' phrases are ignored in favor of the textual descriptors. A related variant of the second behavior was proposed earlier inside larger bundles that were rejected as a whole. Here it is proposed as a small standalone edit, and this batch shows it working without any extra rules. These two edits are the most broadly reusable.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "The context passages about the topic usually reveal the link.",
+        "content": "\n- A code, abbreviation or initialism in the clue ('Let freedom ring: PHL', 'MSY', 'Ga.', 'NYSE') stands for a full entity. Decode it (PHL = Philadelphia's airport) and answer with the full place or name that matches the rest of the clue. Use the passages to confirm the decoding (here, Liberty Bell and Independence Hall passages)."
+      },
+      {
+        "op": "insert_after",
+        "target": "NEVER answer 'Not answerable', 'True/False', 'Yes/No', or a description of the clue.",
+        "content": " Do not say that an image, video or audio is missing."
+      },
+      {
+        "op": "insert_after",
+        "target": "Always output the specific entity, word, or name that the clue is asking for.",
+        "content": "\n- If the clue points to media you cannot see ('the dipper seen here', 'shown here', 'this picture'), or opens with a stage-direction parenthetical ('(Jimmy of the Clue Crew ...)'), ignore that part. Answer from the remaining textual descriptors ('used with this sticky substance' -> 'honey')."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_filter_mismanagement",
+      "count": 5,
+      "description": "Agents repeated searches, processed unaffected results, or reapplied cached constraints instead of applying the newly requested filter to compatible cached results."
+    },
+    {
+      "failure_type": "unsupported_inference",
+      "count": 2,
+      "description": "Agents inferred a hotel party size from plural wording or treated kid-friendly as a request for a kids club."
+    },
+    {
+      "failure_type": "hotel_checkout_derivation",
+      "count": 1,
+      "description": "An explicit stay length was handled with guessed date arithmetic rather than the required adjust_date call."
+    },
+    {
+      "failure_type": "field_mapping_and_result_persistence",
+      "count": 1,
+      "description": "A state abbreviation was passed as a city, and the attraction search result was not saved."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures concern cache use, but the skill already clearly prohibits repeating compatible searches and touching unaffected scopes. Clarifying that a follow-up filter must use the newly introduced field addresses the narrower gap exposed by the attraction example without restating the broader cache rules. The other edits make two existing requirements more operational: plural pronouns do not specify an exact party size, and an explicit hotel stay length should be converted using adjust_date rather than manual arithmetic.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Apply the matching `filter_*` tool with newly supplied filterable criteria, retaining constraints already embodied in the cached result.",
+        "content": "Apply the matching `filter_*` tool using each filterable constraint newly introduced on this turn. Do not pass only a constraint already embodied in `prior_results` in place of the new one: embodied constraints remain true because the cached candidate set already reflects them. For example, if cached attractions are already restricted to a requested type and the user then asks about a suggested neighborhood, filter by that neighborhood (such as `neighborhood=[\"<requested neighborhood>\"]`), not merely by repeating the type."
+      },
+      {
+        "op": "replace",
+        "target": "For hotels, when the check-in date and an explicit stay length in nights are known but checkout is not, use `adjust_date` to calculate checkout.",
+        "content": "For hotels, when the check-in date and an explicit stay length in nights are known but checkout is not, call `adjust_date` rather than doing manual date arithmetic; use its returned date as the checkout date and preserve all active supported criteria. For example:\n```python\ncheckout = adjust_date(date=\"<check-in date>\", delta_days=<explicit nights>)\nhotels = search_hotels(city=\"<city>\", checkin_date=[\"<check-in date>\"], checkout_date=[checkout])\nsave_to_cache(key=\"<descriptive hotel key>\", value=hotels)\n```"
+      },
+      {
+        "op": "replace",
+        "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+        "content": "- Map explicit traveler descriptors to supported party-size fields only when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`, and stated party sizes can be used directly. Plural wording such as “we” or “us” establishes no exact count; do not infer a number from it or from vague terms such as “family.”"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,45 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "re_search_instead_of_filter",
+      "count": 3,
+      "description": "A CACHE key already existed for the domain, but the agent re-ran search_* (flights with a bad arrival_time format, restaurants twice) instead of load -> filter -> save. Reply tokens like 'AM' (an airline code) and 'around 30' (a budget) were missed."
+    },
+    {
+      "failure_type": "wrong_or_nonexistent_cache_key_or_unchanged_save",
+      "count": 3,
+      "description": "The agent loaded a key not in CACHE ('filtered_hotels') after hallucinating that its summary already applied the filters. It also saved a loaded result unchanged, nested get_results_from_cache inside save_to_cache and overwrote an existing key, so the new amenity and star constraints were never filtered."
+    },
+    {
+      "failure_type": "multi_domain_scope_error",
+      "count": 2,
+      "description": "With 'for both', only restaurants were filtered, from the raw key instead of nearest_restaurants. In another case cached flights were re-filtered and cached restaurants re-searched while the hotel search for the newly supplied dates was skipped."
+    },
+    {
+      "failure_type": "malformed_code_and_dropped_hotel",
+      "count": 1,
+      "description": "The first flight search was a bare call duplicated inside save_to_cache, and the hotel with '4 nights' was dropped. The checkout date should have come from adjust_date."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures come from not consulting the CACHE dict before choosing search versus filter, and from loading or saving the wrong keys. The existing rules are spread across a very long document and are ignored. A short CACHE GATE near the top, with concrete examples taken from these failures, forces the checks every turn: filter instead of re-search, load only real keys, never save unchanged or overwrite, and map each reply to its params. A scope bullet handles 'for both' and mixed date-plus-cuisine turns, including the nearest_* key choice. A first-search rule covers the bare/nested call form and the nights-count checkout derivation. These edits add concise generalizable guidance rather than duplicating the long rules.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n\n## CACHE GATE (run this before writing any code, every turn)\n1. Copy the CACHE keys of each domain the LAST user turn touches (flights / hotels / restaurants / attractions, including filtered_*, nearest_*, hotels2, final_* names).\n2. Domain HAS a key -> never call search_* for it, whatever the reply contains (budget, rating, cuisine, class, airline, amenity, neighborhood, a 'yes'). Write exactly three lines: `x = get_results_from_cache(key=\"<most refined key in CACHE>\")`, `y = filter_<domain>(prior_results=x, <only the NEW constraints>)`, `save_to_cache(key=\"<new key not in CACHE>\", value=y)`. Examples:\n   - CACHE 'restaurants' (cuisine German, rating applied) + 'We're looking to spend around 30' -> `filter_restaurants(prior_results=r, budget=30)` only.\n   - CACHE 'flights' (arrival_time already applied) + 'We prefer AM and economy class' -> `filter_flights(prior_results=f, airline=[\"AM\"], flight_class=[\"economy\"])`. A bare two-letter capital code ('AM', 'AG') in an answer to an airline/class question is an airline code. Never re-run search_flights.\n   - CACHE 'hotels' only + 'Something with a 5 star rating and a kids club' -> load 'hotels', `filter_hotels(prior_results=h, stars=[5, 5], has_kids_club=True)`, save as 'filtered_hotels'.\n   - CACHE 'hotels', 'filtered_hotels', 'filtered_hotels1' (budget applied) + 'Yes, wifi and meeting rooms would be essential' -> load 'filtered_hotels1', `filter_hotels(prior_results=h, free_wifi_included=True, has_meeting_rooms=True)`, save as 'filtered_hotels2'. Flights stay untouched.\n3. Load only keys spelled exactly in CACHE. If CACHE shows only 'hotels', load 'hotels', not 'filtered_hotels'; a missing key returns None and crashes save_to_cache. Never write comments or reasoning claiming a summary already applied a filter unless that exact text is in the entry you load. A user reply stating stars, amenities or budget that the entry does not list is always a new filter. Never save a loaded result unchanged. Never put get_results_from_cache inside save_to_cache. Never save under a key already in CACHE (use the next unused name such as filtered_hotels2).\n4. Domain has NO key and all its mandatory args are known -> first search (`x = search_*(...)` then `save_to_cache`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 7: Writing seek_information, including multi-domain requests",
+        "content": "- Scope of the last turn (applies to filters and searches). Handle every domain the reply addresses, and only those.\n  - 'Downtown X would be ideal for both' / 'for both' with hotel + restaurant cached means filter BOTH. Hotel: most refined hotel key (e.g. hotels2) with `neighborhood=[\"Downtown X\"]`. Restaurants: most refined restaurant key, which is the `nearest_restaurants` / nearest_* key if CACHE has one (not the raw 'restaurants'). Save each under a new key.\n  - A date reply plus a new cuisine in one turn (flights and restaurants cached, hotel key missing) means: `search_hotels` for the newly complete dates, using every hotel preference stated earlier and no party size the user never gave (never num_people=1), AND `filter_restaurants(prior_results=r, cuisine=[...])` on the cached restaurants. Do NOT re-search a cached restaurants key and do NOT re-filter flights whose CACHE summary already lists the class or airline.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 26: First flight + hotel searches in one block\n- Wrong: a bare `search_flights(...)` line followed by `save_to_cache(key=\"flights\", value=search_flights(...))` (duplicated and nested search). Right: `flights = search_flights(...)` then `save_to_cache(key=\"flights\", value=flights)`. One call per search, two lines each, no comments.\n- A nights count ('4 nights', 'for 3 nights') said anywhere in the conversation, even next to 'weekend getaway', is a stay length. Once the departure date arrives (e.g. 'We're traveling on May 20, 2025 and prefer business') and a hotel was requested, write the flight search, then the hotel: `flights = search_flights(start_airport_city=\"Fresno\", end_airport_city=\"Portland\", departure_date=[\"May 20, 2025\"], flight_class=[\"business\"])`, `save_to_cache(key=\"flights\", value=flights)`, `checkout_date = adjust_date(date=\"May 20, 2025\", delta_days=4)`, `hotels = search_hotels(city=\"Portland\", checkin_date=[\"May 20, 2025\"], checkout_date=[checkout_date])`, `save_to_cache(key=\"hotels\", value=hotels)`. Do not drop the hotel. Only when neither a checkout date nor a nights count exists does the hotel need seek_information.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

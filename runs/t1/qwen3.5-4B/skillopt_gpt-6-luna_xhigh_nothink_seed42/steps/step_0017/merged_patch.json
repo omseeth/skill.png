@@ -1,0 +1,26 @@
+{
+  "reasoning": "Merged the overlapping reply-handling edits, prioritizing the failure-driven guidance while incorporating the compatible success insight that vague flexibility adds no filter and accepted recommendation offers should retrieve compatible cached results without redundant work. The merged edit carries forward the combined support count and is classified as failure. Preserved the distinct failure-driven trip-span and one-sided time-bound edits. No edit targets the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+      "content": "- Resolve replies in context against the immediately preceding assistant question or proposal. Carry forward entities and criteria the user accepts, and treat answers to clarification questions as active plan inputs even when they are not phrased as new requests: map a stated traveler count to `num_people` for hotel searches or filters, and each explicitly requested amenity to its matching schema field. A reply declining optional specificity or saying the user is flexible (for example, “not really, just something fun”) adds no filter; retain the existing request and do not infer a category from vague wording. If the user asks a follow-up about a specific proposed place or category (for example, “What’s there?” after a suggested neighborhood), treat the proposal as an active request, not a no-op or rejection. When compatible cached results cover a broader domain, retrieve and filter them using supplied criteria or the proposed place or category, then save the updated result. When the user accepts an offer to provide recommendations and compatible cached results already address the request, retrieve the closest matching result with `get_results_from_cache` for continuity; do not rerun a search, apply an unchanged filter, or return “No planning needed.” Handle any explicit new criterion under the cache and filtering rules.",
+      "support_count": 7,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg by setting `arrival_date` on the outbound search. Ask for an unknown endpoint rather than assuming a route. When a hotel stay is given as a check-in date plus an unambiguous duration in nights rather than a checkout date, call `adjust_date(date=<check-in date>, delta_days=<number of nights>)` and use its returned date as checkout; do not treat the duration as missing.",
+      "content": "- Preserve user-provided dates, entity values, and casing. For a round trip—including when the wording explicitly gives the overall trip span from one date through another—make two separate flight searches: one outbound and one with the route reversed for the return. Use each leg’s date as its `departure_date`; do not represent the return leg solely by setting `arrival_date` on the outbound search. Ask for an unknown endpoint rather than assuming a route. For lodging requested for that same full trip, use the trip start and end as check-in and checkout only when the wording indicates the stay covers that span; do not infer hotel dates from an event date or from a trip span that does not establish the stay dates. When a hotel stay is given as a check-in date plus an unambiguous duration in nights rather than a checkout date, call `adjust_date(date=<check-in date>, delta_days=<number of nights>)` and use its returned date as checkout; do not treat the duration as missing.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+      "content": " For a one-sided time bound, encode the full interval rather than a single exact time: “by T” means midnight through T, and “after T” means T through the end of the day, using the time format expected by the tool.",
+      "support_count": 1,
+      "source_type": "failure"
+    }
+  ]
+}

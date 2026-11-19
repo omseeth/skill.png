@@ -1,0 +1,52 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "round_trip_flights_not_split",
+      "count": 3,
+      "description": "Two flight dates were put in one departure_date list, or a search_flights call was nested inside another. Invalid kwargs such as num_people and return_flights were also passed. No variable assignment or save_to_cache followed."
+    },
+    {
+      "failure_type": "missing_assign_and_save",
+      "count": 4,
+      "description": "First searches were emitted as bare calls (search_flights(...), search_attractions(...)) with no variable and no save_to_cache. This overlaps with the flight and state failures."
+    },
+    {
+      "failure_type": "over_seeking_or_wrong_param_mapping",
+      "count": 2,
+      "description": "The agent asked for a city the user had already named (halal restaurant in St. Louis). It also put a state abbreviation (AZ) into city= instead of state=."
+    },
+    {
+      "failure_type": "wrong_domain_routing",
+      "count": 1,
+      "description": "A cuisine and rating request with 'near the hotel' was sent to filter_hotels(cuisine=...). The gold flow is search_restaurants followed by search_nearest."
+    },
+    {
+      "failure_type": "refinement_stale_key_or_repeat_filter",
+      "count": 2,
+      "description": "For 'affordable under 325' the agent re-applied the old time filter to the unfiltered departure key. It skipped budget and the return leg. In another case it re-searched a domain that was already cached while the other domain's dates arrived."
+    }
+  ],
+  "patch": {
+    "reasoning": "Round-trip flight requests, bare un-saved calls and wrong parameter mapping caused most of the failures. Rule 9 already covers round trips, but the agent kept collapsing the legs or nesting calls, so a hard template with explicit prohibitions and trigger phrases is added. A compact argument-extraction rule covers the over-seeking and state-vs-city errors. A cross-domain routing rule covers restaurants near a hotel via search_nearest. A flight and refinement chaining rule covers budget filtering on the most refined key of each leg, and not re-searching cached domains.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Rule 15: Round-trip / date-pair flight template and mandatory assign+save\n- Trigger: a flight request with two dates ('leave May 17 and return May 21', 'May 16, 2025 to May 25, 2025', 'around May 21 possibly and returning May 28', 'round-trip'). Words like 'around' or 'possibly' still make the dates concrete, so never seek_information for them. Output exactly this shape:\n  `departure_flights = search_flights(start_airport_city=\"A\", end_airport_city=\"B\", departure_date=[\"<date1>\"])`\n  `save_to_cache(key=\"departure_flights\", value=departure_flights)`\n  `return_flights = search_flights(start_airport_city=\"B\", end_airport_city=\"A\", departure_date=[\"<date2>\"])`\n  `save_to_cache(key=\"return_flights\", value=return_flights)`\n- NEVER put both dates in one departure_date list. NEVER nest one search_flights call inside another. NEVER pass return_flights, return_date or num_people (party size is not a flight parameter, so omit it) to search_flights.\n- An airport code the user mentions ('I normally fly from LAS') becomes start_airport=\"LAS\" on the outbound leg and end_airport=\"LAS\" on the return leg, in addition to the city args.\n- Every search_*, filter_*, sort_results and search_nearest call must be assigned to a variable and saved with save_to_cache. A bare `search_flights(...)` or `search_attractions(...)` line is always wrong, even for a first search."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 16: Extract arguments from the whole conversation before asking; map location and dietary words correctly\n- Before writing seek_information, scan EVERY user turn for each mandatory arg. A city named anywhere (e.g. 'a halal restaurant in St. Louis') satisfies search_restaurants and search_hotels, so search immediately. Only a truly absent mandatory arg justifies seek_information.\n- Dietary words map to restaurant flags in the same call: halal -> has_halal_options=True, vegan -> has_vegan_options=True, vegetarian -> has_vegetarian_options=True, gluten-free -> has_gluten_free_options=True, kosher -> has_kosher_options=True. Then save_to_cache(key=\"restaurants\", ...).\n- A US state name or 2-letter abbreviation ('AZ', 'Texas') goes in state=\"AZ\" for search_attractions/filter_attractions, never in city=. Use city= only for actual cities. A stated attraction type goes in type=[\"Guided\"], and the result is saved under \"attractions\".\n- Hotel star ratings are a [min, max] pair: 'a 2 star hotel' -> stars=[2, 2]. A single number for a plain rating is [X, X]."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 17: A new domain in a follow-up turn is a fresh search; 'near the hotel' means search_nearest\n- If the last turn brings restaurant constraints (cuisine, restaurant rating, dietary needs) and the CACHE has no restaurants key, NEVER call filter_hotels with them (filter_hotels has no cuisine param and raises a validation error). Run `restaurants = search_restaurants(city=<city from the hotel search in the cache summary>, cuisine=[...], rating=[X, X])` and `save_to_cache(key=\"restaurants\", value=restaurants)`.\n- If the user also says 'near the hotel' (or near an attraction), additionally load the most refined hotels key with `h = get_results_from_cache(key=\"<latest hotels key>\")`, then `nearest_restaurants = search_nearest(hotels=h, restaurants=restaurants, groupBy=\"restaurant\")` and `save_to_cache(key=\"nearest_restaurants\", value=nearest_restaurants)`. Use groupBy=\"hotel\" when the grouping is by hotel. For attractions use search_nearest(hotels=..., attractions=..., groupBy=...) in the same way.\n- Before using any kwarg, check that it exists in that specific tool's arg list in TOOL CONFIG. Never borrow a param from another domain's tool."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 18: Chain flight refinements per leg from the most refined key; don't repeat applied filters or re-search cached domains\n- When the CACHE has filtered_departure_flights / filtered_return_flights (or other filtered_* flight keys), load THOSE for the next flight constraint, not the raw departure_flights/return_flights. Do not re-apply a filter (e.g. departure_time) that the cache summary already lists as 'Additionally filtering for ...'.\n- 'Not particularly, just something affordable under 325' (or 'under $325', 'budget of 325') -> budget=325 only, with no time, class or airline params. Apply it to EACH flight leg with its own load, filter and save, e.g. `a = get_results_from_cache(key=\"filtered_departure_flights\")`, `a2 = filter_flights(prior_results=a, budget=325)`, `save_to_cache(key=\"filtered_budget_departure_flights\", value=a2)`, then the same for the return leg under a new key. A 'no other preference' reply that still contains a price cap is a new constraint.\n- Time strings, if a time filter is really new, use the 12-hour style `\"12:00 PM\"` / `\"5:00 PM\"`. The `\"12:00:00\"` style raises 'Unrecognized time format' in filter_flights.\n- When the last turn supplies the missing dates for one domain (e.g. hotel check-in/out) and another domain (e.g. attractions) already has a cache key, call ONLY the newly completed search (search_hotels with all stated hotel details such as num_people, budget, stars). Do not re-run the cached domain's search."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

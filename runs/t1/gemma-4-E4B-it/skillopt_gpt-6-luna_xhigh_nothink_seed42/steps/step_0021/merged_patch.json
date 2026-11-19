@@ -1,0 +1,37 @@
+{
+  "reasoning": "Consolidated the repeated cache-update guidance into one operational scope-and-delta rule, including the hotel budget/room-count follow-up example. Kept a separate literal reverse-route call pattern and strengthened the result-saving rule with an assigned filter-result example, addressing the recurring execution failures. Combined the distinct conversational value-mapping examples into one edit. Omitted required-argument and cache rules already stated in the skill, and made no edits within the protected section.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "Maintain active supported constraints for each domain across the full conversation.",
+      "content": "\n\nWhen the user answers a follow-up about an additional supported preference—such as hotel room count or budget—treat it as a constraint update if a compatible cached result covers the same domain, location, dates, and requested scope. Retrieve its exact cache key and apply the matching filter with all newly supplied filterable criteria together, plus any active criteria not already embodied in the result. Do not repeat the base search merely because the preference arrived on a later turn. Search anew only when no compatible cached candidate set covers the requested scope.",
+      "support_count": 4,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search.",
+      "content": "\n\n**Call pattern:** Make and save each leg separately, including all active criteria on each call:\n```python\noutbound = search_flights(start_airport_city=origin, end_airport_city=destination, departure_date=[outbound_date])\nsave_to_cache(key=\"outbound_flights\", value=outbound)\nreturn_flights = search_flights(start_airport_city=destination, end_airport_city=origin, departure_date=[return_date])\nsave_to_cache(key=\"return_flights\", value=return_flights)\n```\nIf the outbound leg is already compatibly cached, search only the newly requested return leg.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Assign every search, filter, sort, and nearest-results call to a variable and immediately save that same result with `save_to_cache` under a unique, descriptive key, even when it is the final call. For example, use `results = search_restaurants(...)` followed by `save_to_cache(key=\"restaurants\", value=results)`. Do not call these tools inline, print their results instead of saving them, or save an assumed or differently named variable. Pass the assigned result to later filters or nearest calls, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally.",
+      "content": "- Assign each search, filter, sort, and nearest-results call once to a named local variable, then immediately save that exact result with `save_to_cache` under a unique, descriptive key—even when it is the final call. For example, use `results = search_restaurants(...)` followed by `save_to_cache(key=\"restaurants\", value=results)`. For a filter, use `filtered = filter_flights(prior_results=prior, flight_class=classes)` followed by `save_to_cache(key=\"filtered_flights\", value=filtered)`. Do not call tools inline, repeat a call to obtain a value to save, print results instead of saving them, or save an assumed, undefined, or differently named variable. Pass the assigned result to later filters or nearest calls, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Before each tool call, verify every keyword against that specific tool's declared arguments and ensure the user's preference semantically matches the field's supported values. Do not invent conversational aliases, pass unsupported fields, or put qualitative descriptors into categorical fields unless they name a valid option (for example, do not pass “kid-friendly” as an airline). If no supported argument captures an optional preference, omit it and proceed with the supported request without inventing a substitute or asking for unsupported details.",
+      "content": "Before each tool call, verify every keyword against that specific tool's declared arguments and ensure the user's preference semantically matches the field's supported values. Do not invent conversational aliases, pass unsupported fields, or put qualitative descriptors into categorical fields unless they name a valid option (for example, do not pass “kid-friendly” as an airline). Resolve terse replies using the preceding assistant question: a number supplied in response to a budget question is a budget, not a rating, and “business trip” alone does not request `flight_class=[\"business\"]`. Do not equate “kid-friendly” or “family-friendly” with a kids club; set `has_kids_club=True` only when the user specifically requests a kids club. If no supported argument captures an optional preference, omit it and proceed with the supported request without inventing a substitute or asking for unsupported details.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

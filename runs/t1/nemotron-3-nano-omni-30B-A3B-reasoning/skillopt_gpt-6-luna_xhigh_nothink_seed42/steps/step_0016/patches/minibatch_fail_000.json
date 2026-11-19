@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 4,
+      "description": "Search or refinement results were not consistently bound and saved to cache, despite the skill already requiring both."
+    },
+    {
+      "failure_type": "missed_latest_turn_constraints",
+      "count": 3,
+      "description": "Agents missed a new restaurant constraint or failed to act on an accepted attraction or flight-time preference."
+    },
+    {
+      "failure_type": "incomplete_domain_and_mandatory_input_handling",
+      "count": 2,
+      "description": "Plans omitted a requested domain or hotel search when hotel dates were missing or derivable from explicit trip context."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most repeated persistence and cache-handling failures are already addressed explicitly in the skill, so repeating those instructions is unlikely to help. These edits clarify two uncovered cases: an affirmative response to a concrete assistant proposal is actionable, and one-sided time limits must be encoded as the full range required by the tool schema.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. A direct answer can introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.",
+        "content": "\n- When the assistant offers or asks about a concrete domain, target, or relation and the user affirmatively accepts (for example, “yes, that sounds great”), treat the proposal as an accepted request and perform the corresponding search or refinement using the relevant trip context. Do not treat an accepted proposal as a no-op. If the reply also supplies a constraint, apply that new constraint as well."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "\n- For a one-sided time limit, provide the full two-endpoint range required by the schema: “anytime before T” uses the earliest valid time through T, and “anytime after T” uses T through the latest valid time. Preserve the stated boundary and use the schema’s documented time format; do not pass a scalar or single endpoint."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

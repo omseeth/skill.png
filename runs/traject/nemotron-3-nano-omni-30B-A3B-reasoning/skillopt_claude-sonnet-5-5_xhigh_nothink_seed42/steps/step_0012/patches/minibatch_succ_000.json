@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every successful answer used one object per concrete request, with full `Provider: Endpoint` names. Object counts matched the clause counts (3, 4, 5 and 9 calls), including a single sentence that listed 9 items.",
+    "Intro or framing sentences ('I need to verify several emails...', 'Get the latest news from multiple sources, including...', 'I'm looking for information on both stock and crypto volatility') produced no call of their own. Only the concrete items after them became calls. The first sentence is not an automatic extra call.",
+    "When the query named a provider or tool ('using Easy Email Validation', 'Email Existence Validator', 'Email API'), the answers used that provider's matching endpoint. N emails for one tool gave N calls. Two properties of one email ('valid and disposable') gave a single both-purpose tool.",
+    "Partial scores came almost entirely from optional parameters. Agents left out qualifiers the query implied: 'Steam giveaways' -> platform `steam`, type `game`; 'Bitcoin' -> baseCoin `BTC`; place names -> keyword. Where the schema says 'comma-separated', multiple values such as 'CNN and BBC' belong in one string (`cnn.com,bbc.com`), not in a repeated `publisher` entry.",
+    "Both-purpose and 'help' clauses mapped to the dedicated endpoint: 'provide help information' -> `Email Existence Validator: Help Page`, 'scrape emails from URL' -> `Email Scraper: Emails`, 'MX records for an email' -> `Email Existence Validator: Get the MX Records`."
+  ],
+  "patch": {
+    "reasoning": "All 8 trajectories got the tool names and call counts right, so structure and tool selection are stable. The remaining loss is in optional parameters. In 4 of 8 trajectories, qualifiers the query implied were dropped (Steam platform and type, Bitcoin baseCoin) or encoded wrongly (a repeated `publisher` key where the schema asks for one comma-separated string). Self-check #4 ('one call per value') conflicts with comma-separated list parameters, so it needs a carve-out. A second per-call pass over qualifiers, with concrete before->after examples, changes the form of the existing rule rather than restating it. The 'sweep the first sentence too' rule also needs a clarification so that framing sentences do not cause padding calls, which the successful answers avoided.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "4. No list contains the same `name` twice. BAD one call with three `email` entries, or `country` twice (US and GB). GOOD one call per value, each its own object.",
+        "content": "4. No list contains the same `name` twice. BAD one call with three `email` entries, or `country` twice (US and GB). GOOD one call per value, each its own object. Exception: if the schema says the param takes a comma-separated list (e.g. `publisher`, `sources`), use ONE entry with a joined string. BAD `publisher`=`cnn.com` plus `publisher`=`bbc.com`. GOOD `publisher`=`cnn.com,bbc.com`."
+      },
+      {
+        "op": "replace",
+        "target": "- Do not invent parameters the query gives no basis for (random-fact ranges",
+        "content": "  - More qualifier -> optional mappings: 'free Steam game giveaways' -> platform `steam`, type `game`; 'Bitcoin volatility between timestamps A and B' -> baseCoin `BTC`, startTime `A`, endTime `B`; 'articles from CNN and BBC in English' -> publisher `cnn.com,bbc.com`, language `en`; 'radio stations in Jakarta' -> keyword `Jakarta`. A proper noun (platform, coin, publisher, place, language) in a clause usually has a matching optional param, so look for one before leaving optionals empty.\n- Do not invent parameters the query gives no basis for (random-fact ranges"
+      },
+      {
+        "op": "insert_after",
+        "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+        "content": "- FRAMING SENTENCES. 'Sweep the first sentence' applies to sentences that name a concrete action or input. A pure intro ('I need to verify several emails and domains...', 'Get the latest news from multiple sources, including...', 'I'm looking for info on stock and crypto volatility') only summarises the clauses that follow and adds no call. Likewise 'verify if X is valid. First, validate if it is deliverable' is ONE validator call, not two.\n- SECOND PASS PER CALL. After the call list is final, re-read each call's own clause and list its qualifiers (platform, coin, publisher, language, place, date or timestamp bounds, count, page). Confirm each one is in a param, or that the tool's schema has no matching param. Most lost points come from missing optionals, not missing calls."
+      }
+    ]
+  },
+  "source_type": "success"
+}

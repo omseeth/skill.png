@@ -1,0 +1,68 @@
+{
+  "reasoning": "Preserved all distinct failure-driven corrections at higher priority, including the output-coverage checklist, compound-field handling, schema mapping, selector and value-serialization guidance, and exact JSON entry shape. Retained the success-driven locale, canonical slug/date, and status-filter insights because they address cases not covered by the failure patches. For the overlapping result-count guidance, kept the failure version for one-result requests and retained success guidance for multiple results and explicit first-page pagination.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "## Planning, tool selection, and validation",
+      "content": "- Maintain a coverage checklist of distinct requested outputs and targets. Split compound requests by independently requested data, search terms, or time horizons. Count an item as covered only when the endpoint's documented output and supported filters meet that exact request. Use the minimum relevant calls to cover the checklist; do not substitute a merely related endpoint or add alternate tools that repeat the same check.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Parameter binding",
+      "content": "- If the schema separates a compound input into fields, decompose it only along the documented boundary. For example, when an endpoint has separate email `username` and `domain` fields, pass the local part as `username` and the domain as `domain`, not the full email address in either field.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Preserve user-provided identifiers and meaningful formatting unless the schema requires a documented conversion. Follow documented formats, enums, casing, codes, and delimiters, and interpret directional constraints according to the field semantics.",
+      "content": "- Map each natural-language refinement to the matching documented parameter even when the user does not name that field. Use documented codes or values unambiguously derivable from the query; normalize place names only when the endpoint's documented code format requires it.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Parameter binding",
+      "content": "- When an endpoint has related locale or market fields, treat a stated or unambiguously established region and language as a coherent context. Fill each applicable documented field determined by that context, using region-appropriate codes (for example, `en-US` rather than `en` when US English is specified). Do not add fields whose values are not determined by the request or documented context.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "Preserve user-provided identifiers and meaningful formatting unless the schema requires a documented conversion. Follow documented formats, enums, casing, codes, and delimiters, and interpret directional constraints according to the field semantics.",
+      "content": "- For provider-specific slugs or codes, use the canonical API value rather than mechanically deriving it from a display name. Choose date filters according to the event wording: use a record or event date for items described as delivered or recorded, and a publish-date filter when the request concerns publication.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "Preserve user-provided identifiers and meaningful formatting unless the schema requires a documented conversion. Follow documented formats, enums, casing, codes, and delimiters, and interpret directional constraints according to the field semantics.",
+      "content": "- Translate status qualifiers into their explicit documented filters even when the endpoint can return broader results; for example, a request for active alerts calls for an `active=1` filter when supported.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Include optional parameters when the request calls for them, including a documented value for an explicitly requested default behavior. Do not add unrelated optional settings or invent values. For missing required values, use only a documented default or a value unambiguously derivable from the query.",
+      "content": "- For an unconstrained selector, do not guess a restrictive value; use a documented all/unfiltered option when the endpoint requires one. If the request asks for one result and the endpoint exposes a result-count parameter, set it to one.\n- Follow the task's required answer-format convention for wrapper `value` fields separately from API parameter types. If examples serialize values as strings, use strings even for numeric schema fields; this does not change whether the parameter belongs in the required or optional list.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Include optional parameters when the request calls for them, including a documented value for an explicitly requested default behavior. Do not add unrelated optional settings or invent values. For missing required values, use only a documented default or a value unambiguously derivable from the query.",
+      "content": "- For requests for multiple results, use the endpoint's supported count or page-size parameter with the requested number. When pagination is available, set `page=1` for an explicit “first page” or “first N” request, even if page 1 is the default. Apply these settings only to the relevant call.",
+      "support_count": 4,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- Return a parseable JSON list inside the required tags, with exactly the required keys (`tool name`, `required parameters`, and `optional parameters`) in each call object. Include no commentary or reasoning inside the JSON list.",
+      "content": "- Return a syntactically valid JSON list inside the required tags, with exactly the required keys (`tool name`, `required parameters`, and `optional parameters`) in each call object. Every entry in either parameter list must be an object shaped as `{\\\"name\\\": \\\"<exact schema parameter>\\\", \\\"value\\\": <value>}`. Check that braces, brackets, commas, and quotes are valid, and include no commentary or reasoning inside the JSON list.",
+      "support_count": 1,
+      "source_type": "failure"
+    }
+  ]
+}

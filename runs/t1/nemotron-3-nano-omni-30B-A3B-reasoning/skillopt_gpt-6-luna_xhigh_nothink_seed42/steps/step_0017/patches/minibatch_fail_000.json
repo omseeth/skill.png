@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_cache_and_scope_errors",
+      "count": 5,
+      "description": "Plans often ignored compatible cached results or missed the latest requested domain or constraint, and sometimes added unrequested work."
+    },
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 3,
+      "description": "Search or refinement results were left unbound or were not saved to cache."
+    },
+    {
+      "failure_type": "missing_mandatory_inputs_and_partial_plan",
+      "count": 2,
+      "description": "Agents invented missing hotel dates or failed to proceed with other requested domains whose inputs were already available."
+    },
+    {
+      "failure_type": "unsupported_imports",
+      "count": 1,
+      "description": "The agent imported tools that were already provided by the runtime, causing execution to fail."
+    },
+    {
+      "failure_type": "user_label_or_value_mismatch",
+      "count": 2,
+      "description": "A categorical user label was replaced with a presumed synonym, and an exact range value was encoded without both endpoints."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers cache retrieval, incremental refinement, and result persistence, so repeating those rules would not address a gap. These edits clarify how to make progress when only some domains have complete inputs, prevent imports of runtime-provided tools, and protect user-supplied categorical labels from unsupported normalization.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. If any are missing, make one `seek_information` call asking only for the missing mandatory information across the requested domains; optional preferences are not mandatory inputs.",
+        "content": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness separately for each requested domain: proceed with searches or refinements for domains whose required inputs are available, even if another domain is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across the blocked domains. In particular, never invent hotel check-in or check-out dates. Optional preferences are not mandatory inputs."
+      },
+      {
+        "op": "insert_after",
+        "target": "Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+        "content": " Tools are provided directly in the execution environment: call them by name without importing, redefining, or wrapping them."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "\n- Preserve user-supplied categorical labels verbatim in supported fields such as attraction `type` and restaurant `cuisine`; do not substitute a presumed taxonomy synonym or normalize the wording unless the tool documentation explicitly specifies that mapping."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

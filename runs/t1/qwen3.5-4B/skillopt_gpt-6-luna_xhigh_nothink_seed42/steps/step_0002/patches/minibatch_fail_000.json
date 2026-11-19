@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_contract_violation",
+      "count": 7,
+      "description": "Agents imported the unavailable tools module, so otherwise relevant plans failed at execution."
+    },
+    {
+      "failure_type": "incremental_cache_handling",
+      "count": 6,
+      "description": "Agents treated cached results as complete despite new criteria, or reused results that did not match the requested entity or category."
+    },
+    {
+      "failure_type": "proximity_and_context_resolution",
+      "count": 3,
+      "description": "Agents missed or misconfigured nearby-result searches, including failing to carry forward the preceding assistant's proposed criterion."
+    },
+    {
+      "failure_type": "round_trip_planning",
+      "count": 1,
+      "description": "The agent treated the return date as an arrival-date constraint instead of searching the return leg separately."
+    }
+  ],
+  "patch": {
+    "reasoning": "The previous step already tried a broad tool-contract and cache-handling rule, so this patch avoids repeating that advice. It makes cache compatibility and conversational references more operational, and clarifies when a proximity search is needed and what results to organize around.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Incremental results and conversational context\n- On each turn, compare the new request with the full conversation and the cached result summaries. A cache entry is not sufficient merely because it exists: if the user adds a criterion such as party size, an amenity, budget, or neighborhood, retrieve the closest compatible result, apply the new criterion with the matching filter, and save the updated result. Use “No planning needed” only when cached results already satisfy every current request.\n- Reuse a cached result only when its domain and subject match the request. If the user asks for a specific entity or a different category than the cached results cover, search for the requested entity or category instead of filtering an unrelated result set.\n- Resolve brief affirmations such as “yes” or “that would be great” against the immediately preceding assistant question or proposal. Carry forward the proposed entity or category as stated; do not substitute a different one.\n- When a request asks for recommendations near another result type, ensure compatible results for both types are available, then call and save `search_nearest`. Set `groupBy` to the domain the user wants as the organizing base for the recommendations; when lodging is the planned base, group by hotel."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

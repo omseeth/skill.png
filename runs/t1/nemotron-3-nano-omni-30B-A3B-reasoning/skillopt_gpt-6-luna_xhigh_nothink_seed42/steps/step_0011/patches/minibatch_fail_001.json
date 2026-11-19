@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle_violation",
+      "count": 8,
+      "description": "Search and refinement results were not consistently assigned to variables and saved to cache."
+    },
+    {
+      "failure_type": "incomplete_request_coverage",
+      "count": 2,
+      "description": "The plan omitted a required return or multi-city leg and, in one case, other still-pending requested domains."
+    },
+    {
+      "failure_type": "dropped_conversation_context",
+      "count": 2,
+      "description": "Explicit traveler counts from earlier turns were not carried into hotel calls."
+    },
+    {
+      "failure_type": "cache_refinement_misuse",
+      "count": 1,
+      "description": "The agent repeated searches instead of refining relevant cached results for the new constraint."
+    },
+    {
+      "failure_type": "schema_field_mapping",
+      "count": 1,
+      "description": "A state-level destination was passed as a city rather than using the state field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains general instructions for cache use, preserving context, and auditing requests. These replacements make the required checks more concrete: reconcile every outstanding request and flight leg before coding, make assignment and cache saving an explicit code pattern, retain explicit earlier-turn party details, and clarify how state-level locations map to schema fields.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "- Before emitting code, make a coverage checklist from the full conversation: include every still-pending requested domain, each explicitly described flight leg, and each new or accepted constraint, then verify that the plan has the required call and schema-supported arguments for each. Treat the latest turn as an update, not a standalone request; do not omit earlier requests that are now actionable. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results."
+      },
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- In generated code, assign the exact return value of every search, filter, sort, and nearest-results call to a local variable, then immediately save that result with `save_to_cache` under a unique, descriptive key. Never leave a result-producing call bare or omit saving its result; save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects."
+      },
+      {
+        "op": "replace",
+        "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+        "content": "- Carry forward all still-applicable details explicitly supplied by the user in earlier turns, not just details in the latest turn. Include explicit party and room counts in the appropriate hotel call; also retain a detail from an assistant clarification only when the user clearly confirms or adopts it. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one."
+      },
+      {
+        "op": "replace",
+        "target": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+        "content": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a state or state abbreviation supplied as the destination uses `state` (not `city`), a city uses `city`, and a named attraction uses `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

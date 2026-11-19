@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "runtime_tool_namespace_violation",
+      "count": 4,
+      "description": "Code imported tools from a nonexistent module instead of calling injected functions directly."
+    },
+    {
+      "failure_type": "stateful_request_completion_failure",
+      "count": 7,
+      "description": "Agents treated incomplete cached work as finished or failed to act on the latest requested criteria and domains."
+    },
+    {
+      "failure_type": "proximity_join_workflow_failure",
+      "count": 3,
+      "description": "Agents omitted a requested target search or called search_nearest without preparing both relevant result sets."
+    },
+    {
+      "failure_type": "range_semantics_mismatch",
+      "count": 1,
+      "description": "An exact restaurant rating was encoded as a minimum rating range."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the core rules, but the trajectories show those rules are not consistently applied at code-generation time. These concise checks make the highest-impact requirements operational: reject imports, verify each current request against the cache before stopping, prepare both inputs for proximity joins, and distinguish exact numeric values from minimums.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- **Runtime contract:** Tool functions are injected directly into the execution namespace; there is no `tools` module. Generated code must contain no `import` statements. Call provided tools directly by name without importing, redefining, or wrapping them; before returning code, scan for and remove any imports. Use keyword arguments except for `seek_information`, and return code in the required format.",
+        "content": "\n- **Final runtime gate:** Before emitting code, reject any `import`/`from` statement or `tools.` reference. Remove it rather than trying another import path; invoke the injected bare function names directly."
+      },
+      {
+        "op": "insert_after",
+        "target": "Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": " Before using this fallback, enumerate the requested domains, actions, and latest criteria, then verify that compatible cache summaries reflect each one. A cache hit for a domain alone is not completion; a reply supplying requested details or affirming a proposal still requires any corresponding search, filter, or recommendation that has not been completed."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "\n- `search_nearest` only joins existing result sets; it does not search for the requested target. For a request for one result type near another, retrieve or search/filter each type separately, then pass both applicable result sets to `search_nearest` and save its output."
+      },
+      {
+        "op": "replace",
+        "target": "For range-shaped fields, encode an explicitly exact value as both endpoints (for example, `[n, n]`); encode a minimum rating or a request for at least or better as `[n, schema_max]`.",
+        "content": "For range-shaped fields, encode a bare stated rating or star value (for example, “a 3.5 rating” or “3 stars”) as an exact value with both endpoints (for example, `[n, n]`). Use `[n, schema_max]` only when the user expresses a minimum, such as “at least” or “3.5 or better.”"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

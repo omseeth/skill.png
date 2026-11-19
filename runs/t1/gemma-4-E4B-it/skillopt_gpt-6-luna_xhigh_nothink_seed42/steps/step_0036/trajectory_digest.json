@@ -1,0 +1,53 @@
+{
+  "step": 36,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 25,
+  "failure_patterns": [
+    {
+      "pattern": "cache_reuse_and_scope_selection: Filterable follow-ups triggered fresh searches or calls on unchanged domains instead of retrieving and filtering compatible cached results.",
+      "count": 25,
+      "task_ids": [
+        "hotelattraction:train:10:21:5",
+        "flighthotelattraction:train:19:26:3",
+        "flighthotelattraction:train:8:9:1",
+        "hotelattraction:train:25:9:5",
+        "flight:train:18:47:2",
+        "flighthotelrestaurant:train:3:42:1",
+        "flighthotelattraction:train:19:16:3",
+        "flighthotelattraction:train:12:40:2",
+        "restaurant:train:13:41:2",
+        "hotelrestaurant:train:9:45:1",
+        "flighthotel:train:22:9:2",
+        "restaurant:train:18:7:3",
+        "attraction:train:17:27:2",
+        "hotel:train:3:17:1",
+        "attraction:train:8:50:2",
+        "attraction:train:21:2:0",
+        "restaurant:train:16:8:3",
+        "restaurant:train:8:7:1",
+        "flighthotel:train:23:29:1",
+        "flight:train:23:57:2",
+        "flight:train:15:47:2",
+        "flighthotel:train:25:9:2",
+        "flighthotelrestaurant:train:23:39:2",
+        "hotelrestaurant:train:14:10:3",
+        "flight:train:17:11:1"
+      ]
+    }
+  ],
+  "score_before": 0.51,
+  "score_after": 0.47,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "**Turn-action precedence (before tool selection):** Read the full conversation, preceding question or offer, and cache summary; identify only the scopes changed by the latest turn. If a reply supplies missing mandatory information for a pending request, act only on scopes that are now complete and ask only for remaining required details. If a compatible cached result covers a changed scope and the user adds or changes a filterable constraint, retrieve the most constrained compatible result by its exact key, apply only the new constraint, and save it; do not repeat an already-applied filter or regenerate unaffected scopes. When an affirmative accepts proximity, use compatible cached inputs with `search_nearest`, not a new category search; preserve earlier explicit proximity requests unless withdrawn. Retrieve and use existing recommendations without refiltering or resaving when the user only accepts an offer to present them. Base-search only genuinely new or cache-uncovered scopes, using all active criteria and combining same-domain criteria in one call when supported. If a reply adds only information unsupported by a domain's tools, do not call those tools; if all active requests are covered, return the no-op response.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```"
+    },
+    {
+      "op": "replace",
+      "content": "- Before each tool call, verify that every keyword is declared for that specific tool and that each value matches its declared type and cardinality; do not wrap scalar values, such as airport identifiers, in lists. Never pass unsupported fields or optional arguments as `None`; include only explicitly supported constraints. Map a preference only to a field it semantically matches: do not infer a specific amenity from broad or ambiguous wording, or put qualitative descriptors into categorical fields unless they name a valid option (for example, do not pass “kid-friendly” as an airline). Resolve terse replies using the preceding question: a number in response to a budget question is a budget, not a rating, and “business trip” alone does not request `flight_class=[\"business\"]`. Do not equate “kid-friendly” or “family-friendly” with a kids club; set `has_kids_club=True` only when a kids club is specifically requested. If no supported argument captures an optional preference, omit it and proceed without inventing a substitute or asking for unsupported details.",
+      "target": "- Before each tool call, verify every keyword against that specific tool's declared arguments and ensure the user's preference semantically matches the field's supported values. Do not invent conversational aliases, pass unsupported fields, or put qualitative descriptors into categorical fields unless they name a valid option (for example, do not pass “kid-friendly” as an airline). Resolve terse replies using the preceding assistant question: a number supplied in response to a budget question is a budget, not a rating, and “business trip” alone does not request `flight_class=[\"business\"]`. Do not equate “kid-friendly” or “family-friendly” with a kids club; set `has_kids_club=True` only when the user specifically requests a kids club. If no supported argument captures an optional preference, omit it and proceed with the supported request without inventing a substitute or asking for unsupported details."
+    }
+  ]
+}

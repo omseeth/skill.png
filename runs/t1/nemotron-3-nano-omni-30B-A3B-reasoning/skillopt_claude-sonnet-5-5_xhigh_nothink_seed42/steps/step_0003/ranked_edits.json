@@ -1,0 +1,40 @@
+{
+  "reasoning": "Group 1 (failure, high priority) is kept in full: three targeted replaces (flight cache key, num_people narrowing, multi-domain seek_information handling) and six appended rules (15-20). Group 2 (success) covers different ground, so its edits are kept, with these changes. (a) Both groups defined a 'Rule 15', so the success time-format rule is renumbered to Rule 21 and the failure Rule 15 keeps its number. (b) Group 2's decision-order checklist, step 3, is adjusted so it matches the failure rule that a domain with complete args is searched while seek_information covers the others; the original wording ('one combined seek_information' for anything missing) would have contradicted it. (c) The 12-hour time format overlaps with a line in failure Rule 17. Rule 17 only gives the time-string example, while Rule 21 covers arrival_time and departure_time in both search and filter, so Rule 21 stays as a small supplement. (d) The Rule 6 'context is not a date' insert, the Rule 10 vague-words replace and the Rule 10 loose-budget insert all target text disjoint from the failure replaces, and they fit the failure rules. The save-key replace is consistent with the new Rule 15/16 'flights' / 'return_flights' scheme. support_count and source_type are carried forward from the inputs. [optimizer-ranked: selected 4/14 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- A round-trip request still needs the departure date. Ask for it; do not assume a return date.",
+      "content": "- Context is not a date. A flight request with origin and destination but no date is still missing departure_date, even if the user also gave 'one-way', a party size ('2 travelers'), a purpose ('wedding', 'family reunion', 'business trip'), a timing worry ('make sure we arrive on time'), or a home-airport habit ('I normally fly from LEX'). Output only `seek_information(\"We need the departure date for the flight.\")`. Do not search, and do not ask about class, airline, time, return date, or passenger count.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Rule 10: Route the LAST turn's constraints to the right domain; a 'yes' to a proposal is a new constraint",
+      "content": "- Loose numeric budgets are still budgets. 'around 500 per night', 'about 110', 'we're looking to spend around 110' -> `budget=500` / `budget=110` (plain integer, no rounding or range) on the domain being discussed: hotel budget is per night, restaurant budget is per person, flight budget is per ticket. Combine it with any other new constraint in the same turn in ONE filter_* call (e.g. `filter_hotels(prior_results=x, budget=500, has_laundry_service=True)`). If that domain has no cache entry and its mandatory args are known, pass budget in the first search_* call. If a mandatory arg such as the restaurant city is still missing, only seek_information for it.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "append",
+      "content": "\n## Quick decision order for every turn\n1. List the domains the user has requested anywhere in the conversation (flight, hotel, restaurant, attraction). Ignore domains never mentioned.\n2. For each domain, check the CACHE: a key exists -> refine with filter_* (Rules 2, 13, 17, 18) or retrieve only if the last turn adds nothing new (Rule 8). No key -> go to step 3.\n3. Check that domain's mandatory args, using values from ANY earlier turn. All present -> `x = search_*(...)` plus `save_to_cache` (Rules 14, 15). Anything missing -> name only the missing mandatory items in ONE combined seek_information at the end of the block (Rules 6, 7). A domain whose args are complete is still searched in the same block; never search a domain with guessed values.\n4. Pass only the constraints the user literally stated. Never ask about optional details, and never seek information for a domain the user has not requested.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "append",
+      "content": "\n## Rule 17: Refinements - pass ONLY the new constraint (the CACHE summary shows what is already applied)\n- Before writing filter_*, read the CACHE summary of the key you load. Every value it shows (cuisine(s): [...], rating range: [...], budget: $N, has_vegetarian_options, neighborhood, amenities, flight classes, hotel dates, Number of traveler(s)) is ALREADY applied. Do NOT re-pass it, even if the user said it earlier. Do not add checkin_date/checkout_date or city to a filter, and do not re-apply a filter listed as 'Additionally filtering for ...' (e.g. departure_time). Include an earlier-stated constraint only if the summary does NOT list it.\n  - CACHE 'restaurants': 'cuisine(s): [German], rating range: [3.0, 5.0]' and last turn 'We're looking to spend around 30' -> `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, budget=30)`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`. No cuisine, no rating.\n  - CACHE 'restaurants': 'cuisine(s): [Livonian], has_vegetarian_options' and last turn 'Yeah, Downtown Memphis would be great' -> filter_restaurants(prior_results=r, neighborhood=[\"Downtown Memphis\"]) only.\n- A follow-up answers ONE domain. Identify what the assistant's last question was about (hotel location/stars, restaurant rating, flight class, ...). Apply the reply only to that domain: load -> filter -> save, on separate straight-line statements (never nest get_results_from_cache inside filter_*, never omit the save). Do not re-filter other cached domains, even if their preference appears earlier in the conversation. Do not add a code comment line before the calls.\n- Flight legs: if the CACHE has one key per leg (including filtered ones), a flight preference ('Yes, we prefer first', class, airline, time) applies to BOTH legs. Load the MOST REFINED key of each leg (e.g. filtered_departure_flights, filtered_return_flights, not the raw keys), filter each, and save each under a new key (e.g. filtered_departure_flights2). Filtering one leg only is wrong.\n- A price cap is a new constraint even inside a 'no other preference' reply: 'Not particularly, just something affordable under 325' -> budget=325 only on each leg, with no time, class or airline params. Time strings use the 12-hour style \"12:00 PM\" / \"5:00 PM\", because \"12:00:00\" raises 'Unrecognized time format'.\n- Value formats: neighborhood uses the user's wording including the city (\"Downtown Tucson\"). 'at least X' rating -> rating=[X, 5].",
+      "support_count": 4,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Selected edits with highest support and broadest, complementary coverage: (4) context-is-not-a-date fixes the recurring missing-departure-date failure; (5) loose numeric budgets fills a clear gap not covered anywhere; (13) a general per-turn decision order that unifies cache/mandatory-arg/multi-domain handling; (8) refinement precision (pass only new constraints, both flight legs, price caps, time format) addresses a very common refinement failure. Others are narrower, lower support, or largely duplicate existing rules (e.g., edit 0 conflicts with Rule 9, edit 2 overlaps with 13 and Rule 7).",
+    "selected_indices": [
+      4,
+      5,
+      13,
+      8
+    ]
+  }
+}

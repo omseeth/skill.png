@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "runtime_namespace_violation",
+      "count": 4,
+      "description": "Code imported tools from a nonexistent module despite the injected-namespace contract."
+    },
+    {
+      "failure_type": "incomplete_or_incorrect_cached_followup",
+      "count": 6,
+      "description": "Several follow-up turns failed to apply all newly stated criteria to compatible cached results, or failed to complete and save the update."
+    },
+    {
+      "failure_type": "argument_or_entity_mapping_error",
+      "count": 5,
+      "description": "Agents altered location details, invented a city for a state-level search, or selected a noncanonical schema value."
+    },
+    {
+      "failure_type": "conversation_context_and_domain_completion",
+      "count": 1,
+      "description": "The agent requested dates instead of using the supplied departure date and hotel duration to complete both ready searches."
+    }
+  ],
+  "patch": {
+    "reasoning": "The no-import contract and general cache/update workflow are already explicit, so repeating them would not patch a documentation gap. The edits clarify two recurring hotel follow-up mistakes: treating a newly supplied party size as an actionable filter on the relevant cached hotel set, and mapping fitness-center wording to the expected schema field.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "When party size is explicit for the hotel stay, pass it as `num_people` (use `1` for an explicitly solo trip), but do not infer `num_rooms`.",
+        "content": " If a later turn supplies or changes the hotel party size, treat it as a new criterion: retrieve the most specific compatible hotel result that should reflect the request (including a nearest-hotels result when that proximity request remains in scope), filter it with `num_people=<explicit count>`, and save the filtered result under a distinct key. A different traveler count in the cache summary does not satisfy the new count; retrieval alone or “No planning needed” is not completion."
+      },
+      {
+        "op": "insert_after",
+        "target": "Map ordinary-language descriptions to a supported schema criterion when the meaning is unambiguous (for example, map “laundry facilities” to `has_laundry_service` when that field is in the tool schema); if no field represents a preference, omit it rather than adding an unsupported argument.",
+        "content": " For hotel searches, map a request for a fitness center or gym amenity to `has_fitness_class=True` when that field is available in the selected tool schema; do not substitute `gym_present`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

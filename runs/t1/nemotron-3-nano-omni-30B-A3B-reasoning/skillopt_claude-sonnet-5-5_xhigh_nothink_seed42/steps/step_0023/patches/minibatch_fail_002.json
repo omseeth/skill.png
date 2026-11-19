@@ -1,0 +1,51 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "ignored_answer_re_asked",
+      "count": 1,
+      "description": "User gave the flight dates and the origin was already stated, yet the agent called seek_information. It asked for a departure city and for hotel dates although no hotel was requested."
+    },
+    {
+      "failure_type": "dropped_requested_domain",
+      "count": 2,
+      "description": "The last turn described a hotel (stars, amenities) plus attractions, with flight keys cached and dates known. The agent skipped search_hotels, and in one case re-filtered flights and omitted the attraction name or the hotel."
+    },
+    {
+      "failure_type": "re_searched_cached_domain_bad_hygiene",
+      "count": 1,
+      "description": "Both flight legs were cached and the user gave an airline and class. The agent re-ran both search_flights, then wrote bare filter_flights calls and nested them in save_to_cache."
+    },
+    {
+      "failure_type": "noop_retrieval_for_accepted_proposal",
+      "count": 1,
+      "description": "The user said 'Yes' to Cultural attractions with an 'attractions' key cached. The agent loaded the key and re-saved it unchanged instead of running search_attractions for the new type."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the five failures come from the agent not turning the user's last reply into the matching call. It re-asked for information it already had (the broad ignored-answer pattern from Step 22), dropped a requested hotel search, or no-op'd an accepted proposal. Each fix is a short positive trigger. One goes at the top in HARD OUTPUT RULES: a date reply means search, and a cached two-leg flight key means a load/filter/save template. One covers a hotel plus attractions turn in a flight conversation. One adds an attraction-type exception to the 'domain has a key, never search' gate, which currently conflicts with the correct behaviour. One narrows the Rule 7 destination-only seek_information example, which the agent over-applied when an origin was already given. The edits avoid growing the skill with task-specific examples and avoid the regressions of the rejected Step 21 and 22 edits.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- ANSWER = ACTION, NEVER A RE-ASK. Before any seek_information, check whether the user's last turn supplies the item the assistant just asked for (a date, a date pair, a city). If it does, that item is no longer missing: search.\n  (1) The assistant asked for dates and the user replies with dates ('depart May 19, 2025 and return May 28, 2025'). If origin and destination appear in any earlier turn ('a flight from Lexington', 'trip to Raleigh'), write the flight searches NOW: `departure_flights = search_flights(start_airport_city=\"<origin>\", end_airport_city=\"<destination>\", departure_date=[\"May 19, 2025\"])`, `save_to_cache(key=\"departure_flights\", value=departure_flights)`, then `return_flights` with the cities swapped and the return date, plus its save. The origin is the city after 'from'. A party size ('3 people') or 'solo trip' is not a missing item, and it never means a hotel was requested. Mention hotel dates in seek_information only if the user asked for a hotel.\n  (2) CACHE already holds flight keys (e.g. departure_flights and return_flights) and the reply gives an airline, class, time or price ('We prefer AB and economy class.'). Write per leg `d = get_results_from_cache(key=\"departure_flights\")`, `d2 = filter_flights(prior_results=d, airline=[\"AB\"], flight_class=[\"economy\"])`, `save_to_cache(key=\"filtered_departure_flights\", value=d2)`. Then repeat the same three lines for return_flights -> filtered_return_flights. That is 6 lines with zero search_flights, and every filter result is assigned to a variable. Arrival-time or date details from earlier turns are already inside the cached summaries."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do NOT re-filter the flights.",
+        "content": "\n   - HOTEL AND/OR ATTRACTIONS IN A FLIGHT CONVERSATION. Flight keys are cached (a filtered_* flight key means the class is already applied), CACHE has no 'hotels' or 'attractions' key, and the last turn describes a hotel (stars, amenities, neighborhood) and/or attractions (type, named attraction). Write one first search per domain named, with zero filter_flights lines.\n     Hotel: `hotels = search_hotels(city=\"<flight destination>\", checkin_date=[\"<outbound date>\"], checkout_date=[\"<return date>\"], num_people=<party size stated anywhere; 'solo' = 1; omit if never stated>, stars=[a, b], <each stated amenity>)`, then `save_to_cache(key=\"hotels\", value=hotels)`. The flight summaries print ISO dates, so write the dates in the user's wording ('May 19, 2025'). 'At least a 5 star' -> stars=[5, 5].\n     Attractions: `attractions = search_attractions(city=\"<city>\", type=[\"<type>\"], attraction_name=[\"<exact name>\"])`, then save as 'attractions'. When the user states both a type and a name, pass BOTH.\n     Output with only the attraction search, or with flight filters, is wrong, because the hotel in the same turn must also be searched."
+      },
+      {
+        "op": "replace",
+        "target": "2. Domain HAS a key -> never call search_* for it, whatever the reply contains (budget, rating, cuisine, class, airline, amenity, neighborhood, a 'yes').",
+        "content": "2. Domain HAS a key -> never call search_* for it, whatever the reply contains (budget, rating, cuisine, class, airline, amenity, neighborhood, a 'yes'), with ONE exception: a new attraction TYPE. A 'Yes' to the assistant's 'Would you like to explore Cultural attractions?', or a type the user names that the cached 'attractions' summary does not list, is a new search, because a filter cannot add a type. Write `attractions = search_attractions(city=\"<trip city>\", type=[\"Cultural\"])` then `save_to_cache(key=\"attractions\", value=attractions)`, and touch no other key. Loading a key and saving the same object (e.g. load 'attractions', save 'filtered_attractions') is always wrong. For every other refinement:"
+      },
+      {
+        "op": "replace",
+        "target": "If the user gave only a destination for the flight (e.g. 'a trip to Lexington, flights and hotels'), the origin city is also a missing mandatory arg.",
+        "content": "If NO origin city appears anywhere in the conversation (e.g. only 'a trip to Lexington, flights and hotels'; never when the user wrote 'a flight from X'), the origin city is also a missing mandatory arg."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

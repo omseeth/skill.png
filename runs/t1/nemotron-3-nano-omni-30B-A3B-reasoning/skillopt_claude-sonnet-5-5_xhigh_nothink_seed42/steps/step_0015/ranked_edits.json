@@ -1,0 +1,34 @@
+{
+  "reasoning": "Failure-driven edits take priority, so all 7 are kept with their original content and anchors. All anchor targets (Rule 7, 9, 23, 24 and 25 headings, and the placeholder line) exist in the current skill, and none touch the protected SLOW_UPDATE block. The 4 success-driven edits cover patterns the failure edits do not: optional-detail replies not filling mandatory args, restaurant city never being inferred, arrival deadlines not replacing departure_date, and a flight-only party-size reply meaning 'No planning needed'. They are kept as lower-priority additions. One conflict was resolved: failure edit 1 said 'no print()', while success edit 4 uses print(\"No planning needed\"), which Rule 8 already allows. I narrowed the print ban in edit 1 to 'no printing of results; the only allowed print is print(\"No planning needed\") where Rule 8 says nothing is needed'. The failure edits' hotel/restaurant/nearest guidance and the success edits' guidance cover different situations and do not overlap. Support counts and source types are carried forward. [optimizer-ranked: selected 3/11 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- Keep it to one short sentence, e.g. seek_information(\"We need to ask for the check-in and check-out dates\") or seek_information(\"We need the departure date for the flight\").",
+      "content": "- A reply to the assistant's question about an OPTIONAL detail does not fill a missing mandatory arg. Examples: 'don't know' to a cuisine question, 'STL is our preferred choice' to an arrival-airport question, 'At least 3 stars' while dates are still missing. If a mandatory arg (restaurant city, flight departure date, hotel check-in/check-out dates) is still missing after the reply, output only the single seek_information naming that item. Do not search and do not ask again about the optional detail. If the mandatory args are already complete, the optional reply is just a new constraint to apply (Rules 2 and 25).",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- A round-trip request still needs the departure date. Ask for it; do not assume a return date.",
+      "content": "- A restaurant city is never inferred, defaulted or copied from a tool example (e.g. 'Phoenix', 'Dallas'). A reply that only gives cuisine, dietary needs, allergies (including unusual ones such as 'nightshade'), rating, budget or an occasion ('birthday') does not supply the city. If no city appears anywhere in the conversation, output only `seek_information(\"We need the city for the restaurant.\")`, with no search_restaurants call, even after several follow-up answers. Re-check the city every turn.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "a timing worry ('make sure we arrive on time')",
+      "content": "a timing worry ('make sure we arrive on time'), an arrival deadline or time ('we need to arrive before 01:17 AM'; arrival_time is optional and never replaces departure_date)",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edits 7, 8, 9, 10 each have support=8, indicating recurring failures. Among them, 7 (optional-detail replies don't fill mandatory args) and 8 (never infer restaurant city) are general principles on the dominant fabrication/seek_information failure theme and complement Rule 6/7 with concrete guidance. Edit 9 closes a common gap (arrival time mistaken for departure date) with a minimal, low-risk addition. Edit 10 is narrower (flight-only party-size reply) so ranks just below. Lower-support edits (0-6) are mostly scenario-specific worked examples or duplicate existing Rules 9, 21, 23, 24.",
+    "selected_indices": [
+      7,
+      8,
+      9
+    ]
+  }
+}

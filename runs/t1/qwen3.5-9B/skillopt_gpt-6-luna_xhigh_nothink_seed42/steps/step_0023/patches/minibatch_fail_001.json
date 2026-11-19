@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 6,
+      "description": "Search calls were left unassigned or their complete results were not saved to cache."
+    },
+    {
+      "failure_type": "parameter_grounding_and_mapping",
+      "count": 7,
+      "description": "Agents inferred hotel occupancy or changed user-provided categories, locations, or flight-date constraints."
+    },
+    {
+      "failure_type": "follow_up_scope",
+      "count": 3,
+      "description": "Agents omitted pending itinerary work, mishandled a date-range flight request, or added unrequested operations."
+    },
+    {
+      "failure_type": "duplicate_or_unnecessary_operations",
+      "count": 3,
+      "description": "Some outputs repeated searches or added retrievals, proximity searches, and other unrelated work."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify two residual mapping ambiguities: hotel guest counts must be explicitly grounded in hotel occupancy, and user-supplied category wording should not be normalized to a similar example label. The other recurring errors are already directly covered by existing cache, follow-up, date-leg, and proximity rules, so repeating those instructions is not warranted.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not infer unspoken counts or pass traveler counts to flight tools.",
+        "content": "For hotel searches, set `num_people` only when the user explicitly states or confirms a count for hotel occupancy. Do not infer it from “family” or “kids,” carry a flight-only passenger count into the hotel search, or treat an assistant-suggested number as user-provided without confirmation."
+      },
+      {
+        "op": "replace",
+        "target": "Preserve complete names, categories, criteria, and date strings unless a tool requires a format conversion.",
+        "content": "Preserve complete names, criteria, and date strings. For string-valued category fields, pass the user's exact category wording and form; do not normalize it to a similar label merely because an example uses that label, unless the schema explicitly requires a canonical enum value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

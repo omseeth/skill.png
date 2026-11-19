@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_call_accounting_and_cache_persistence",
+      "count": 7,
+      "description": "Operations were left bare or unsaved, duplicated, nested, or accompanied by unrelated retrievals and unnecessary work."
+    },
+    {
+      "failure_type": "independent_domain_completion",
+      "count": 1,
+      "description": "A ready restaurant search was skipped while requesting missing required hotel dates."
+    },
+    {
+      "failure_type": "explicit_value_and_schema_mapping",
+      "count": 3,
+      "description": "Some user values were altered or omitted, including an attraction category, state field, hotel party size, and date strings."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent failures concern execution of the tool-call protocol, despite its existing prose guidance. Replacing that rule with a compact call template makes assignment, exact-result saving, cache retrieval, and avoiding extra operations easier to apply. The other observed behaviors are already directly covered by existing rules, so no additional edits are warranted.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Write every result-producing search, filter, sort, or `search_nearest` call in two steps: assign its returned result to a variable, then save that exact, complete result object with `save_to_cache` under a fresh, descriptive key. Do not extract `.search_results`, rebuild, or merge tool output before saving. Use distinct keys for separate domains, itinerary legs, and updated results; never leave a result-producing call bare or omit its save. Retrieve cached results by assigning `get_results_from_cache(...)` to a variable before passing them to another tool; do not nest the retrieval call. Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+        "content": "- **Runtime tool-call protocol:** Use only runtime-provided tools, cache functions, and schemas; do not import or redefine them or add helper code. Use supported keyword arguments and types (except for `seek_information`); never invent criteria or pass unsupported arguments. For each intended result-producing call, use this two-line pattern: `result = tool(...)` followed by `save_to_cache(key=\"<fresh descriptive key>\", value=result)`. Apply it to every search, filter, sort, and nearest call, preserving the complete returned object. Use distinct keys for separate domains, itinerary legs, and updates. For cached inputs, first assign `base = get_results_from_cache(key=\"<exact cache key>\")`, then pass `base` to the next tool; never nest retrieval or leave it unassigned. Make each intended operation once: avoid duplicate calls, unrelated retrievals, and re-saving unchanged results. Before submitting, audit that all intended result-producing calls are assigned and saved, with no extra operations."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

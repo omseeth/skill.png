@@ -1,0 +1,45 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_result_delta_not_completed",
+      "count": 4,
+      "description": "Follow-ups were skipped, applied to the wrong cached result, or not saved as a new result."
+    },
+    {
+      "failure_type": "proximity_vs_area_confusion",
+      "count": 1,
+      "description": "A question about an assistant-suggested neighborhood triggered an invalid nearest search instead of an area filter."
+    },
+    {
+      "failure_type": "required_hotel_inputs_and_deliverable_tracking",
+      "count": 2,
+      "description": "Hotel work was mishandled in multi-domain requests, including inferring missing stay dates or omitting intended lodging."
+    },
+    {
+      "failure_type": "unnecessary_result_postprocessing",
+      "count": 2,
+      "description": "Extra result inspection and printing included subscripting a tool result model, causing a runtime error."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most repeated issue is failure to carry out a cached follow-up as a complete retrieve-filter-save delta, so a compact call sequence makes the required operation concrete. A targeted rule clarifies how to explore a suggested neighborhood without invoking proximity tools. A narrow output rule addresses result-model subscripting and unnecessary postprocessing. Existing date rules already prohibit inventing stay dates, so they are left unchanged.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- **Handle follow-ups incrementally through the cache:**",
+        "content": "\n\n**Cached-delta call pattern:** For a new same-domain constraint on cached results, assign `base = get_results_from_cache(key=\"<exact key>\")`, assign `updated = filter_<domain>(prior_results=base, <new constraint>)`, then save that exact object with `save_to_cache(key=\"<fresh key>\", value=updated)`. Do not inline cache retrieval, omit the save, or treat cache presence as completion."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Resolve follow-ups about assistant-suggested places or options:**",
+        "content": "\n\nWhen the assistant has suggested a neighborhood or district and the user asks what is there, treat the area as the new location constraint: filter the relevant domain with `neighborhood=[<full area phrase>]` (or search that domain with the area if no suitable base exists). This is not a proximity request; do not call `search_nearest` unless the user explicitly asks for a nearest/near relationship."
+      },
+      {
+        "op": "append",
+        "content": "\n\n- **Keep result handling minimal:** Emit only tool and cache calls needed for the requested deliverables. Do not print or subscript tool result models or add result-inspection code; pass and save the complete model objects unchanged."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

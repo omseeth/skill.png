@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "filter_kwargs_not_matching_last_message",
+      "count": 4,
+      "description": "Filters re-passed earlier-turn or summary values (stars, kids club, num_layovers) and dropped values stated in the last message (Bengali cuisine). One filter used an undefined variable. One filtered hotels when the reply was about restaurants plus 'near the hotel'."
+    },
+    {
+      "failure_type": "load_or_filter_on_missing_key",
+      "count": 2,
+      "description": "Called get_results_from_cache / filter_* for a domain with no CACHE key. One was an empty cache. The other applied a hotel reply to the attractions key instead of seek_information for dates. The flight arrival time was also written in an invalid 24-hour format."
+    },
+    {
+      "failure_type": "invalid_search_structure",
+      "count": 1,
+      "description": "A round trip was written as one search_flights call with a nested search_flights passed as a 'return_flights' kwarg."
+    },
+    {
+      "failure_type": "extra_param_or_key_mismatch",
+      "count": 1,
+      "description": "Added num_people to a flight+hotel first search where the gold omitted it, and the flight key names differed from the gold."
+    }
+  ],
+  "patch": {
+    "reasoning": "Six of the eight failures come from two habits: acting on a domain whose key does not exist (T5, T6), and building filter kwargs from the wrong source (T3, T4, T7, T8). I add a short key-existence gate at the very top, which also fixes the 24-hour arrival time. I make the nested round-trip search an explicit prohibition, with the positive two-statement form. I merge the filter fixes into the existing KWARG TRACE, which removes the 'summary does not list it' escape clause that caused the re-passed kids club and stars. I fix the Rule 26 example, which tells the agent to re-search restaurants even when a restaurants key already exists. This edits or merges existing rules and does not add sibling examples. I left the protected strategic section alone, and did not codify the T2 key-name or num_people mismatch because the gold is inconsistent there.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## HARD OUTPUT RULES (check before EVERY response)",
+        "content": "\n- KEY GATE (before any get_results_from_cache / filter_*): name the domain of the last turn's constraint (hotel words: stars, pool, room service, kids club, per-night budget, neighborhood; restaurant words: cuisine, dietary, rating; attraction words; flight words) and look for THAT domain's key literally in CACHE. Key missing, or CACHE is `{}` -> no get_results_from_cache and no filter_* for that domain (a missing key returns None and crashes). Instead run its first search_* (all mandatory args known anywhere in the conversation, carrying every constraint stated in any turn) or, if a mandatory arg is missing, write seek_information for it. Never apply the reply to another domain's key, and 'Yes' does not change this. CACHE `{}` + flight with origin, destination and 'May 16, 2025 until May 26, 2025' -> two separate search_flights statements, each saved, no cache read; an arrival deadline 'arrive by 07:26 AM' goes on the outbound search as `arrival_time=[\"12:00 AM\", \"07:26 AM\"]` (12-hour AM/PM strings, a [start, end] window, never [\"07:26:00\", \"07:26:00\"]). CACHE holds only 'attractions' + 'Yes, we need a hotel with a pool and room service' with no hotel dates -> the whole output is `seek_information(\"We need the check-in and check-out dates for the hotel.\")`, with no filter_attractions."
+      },
+      {
+        "op": "replace",
+        "target": "search_flights has NO return_date: a round trip is two search_flights calls.",
+        "content": "search_flights has NO return_date and no 'return_flights' kwarg: a round trip is two separate statements, `<outbound> = search_flights(...)` + its save_to_cache, then `<return> = search_flights(<cities swapped>, departure_date=[<return date>])` + its save_to_cache. A tool call is never an argument of another tool call."
+      },
+      {
+        "op": "replace",
+        "target": "- KWARG TRACE (every filter_* call): each kwarg must come from a word in the user's LAST message.",
+        "content": "- KWARG AUDIT (every filter_* call; this overrides the 'plus earlier-stated constraints the summary does not list' wording of Rules 2, 17 and 22). Step 1: write `x = get_results_from_cache(key=\"<exact key>\")` first. A variable such as `restaurants` that this block never assigned is a NameError. Step 2: split the user's LAST message into its values and pass exactly one kwarg per value, no more and no fewer. 'Around 105.' after a hotel-budget question -> `budget=105` only, with no kids club or stars from earlier turns. 'I'm looking for Bengali, and the restaurant should have a rating of at least 4.0' -> `cuisine=[\"Bengali\"], rating=[4.0, 5]`. A value stated in the last message is always passed, even if it seems already applied. Values from earlier turns and numbers copied from a CACHE summary text (num_layovers, layover minutes, stars range) are never passed. A reply about cuisine or restaurant rating never touches hotels, and 'near the hotel' means search_nearest, not a hotel filter. Step 3: if the last message has no filterable value ('There are 4 of us' with no hotel requested, 'Okay'), write no filter_* and no save, at most one get_results_from_cache per cached key, or nothing."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 26: Proximity requests ('near the hotel', 'near <attraction>') need search_nearest (overrides the 'do not touch the hotel cache' and 'type if stated' parts of Rule 10)",
+        "content": "\n- Check the new domain's key first. If 'restaurants' (or 'attractions') is ALREADY in CACHE, do not search it again. Load it and the most refined hotels key, filter the restaurants with only the last turn's cuisine / rating / dietary values, save as filtered_restaurants, then call search_nearest on the filtered result. The hotel is not re-filtered. Example (CACHE restaurants + hotels2; 'French would be amazing, and a restaurant with a 3.5 rating near the hotel'): `restaurants = get_results_from_cache(key=\"restaurants\")`, `hotels2 = get_results_from_cache(key=\"hotels2\")`, `filtered_restaurants = filter_restaurants(prior_results=restaurants, cuisine=[\"French\"], rating=[3.5, 3.5])`, `save_to_cache(key=\"filtered_restaurants\", value=filtered_restaurants)`, `nearest_restaurants = search_nearest(hotels=hotels2, restaurants=filtered_restaurants, groupBy=\"restaurant\")`, `save_to_cache(key=\"nearest_restaurants\", value=nearest_restaurants)`. The search_* version in the next bullet applies only when that domain has no key."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

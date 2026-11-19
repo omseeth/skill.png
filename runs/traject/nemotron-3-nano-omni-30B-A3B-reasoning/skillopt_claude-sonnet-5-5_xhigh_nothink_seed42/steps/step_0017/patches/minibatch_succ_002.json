@@ -1,0 +1,32 @@
+{
+  "batch_size": 3,
+  "success_patterns": [
+    "Every enumerated deliverable ('1) ... 2) ... 3)', or comma-separated clauses) got exactly one call. The opening scope sentence ('information about transportation options in Europe') and the closing purpose sentence ('This will help me compare...') spawned no padding calls. The many distractor tools (Priceline, Gas Price, Booking.com, Flightera) were ignored.",
+    "The tool was chosen by matching the clause's own noun and provider words to the heading. 'Cities served by Flixbus' -> `Flixbus: cities`; 'Flixbus stations' -> `Flixbus: stations`; 'city data in JSON format' -> `Flight Data_v2: City data in json format`; 'list of currencies' -> `Cities Cost of Living: Get Currencies List`; 'latest IPL news' -> `Latest IPL News: Get All IPL News`; 'articles from dev.to' -> `dev-to-api: Get all the relevant articles`.",
+    "Tools whose schema says Required none and Optional none were written with `[]` and `[]`. Required params were filled only from values in the query (offset `0`, query `Zurich HB`).",
+    "For a news search with named outlets and a language, one `News API_v2: Search` call carried q=topic phrase, language=`en` and publisher=`cnn.com,bbc.com`. The outlets went in one comma-separated string with no spaces, so there was no call per outlet.",
+    "A required param took the literal value the schema description offers: `Coronavirus Smartable: GetStats` with location=`global` for 'global statistics'.",
+    "The one-object-per-line `<answer>[ ... ]</answer>` layout and a single `optional parameters` key per object gave parseable answers in all three trajectories."
+  ],
+  "patch": {
+    "reasoning": "The three successes were simple, clean multi-clause queries. Most of what they did is already in the skill (one call per clause, endpoint-word matching, empty lists for param-less tools, one-per-line layout). Two gaps remain that generalize. (1) Several outlets or entities in one clause map to a single call when the param accepts a comma-separated list. The skill currently says only 'N entities -> N calls', which risks over-splitting the CNN/BBC clause. The success also shows the format (comma-separated, no spaces) and the use of the schema's literal enum value ('global'). (2) Framing and purpose sentences should not create padding calls. This needs a boundary against the existing 'never drop a narrative clause' rule. A short extension to the NO INVENTED INPUT/named-source rule also covers topic- or site-named no-input feeds (IPL, dev.to) beating generic Top Headlines or Search with an invented q. These edits are small, state their boundaries, and do not touch the protected block.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Parameters",
+        "content": "\n\n- MULTI-VALUE PARAMS AND SCHEMA LITERALS. When one clause names several outlets or values and the tool's param takes a list ('A Comma-separated string of publisher's'), make ONE call and join them with commas and no spaces: 'from CNN and BBC in English' on `News API_v2: Search` -> required `q`=`COVID-19 pandemic societal effects`, optional `language`=`en`, `publisher`=`cnn.com,bbc.com`. Use N calls only when the param takes a single value. When the param description lists a literal for the request ('Use \"global\" to retrieve global stats'), use it: `Coronavirus Smartable: GetStats` -> `location`=`global`."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Which calls to make",
+        "content": "\n\n- FRAMING SENTENCES ARE NOT CALLS. An opening scope phrase ('information about transportation options in Europe') and a closing purpose sentence ('This will help me compare...') add no calls. Calls come from the concrete deliverables (the numbered items or comma-list clauses, each naming an object, provider or input). Boundary: a narrative sentence that names an action and an object ('also checked which countries Asos sells to') is still a call. Make N calls for N deliverables, with no spare calls from unrelated tools in the list."
+      },
+      {
+        "op": "replace",
+        "target": "'General global news' with no topic takes a no-input feed (`Moka News: Recent 50`), not Search with an invented `q`.",
+        "content": "'General global news' with no topic takes a no-input feed (`Moka News: Recent 50`), not Search with an invented `q`. A clause naming a topic or site that has its own no-input endpoint takes that endpoint with `[]` and `[]`: 'latest IPL cricket news' -> `Latest IPL News: Get All IPL News`; 'recent articles from the dev.to community site' -> `dev-to-api: Get all the relevant articles`. Do not use `News API_v2: Top Headlines` or `Search` for them."
+      }
+    ]
+  },
+  "source_type": "success"
+}

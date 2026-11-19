@@ -1,0 +1,57 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 4,
+      "description": "The agent picked a tool from a similar-looking family that did not match the query. Examples: a movie-news tool for BBC news, Basic Search instead of News with filters, Booking.com instead of Priceline for hotels, and the wrong email validators for disposable, deliverability or basic-validation requests."
+    },
+    {
+      "failure_type": "missing_calls",
+      "count": 3,
+      "description": "The agent dropped sub-requests, especially later ones in a narrative query (France24 Arabic, Goverlytics, BizToc Pages). It also called only one of two 'separate searches' that needed two distinct endpoints."
+    },
+    {
+      "failure_type": "extra_or_duplicate_calls",
+      "count": 2,
+      "description": "The agent added an unrequested tool (Drillster for the Macquarie list) or called two tools for one sub-request (format check plus disposable check)."
+    },
+    {
+      "failure_type": "tool_name_not_exact",
+      "count": 1,
+      "description": "The agent dropped the 'Provider:' prefix or the endpoint suffix, giving 'BestBuy Product Data' or 'Zappos product detail by Product ID' instead of the full heading name."
+    },
+    {
+      "failure_type": "invalid_or_missing_parameters",
+      "count": 3,
+      "description": "The agent used parameter names absent from the chosen tool schema (minPrice/maxPrice, loc), missed query constraints (sentiment=positive, type), and invented values (dates, a guessed Massachusetts state field)."
+    },
+    {
+      "failure_type": "format_error",
+      "count": 1,
+      "description": "The JSON was malformed: a stray ']' closed the list early and the 'optional parameters' key was omitted, so nothing parsed."
+    }
+  ],
+  "patch": {
+    "reasoning": "The failures fall into a few repeatable groups: inexact tool names or malformed JSON, dropped or extra calls, wrong tool chosen among near-duplicates, and parameters that do not match the tool schema or the query. The edits give an output-format checklist, a coverage checklist, a tool-selection heuristic for look-alike endpoints, and parameter-mapping rules. They stay generic and carry no task-specific values.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Output Format Checklist (avoid parse failures / name mismatches)\n- The tool name must be copied character-for-character from the tool list heading (`### Provider: endpoint`), including the full provider prefix before the colon AND the endpoint text after it. Never shorten it (e.g. write the full 'Provider Name: Endpoint Name', not just the endpoint or just the provider).\n- Every call object MUST contain all three keys: \"tool name\", \"required parameters\", \"optional parameters\" (use [] when empty). Never omit a key.\n- The answer is ONE flat JSON list: `[{...}, {...}]`. Do not close the list early, and do not leave stray `]` or `}` between objects. Re-read the final JSON for balanced brackets before answering.\n- Keep parameter values as simple strings/numbers taken from the query."
+      },
+      {
+        "op": "append",
+        "content": "\n## Coverage Checklist (no missing, no extra calls)\n- Before answering, split the query into its individual actions and write one line per action (numbered items, 'then/also/finally/additionally' clauses, and narrative past-tense steps like 'was looked up' or 'was accessed' ALL count). Every action needs exactly one call. Hedging words such as 'possibly to...' or 'potentially' do not make an action optional.\n- Check that the number of calls equals the number of actions (a repeated action on different inputs = separate calls with each input). Do not stop early after the first few actions.\n- If the query says 'two separate searches' (or similar) on one platform and the list has sibling endpoints for that platform (e.g. 'Item Search' and 'Item Search 3'), call each distinct sibling endpoint once rather than one endpoint or the same one twice.\n- Do NOT add a call that no action asks for. Do not invent a call just because an identifier or word (e.g. a list id) looks similar to another tool's parameter. If a requested item is fully covered by one tool, do not call a second tool for it."
+      },
+      {
+        "op": "append",
+        "content": "\n## Tool Selection Among Look-alike Endpoints\n- Many lists contain several near-duplicate tools (email validators, news APIs, search variants). Pick the endpoint whose NAME and DESCRIPTION literally mirror the query's verb and object: 'disposable' -> a tool named/described for disposable checks; 'MX records' -> the MX-records tool; 'verify an email / deliverability' -> a 'Verify' tool; 'format + disposable' -> a single tool whose description covers both (one call, not two); 'basic validation' -> the plain validate tool; 'help documentation' -> the Help tool.\n- If the query names a provider/tool explicitly (e.g. 'using Blaze Verify', 'BestBuy Product Data tool'), use that provider's endpoint.\n- Match the tool's domain to the request: general outlets (BBC, etc.) -> a general news-by-source tool, not a topic-specific tool (movie, crypto) that merely has a 'source' parameter. A request for items from a named source with filters (count, sentiment) -> the listing endpoint that has those filter parameters, not a keyword-search endpoint where the source name would become a search string.\n- Prefer the endpoint that directly covers the request over a 'search' or 'count' variant; for 'find hotels in <state>' prefer a hotel listing/download endpoint over a count or admin-division helper; for 'download location data' use the 'Download ...' endpoint.\n- Prefer tools whose required parameters can be filled from the query text alone."
+      },
+      {
+        "op": "append",
+        "content": "\n## Parameter Rules\n- Use ONLY parameter names listed in the chosen tool's own schema. Sibling tools often use different names for the same idea (e.g. startPrice/endPrice vs minPrice/maxPrice, region vs loc); check the exact tool before naming a parameter.\n- Map EVERY constraint in the query to a parameter of that tool when one exists: count -> limit/pageSize, 'positive' -> sentiment, 'article' -> type, price range -> the tool's start/end price fields, 'US market/region' -> region/country, language/locale, sort ('most helpful' -> HELPFUL), 'page 1' -> page. Do not leave a stated constraint unmapped, and do not add parameters the query never implies.\n- Use only values from the query; do not invent dates, ids, or hotel/stay details that were not given. For hierarchical location fields (state/admin1/admin2/city), follow each field's description and put country/state/county/city in the matching level (e.g. a country code in the 'state'-style root field, state in admin1, county in admin2, city in admin3).\n- Follow format hints in parameter descriptions (e.g. publisher fields as domains like 'site.com', language codes, state abbreviations, comma-separated lists).\n- For 'a random X' requests on word/list APIs, an amount/limit parameter of 1 is reasonable when the tool offers one."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

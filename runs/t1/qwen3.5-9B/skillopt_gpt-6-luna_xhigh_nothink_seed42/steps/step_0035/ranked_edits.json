@@ -1,0 +1,28 @@
+{
+  "reasoning": "Kept the three distinct operational gaps: carrying an earlier explicit party size into a hotel update, interpreting exact and upper-bound flight times, and searching explicitly dated multi-city flight legs independently. Broader cache and proximity guidance is already covered, so it is not duplicated. Each edit is supported by one of the two source patches, and none targets the protected section. [optimizer-ranked: selected 2/3 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "content": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. For a hotel search or update, carry any explicitly stated party size from the full conversation into `num_people` unless the latest suitable hotel result already reflects it. If the cached base lacks the count, include `num_people` in the same hotel filter as other pending hotel constraints, even when the count was supplied earlier. “Solo” means `num_people=1`. Do not infer unspoken counts or pass traveler counts to flight tools.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- For a one-sided flight-time bound, complete the range to the day boundary: “before X” uses `[\"12:00 AM\", X]`, and “after X” uses `[X, \"11:59 PM\"]`, preserving the stated AM/PM value.",
+      "content": "- For flight-time bounds, use two endpoints: an exact “at X” departure or arrival uses `[X, X]`; “before X,” “by X,” or “no later than X” uses `[\"12:00 AM\", X]`; and “after X” uses `[X, \"11:59 PM\"]`. Preserve the stated AM/PM value and use the supported 12-hour format.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 0 addresses a recurring cache-update gap by ensuring previously stated party size is carried into hotel filters when the cached result lacks it. Edit 1 adds concrete handling for exact and deadline-style flight-time bounds; edit 2 is a narrower multi-city expansion with no stronger evidence of recurring failures.",
+    "selected_indices": [
+      0,
+      1
+    ]
+  }
+}

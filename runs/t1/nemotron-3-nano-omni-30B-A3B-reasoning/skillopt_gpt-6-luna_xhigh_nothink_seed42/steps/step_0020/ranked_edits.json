@@ -1,0 +1,37 @@
+{
+  "reasoning": "Kept the unique schema-mapping clarification and the flight-date, soft-preference, and time-format guidance. Combined the two result-handling additions into one insertion at their shared target. Omitted repeated guidance already covered by the skill and made no edits within the protected section. [optimizer-ranked: selected 3/5 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "content": "\n- Before returning code, audit every planned call against the pending plan and cache: apply each new constraint to a compatible cached result (or search if the needed result is unavailable), and do not call tools for unaffected domains already covered by valid cache. A bare result-producing call, an unsaved result, or an unsatisfied pending action makes the plan incomplete.\n- Treat tool results as objects to pass to other tools or cache, not as data to manually render. Do not iterate over `search_results`, index returned dictionaries by guessed keys, or print user-facing summaries unless the result schema documents those fields and the task explicitly requires that output.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+      "content": "\n- When a route is already established and the user gives a two-date range in response to a travel-dates question, treat the first date as outbound departure and the second as return departure unless the conversation specifies one-way travel or another leg sequence. Search each direction separately, using the corresponding date for that leg.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+      "content": "\n- For flight `departure_time` and `arrival_time`, use a clock format accepted by the runtime and preserve the user’s AM/PM meaning; do not convert a value such as `12:22 PM` to `12:22:00` unless that format is supported. Represent an exact time with two identical endpoints. For a named time window, use its appropriate endpoints—for example, “afternoon” as `[\"12:00 PM\", \"5:00 PM\"]` where that convention is supported.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 1 adds broad safeguards against incomplete plans and improper handling of tool results. Edit 2 clarifies how to map a two-date answer onto an established round-trip route. Edit 4 adds concrete time-format and endpoint guidance. Edit 3 overlaps substantially with existing incremental-planning and separate-leg rules; edit 0 mostly reinforces existing schema-validation guidance.",
+    "selected_indices": [
+      1,
+      2,
+      4
+    ]
+  }
+}

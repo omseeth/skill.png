@@ -1,0 +1,35 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "explicit_flight_constraint_omission",
+      "count": 1,
+      "description": "The agent failed to carry the earlier non-stop requirement into the outbound and return flight searches."
+    },
+    {
+      "failure_type": "unnecessary_follow_up_operations",
+      "count": 1,
+      "description": "Accepting an offer to explore Scenic attractions triggered redundant work on completed flights and hotels, plus an unrequested proximity search."
+    },
+    {
+      "failure_type": "value_preservation",
+      "count": 1,
+      "description": "The agent reformatted user-provided dates and shortened the full neighborhood phrase, despite existing rules requiring those values to be preserved."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add the missing mapping from non-stop language to the tool's layover constraint, and clarify that accepting a new offer does not reopen unrelated completed domains or imply proximity. Date and location value preservation are already covered by the skill, so no duplicate edit is needed.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not repeat completed work, reapply constraints, or touch unrelated results.",
+        "content": "An affirmative reply to a newly offered domain authorizes that deliverable only, alongside any explicitly pending unmet deliverables. Do not retrieve or process already-satisfied unrelated results unless they are required inputs to the accepted task. Accepting an offer to explore an attraction category is not a proximity request; do not refresh a separate proximity result unless the user asks about proximity."
+      },
+      {
+        "op": "append",
+        "content": "\n- **Carry non-stop requirements into every requested flight leg:** For explicit “non-stop,” “nonstop,” “direct,” or “no layovers/stops” requests, pass `num_layovers=[0]` to each applicable flight search or filter. Do not rely on a default that also permits connections; apply the requirement to both legs of a requested round trip unless the user changes it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

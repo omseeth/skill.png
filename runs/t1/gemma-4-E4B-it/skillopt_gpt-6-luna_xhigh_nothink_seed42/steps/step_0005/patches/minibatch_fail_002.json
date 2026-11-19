@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_follow_up_and_dialogue_resolution",
+      "count": 3,
+      "description": "Follow-ups were treated as fresh searches instead of resolving the assistant's suggested neighborhood or filtering cached results with new hotel preferences."
+    },
+    {
+      "failure_type": "unnecessary_cache_actions",
+      "count": 1,
+      "description": "A traveler-count update that could not affect the cached flight results triggered cache reads and writes."
+    },
+    {
+      "failure_type": "hotel_required_date_handling",
+      "count": 2,
+      "description": "Agents either searched without required hotel dates or failed to derive checkout from an explicitly stated stay length."
+    },
+    {
+      "failure_type": "result_persistence",
+      "count": 5,
+      "description": "Search or filter outputs were omitted from cache writes or passed incorrectly to save_to_cache."
+    },
+    {
+      "failure_type": "round_trip_leg_modeling",
+      "count": 2,
+      "description": "Round trips were represented as a single outbound search with an arrival_date instead of separate directional searches."
+    }
+  ],
+  "patch": {
+    "reasoning": "Add guidance for dialogue-dependent follow-ups and genuinely unchanged requests, which are not explicit in the current cache workflow. Clarify how to handle explicit hotel stay lengths and independent domains when required inputs are incomplete. Result persistence and separate round-trip searches are already stated clearly in the skill, so no duplicate edits are proposed for those failures.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Cache-aware tool workflow",
+        "content": "- Resolve terse follow-ups using the full dialogue, especially the immediately preceding assistant turn. If the assistant suggests a named neighborhood or place and the user responds with an inquiry such as “No, what’s there?”, treat it as a request to explore that suggestion, not as a refusal: retrieve compatible cached results and filter by the suggested place where supported. Do not repeat the broad search.\n- If a new detail cannot be expressed by any supported search or filter criterion and does not change the cached results’ scope (for example, traveler count for a flight tool with no passenger-count field), do not search, filter, retrieve, or rewrite the cache solely for that detail."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Required-argument checks",
+        "content": "- A missing required input blocks only the affected domain or itinerary leg; ask for missing details while proceeding with other requested domains or legs that are fully specified. For hotels, when the check-in date and an explicit stay length in nights are known but checkout is not, use `adjust_date` to calculate checkout. Do not infer a stay length; ask when a required date cannot be obtained or derived from explicit information."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

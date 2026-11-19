@@ -1,0 +1,48 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "code_form_violations",
+      "count": 4,
+      "description": "Nested tool call used as an argument (search_flights inside search_flights), a bare search_* with no assignment or save, nested get_results_from_cache inside filter_*, if/else with locals()/import sys, and an existing cache key overwritten instead of saving under a new key."
+    },
+    {
+      "failure_type": "wrong_cache_handling_or_domain_routing",
+      "count": 4,
+      "description": "Re-searched domains that were already cached (rooms/people answer), filtered flights on a hotel-budget answer, loaded a 'hotels' key that did not exist (None), or retrieved and re-saved restaurants instead of searching hotels once dates arrived."
+    },
+    {
+      "failure_type": "missed_search_nearest",
+      "count": 1,
+      "description": "'Yes, we want to visit <named attraction>' after the hotel-near-attraction question was handled by re-filtering hotels and re-searching the old attraction type, instead of a named attraction search plus search_nearest."
+    },
+    {
+      "failure_type": "wrong_parameter_mapping",
+      "count": 3,
+      "description": "Nightshade allergy mapped to nut instead of tomato, stars=[4] instead of [4, 4], the business-facilities hotel constraint dropped, and hotel dates not derived from the round-trip flight dates."
+    }
+  ],
+  "patch": {
+    "reasoning": "Failures cluster around (a) code hygiene that the existing rules already forbid but the agent still violates (nesting, bare calls, if/else, key reuse), (b) mismatches between the CACHE keys and the action (re-searching cached domains, loading missing keys, routing a terse answer to the wrong domain), (c) the unhandled search_nearest pattern for 'hotel near a named attraction', and (d) a few concrete parameter mappings. The four edits are a short hard-rules block placed at the top where it is most visible, a cache-existence and routing rule, a search_nearest rule, and a parameter-mapping rule that includes deriving hotel dates from round-trip flight dates.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Travel Planning Skill",
+        "content": "\n## Rule 0: Hard code-form rules (violations crash the run or score zero)\n- Every statement is a flat tool call. Each search_*, filter_*, search_nearest and sort_results result is assigned to a variable and followed by save_to_cache. A bare `search_restaurants(...)` with no assignment or save is wrong, even on a first turn or a single-domain request.\n- Never pass a tool call as an argument of another tool. `search_flights(..., return_flights=search_flights(...))` raises a ValidationError, and `filter_restaurants(prior_results=get_results_from_cache(...))` is wrong. A refinement is three lines: load, filter, save. A round trip is two separate searches saved as departure_flights and return_flights.\n- No if/else, try, loops, `locals()`, `import`, print(), or reasoning comments. If all mandatory args are known, call the tools. If one is missing, call only seek_information for it.\n- Save under a key that is NOT already in the CACHE. Never overwrite one. If `filtered_restaurants` is listed, save as `filtered_restaurants1`. If `filtered_hotels` is listed, save as `filtered_hotels1`. The first filter of a domain uses `filtered_<domain>`.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 27: Cache keys must exist; route a terse answer by the assistant's LAST question\n- Before writing `get_results_from_cache(key=\"X\")`, check that X literally appears in the CACHE dict. Loading a missing key returns None and crashes filter_*.\n- A requested domain with NO key in the CACHE is a fresh search, even when other domains' keys exist. Gather every constraint stated anywhere in the conversation (stars, amenities, neighborhood, party size, dates). Examples:\n  - CACHE holds only 'restaurants' and the user now gives hotel dates ('May 19, 2025 to May 29, 2025'): `hotels = search_hotels(city=\"Portland\", checkin_date=[\"May 19, 2025\"], checkout_date=[\"May 29, 2025\"])` and `save_to_cache(key=\"hotels\", value=hotels)`. Do not re-retrieve or re-save restaurants, and do not seek_information.\n  - CACHE holds only flight keys and the user describes the hotel and attractions: search hotels and attractions. Do not load 'hotels', and do not reload flight keys.\n- A domain whose key exists is never re-searched. CACHE has 'flights' and 'hotels' and the user answers 'There are 3 rooms and 3 people': `h = get_results_from_cache(key=\"hotels\")`, `h2 = filter_hotels(prior_results=h, num_rooms=3, num_people=3)`, `save_to_cache(key=\"filtered_hotels\", value=h2)`. Do not re-run search_flights or search_hotels.\n- Route a short reply ('Around 30.', 'Yes', 'Downtown', 'a 4 star') to the domain of the assistant's LAST question. Assistant: 'What's your budget per night for the hotel?' and user: 'Around 30.' -> filter_hotels(prior_results=<hotels key>, budget=30) only. Do not re-filter flights with a class preference that the CACHE summary already lists.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 28: 'Near the hotel' / hotel near a named attraction -> search_nearest (overrides the 'do not touch the hotel cache' bullet of Rule 10)\n- Trigger: the assistant asked 'Are you looking for a hotel near any specific attraction?' (or similar) and the user answers 'Yes' and names an attraction ('Yes, we want to visit Pittock Mansion'), or the user asks for restaurants or attractions near the hotel. Do NOT re-filter hotels with amenities the hotel CACHE summary already shows. Do NOT re-run the old attraction-type search.\n- Hotel near a named attraction: load the MOST REFINED hotels key (e.g. filtered_hotels), run a NEW named attraction search under a NEW key, then call search_nearest grouped by hotel:\n  `hotels = get_results_from_cache(key=\"filtered_hotels\")`\n  `attractions1 = search_attractions(city=\"Portland\", attraction_name=[\"Pittock Mansion\"])`\n  `save_to_cache(key=\"attractions1\", value=attractions1)`\n  `nearest_hotels = search_nearest(hotels=hotels, attractions=attractions1, groupBy=\"hotel\")`\n  `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`\n  Pass attraction_name exactly as the user wrote it, and a type only if the user restated one in this turn.\n- Restaurants near the hotel: load the latest restaurants key and the latest hotels key, filter the restaurants with any new constraint, then `search_nearest(hotels=..., restaurants=..., groupBy=\"restaurant\")`, and save it as nearest_restaurants.\n- If the user says the hotel 'doesn't have to be close by', do not call search_nearest.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 29: Parameter mapping and hotel dates from round-trip flights\n- Restaurant allergies: there is no nightshade parameter. A nightshade allergy -> `has_tomato_allergy_options=True`, never has_nut_allergy_options. Shellfish -> has_shell_fish_allergy_options, nuts -> has_nut_allergy_options, dairy -> has_dairy_allergy_options, gluten -> has_gluten_free_options.\n- Hotel wording: 'business facilities' or 'business center' -> `has_business_center=True`; 'gym' -> `gym_present=True`. Include every amenity the user stated, and none they did not.\n- stars always has two values in search_hotels AND filter_hotels: '4 star' -> `stars=[4, 4]`, never `[4]`. Keep the neighborhood in the user's wording, e.g. `neighborhood=[\"Downtown St. Louis\"]`.\n- Hotel dates from flights: when the user gave BOTH an outbound date and a return date for the flight (e.g. 'depart on May 16, 2025 and return on May 18, 2025') and also wants a hotel, check-in is the outbound date and check-out is the return date (this refines Rule 6). Do not seek_information. If the CACHE has no 'hotels' key, run search_hotels(city=<destination>, checkin_date=[...], checkout_date=[...], <stated stars/amenities/neighborhood/num_people>) and save it as 'hotels'. Do not reload or re-filter flight keys in that block.\n- Keep attraction types in the user's own word (e.g. 'Touristy' -> `type=[\"Touristy\"]`).\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

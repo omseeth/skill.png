@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "structure_error",
+      "count": 4,
+      "description": "A stray `]` was written after an object (`...}],{\"tool name\"...`, `...}], \"required parameters\"...`), so the answer was unparseable and scored 0 (3 tasks). A repeated `\"optional parameters\"` key also wiped a filled list (1 task)."
+    },
+    {
+      "failure_type": "param_placement",
+      "count": 2,
+      "description": "The query's main input was put in `required parameters` although the schema says `Required parameters: none` (Genius Videos `artist_id`, Aliexpress `q`). This zeroes required_em and optional_em."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 3,
+      "description": "A generic or multi-purpose sibling was chosen over the endpoint whose description matches the clause: RapidWeather by coordinates instead of Easy Weather current conditions; three email checks mapped to the wrong validators; `Custom dice rolls` instead of `Custom dice`."
+    },
+    {
+      "failure_type": "invented_tool_name",
+      "count": 1,
+      "description": "The heading `Uncovered Treasure: /verse/{verse}` was rewritten as `/verse/1:7`, substituting the value into the placeholder."
+    },
+    {
+      "failure_type": "wrong_param_value",
+      "count": 1,
+      "description": "A 'most helpful reviews' request used `star`=`1` instead of the schema's `sort_order`=`HELPFUL`."
+    }
+  ],
+  "patch": {
+    "reasoning": "Stray `]` after an object was the biggest score-0 pattern, even though the skill already lists it as BAD, so the first edit gives a mechanical join rule (what may follow an object's `}`) and an instruction to rewrite a broken object rather than splice it. Required-vs-optional placement failed twice, so the second edit makes it a per-call step with concrete schema examples and a rule for mapping wording to the schema's own enum tokens. Three tasks lost on tool choice, so the third edit adds a wording-match rule that prefers the narrow endpoint whose description echoes the clause. The fourth edit makes brace-placeholder headings be copied literally.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## FINAL SELF-CHECK (run on the finished answer, character by character)",
+        "content": "\n0. JOIN RULE (the most common zero-score bug). An object's `}` is followed only by `, ` and the next `{`, or, for the last object, by the final `]`. Mid-answer, objects join as `]}, {\"tool name\"`. The sequence `]}]` appears exactly once, at the very end. BAD: `...\"value\": \"multiple\"}]}],{\"tool name\"...`, `...}]}], \"required parameters\"...` and `...}], {\"tool name\"...`. GOOD: `...\"value\": \"1\"}]}, {\"tool name\"...`. Also never write a second `\"optional parameters\"` key (BAD `[{\"name\":\"sides\",\"value\":\"20\"}], \"optional parameters\": []`). Write one object per line, each ending `},` except the last, which ends `}]`. If you notice a mistake while writing, rewrite the whole object. Do not splice extra keys or brackets into it."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Parameters",
+        "content": "\n- PLACEMENT STEP, per call, before writing values: read that tool's `Required parameters:` line. If it says `none`, `required parameters` is `[]` and EVERY value, including the query's main input, goes in `optional parameters`. Example: `Genius - Song Lyrics: Videos` has `artist_id` and `per_page` both optional, so write `\"required parameters\": []`. `Aliexpress DataHub: Aliexpress - Item Search 2` has `q`, `sort` and `page` all optional. Conversely, a name listed under Required (Lazada `region`, `q`) never goes in optional. For a sort or ordering request, use the schema's own sort field and one of the tokens its description lists. 'Most helpful reviews' -> `sort_order`=`HELPFUL`, not `star`. Do not emit an optional whose value you would have to make up (`selectedOptionIds`=`multiple`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n- WORDING MATCH. Compare the clause's own words to each candidate's `Description:` and take the narrow, single-purpose endpoint whose description says the same thing, not a generic or multi-purpose sibling. 'Current weather conditions' at given lat/lon -> `Easy Weather: Current conditions (basic)` (latitude, longitude), not a generic 'By geographic coordinates' tool. 'Validate the format and authenticity' -> `Easy Email Validation: Validate Email`. 'Deliverable and working' -> `Email Address Validator: Validate Email Address`. 'Is domain X disposable or temporary' (bare domain) -> `MailCheck: Domain`, not `Validate domain or email address`. 'Five 20-sided dice once' -> `Dice Roll Simulator: Custom dice` (dice, sides), never `Custom dice rolls`. When a sibling's name merely contains yours, re-read both descriptions."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Output format (errors here score zero)",
+        "content": "\n- PLACEHOLDER HEADINGS: if a heading contains braces, such as `/verse/{verse}` or `/game/hall-of-fame/{year}`, copy the braces literally and never substitute the value into the name. Write `Uncovered Treasure: /verse/{verse}`, not `/verse/1:7`. The value goes in the parameter (`verse`=`Proverbs 1:7`)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

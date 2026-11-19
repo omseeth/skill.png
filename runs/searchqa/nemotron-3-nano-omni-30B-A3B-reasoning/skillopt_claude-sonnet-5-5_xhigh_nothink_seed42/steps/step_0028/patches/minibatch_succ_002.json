@@ -1,0 +1,25 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every clue was solved in one step by naming the slot from the clue's category noun ('this position', 'this state', 'this team's', 'this quadrilateral', 'this science', 'this soft central part'). The agent then gave the bare head word that the passages repeat, with no type word or modifiers (center, pulp, Hydroponics, trapezoid, Pennsylvania, Mississippi).",
+    "The agent used the passages as a cross-check: one noun phrase recurred across many independent passages next to the clue's key detail ('growing plants without soil' -> Hydroponics; 'Itawamba County' -> Mississippi). It trusted that recurrence over a stray related entity.",
+    "For a bare quoted slogan (\"Tippecanoe and Tyler too\") the agent answered the person the slogan was built for, William Henry Harrison. It did not answer the second name already in the slogan (Tyler) or the slogan itself.",
+    "For 'this team's <player>' the agent gave the team's usual full name with city and nickname as the passages print it (New York Giants), because the clue names neither word. It did not shrink the name to a nickname or add the sport or league."
+  ],
+  "patch": {
+    "reasoning": "Most of the batch is already covered by the type-check, Rule 3 recurrence and bare-answer rules, so no restructuring is needed. Two small, checkable gaps remain. First, a bare quoted slogan or catchphrase has no rule: the agent must answer the person or product it belongs to, not a name that appears inside it. Second, the 'this team's <player>' case is not explicit, and the existing 'this city's Sabres -> Buffalo' example could pull the agent toward a wrong shortening. Both bullets are short, conditional on a visible clue feature, and do not touch Rule 3 or the head-noun exception.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Give the bare name ('Ronald Reagan'), not the event, the place or the date.",
+        "content": "\n- A clue that is only a quoted slogan, motto, catchphrase or lyric (\"Tippecanoe and Tyler too\") asks for the person, team or product it was made for. Passages say 'campaign slogan for X'. Answer X as a bare name. Do not answer the slogan itself or a name already inside the quote (Tyler), and prefer the headliner the passages name first."
+      },
+      {
+        "op": "insert_after",
+        "target": "Other named entities in the clue are anchors, never the answer.",
+        "content": "\n- 'this team's <player or coach>' ('this team's Phil Simms') asks for the team. Give its usual full name, city plus nickname, as the passages print it ('New York Giants'). The clue states neither word, so nothing is struck, and the league or sport word is dropped. This differs from 'this city's Sabres', where the clue already gives the nickname and the answer is the city alone."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "date interpretation / trip-leg omission",
+      "count": 2,
+      "description": "One agent asked again despite an exact preferred date; another treated a stated trip interval as outbound-only and omitted the return leg."
+    },
+    {
+      "failure_type": "tool-schema and call/persistence misuse",
+      "count": 5,
+      "description": "Agents supplied unsupported flight traveler counts, invalid time formats, made redundant or bare calls, omitted cache saves, or added unrelated code."
+    },
+    {
+      "failure_type": "cache follow-up constraint tracking",
+      "count": 3,
+      "description": "Agents ignored a newly supplied hotel party size, reused stale or already-filtered flight results, or failed to carry a proximity request through a hotel update."
+    },
+    {
+      "failure_type": "location/category mapping and value preservation",
+      "count": 1,
+      "description": "An agent mapped a state abbreviation to the city field and changed the requested attraction category."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers general schema compliance, caching, and exact value preservation, so those failures do not warrant duplicating existing rules. These edits clarify four remaining decision points: an exact date remains usable when stated as ideal, party size applies to hotel searches and follow-up filters, a stated travel interval can establish both flight legs, and a proximity relationship should be refreshed when its underlying hotel set changes.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Phrases such as “last-minute,” “weekend getaway,” or “family vacation” do not provide exact travel dates. Do not infer or substitute sample dates; ask only for missing required values, not optional counts or dates.",
+        "content": "Phrases such as “last-minute,” “weekend getaway,” or “family vacation” do not provide exact travel dates. If the user gives an exact calendar date as an ideal or preference alongside vague urgency, use that date for the required date field rather than asking for another date solely because it is described as ideal. Do not infer or substitute sample dates; ask only for missing required values, not optional counts or dates."
+      },
+      {
+        "op": "replace",
+        "target": "A clearly stated party size such as “solo” is an explicit count; pass `num_people=1` for a hotel search. Do not infer unspoken counts.",
+        "content": "For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools."
+      },
+      {
+        "op": "replace",
+        "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+        "content": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. A stated travel interval such as “from [date] to [date]” establishes both legs for a requested flight search even when hotels are also requested. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg."
+      },
+      {
+        "op": "insert_after",
+        "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. Do not approximate proximity by extracting a neighborhood and using it as a filter.",
+        "content": "\n- **Refresh changed proximity results:** If a user has requested proximity and a later constraint changes an underlying domain result (for example, filtering the hotel set), recompute and cache `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the suitable cached base is already the combined nearest result and can be filtered directly, update that result without an unnecessary nearest call."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

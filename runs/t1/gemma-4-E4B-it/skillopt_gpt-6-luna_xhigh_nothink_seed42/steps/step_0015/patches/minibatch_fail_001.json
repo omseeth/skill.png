@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_filtering",
+      "count": 5,
+      "description": "Agents repeated searches or nearest operations instead of retrieving compatible cached results and applying only the newly supplied filter."
+    },
+    {
+      "failure_type": "tool_argument_validation_and_mapping",
+      "count": 3,
+      "description": "Calls used guessed or invalid hotel arguments, omitted required hotel dates, or supplied an invalid midnight time format."
+    },
+    {
+      "failure_type": "proximity_entity_and_input_pairing",
+      "count": 1,
+      "description": "The proximity call used broad cached hotel results instead of the specifically named anchor, passed None for the other domain, and omitted the needed restaurant search."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already gives explicit guidance on cache reuse, required-argument checks, avoiding None, and flight time formats, so repeating those rules would not address a documentation gap. The proximity guidance does not explicitly state that a named anchor must be represented by a compatible result or that search_nearest requires two populated domain inputs; the added rule addresses that gap.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "\n- For proximity to a specifically named place or entity, ensure one input is a compatible result that actually covers that named anchor; a broader result from the same domain is not a substitute. If no compatible cached result covers it, search for the anchor using its exact entity text. `search_nearest` requires exactly two populated domain-result inputs: obtain both relevant result objects and never pass `None` for either one."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

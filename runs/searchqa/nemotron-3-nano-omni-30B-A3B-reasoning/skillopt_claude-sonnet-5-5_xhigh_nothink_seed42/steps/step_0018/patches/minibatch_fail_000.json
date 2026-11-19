@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Agent answered with a word or part named in the clue instead of the whole or container the clue points to: 'Hamburg' for a bare city (answer Germany), 'Tiger Ranger' for 'this state's forest' (answer South Carolina), 'radius' for 'Its area equals pi r squared' (answer Circle)."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "Acronym 'stands for these ...' clue: agent echoed the clue words ('strange creatures') instead of the expansion in the passages ('Digital Monsters')."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 3,
+      "description": "Final answer not clean: 'sheep or goat' (two alternatives instead of the single key 'Sheep'), 'ragaE' (garbled passage text instead of 'rag'), 'Lyndon B. Johnson' instead of 'Lyndon Johnson'."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "'watering holes' nickname clue with no archived answer in context: agent guessed 'birdbath' instead of the nicknamed object 'Well'."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of the eight misses answer with a word from the clue or a part of the thing, when the answer is the whole or container (Hamburg -> Germany, forest -> state, area formula -> Circle). One more echoes the clue ('strange creatures') where the passages give an acronym expansion. Previous steps bundled many broad rules and were rejected, so these edits are few and narrow. Two target the structural gaps (place or container clues, and 'stands for' or property clues). Two target exact-match hygiene (single clean answer, name form). Each edit is short and avoids rejected wording.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "and answer with the common English name (Conch).",
+        "content": "\n- Container clues: (a) a clue that is just ONE place name ('Hamburg') asks for the country, or for the US state if it is an American place. (b) 'this state's / this country's <thing>' ('Divisions of this state's Sumter National Forest include Long Cane, Enoree & Tiger') asks for the state or country that CONTAINS the named thing. The names inside the clue (divisions, districts, rivers, cities) only locate it and are never the answer. Passages about hotels, forests, trains, weather or teams for the place are search hits. Look for the passage that says the place is 'in <State/Country>' and give that bare name ('South Carolina', 'Germany')."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Honor qualifiers when the context offers several names for the same thing: 'Greek god of erotic love' -> 'Eros' (not Roman 'Cupid').",
+        "content": "\n- 'X stands for these ...' / 'short for ...' / 'the initials mean ...': the answer is the spelled-out expansion of the acronym or name exactly as a passage prints it ('Digimon' = 'Digital Monsters'). Never repeat the clue's own descriptor ('strange creatures') as the answer. Search the passages for the expansion next to the acronym.\n- 'It/Its <defining property or formula>' with no 'this' ('Its area equals pi r (squared)', 'Its boiling point is 100 degrees'): the answer is the WHOLE thing that has the property ('Circle'), not a variable, part or measure named in the formula or its explanation (not 'radius', not 'pi'). Ask: what object is this formula the area of? Name that object."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Put only the bare answer in the answer tags. Do not write a sentence, restate the clue, or add dates, qualifiers or alternatives. Brief reasoning belongs before the tags.",
+        "content": "\n- Commit to ONE answer. Never write 'X or Y' ('sheep or goat'). When passages list several animals, items or names, pick the one the passages stress most ('particularly sheep') and give it alone ('Sheep'). Copy the answer as clean text. Passages are often garbled by scraping, with stray letters glued to a word ('ragaE', 'pail and ragaE'). Strip such debris and give the normal word ('rag'). For a quoted line that ends before the missing word ('...to wash the steps with pail and' this), the answer is only the next word of the quotation."
+      },
+      {
+        "op": "insert_after",
+        "target": "Still apply the person-name rule above.",
+        "content": "\n- Person names without a verbatim archive hit: give plain 'First Last' and drop a middle initial that appears only in formal passage text ('Lyndon Johnson', not 'Lyndon B. Johnson'; 'Harry Truman'). Keep an initial only when it is part of the universal form of the name, or when a verbatim archive line shows it. Never add titles such as 'President' or 'Sir' unless the archive line shows them."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

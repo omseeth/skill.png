@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_selection",
+      "count": 6,
+      "description": "Filterable follow-ups triggered new searches, regenerated unchanged domains, or used a less-constrained cached result instead of retrieving and filtering the best compatible entry."
+    },
+    {
+      "failure_type": "itinerary_leg_and_date_handling",
+      "count": 1,
+      "description": "Alternative outbound dates and a common return date were not represented as separate directional flight legs, and hotel dates did not retain all stated alternatives."
+    },
+    {
+      "failure_type": "constraint_field_mapping",
+      "count": 1,
+      "description": "A requested hotel amenity was mapped to a different, unrelated amenity field and the neighborhood constraint was omitted."
+    },
+    {
+      "failure_type": "nearest_grouping",
+      "count": 1,
+      "description": "The nearest search grouped by the requested nearby domain rather than the hotel anchor."
+    }
+  ],
+  "patch": {
+    "reasoning": "The recurring cache failures are already explicitly covered by the skill's cache-selection and filtering rules, so adding another generic reminder would duplicate existing guidance. These edits clarify gaps exposed by the batch: how to model alternative trip dates, how to orient nearest-result grouping for an “X near Y” request, and how to map literal hotel amenity requests to matching fields.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "For an established origin-destination route, treat a two-date travel span (for example, “from [date] to [date]”) as the outbound date and return date unless the conversation indicates otherwise.",
+        "content": "\nIf the user offers multiple alternative departure dates and gives one common return date, search all alternatives together as outbound `departure_date` options, then search a separate reverse-direction return leg on the common return date. For an explicitly requested hotel covering that same itinerary, use all stated alternative start dates in `checkin_date` and the common trip end in `checkout_date`, while retaining the other active hotel constraints."
+      },
+      {
+        "op": "replace",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. When the request is phrased as “X near Y,” use Y as the grouping anchor for `groupBy` (for example, a restaurant near a hotel uses `groupBy=\"hotel\"`)."
+      },
+      {
+        "op": "replace",
+        "target": "For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; do not treat a request to stay in a named district as a proximity search.",
+        "content": "For hotel and restaurant searches, map a named district or neighborhood to `neighborhood` and use the surrounding city in `city`; do not treat a request to stay in a named district as a proximity search. Map literal hotel amenity requests to their matching fields—for example, “free parking” to `has_free_parking=True` and “free Wi-Fi” to `free_wifi_included=True`—and never substitute one amenity for another."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

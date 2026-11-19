@@ -1,0 +1,55 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "structure_parse_error",
+      "count": 3,
+      "description": "Stray `]` at the end of the last object (`...}]]}]`) made the whole answer unparseable (score 0) in two trajectories. A third emitted a duplicate `\"optional parameters\"` key that wiped out the earlier list. Several objects also omitted the `optional parameters` key."
+    },
+    {
+      "failure_type": "tool_name_form",
+      "count": 1,
+      "description": "Used `Provider — endpoint` (em dash) names such as `Lost Ark — get classes`, even though the query quoted the exact `Provider: Endpoint` form. All five tool names scored zero."
+    },
+    {
+      "failure_type": "missing_or_wrong_calls",
+      "count": 3,
+      "description": "Collapsed 'auto-complete on both Asos and Wayfair' into one Wayfair call. Fanned two unnamed-store searches out across Asos, Shopee and Lazada instead of one fitting marketplace each. Used Numbers Translator instead of Numbers math/trivia fact tools."
+    },
+    {
+      "failure_type": "hallucinated_tool",
+      "count": 1,
+      "description": "Emitted tool names the query mentioned (GetFutureEvents, GetFAQsByTopic) that are not in the tool list."
+    },
+    {
+      "failure_type": "value_form_missing_optionals",
+      "count": 2,
+      "description": "Missed page 1/page 2 for the repeated reviews call. Used `UK` instead of `uk`. Omitted stated qualifiers such as the Card Draw and GamerPower optionals."
+    }
+  ],
+  "patch": {
+    "reasoning": "Parse failures and duplicate keys cost the most (full-task zero or lost params) and recur despite the existing rules, so I add a literal BAD/GOOD end-of-answer self-check at the very end, where it is less likely to be skipped. The em-dash tool-name failure zeroed every tool even when the query quoted the right name, so I tighten the first Output-format bullet with a verbatim-copy rule. Two missing/extra-call patterns (named multiple providers, unnamed store searches, hallucinated endpoints) go into 'Which calls to make'. Numbers fact tools and repeat-call paging go into 'Tool selection'. Everything is short and generalizable, and none of it duplicates the protected section.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+        "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely. The separator is a colon plus space (`: `), never an em dash. BAD `Lost Ark — get classes`; GOOD `Lost Ark: get classes`. If the query already quotes `'Provider: Endpoint'`, copy it verbatim. Only emit names that exist as `### ` headings in the tool list; never invent an endpoint the list lacks."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n- Number facts: 'mathematical properties/facts about N' -> `Numbers: Get math fact`; 'trivia about N' -> `Numbers: Get trivia fact` (one call per number). `Numbers Translator` only spells digits as words; never use it for facts.\n- The same endpoint requested twice with different settings (e.g. reviews 'sorted by most helpful', later 'more reviews sorted by most recent') means two calls: page `1` then page `2`, each with its own sort_order."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "\n- A clause naming several providers ('auto-complete on both Asos and Wayfair') means one call per named provider, each to that provider's own endpoint (`Asos: v2/auto-complete` AND `Wayfair: auto-complete`). Never collapse them into one.\n- When the query says 'search for X and Y' without naming a store, give each item ONE call to the single marketplace whose catalog fits it (clothing -> Asos; furniture, lamps, home -> Wayfair search). Do not fan each item out across Shopee, Lazada, AliExpress and others.\n- If the query quotes an endpoint name that is not a heading in the list (e.g. GetFutureEvents), do not invent it. Use a listed sibling only when its description matches the clause, otherwise make no call for it."
+      },
+      {
+        "op": "append",
+        "content": "\n## Final self-check (run on the finished answer, character by character)\n1. BAD: `{\"name\": \"kun\", \"value\": \"oya\"}]]}]`. A stray `]` makes the whole answer unparseable and scores 0. GOOD: `{\"name\": \"kun\", \"value\": \"oya\"}], \"optional parameters\": []}]`.\n2. BAD: `\"optional parameters\": [{\"name\": \"page\", \"value\": \"1\"}], \"optional parameters\": []}`. The second key erases the first list. GOOD: `\"optional parameters\": [{\"name\": \"page\", \"value\": \"1\"}]}`.\n3. BAD: an object with `\"required parameters\": [...]` and no `\"optional parameters\"` key. Every object ends `\"optional parameters\": [...]}`, using `[]` when empty. A call with no params at all is `{\"tool name\": \"X: Y\", \"required parameters\": [], \"optional parameters\": []}`.\n4. Each list closes with exactly one `]`, each object with exactly one `}`, and the whole answer is `[{...}, {...}]`.\n5. Every tool name has `: ` and no ` — `. The object count equals the number of request clauses, including the last sentence."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

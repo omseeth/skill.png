@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every success answered with a short, bare entity whose type matched the clue's slot noun ('this Texas city' -> El Paso, 'this cheese' -> Cheddar, 'these spacecraft' -> Soyuz, 'this cheek cosmetic' -> blush, 'this Disney Channel movie' -> High School Musical). None added a type word such as 'cheese', 'coin', 'spacecraft' or 'soundtrack'.",
+    "Passages were dominated by a topic word that was not the slot type (Chamizal, Sputnik, Tillamook, Vaseline). The agents treated it as an anchor and answered with the entity of the requested type that the passages paired with the clue's other details.",
+    "When no archive line matched, the agents found a passage sentence or dictionary-style definition that paraphrased the clue's distinctive predicate ('worth one twentieth of a pound', 'if you've run out of blush... mix a little lipstick with Vaseline') and took the headword or filled-in slot from it.",
+    "Where a Jeopardy archive line existed ('... | Clark.'), the agents copied its short form (surname only) rather than expanding it.",
+    "Foreign or local glosses ('locally referred to as lambi') were resolved to the common English name (Conch), ignoring the joke aside in the clue."
+  ],
+  "patch": {
+    "reasoning": "The skill already covers verbatim archive hits, slot typing and bare-answer form, which explains these successes. Two compact reinforcements are worth adding because they appear across several trajectories. The first is how to find the answer when there is no verbatim hit: locate the passage that paraphrases the clue's predicate and read off the headword or blank. The second is that a topic word dominating the passages is an anchor, not the answer. Both are kept short and go into existing rules instead of a new top-level section. The previous step's heavy mandatory template regressed, so no new procedural block is added.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "- No verbatim hit? Look for a passage sentence or dictionary-style definition that PARAPHRASES the clue's distinctive predicate ('a coin... worth one twentieth of a pound', 'if you run out of blush, mix a little lipstick with Vaseline'). The headword being defined, or the word filling the slot in that sentence, is the answer. Take it from the paraphrase that matches the most clue details, even when other passages are about a different topic."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "- A topic word that fills the passages (a treaty, a product, a program) is usually just the anchor. Answer with the entity of the slot's type that the passages pair with it ('A 1963 treaty settled a dispute between Ciudad Juarez & this Texas city' -> the city, not the treaty or dispute name; 'Vermont & Tillamook are varieties of this cheese' -> the cheese type)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

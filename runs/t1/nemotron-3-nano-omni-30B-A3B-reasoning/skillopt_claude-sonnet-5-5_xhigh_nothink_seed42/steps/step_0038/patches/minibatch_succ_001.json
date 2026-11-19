@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Refinement turns (T2 hotel neighborhood, T4 restaurant neighborhood, T5 hotel budget+amenity) load the most refined key of the one domain the reply touches and pass only the last message's constraint. This is already covered.",
+    "First turns with a missing mandatory arg and CACHE {} get one seek_information (T1 flight date). Two of the 'successes' (T6 flight+hotel with no dates, T8 restaurant with no city) only scored because the crash left the cache empty. They wrote search_flights with '<date>', and search_restaurants with city='<city>' plus a stray '</parameter>' tag. The DATE GATE exists but restaurant city is not in the top rules, and placeholders still leak through.",
+    "A date answer with a requested flight searches the flight and saves it as 'flights' (T3). The gold also closes with seek_information for the missing hotel check-out. Rule -2 ('never ask again') is the likely reason the agent dropped it.",
+    "'Yes' to a NEW attraction type the assistant offered, with an 'attractions' key already cached under a different criterion (a named attraction), leads to a fresh search_attractions(city, type) saved as 'attractions' (T7). This conflicts with the SEARCH GATE's blanket ban, and the agent only succeeded by following the slow block."
+  ],
+  "patch": {
+    "reasoning": "The meta-skill says not to add new gates, so these three edits only de-conflict or tighten sentences already in the HARD OUTPUT RULES / CACHE GATE. (1) The SEARCH GATE forbids any search when a key exists, but T7 and the slow block need a fresh attractions search when a NEW type is accepted. A narrow exception resolves the clash. (2) T6 and T8 show placeholders ('<date>', '<city>') and stray tags surviving despite the DATE GATE. The DATE GATE never mentions restaurant city, so one sentence extends it and turns any placeholder into a trigger for seek_information. (3) Rule -2 says 'never ask again' and suppresses the hotel check-out seek_information that the T3 gold includes after a one-way flight date. A one-sentence exception fixes that without touching other routing.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "A search_* call is allowed only for a domain with NO key. Examples:",
+        "content": "A search_* call is allowed only for a domain with NO key. Sole exception: the assistant offered a NEW attraction type ('Would you like to explore Scenic attractions?') and the user accepts it while the cached attractions summary does not list that type -> `attractions = search_attractions(city=\"<trip city>\", type=[\"<offered type>\"])` + `save_to_cache(key=\"attractions\", value=attractions)` (reuse the key; no filter). Examples:"
+      },
+      {
+        "op": "replace",
+        "target": "search_flights never takes num_people or num_layovers.",
+        "content": "search_flights never takes num_people or num_layovers. The same gate covers search_restaurants: a city not literally in the conversation (e.g. only 'I have a nightshade allergy') -> `seek_information(\"We need the city for the restaurant.\")` and nothing else. If you are about to type '<date>', '<city>' or any '<...>' placeholder, or a stray '</parameter>' tag, you skipped the gate: replace the whole output with the seek_information."
+      },
+      {
+        "op": "replace",
+        "target": "Never load another domain's key and re-save it as a stand-in for the missing search.",
+        "content": "Never load another domain's key and re-save it as a stand-in for the missing search. Exception to 'never ask again': a hotel was requested and the reply gives only ONE date (a one-way flight date, no return or check-out) -> write the flight search saved as \"flights\", NO search_hotels, then close with `seek_information(\"We need the check-out date for the hotel.\")`."
+      }
+    ]
+  },
+  "source_type": "success"
+}

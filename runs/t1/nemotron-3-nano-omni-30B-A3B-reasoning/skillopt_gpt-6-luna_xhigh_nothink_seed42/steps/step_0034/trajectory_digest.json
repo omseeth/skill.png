@@ -1,0 +1,54 @@
+{
+  "step": 34,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 26,
+  "failure_patterns": [
+    {
+      "pattern": "incremental_update_or_cache_scope_error: Agents repeated already-covered criteria, reprocessed unaffected domains, or searched again instead of applying the latest requested refinement.",
+      "count": 26,
+      "task_ids": [
+        "hotelrestaurant:train:22:24:3",
+        "flighthotel:train:4:60:1",
+        "restaurant:train:10:42:2",
+        "flighthotelrestaurant:train:15:42:2",
+        "flighthotelattraction:train:6:24:1",
+        "flighthotelrestaurant:train:6:58:2",
+        "hotel:train:14:17:4",
+        "hotelrestaurant:train:12:12:4",
+        "hotelrestaurant:train:5:9:0",
+        "flighthotelattraction:train:3:40:1",
+        "hotelrestaurant:train:25:31:2",
+        "hotelattraction:train:24:38:1",
+        "flighthotelattraction:train:15:30:1",
+        "flighthotelattraction:train:9:27:1",
+        "restaurant:train:19:56:0",
+        "hotelrestaurant:train:2:9:3",
+        "hotelrestaurant:train:17:53:3",
+        "attraction:train:13:56:0",
+        "restaurant:train:20:47:3",
+        "hotel:train:17:36:2",
+        "attraction:train:13:29:2",
+        "hotelattraction:train:16:42:2",
+        "flighthotel:train:14:2:4",
+        "hotelrestaurant:train:11:59:5",
+        "flight:train:9:16:3",
+        "hotelattraction:train:5:20:2"
+      ]
+    }
+  ],
+  "score_before": 0.26,
+  "score_after": 0.23,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "## Incremental planning and cache use\n\n- Resolve the latest user turn against the immediately preceding assistant question and all still-pending requests. Interpret a reply in context: it may provide the requested preference, introduce a new target or criterion, or make a suggested area actionable. Apply “both” independently to every still-pending referenced domain, and apply other still-valid criteria separately to each named location. Make a checklist of each pending item, recording its domain, exact target and location or flight leg, requested relation, and every new or still-pending criterion; leave unaffected items alone.\n- Assess readiness independently for each checklist item. Do not infer missing mandatory inputs. Complete ready items even if another is blocked, and ask once for the missing mandatory inputs across blocked items.\n- For each ready item, compare its exact target, domain, location or leg, and criteria with the listed cache summaries. Retrieve the latest compatible result using its exact listed key. If it covers the full request, use it directly. If it covers earlier criteria but lacks new constraints, apply every missing constraint with the appropriate domain filter, passing the cached result as `prior_results` when required; do not repeat covered filters or search instead of refining. Search with the applicable stated criteria only when no compatible result exists and mandatory inputs are available. Do not rely on variables from earlier executions.\n- When no criterion is added and a listed compatible result directly fulfills the outstanding request—for example, when the user is flexible or accepts an offer to provide those existing recommendations—retrieve it by its exact key and use it rather than searching or filtering again. An accepted proximity offer is a separate nearest-results action; follow the proximity rule below.\n- Bind the exact return value of every required search, filter, sort, or nearest-results call to a local variable and save that same object with `save_to_cache` under a unique, descriptive key. Save refinements under new keys; do not substitute hand-built data. Use `print(\"No planning needed\")` only when no requested action remains and every request is covered by valid results.",
+      "target": "## Incremental planning and cache use\n\n- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.\n\n- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. Interpret replies in the context of the assistant's concrete question or suggestion, not only their literal wording: a direct answer can supply the asked-for amenity or preference, and asking what is available after an area is suggested makes that area an actionable search target. A direct answer can also introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the reply says a criterion applies to “both,” apply it independently to every still-pending domain referenced in context (for example, hotels and restaurants), using each domain’s appropriate filter and latest compatible cached result; do not apply it only to the last-mentioned domain. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.\n- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.\n\n- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.\n\n- If the latest turn adds no criterion and a compatible listed cache result already covers the outstanding request—including when the user says they are flexible or accepts an offer to provide recommendations—retrieve that result with its exact listed key into a local variable and use it directly. Do not search or filter again, and do not use `print(\"No planning needed\")` in place of retrieving a result the user is expecting.\n- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects."
+    },
+    {
+      "op": "replace",
+      "content": "## Proximity between travel domains\n- Call `search_nearest` when the user explicitly requests proximity between supported domains or accepts a specific offer to identify nearby options. Before calling, verify that each result covers the exact requested target and includes all applicable constraints; a generic city result does not establish coverage of a separately named place. If a named reference target is missing, search for it in its domain using the appropriate schema-supported exact-name field (for example, `attraction_name` for a named attraction). Search for the requested candidate domain too if no compatible result exists.\n- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain): hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`. If a pending filter applies to either input, refine and save that result first. Bind and save the nearest-results return value.\n- Mere interest in visiting or dining at a place, without a proximity request or accepted proximity offer, does not imply a nearest-results call.",
+      "target": "## Proximity between travel domains\n- Call `search_nearest` only when the user explicitly requests proximity between supported domains. Before calling it, verify that each cached result covers the specific requested target, not merely the same domain or city. For example, a generic city attraction search does not cover a separately named attraction; search for the named attraction using `attraction_name` unless the cache summary shows that exact target is already covered.\n- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain), not the reference domain: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`.\n- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call."
+    }
+  ]
+}

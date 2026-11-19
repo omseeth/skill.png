@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache lifecycle",
+      "count": 6,
+      "description": "Agents omitted saves for new results or left some result-producing calls uncached."
+    },
+    {
+      "failure_type": "incremental follow-up handling",
+      "count": 4,
+      "description": "Agents repeated completed work, re-specified existing constraints, or searched afresh instead of filtering cached results."
+    },
+    {
+      "failure_type": "incomplete itinerary or domain coverage",
+      "count": 3,
+      "description": "Agents missed return legs or an explicitly requested domain when processing a multi-leg trip."
+    },
+    {
+      "failure_type": "entity-to-field mapping",
+      "count": 3,
+      "description": "Agents misassigned or shortened location values, including a state, a complete neighborhood name, or an airport code."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits make full-conversation task coverage and incremental cache use more operational, reinforce per-result persistence, clarify searches for every requested flight leg, and specify how to map location values to tool fields.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Keep code to necessary tool calls and result assignments; save each new result to cache. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria.",
+        "content": "- **Use runtime tools directly and follow their schemas:** Tools, cache functions, and result models are provided by the runtime. Do not import libraries, redefine models or schemas, or add helper code. Use only supported arguments with the required types, pass list-valued fields as lists, and use keyword arguments except for `seek_information`. Assign every new search, filter, sort, or nearest result to a variable and save it with `save_to_cache` under a fresh, descriptive key; use distinct keys for separate domains, itinerary legs, and updated results. Never leave a result-producing call bare or omit its save. Do not pass unsupported parameters, such as traveler counts to flight tools, or invent optional criteria."
+      },
+      {
+        "op": "replace",
+        "target": "- **Handle follow-ups incrementally through the cache:** Retrieve the relevant cached result with `get_results_from_cache`, apply only the new constraints using the appropriate same-domain filter, and save the updated result under a relevant key. Do not mix domains. Search afresh only when there is no suitable cached base; if cached results already satisfy the latest request, do nothing. Avoid repeating unrelated searches, filters, or other operations.",
+        "content": "- **Handle follow-ups incrementally through the cache:** Reconcile the full conversation and cache on each turn: keep track of all explicitly requested domains and tasks, including ones still pending from earlier turns. For a follow-up that adds constraints to an existing result, retrieve the relevant cached result with `get_results_from_cache`, use the same-domain filter, and pass only the newly stated constraints because the cached base already reflects earlier ones. Save the updated result under a relevant key. Do not rerun completed work or touch unrelated domains; search afresh only when there is no suitable cached base, and do nothing when cached results already satisfy the request."
+      },
+      {
+        "op": "replace",
+        "target": "- **Search round-trip flights as separate legs:** Search outbound from origin to destination using the outbound date, then return from destination to origin using the return date as that leg's `departure_date`. Cache each leg separately; do not use the return date as the outbound `arrival_date`.",
+        "content": "- **Search every requested flight leg separately:** Use the full conversation to identify each explicitly requested segment of a round trip or multi-city itinerary, and make one flight search per segment with that segment's route and departure date. For a return leg, reverse the outbound route and use the return date as its `departure_date`; never represent the return leg only with the outbound search's `arrival_date`. Keep each leg's result separate."
+      },
+      {
+        "op": "replace",
+        "target": "- **Honor the user's request and values:** Use only domains explicitly requested; do not infer extra searches, preferences, amenities, or substitute similar categories. Preserve names, categories, criteria, and date strings unless a tool requires a format conversion. Map a specified neighborhood to the neighborhood field, not the city field. Check required inputs independently by domain: seek missing information, but proceed with other requested searches whose inputs are available. For ratings, represent “exactly x” as `[x, x]` and “at least x” as `[x, 5]`.",
+        "content": "- **Honor the user's request and values:** Use only domains explicitly requested; do not infer extra searches, preferences, amenities, or substitute similar categories. Preserve complete names, categories, criteria, and date strings unless a tool requires a format conversion. Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` (retaining the full provided neighborhood name), and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value. Check required inputs independently by domain: seek missing information, but proceed with other requested searches whose inputs are available. For ratings, represent “exactly x” as `[x, x]` and “at least x” as `[x, 5]`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

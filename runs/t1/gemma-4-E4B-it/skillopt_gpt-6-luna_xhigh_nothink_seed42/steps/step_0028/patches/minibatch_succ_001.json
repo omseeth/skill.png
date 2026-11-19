@@ -1,0 +1,18 @@
+{
+  "batch_size": 3,
+  "success_patterns": [
+    "When flights and a hotel are explicitly requested for the same trip, the hotel stay uses the itinerary destination and the outbound/return date span.",
+    "The other observed behaviors—filtering a cached hotel result for party size and rooms, and searching round-trip flight legs separately—are already covered by the skill."
+  ],
+  "patch": {
+    "reasoning": "The hotel-and-itinerary relationship appears in two trajectories: one cached hotel result uses the flight destination and dates, and another searches for a hotel after the user supplies the trip dates. Clarifying this inference helps complete hotel searches without guessing for unrelated lodging requests.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Make common required inputs explicit before searching: restaurants require `city`; hotels require `city`, `checkin_date`, and `checkout_date` (derive checkout with `adjust_date` when the existing explicit stay-length rule allows); each flight leg requires `departure_date` and a starting-airport identifier (`start_airport_city`, `start_airport`, or `start_airport_code`). Optional preferences such as budget, dietary needs, or party size do not substitute for missing required inputs.",
+        "content": "\n- When the user explicitly requests a hotel for the same trip as a described flight itinerary and gives no separate hotel location or stay dates, use the itinerary destination for hotel `city` and the trip's outbound and return dates for `checkin_date` and `checkout_date`. Apply this only when the lodging is clearly part of that itinerary; do not infer dates or a stay length for an unrelated hotel request or from vague trip context."
+      }
+    ]
+  },
+  "source_type": "success"
+}

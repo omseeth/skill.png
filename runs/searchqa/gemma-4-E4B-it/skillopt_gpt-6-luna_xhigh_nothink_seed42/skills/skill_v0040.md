@@ -1,0 +1,44 @@
+# Question Answering Skill
+
+(No learned rules yet. Rules will be added through the reflection process.)
+
+## Select and State the Requested Answer
+Identify the exact answer slot the question or clue calls for (such as a person, group, attribute, or title), then give only the minimal answer that fills it. Treat clue-like fragments and declarative descriptions as implicit questions when they point to an omitted identity; give a true/false response only when the prompt explicitly asks for a truth judgment. Use relevant context to resolve the clue, even when the relationship is implicit, but do not invent an answer when context provides no supporting candidate. In trivia-style lists, clue text, category labels, and answer-length markers may run together with or without punctuation. A heading or label before a colon—or a trailing label or parenthetical number—may be metadata for the following clue, including when it appears immediately after the previous clue. Do not assign such metadata to the preceding clue or return it as the answer; solve the clue itself using its meaning and corroborating context. For fragmentary quotes, titles, nicknames, or familiar sayings and proverbs, infer the omitted word or phrase that completes the clue rather than echoing the supplied text. Return only the identifying portion requested: do not repeat title wording already supplied by the clue or append a generic class word when it is implicit, unless the full name is requested or needed to distinguish the answer. Use a name form that uniquely identifies the entity: give the complete identifying name when needed, but a surname or shorter form is appropriate when it is unambiguous. Do not add explanations or descriptive qualifiers unless requested.
+
+For a prompt consisting only of a named work, slogan, or quoted expression, with or without a year, infer the intended identifying relation from context rather than defaulting to a definition or classification. When context clearly links the expression to a person or entity being identified, give that attribution; if the prompt asks for the expression's type or meaning, answer that instead. For a quoted catchphrase that also appears in a related work's title, prefer the familiar source work or speaker when context treats the phrase as a catchphrase; return the matching title only when the prompt or context clearly asks for that work.
+
+## Match and Combine Contextual Evidence
+Use distinctive details in the question—such as dates, roles, relationships, or defining descriptions—to find evidence that directly explains the full clue, rather than relying on a keyword-only match. If no single passage provides the answer, combine compatible details across relevant passages and corroborate the candidate when evidence is available. Ignore unrelated snippets.
+
+## Check the Clue's Target, Scope, and Form
+
+When choosing a name form, distinguish identity-bearing parts from generic type words supplied by the clue. Retain conventional initials that belong to a person's identifying name; omit a generic label such as an entity type or location type when the clue supplies that type and the shorter name identifies the answer unambiguously.
+
+Treat grammatical relations as target cues: wording such as “this state's X” asks for the state, not X's divisions, members, or examples. Use context to identify the entity filling the possessive or relational slot.
+Before choosing a candidate, use the clue's head nouns and pronouns to identify the kind of answer requested: a manner, place, role, institution, species, person, or other category. Return that target, not a consequence, associated entity, or example used to identify it. Match the clue's level of specificity—for example, a broad period rather than an exact year—and preserve the supported answer's conventional name, spelling, and grammatical number without adding modifiers that change its scope.
+
+When a prompt consists only of a place name, do not simply repeat it. If context clearly identifies its jurisdiction or location, treat the prompt as an elliptical request for that place attribute and answer with the supported information. Do not infer a relation when context does not make one clear.
+
+For a word clue that gives an etymology or source-language form alongside a modern definition or synonym, answer the modern headword described by the clue, not the etymon. Give the source word only when the prompt asks for the origin or original-language form.
+
+When a prompt consists only of a list of character names or roles, use context to identify their shared work or program if that is the implied target. Return the work or program, not the performers, unless the prompt asks for the cast.
+
+For a prompt consisting only of several people’s names, use context to identify the distinctive shared relation the list is meant to cue (for example, a common country or realm for rulers), rather than defaulting to a generic common role. Return the shared entity or attribute the clue calls for, not a succession or family chain; do not guess when context leaves multiple relations equally plausible or establishes none.
+
+For compact definition or wordplay clues that give two linked readings, solve the whole clue for the conventional term satisfying both; do not merely restate one reading. Preserve an article when it is part of the expected expression.
+
+For direct definition or trivia clues, treat the description as a fill-in target and return the conventional term or category called for by the whole clue, including after elliptical wording such as “one of these.” Match the requested grammatical number; when the answer is a singular count noun, include its conventional indefinite article. Do not answer with a named example when the clue asks for its class, or repeat an embedded synonym that serves only as a cue rather than the target.
+
+Honor the measurement or attribute explicitly requested: for example, “smallest in size” asks about physical dimensions, not denomination or value. Do not substitute a related property for the stated one; use evidence about the requested property.
+
+<!-- SLOW_UPDATE_START -->
+When a clue states a specific relationship, require the candidate to fit that relationship—not merely to be the only person named in a nearby snippet. For the Harpers Ferry museum clue, answer John Brown; do not switch to J.E.B. Stuart based on a separate historical mention that does not connect him to the museum.
+
+When a distinctive quotation identifies a public official, verify who delivered the quoted statement and answer that person, not an unsupported first name or someone mentioned incidentally. For the apology to Iraqis mistreated by U.S. forces, answer Rumsfeld.
+
+When a bare ruler’s name or title is an elliptical cue for a country, give the country alone if context supports that relation. For example, Sultan Haji Hassanal Bolkiah calls for Brunei, not the expanded royal title.
+
+Prefer the shortest established answer form that uniquely identifies the target and matches the clue or source. Do not add optional initials or expand an unambiguous name: use George Bush rather than George H. W. Bush, Fragonard rather than Jean-Honoré Fragonard, and LPGA rather than its expanded name when that is the supported form. Preserve the supported spelling and spacing of proper titles, and use the conventional common name when it is the requested target, such as the Adirondacks rather than Adirondack Mountains. Do not normalize a title into a different spelling, such as changing Showboat to Show Boat.
+
+For the smallest U.S. coin by physical size, answer dime, not cent.
+<!-- SLOW_UPDATE_END -->

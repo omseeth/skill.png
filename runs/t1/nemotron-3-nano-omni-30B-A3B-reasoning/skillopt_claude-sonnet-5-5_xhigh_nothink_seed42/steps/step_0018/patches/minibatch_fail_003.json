@@ -1,0 +1,31 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "dropped_requested_domain",
+      "count": 1,
+      "description": "The user asked for a flight and a hotel in turn 1, then replied with a departure and return date pair. The agent searched only the two flight legs and dropped the hotel search. Its checkin_date and checkout_date should have been the outbound and return dates. This cost two of the six expected calls: search_hotels and its save_to_cache."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already says to run search_hotels in the same block when a hotel was requested and the dates are known (Rule 9, last bullets). It also has a pending-domain sweep. The agent still handled the date-pair reply as flight-only, because the Rule 9 date-reply bullet and its example show only the two flight searches. The latest turn mentions only flights, so the earlier hotel request gets forgotten. The edits make the hotel companion call explicit in three places: the top-of-document hard rules, the date-reply bullet in Rule 9, and the pending-domain sweep. A worked example shows both the flight legs and the hotel search, with the dates taken from the two flight dates and no extra params.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- A date reply is never flight-only if turn 1 also asked for a hotel. When the user answers the date question with an outbound and return date ('depart May 15, 2025 and return May 20, 2025') and ANY earlier turn asked for 'a hotel in <city>', the output is three searches, each saved: the outbound flight, the return flight, and `hotels = search_hotels(city=<destination>, checkin_date=[<outbound date>], checkout_date=[<return date>])` saved as \"hotels\". Never stop after the flight legs. Check turn 1 for the hotel request every time."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use date strings exactly as the user wrote them (e.g. \"May 15, 2025\").",
+        "content": "\n- Worked example (flight + hotel, dates arrive late). Turn 1: 'a flight from St. Louis to San Jose and a hotel in San Jose'. Assistant asks for dates. Last turn: 'My departure date is May 15, 2025 and I'd like to return on May 20, 2025'. Output ALL of the following and nothing else:\n  `flights = search_flights(start_airport_city=\"St. Louis\", end_airport_city=\"San Jose\", departure_date=[\"May 15, 2025\"])`\n  `save_to_cache(key=\"flights\", value=flights)`\n  `return_flights = search_flights(start_airport_city=\"San Jose\", end_airport_city=\"St. Louis\", departure_date=[\"May 20, 2025\"])`\n  `save_to_cache(key=\"return_flights\", value=return_flights)`\n  `hotels = search_hotels(city=\"San Jose\", checkin_date=[\"May 15, 2025\"], checkout_date=[\"May 20, 2025\"])`\n  `save_to_cache(key=\"hotels\", value=hotels)`\n  The hotel city is the flight destination. Check-in is the outbound date and checkout is the return date. Add no num_people, num_rooms, budget or amenity unless the user stated them. When a hotel is also requested and the CACHE is empty, save the outbound leg as \"flights\" (the round-trip pair is then \"flights\" + \"return_flights\"). Use \"departure_flights\" only when the conversation has no hotel request."
+      },
+      {
+        "op": "replace",
+        "target": "Never output only one domain's call while another requested domain is searchable.",
+        "content": "Never output only one domain's call while another requested domain is searchable. Typical miss: turn 1 asked for flight AND hotel, the last turn only supplies a departure/return date pair. The hotel is now searchable too (checkin_date=[departure date], checkout_date=[return date]), so the block must contain the flight searches AND search_hotels, each with its save_to_cache."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

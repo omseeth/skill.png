@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every trajectory chose the correct tools using rules already in the skill: a provider or tool named in the query maps to that provider's endpoint, no-input feeds are used for 'latest news from <outlet>', and N entities get N calls.",
+    "Clauses that carry coordinates, a range and qualifiers went to the tool whose schema literally holds those fields (`Airbnb listings: Count listings by lat lng` with required lat/lng/range and optional bedrooms/maxGuestCapacity). The skill only shows the admin-division case for Airbnb.",
+    "A clause asking what is available ('what geographic regions are available for AI news coverage') was answered with the matching 'Available Regions' list endpoint. This sits awkwardly against the blanket 'do not add list calls' rule.",
+    "Explicit multi-step narratives ('first..., then..., finally...') produced exactly one call per step, with no padding and the last step included.",
+    "Calls whose `optional parameters` list was written once and closed with `}` parsed cleanly. The duplicate-key bug seen in one trajectory (education:73) was its only optional_em loss in the batch."
+  ],
+  "patch": {
+    "reasoning": "Tool selection and layout are already well covered, and prior format-rule edits this epoch were all rejected, so the layout and duplicate-key rules should be left alone. Two gaps remain where the skill is silent or ambiguous. First, when the query gives coordinates, a range and bedroom/guest qualifiers, the skill only shows the admin-division Airbnb tool and might push the agent toward it or toward a guessed-lat/lng warning. Second, the 'no list calls' rule could be read as forbidding a call the clause explicitly asks for ('what regions are available'). Each fix is one sentence with a before->after example, merged into an existing bullet.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "not a lat/lng tool with guessed coordinates.",
+        "content": "not a lat/lng tool with guessed coordinates. The reverse also holds: when the query itself gives coordinates and a range ('near (4.1755, 73.5093) within 2000 meters, 2 bedrooms, 4 guests'), use the lat/lng count tool (`Airbnb listings: Count listings by lat lng`: required `lat`=`4.1755`, `lng`=`73.5093`, `range`=`2000`; optional `bedrooms`=`2`, `maxGuestCapacity`=`4`), not the market or admin-division tools."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "- Boundary: a clause that itself asks what exists ('what geographic regions are available for AI-generated news') names its deliverable, so call the endpoint whose heading is that noun (`AI News - Global: Available Regions`, no params). Pair it with the other clause's call (`Goverlytics: politicians`, `active`=`true`, `level_of_government`=`Federal`). Only list calls that NO clause asks for are padding."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,28 @@
+{
+  "reasoning": "Consolidated the overlapping action-audit, cache-refinement, and result-saving guidance into executable decision rules. Combined accepted offers to add searches across itinerary destinations, while making accepted nearby-options offers a clear trigger for search_nearest and preserving the distinction from mere interest in a place. Kept the round-trip hotel-date clarification, safeguards against substituting example dates, and literal categorical-value preservation. Omitted the proposed flight-time formatting guidance because its ranges and encoding were not established by the skill and could encourage guessed arguments. No edits target the protected section. [optimizer-ranked: selected 2/9 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+      "content": "- For each changed item, compare its exact target, domain, location or flight leg, and all explicit criteria with listed cache summaries. If a compatible result exists, retrieve by its exact key the latest result that already includes the prior criteria. Apply every uncovered criterion to the most refined compatible result, passing it as `prior_results` when required; do not repeat covered filters or refine an older base result. For example, a newly supplied neighborhood is uncovered until applied with the supported neighborhood filter; retrieving city-level results alone does not complete the update. Search only when no compatible prior result exists and mandatory inputs are explicit. Leave unaffected items alone and do not rely on variables from earlier executions.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+      "content": "- At each turn, build an action checklist from the full conversation: every still-pending request, accepted proposal, explicitly described flight leg, and intended target, location, and criterion. A follow-up supplies information but does not cancel other pending work. For each item, check mandatory-input readiness and coverage in listed compatible results. Execute every ready item not already satisfied; when an existing result already satisfies an outstanding request and the user is expecting it, retrieve and use that result directly. Leave fully satisfied, unchanged items alone, and seek all missing mandatory values for blocked items. Use `print(\"No planning needed\")` only when no requested action remains and no result is expected to be returned.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "[2] most directly strengthens cache decisions: it requires checking exact coverage, applying every uncovered criterion to the most refined compatible result, and avoiding redundant filters or stale bases. [0] adds a broad pending-action checklist that helps prevent follow-ups from leaving earlier work unfinished, though it overlaps with existing audit guidance more than [2].",
+    "selected_indices": [
+      2,
+      0
+    ]
+  }
+}

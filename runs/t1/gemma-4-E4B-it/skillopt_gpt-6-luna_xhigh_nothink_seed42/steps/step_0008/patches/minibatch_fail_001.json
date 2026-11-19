@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_reuse_and_incremental_filtering",
+      "count": 5,
+      "description": "Follow-up constraints triggered fresh searches or failed to retrieve and filter compatible cached results, including cached proximity results."
+    },
+    {
+      "failure_type": "tool_result_assignment_and_persistence",
+      "count": 5,
+      "description": "Results were not saved, or `save_to_cache` received a function name or other value instead of the tool's returned result."
+    },
+    {
+      "failure_type": "criteria_mapping_and_value_preservation",
+      "count": 2,
+      "description": "A supported constraint was omitted or a supplied category value was changed or mapped to the wrong field."
+    },
+    {
+      "failure_type": "tool_input_format",
+      "count": 1,
+      "description": "A flight time range copied from the conversation or cache used a format rejected by the tool."
+    },
+    {
+      "failure_type": "independent_domain_progression",
+      "count": 1,
+      "description": "The agent asked about optional preferences and failed to search a fully specified domain while another domain lacked required details."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent failures involve operational ambiguity around cached results and saving tool outputs. The edits make the literal cache-key lookup and returned-result assignment explicit, and clarify preservation of supported filter values. The existing skill already directs agents to proceed with complete independent domains, avoid asking about optional preferences, and use accepted tool formats, so those rules are not duplicated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- At each turn, inspect cache summaries and identify which domains or itinerary legs the latest turn changes. For each changed request, retrieve by exact key a compatible cached result for the same domain, location, dates, and leg whenever its candidate set can be narrowed to the request. It need not already include newly supplied filterable criteria such as cuisine, budget, rating, or amenities. Apply the matching `filter_*` tool to that result with the new constraints, retaining constraints already embodied in the cached result. Do not repeat a base search just to add filterable criteria. Search only when no compatible cached result exists or the request's scope has changed; leave unaffected domains and legs alone.",
+        "content": "- At each turn, inspect cache summaries and identify only the domains or itinerary legs changed by the latest user turn. For each changed request, if a compatible cached result exists, retrieve it with `get_results_from_cache(key=\"<literal cache key shown in the summary>\")` and assign the returned object to a local variable; cache keys and summaries are not Python result variables. Choose a result whose domain, location, dates or leg, and original scope can cover the request (a broader set may be filtered; do not use narrower results for broader requests). Apply the matching `filter_*` tool to the retrieved result with newly supplied filterable criteria, retaining constraints already embodied in it. A cached proximity result may also be used as filter input for its relevant domain when its candidate set remains valid. Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. Search only when no cached result can cover the changed scope."
+      },
+      {
+        "op": "replace",
+        "target": "- Assign every search, filter, sort, and nearest-results call to a variable and immediately save that same result with `save_to_cache` under a unique, descriptive key, even when it is the final call. For example, use `results = search_restaurants(...)` followed by `save_to_cache(key=\"restaurants\", value=results)`. Do not call these tools inline, print their results instead of saving them, or save an assumed or differently named variable. Pass the assigned result to later filters or nearest calls, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally.",
+        "content": "- Assign every search, filter, sort, and nearest-results call to a variable holding that call's returned result, then immediately save that same variable with `save_to_cache` under a unique, descriptive key, even when it is the final call. For example: `results = search_restaurants(...)` followed by `save_to_cache(key=\"restaurants\", value=results)`. Never pass a tool function itself (for example, `value=search_hotels`) or a guessed, unassigned, or differently named variable as the cache value. Do not call these tools inline or print results instead of saving them. Pass the assigned result to later filters or nearest calls, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally."
+      },
+      {
+        "op": "replace",
+        "target": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+        "content": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text and supported category or filter values exactly rather than substituting a near synonym. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

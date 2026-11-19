@@ -1,0 +1,66 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 5,
+      "description": "Several trajectories omitted cache writes for search results, including final results and results needed by later calls."
+    },
+    {
+      "failure_type": "cache_reuse_and_incremental_filtering",
+      "count": 3,
+      "description": "Follow-up constraints caused repeat base searches instead of retrieving and filtering compatible cached results."
+    },
+    {
+      "failure_type": "proximity_intent_and_domain_pairing",
+      "count": 3,
+      "description": "Agents confused neighborhood requests with cross-domain proximity or called nearest-results without two compatible result sets."
+    },
+    {
+      "failure_type": "hotel_date_inference_from_trip_dates",
+      "count": 1,
+      "description": "The agent omitted a hotel search despite explicit trip dates that establish the stay interval."
+    },
+    {
+      "failure_type": "flight_time_format",
+      "count": 1,
+      "description": "A cached time display was reused in a flight call using a format rejected by the tool."
+    },
+    {
+      "failure_type": "round_trip_leg_representation",
+      "count": 1,
+      "description": "A round trip was represented as one outbound search with an arrival date rather than separate directional leg searches."
+    },
+    {
+      "failure_type": "entity_field_mapping",
+      "count": 1,
+      "description": "A state abbreviation was passed as a city instead of in the state field."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the basic cache-reuse, persistence, round-trip, and field-mapping rules, so the edits avoid restating those rules wholesale. They add a final one-to-one audit for result caching, clarify when proximity means a neighborhood versus a comparison between domains, permit explicitly established trip dates to supply hotel dates, and prevent invalid reuse of displayed flight-time formats.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Assign every search, filter, sort, and nearest-results call to a variable and immediately save that same result with `save_to_cache` under a unique, descriptive key, even when it is the final call. For example, use `results = search_restaurants(...)` followed by `save_to_cache(key=\"restaurants\", value=results)`. Do not call these tools inline, print their results instead of saving them, or save an assumed or differently named variable. Pass the assigned result to later filters or nearest calls, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally.",
+        "content": "- Assign every search, filter, sort, and nearest-results call to a variable and immediately save that same result with `save_to_cache` under a unique, descriptive key, even when it is the final call. For example, use `results = search_restaurants(...)` followed by `save_to_cache(key=\"restaurants\", value=results)`. Do not call these tools inline, print their results instead of saving them, or save an assumed or differently named variable. Pass the assigned result to later filters or nearest calls, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally. Before emitting code, audit all result-producing calls and verify there is exactly one matching cache save for each, using the variable holding that call's result."
+      },
+      {
+        "op": "insert_after",
+        "target": "- When the user requests proximity, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "\n- Distinguish a location preference from a proximity comparison: a request to stay “in” or “near” a named neighborhood or district is a hotel `neighborhood` constraint, not a `search_nearest` request. Use `search_nearest` when the user wants recommendations near a separate hotel, restaurant, or attraction. It requires exactly two compatible domain result sets; provide both, and ensure one actually includes any named target (run a focused exact-name search if needed). For a hotel requested near attractions, search for both the hotels and the requested attraction category, then group by hotel."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Required-argument checks",
+        "content": "\nWhen lodging is requested as part of a trip whose start and end dates are explicitly established in the conversation, use those dates as hotel check-in and checkout dates if no distinct hotel dates are given. Do not apply this rule to dates that refer only to an event or to unrelated travel."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+        "content": "\n- For flight-time constraints, use the time format accepted by the flight tool, such as 12-hour AM/PM strings. Do not copy a time verbatim from a cache summary if it is displayed in a different format; express an exact-time request with identical range endpoints and an “arrive by” request as a range from midnight to the stated time."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,20 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "First-turn requests missing a mandatory argument are answered with a single short seek_information naming only the missing item(s). Examples: hotel in St. Louis for a special occasion -> hotel check-in/check-out dates; flight Tucson->San Jose for a family vacation -> departure date. These turns scored correctly.",
+    "A first search carries every stated constraint and nothing else. 'Scenic attractions in Tucson' -> city + type only. 'August 15 to August 23' after a hotel request with restaurants already cached -> only search_hotels, with num_people=3 and budget=65 taken from the earlier turn and the cached restaurants untouched.",
+    "A refinement on a cached domain is exactly load -> filter -> save with only the new constraint. 'Something formal, with a good Korean menu' -> cuisine=['Korean'] only; 'formal' is dropped.",
+    "Three trajectories scored cache_em=1.0 but failed execution (code_success=0). Each emitted a search with an angle-bracket placeholder ('<date>', '<city>') or a stray '</parameter>' where the gold output was seek_information only. These are the trajectories most worth fixing with a hard rule at the top of the skill."
+  ],
+  "patch": {
+    "reasoning": "The correct behaviours (seek_information-only for missing dates, minimal first searches, minimal refinements) are already in the skill. The recurring failure inside this batch is that the model writes a placeholder search ('<date>', '<city>') for first-turn requests with a missing mandatory arg. It does this for flights, for flight+hotel and for restaurants. The existing DATE GATE covers only dates, and the restaurant-city rule sits deep in Rule 6. Extending the gate at the top of the skill, where rules are followed best, closes the gap. It pairs the ban on placeholders with a positive trigger (the exact seek_information to write, including the combined flight+hotel case), as the optimizer notes recommend.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Never use a TOOL CONFIG example date such as '2025-08-03'. search_flights never takes num_people or num_layovers.",
+        "content": "\n- MANDATORY-ARG GATE (same logic as the date gate, for every first search): a code string containing an angle-bracket placeholder such as \"<date>\", \"<city>\" or \"<origin>\" is always wrong, because it fails validation. If search_restaurants has no city, search_flights has no departure date or origin, or search_hotels lacks the city or check-in/check-out dates, write NO search for that domain. Write one seek_information naming only the missing item(s), e.g. `seek_information(\"We need the city for the restaurant.\")`. An allergy or dietary word ('nightshade allergy') is not a city. A first-turn flight + hotel request with no dates gets ONE seek_information naming both: 'round-trip flight Raleigh to San Jose, a hotel with a fitness center' -> `seek_information(\"We need the departure and return dates for the flight, and the check-in and check-out dates for the hotel.\")`, with no search lines. A flight-only request ('family vacation', '2 people') asks only for the departure date."
+      }
+    ]
+  },
+  "source_type": "success"
+}

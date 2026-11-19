@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 4,
+      "description": "A sibling endpoint was chosen over the one matching the query's object noun or intent (Zelda Monsters instead of games; Cloud Cast wind speed instead of the 21-day daily forecast; India Today Tag Search with an invented tag instead of Get News; CheapShark List of Deals instead of List of Games). Some of these also dropped the named entity argument."
+    },
+    {
+      "failure_type": "missing_call_for_clause",
+      "count": 1,
+      "description": "The 'reviews or ratings' clause got no call (OpenCritic Game Search was never used)."
+    },
+    {
+      "failure_type": "required_vs_optional_misplacement",
+      "count": 1,
+      "description": "artist_id was placed under required parameters, but the tool lists it as optional and its required list is 'none'."
+    },
+    {
+      "failure_type": "malformed_answer_structure",
+      "count": 1,
+      "description": "Each call was wrapped in its own brackets with a stray closing brace, e.g. `[{..}], [{..}], [{..}]}`, so nothing parsed."
+    },
+    {
+      "failure_type": "missing_or_misformatted_optional_values",
+      "count": 3,
+      "description": "The count 'per_page=3' was dropped even though the query said '3 scores on page 1'. Multi-value category was written space-separated instead of comma-separated. Other optionals were dropped or invented."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures are wrong sibling-endpoint choices, so the first edit tightens endpoint matching on the object noun and prefers a plain 'get latest' endpoint over a search endpoint with an invented argument. The second fixes the total-parse failure by banning per-call brackets. The third fixes parameter handling: 'Required parameters: none' means everything goes in optional, counts map to count fields, and multiple values are comma-separated. The fourth covers skipped clauses and omitted entity arguments. Noisy or unpredictable gold extras (dice, cards, Lost Ark calls, the dcj9 test tool, quote length limit) are not addressed.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not close the list early or leave stray brackets.",
+        "content": "\n- Exactly one `[` opens and one `]` closes the whole answer. Never wrap each call in its own brackets or separate calls with `], [` (wrong: `[{A}], [{B}]`; right: `[{A}, {B}]`). The answer must end with `}]` immediately followed by `</answer>`, with no extra `}` or `]`."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not borrow a similar name from a sibling tool (use `region` if the tool has `region`, not `loc`).",
+        "content": "\n- If a tool shows `Required parameters: none`, its `required parameters` list MUST be `[]`. Every value the query supplies, even its main input such as `artist_id` or `lat`/`lon`, goes in `optional parameters`. Never promote an optional-schema parameter to required.\n- Count phrases ('15 videos', '3 scores', 'limit to 25', '10 cards per page') always map to the tool's count field (`per_page`, `limit`, `pageSize`, `count`), even when a page number is also given. Several values for one parameter (e.g. science and technology) go in one parameter, comma-separated with no spaces: `science,technology`."
+      },
+      {
+        "op": "insert_after",
+        "target": "Radio stations in a country -> the radio-stations tool, not a Spotify tool.",
+        "content": "\n- Match the query's object noun to the endpoint name, not just the provider or franchise. Read every sibling endpoint of the provider before choosing. 'Games' -> the games-list endpoint, not 'Monsters'. 'Daily forecast for the next few weeks' -> the multi-week daily forecast tool, not a single-metric or current-only tool (wind speed, current weather, air pollution). 'Nearby cities' -> a cities-in-radius tool. 'Active alerts' -> the alerts tool.\n- 'Latest news from <source>' with no topic given -> that source's plain 'Get News'/latest endpoint with no required inputs. Do not use a Tag/Search endpoint and invent a tag. Use tag or search endpoints only when the query supplies the topic word."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "\n- Every clause needs a call, including soft requests. 'Find its reviews or ratings' -> a review/search tool (e.g. a game-search tool with the game name as `criteria`). When a clause concerns a named entity (game, product, artist) and the tool has a title/name/criteria/keyword field, put that entity in it ('deals for Rocket League' -> a games or deals tool with title `Rocket League`) rather than calling with no arguments. A 'which stores sell...' clause gets its own stores-list call."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

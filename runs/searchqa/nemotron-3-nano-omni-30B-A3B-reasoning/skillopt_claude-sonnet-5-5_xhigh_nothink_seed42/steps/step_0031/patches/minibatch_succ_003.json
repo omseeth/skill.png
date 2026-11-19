@@ -1,0 +1,30 @@
+{
+  "batch_size": 5,
+  "success_patterns": [
+    "In all 5 trajectories, passages repeat the clue's distinctive words or quoted phrase ('King of the Techno-Thriller', 'machines are forbidden', 'Blue Room' with 'Blue Period', 'Duchess of York' with 1986). The right answer is the single entity that keeps co-occurring with them, often named in the passage titles.",
+    "When the archive passage showed only the clue and no answer (the 51.5 km clue), the agent combined the numeric detail in the other passages with its own knowledge ('Olympic distance = 51.5 km') to name the category. It did not stall.",
+    "The agent gave a bare, correctly typed answer: a full person name for a 'him' clue, a bare place name for a pronoun slot ('Duchess of it' -> York), and a bare common noun for an event. It did not echo clue words or append head nouns.",
+    "In the clue-quoting cases, the answer was the passages' repeated referent, not a word copied from the clue, so the clue-words-are-anchors rule held."
+  ],
+  "patch": {
+    "reasoning": "All five wins came from the same short chain: identify the slot type, find the passage line that repeats the clue's distinctive words, then give a bare answer that fits the blank and is not a clue word. The skill spreads this across ~35 bullets, and the optimizer memory says the agent skips them. A three-field visible procedure at the very top makes the chain explicit without touching the protected block. A Rule 3 bullet on passage titles and answerless archive pages reinforces the strategies that worked in Trajectories 3-5. A Rule 2 bullet covers pronoun slots inside a phrase ('Duchess of it'), which the agent handled correctly and which an overly long answer would break.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "# Question Answering Skill",
+        "content": "# Question Answering Skill\n\n## Answer procedure (do this every time; keep it to three short fields before the answer tags)\n`Type: <the noun/slot the clue asks for> | Evidence: <quoted passage line repeating the clue's distinctive words, or one own-knowledge fact> | Check: <candidate fills the blank correctly, is not a word already in the clue, and is in bare form>`\nThen give only the bare answer in the answer tags. If no passage repeats the clue's words, say so in Evidence and answer from your own knowledge of the clue's unique detail."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "- Passage TITLES and subjects are evidence. When snippets that repeat the clue's distinctive facts or quoted phrase share one entity in their titles or opening lines, that entity is the answer, even if the archive page showing the clue omits the answer. If an archive page shows only the clue, take its concrete details (numbers, dates, quoted phrase) and match them against the other passages and your own knowledge to name the entity or category. Never answer 'not found'."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 2: Answer the referent, not a word from the clue",
+        "content": "- A pronoun standing in for a name inside a phrase ('Duchess of it', 'capital of this', 'in it') asks for the bare proper noun that fills that blank ('York'), not the full title or phrase. Read the finished phrase aloud with your candidate in the slot to confirm it matches the passages."
+      }
+    ]
+  },
+  "source_type": "success"
+}

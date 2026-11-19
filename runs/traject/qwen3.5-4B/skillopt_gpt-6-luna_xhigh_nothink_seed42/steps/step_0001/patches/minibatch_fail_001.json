@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "argument grounding and parameter fidelity",
+      "count": 8,
+      "description": "Calls frequently omitted query-provided values or altered requested filters, identifiers, locales, categories, or marketplace codes."
+    },
+    {
+      "failure_type": "schema and serialization adherence",
+      "count": 5,
+      "description": "Parameters were placed in the wrong required/optional bucket, duplicated, or emitted without the required name/value structure."
+    },
+    {
+      "failure_type": "tool and endpoint selection",
+      "count": 4,
+      "description": "Similar endpoints were confused, a requested source or operation was missed, or an unrelated tool was added."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill is currently empty, and the batch repeatedly shows failures in argument grounding, schema adherence, and distinguishing semantically similar endpoints. These checks provide a compact preflight process without hardcoding tool-specific values.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet.)",
+        "content": "## Learned rules\n\n- **Match the operation to the endpoint.** Choose tools by the requested action and the endpoint description and parameters, not by a shared keyword or provider name. Distinguish similar operations (such as detecting a disposable address versus creating one, or retrieving a source’s stories versus listing sources). Make a separate call for each distinct requested operation, repeat an endpoint when the user requests separate searches, and do not add unrelated calls.\n- **Ground every argument in the query and tool schema.** Copy requested search text, identifiers, and constraints accurately. Give each parameter a `name` and `value`; do not leave values blank or omit them when the query supplies them. Put parameters in the required or optional list exactly as declared by the tool, and never duplicate a parameter across lists. Do not invent values.\n- **Map requested constraints to the right fields.** Carry over each explicit filter, count, page, sort, locale, and category using the matching tool parameter. For enum, locale, country, and marketplace values, use the representation accepted by that tool’s documentation; transform a user-facing label only when the schema calls for it. Do not substitute a nearby category or silently drop part of a multi-part request.\n- **Validate the final JSON.** Each call object must contain exactly `tool name`, `required parameters`, and `optional parameters`; include empty arrays where appropriate. Use exact tool names and sort calls by tool name."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

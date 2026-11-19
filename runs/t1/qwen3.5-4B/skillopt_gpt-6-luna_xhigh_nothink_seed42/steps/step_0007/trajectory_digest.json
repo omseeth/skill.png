@@ -1,0 +1,67 @@
+{
+  "step": 7,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 29,
+  "failure_patterns": [
+    {
+      "pattern": "tool_invocation_contract_violation: Agents imported the unavailable tools module instead of calling injected functions directly.",
+      "count": 29,
+      "task_ids": [
+        "flighthotelattraction:train:19:26:3",
+        "flighthotelrestaurant:train:17:39:3",
+        "attraction:train:8:59:0",
+        "flighthotel:train:18:2:3",
+        "restaurant:train:20:47:3",
+        "hotelrestaurant:train:22:31:1",
+        "flight:train:20:12:3",
+        "hotel:train:12:44:1",
+        "flight:train:7:30:4",
+        "flight:train:2:18:3",
+        "flighthotel:train:10:57:4",
+        "attraction:train:18:42:0",
+        "hotelattraction:train:14:7:5",
+        "restaurant:train:20:4:4",
+        "hotelrestaurant:train:13:12:1",
+        "hotel:train:8:33:2",
+        "hotel:train:8:28:1",
+        "hotel:train:9:25:3",
+        "flighthotelrestaurant:train:15:42:2",
+        "flighthotelattraction:train:7:36:4",
+        "attraction:train:22:10:0",
+        "flighthotelattraction:train:19:16:3",
+        "flighthotelrestaurant:train:17:4:1",
+        "attraction:train:13:56:0",
+        "flight:train:23:57:2",
+        "hotel:train:16:25:4",
+        "flighthotel:train:4:50:2",
+        "restaurant:train:4:17:2",
+        "flighthotelattraction:train:9:27:1"
+      ]
+    }
+  ],
+  "score_before": 0.225,
+  "score_after": 0.22,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "- Match arguments to the tool schema’s expected type, cardinality, and meaning. Pass every explicitly stated constraint that has a supported parameter, and do not add optional parameters unless their values are explicitly stated or unambiguously resolved by the conversation. Do not infer room or traveler counts from family or group descriptions, or set multiple related flags just in case of one stated allergy or dietary constraint. Map each preference only to supported parameter(s) that genuinely represent it; if no equivalent exists, omit it rather than approximating it with an unrelated field. Preserve user-stated categorical labels and entity text unless the schema specifies a canonical mapping; for example, if the schema expects the canonical lowercase flight-class value, encode economy as `[\"economy\"]`. For neighborhood searches, use the full wording the user gave, including any city name (for example, `neighborhood=[\"Downtown Fresno\"]`), and pass the city separately when known. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+      "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`)."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- When an affirmative follow-up accepts an offered planning or recommendation action, treat the accepted service, subject, and criteria as part of the current request and perform the next action: reuse compatible cached results or seek only missing required inputs if needed.",
+      "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied in a search. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request."
+    },
+    {
+      "op": "replace",
+      "content": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated. Resolve contextual answers, abbreviations, and fragments using the immediately preceding question as well as the full conversation. Map each answer to the preference dimension being asked about; for example, a short airline code in response to a question about airline and class is an airline preference, not a departure-time preference. Do not assign an ambiguous term to an unrelated parameter merely because that parameter could also accept it. When a request identifies a specific attraction by name, use that exact value in `attraction_name`, not a broad attraction category. Reuse a cached result only if it explicitly covers the named attraction; otherwise search for the named attraction.",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated."
+    },
+    {
+      "op": "replace",
+      "content": "- First identify only the travel domains explicitly requested in the full conversation; do not add a domain or ask for its information merely because it is customary for a trip. Check required inputs separately for each requested domain against the conversation and relevant cache. Flights require a departure date; hotels require a city, check-in date, and checkout date; restaurants require a city. For lodging clearly tied to the same trip, use an explicit trip interval’s first date as check-in and return date as checkout. If only the trip’s outbound date is established, use it as check-in but ask for the checkout date rather than inventing a stay length. If any requested domain still lacks required inputs, make exactly one `seek_information(...)` call listing only those missing values. Do not search or filter an incomplete domain, but do proceed in the same turn with independent requested domains whose inputs are complete. Do not guess values or ask for optional preferences as if they were required.",
+      "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available."
+    }
+  ]
+}

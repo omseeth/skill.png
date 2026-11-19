@@ -1,0 +1,50 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_name_form",
+      "count": 3,
+      "description": "Tool name built from the `Provider — blurb` line (e.g. `Lost Ark — get engravings`, `Wayfair — products/get-warranty-services`, or provider plus description) instead of the `### Provider: API` heading. This scored zero on tool match even though the endpoint choice was right."
+    },
+    {
+      "failure_type": "structure_parameters",
+      "count": 4,
+      "description": "Bare-string required param (`[\"offset\"]`), the same param name repeated in one list (3 emails, 4 domains, `country` twice), a stray `]]`, and a runaway repetition loop that never closed the list (parse failure). One call also put an optional-only `title` into required."
+    },
+    {
+      "failure_type": "missing_calls_or_params",
+      "count": 4,
+      "description": "Dropped early-sentence calls (Asos and Wayfair autocomplete), the second market (UK/GB, UK as separate Asos call), the value `offset=0`, `page=1` for 'first page', and the Asos `country`=`GB` qualifier."
+    },
+    {
+      "failure_type": "wrong_tool_choice",
+      "count": 2,
+      "description": "Chose `FreeDomain` (domain availability) for 'disposable status / suggested domains' instead of `disposable Domain and Suggest Domain`. Chose the wrong Wayfair endpoint for 'financing options'."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of eight failures used the ` — ` name form despite the protected guidance, and two more were structure or parse failures. The existing rules are being skipped, so the edits use literal wrong-versus-right strings and an end-of-answer checklist. A fourth edit targets the repeated sweep failure, where early-sentence calls, per-market calls and stated values were dropped. A short tool-selection note covers the disposable-domain mix-up.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Output format (errors here score zero)",
+        "content": "- NAME CHECK (3 of 8 recent failures): copy the name from the `### ` heading line ONLY and ignore the `Provider: X — blurb` line under it. The name must contain `: ` and must never contain ` — `. Wrong: `Lost Ark — get engravings`, `Asos — categories/list`, `Wayfair — This API helps to query...`. Right: `Lost Ark: get engravings`, `Asos: categories/list`, `Wayfair: products/get-financing-offers`. A dash name scores zero even when everything else is right. Match the endpoint to the query's noun ('financing options' -> `products/get-financing-offers`, 'warranty' -> `get-warranty-services`, 'similar' -> `get-similar-items`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Which calls to make",
+        "content": "- SWEEP EVERY SENTENCE, the first one too. 'Basic searches on both ASOS and Wayfair to get autocomplete suggestions' is two calls (`Asos: v2/auto-complete`, `Wayfair: auto-complete`). 'US and UK markets' / 'both X and Y' is one call per market or platform. Each Asos call carries its own market values (UK -> `country`=`GB`, `lang`=`en-GB`; 'British English for the UK' sets both). Reviews 'on the first page' -> `page`=`1`. 'Starting from the first result with offset 0' -> required `offset`=`0`; take required values from the query wording, never leave a required param out.\n- Do not repeat an identical call to pad the answer. Once every clause has its call, stop."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "- Domain checks: 'disposable status' or 'suggested domain' of a bare domain -> `fast Email verifier: disposable Domain and Suggest Domain`. `FreeDomain` only tests domain availability, so do not use it for disposable checks. 'Role account(s)' -> `fast Email verifier: Role Account`. 'MX records' of an address -> an MX tool. Each distinct domain or email is its own call."
+      },
+      {
+        "op": "append",
+        "content": "## FINAL SELF-CHECK (run on the finished answer, line by line)\n1. Every entry in either parameter list is `{\"name\": \"x\", \"value\": \"y\"}`. Wrong: `\"required parameters\": [\"offset\"]`. Right: `\"required parameters\": [{\"name\": \"offset\", \"value\": \"0\"}]`.\n2. No list contains the same `name` twice. Wrong: one call with three `email` entries, four `domain` entries, or `country` twice (US and GB). Right: one call per value, each a separate object.\n3. A param goes in `required parameters` only if it is listed under 'Required parameters' in that tool's schema. If the schema says 'Required parameters: none', the list is `[]` and everything goes in `optional parameters` (e.g. CheapShark `title` and `limit`).\n4. No ` — ` appears in any tool name. The list ends exactly `}]` followed by `</answer>` (never `]]`, never cut off). The number of objects equals the number of distinct clauses, entities and markets in the query."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

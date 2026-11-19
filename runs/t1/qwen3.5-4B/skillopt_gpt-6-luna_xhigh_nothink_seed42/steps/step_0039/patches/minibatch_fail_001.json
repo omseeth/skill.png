@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_write_omission",
+      "count": 3,
+      "description": "New restaurant, attraction, and flight searches were called without binding and saving their results."
+    },
+    {
+      "failure_type": "cached_followup_action_omission",
+      "count": 2,
+      "description": "A newly supplied hotel or restaurant criterion was not applied to the compatible cached result and saved."
+    },
+    {
+      "failure_type": "independent_requested_domain_skipped",
+      "count": 2,
+      "description": "The agent asked for missing flight or hotel dates but skipped a complete restaurant request in the same turn."
+    },
+    {
+      "failure_type": "trip_interval_return_leg_misinterpretation",
+      "count": 1,
+      "description": "A start-to-end trip interval answering a flight-dates clarification was not treated as outbound and return travel, and the dates were reformatted incorrectly."
+    }
+  ],
+  "patch": {
+    "reasoning": "Operationalize the existing cache guidance as explicit tool-call chains, clarify how to resolve a restaurant city from a named trip destination while still handling missing inputs in other domains, and distinguish a trip interval answering a flight-dates clarification from an unrelated date range.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- On each turn, consider the full conversation and compatible cached results, but act only on domains and actions requested now or supplied for a pending request. Reuse results only when their domain and subject match; search when a requested subject or category is not covered by a compatible result. For each new criterion on a cached result, retrieve the latest matching full result, pass it as `prior_results` to the appropriate filter with only the newly stated criteria, then save the filtered output under a unique key; retrieval alone or “No planning needed” does not complete an update. For every search, filter, sort, or `search_nearest` call, bind the full tool output to a variable and save it under a unique cache key. Do not repeat criteria already applied, retrieve or filter unrelated results, or resave unchanged results. Use “No planning needed” only when cached results satisfy every current request without a new action or update."
+      },
+      {
+        "op": "replace",
+        "target": "Still perform every independent requested search or update whose own required inputs are complete in the same turn.",
+        "content": "Still perform every independent requested search or update whose own required inputs are complete in the same turn. If restaurants are requested as part of a trip and no separate restaurant city is given, use the explicitly named destination city; when the lodging location names a neighborhood, use its containing city for the restaurant search. Ask only for required inputs that remain unknown for other requested domains."
+      },
+      {
+        "op": "replace",
+        "target": "Use an end date as the return-leg departure date only when return travel is requested or established by context; do not infer a return flight solely from a date interval.",
+        "content": "Use an end date as the return-leg departure date only when return travel is requested or established by context. If, in direct answer to a travel-dates clarification for an already requested flight, the user gives the start and end of the trip, treat that interval as establishing outbound and return flight legs. Do not infer return travel from an interval mentioned only as unrelated trip context, hotel dates, an event, or a list of possible dates."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

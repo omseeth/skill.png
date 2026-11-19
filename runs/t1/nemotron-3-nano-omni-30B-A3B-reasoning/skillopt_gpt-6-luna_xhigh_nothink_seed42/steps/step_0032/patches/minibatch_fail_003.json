@@ -1,0 +1,41 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "missing_result_persistence",
+      "count": 4,
+      "description": "Search or refinement calls were left unbound or were not saved to cache."
+    },
+    {
+      "failure_type": "cache_and_domain_scope",
+      "count": 3,
+      "description": "Agents rebuilt cached flight searches, used an unavailable hotel cache result, or added unrelated proximity calls."
+    },
+    {
+      "failure_type": "mandatory_input_and_inference",
+      "count": 3,
+      "description": "Agents failed to seek missing hotel dates or inferred unsupported dates, party details, or amenities."
+    },
+    {
+      "failure_type": "schema_value_mapping",
+      "count": 3,
+      "description": "State abbreviations were passed as cities, and an exact hotel star value was not encoded as endpoint bounds."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers cache scoping, missing information, state mapping, and exact bounds, so those rules do not need duplication. Make result persistence more operational in generated code, and clarify how explicit round-trip dates supply hotel stay dates when lodging is requested at that destination, matching the expected handling in the batch.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- In generated code, treat every search, filter, sort, and nearest-results call as a required pair: assign its exact return value to a local variable, then call `save_to_cache` with that variable under a unique, descriptive key. Do this even when only one tool action is needed. Save refined results under a new key. Never leave these calls unbound or omit their cache write, and do not substitute hand-built dictionaries or redefined models for tool result objects."
+      },
+      {
+        "op": "replace",
+        "target": "Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood.",
+        "content": "Hotel check-in and check-out dates must be explicit or supplied by a stated round-trip itinerary when lodging is requested at that destination: use the outbound departure date for check-in and the return-leg departure date for checkout, unless the user gives separate lodging dates. Do not infer hotel dates from a one-way flight or an event date, or infer a neighborhood."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

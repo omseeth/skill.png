@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "geographic_parameter_mapping",
+      "count": 3,
+      "description": "State abbreviations and combined city-neighborhood locations were placed in the wrong search fields."
+    },
+    {
+      "failure_type": "result_call_assignment_and_caching",
+      "count": 5,
+      "description": "Searches were left bare, duplicated, or not saved despite the existing assignment-and-cache requirements."
+    },
+    {
+      "failure_type": "follow_up_reconciliation",
+      "count": 4,
+      "description": "Agents missed pending domains or failed to apply new constraints to suitable cached results."
+    },
+    {
+      "failure_type": "flight_leg_interpretation",
+      "count": 2,
+      "description": "Multi-city date ranges produced spurious reverse legs, while an explicit return date was treated as an arrival-date constraint."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already covers location-field mapping, saving tool results, and reconciling follow-ups, so repeating those rules would not address a gap. These edits clarify two remaining ambiguities: how to interpret date ranges across explicit multi-city legs, and how to apply several new criteria together when filtering a cached result.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg.",
+        "content": "- **Search round-trip flights as separate legs:** Search a return leg when the user explicitly requests a round trip or return flight, or provides a travel date range that establishes a return date for the itinerary. Search outbound from origin to destination on the first date, then return from destination to origin on the return date, using that date as the return leg's `departure_date`. Cache each leg separately. Do not infer a return flight from hotel stay duration alone, and do not use the return date as the outbound `arrival_date` unless the user explicitly states it as an arrival-date constraint. If the user says the trip is one-way or explicitly declines a return flight, search only the outbound leg. For an itinerary with multiple explicitly directed city-to-city legs, search each leg on its stated departure date; date ranges associated with individual legs do not imply a reverse flight for each leg. If an overall return is clearly requested, search one return from the itinerary's final destination to its origin."
+      },
+      {
+        "op": "replace",
+        "target": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools.",
+        "content": "- **Combine known criteria on initial searches:** When no suitable cached base exists and multiple explicit criteria for one domain are already known, include them in the same search call where supported (for example, attraction type and name) rather than searching broadly and then filtering or repeating the search. When updating a cached result, apply all newly supplied active criteria for that domain together in the same filter call (for example, both a neighborhood and a star range), rather than applying only one of several new constraints. For a hotel search, map any explicitly stated party size to `num_people` (for example, “solo” means `num_people=1`); apply a newly supplied count with a same-domain filter on a suitable cached hotel result when needed. Do not infer unspoken counts or pass traveler counts to flight tools."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

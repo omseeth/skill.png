@@ -1,0 +1,37 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Refinement turns on a cached domain were written as load, filter, save, passing only kwargs traceable to the last user message. Examples: 'Yes, a gym and pool' -> gym_present and pool_present only; 'room service and a fitness center' -> has_room_service and has_fitness_class only. Earlier budget, room and traveler constraints already shown in the cache summary were not re-passed. New save keys varied (final_hotels, filtered_hotels_gym_pool) and still scored.",
+    "A party-size reply with a hotels key cached became filter_hotels(num_people=N) on the most refined hotel key, with nothing else added.",
+    "First searches for attractions were assigned and saved with a simple domain key, and the stated type was passed as type=[...]. A state abbreviation ('OR') went in state= (the AZ case in trajectory 8 used city= and still scored, but it is wrong).",
+    "Hotel amenity wording was mapped to a single matching parameter ('fitness center' -> has_fitness_class). Nothing was guessed beyond the words the user used.",
+    "The 'earlier constraint the summary does not list' clause in Rules 2, 17 and 22 conflicts with the protected guidance, which says everything from earlier turns is already in the cached entry. The successful runs followed the protected guidance and ignored the older clause.",
+    "Trajectory 5 passed num_people to filter_flights after a party-size reply with only flight keys cached. The tool rejected it with a ValidationError, so that turn should produce no filter call."
+  ],
+  "patch": {
+    "reasoning": "The successful runs pass only last-turn kwargs on the most refined key. Three older clauses (Rules 2, 17 and 22) still tell the agent to re-pass earlier constraints the summary does not list, and they contradict the protected guidance. Replacing them removes the contradiction without adding a new gate, which follows the meta-skill advice to de-conflict rather than add. A fourth edit closes the one observed hard failure, where num_people was passed to filter_flights on a party-size reply with only flight keys cached.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "the constraints introduced in the LAST user turn, plus any earlier-stated constraint that the CACHE summary text (\"Additionally filtering for ...\" / search description) does not show as applied. Do NOT repeat filters or search parameters the summary already lists.",
+        "content": "only the constraints introduced in the LAST user turn. Everything said in earlier turns is already inside the cached entry (the original search or an earlier filter), so never re-pass it."
+      },
+      {
+        "op": "replace",
+        "target": "Include an earlier-stated constraint only if the summary does NOT list it.",
+        "content": "Earlier-stated constraints are already applied in the cached entry. Pass only what the last user message adds."
+      },
+      {
+        "op": "replace",
+        "target": "pass only the LAST turn's new constraint plus earlier constraints the CACHE summary does not already list.",
+        "content": "pass only the LAST turn's new constraint."
+      },
+      {
+        "op": "replace",
+        "target": "Write no search and no filter. At most `x = get_results_from_cache(key=\"<flight key>\")` for each cached flight key.",
+        "content": "Write no search and no filter. Never pass num_people (or any party-size kwarg) to filter_flights or search_flights, because it raises a ValidationError. With only flight keys cached, a party-size reply needs no filter line at all."
+      }
+    ]
+  },
+  "source_type": "success"
+}

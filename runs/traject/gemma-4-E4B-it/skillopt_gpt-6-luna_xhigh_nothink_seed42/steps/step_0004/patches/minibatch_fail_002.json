@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_name_and_endpoint_resolution",
+      "count": 6,
+      "description": "Several agents used provider descriptions instead of literal tool names, or chose a neighboring endpoint with a different operation."
+    },
+    {
+      "failure_type": "operation_scope_and_call_coverage",
+      "count": 4,
+      "description": "Agents missed a requested search or substituted suggestions or URL-based pricing for a catalog search."
+    },
+    {
+      "failure_type": "schema_argument_mapping_and_serialization",
+      "count": 7,
+      "description": "Agents misassigned hierarchical location fields, parameter groups, values, or types despite the endpoint schema."
+    },
+    {
+      "failure_type": "response_format",
+      "count": 1,
+      "description": "One answer omitted required parameter arrays and was not parsed as a valid set of calls."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers schema compliance and final-format validation, so those rules need no duplication. These edits clarify literal tool-name copying, distinguish direct catalog search from adjacent endpoints while allowing a query-oriented fallback when necessary, and make geographic hierarchy mapping more explicit.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Choose the most directly fitting documented endpoint using its exact `Provider: endpoint` name.",
+        "content": "Choose the most directly fitting documented endpoint and copy its tool name literally from the inventory's `Provider` and `API` labels in `Provider: API` form. Do not use the provider's descriptive text, paraphrase the endpoint, or substitute punctuation or abbreviations."
+      },
+      {
+        "op": "replace",
+        "target": "For each candidate, verify that its result fulfills the requested action for the right entity and scope: suggestions, checks of weaker properties, or unfiltered results do not substitute for a requested lookup, verification, or scoped result.",
+        "content": "For each candidate, match both the requested operation and the endpoint's input/output semantics. A text product search should use a catalog search endpoint that accepts a query and returns products; a URL-based pricing endpoint or unrelated search-hint service is not a substitute when direct search is available. Do not use autocomplete or suggestions instead of a listed direct search endpoint. If no direct search endpoint for the requested catalog is listed, an explicitly query-oriented autocomplete or suggestion endpoint may be the closest valid fallback for phrase-based discovery; do not omit the requested search merely because it is not named `search`."
+      },
+      {
+        "op": "replace",
+        "target": "Distinguish fields for different levels of a location hierarchy.",
+        "content": "Map locations from country outward using the endpoint's documented field semantics and the user's parent-to-child geography. Do not assume a field named `state` always means a subnational region; it may represent a country or another level in a particular schema. Put each named administrative level in its corresponding field without shifting or collapsing nested places."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "result_binding_and_cache_persistence",
+      "count": 8,
+      "description": "Tool outputs were omitted from cache, saved as function references, or regenerated inline instead of being assigned and saved once."
+    },
+    {
+      "failure_type": "incremental_cache_reuse",
+      "count": 4,
+      "description": "Follow-up constraints triggered fresh searches instead of retrieving relevant cached results and filtering only by the new constraint."
+    },
+    {
+      "failure_type": "proximity_scope_overreach",
+      "count": 1,
+      "description": "The agent inferred a proximity request from plans to visit attractions and added unnecessary nearest-results work."
+    },
+    {
+      "failure_type": "unsupported_inference_or_optional_argument",
+      "count": 2,
+      "description": "The agent passed an unspecified optional argument as None and inferred business-class travel from a business-trip purpose."
+    },
+    {
+      "failure_type": "tool_argument_validation",
+      "count": 1,
+      "description": "A flight-time range used a format rejected by the tool."
+    }
+  ],
+  "patch": {
+    "reasoning": "The repeated actionable failure is incorrect tool-result dataflow: agents skip caching, save function references, or repeat calls inside save operations. A concrete call pattern makes the required sequence explicit and also reinforces cache retrieval for follow-up filtering. Clarifying when nearest-results work is warranted limits unrelated domain searches, while explicit guidance against None placeholders and purpose-based preference inference addresses the remaining recurring overreach.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Assign every search, filter, sort, and nearest-results output to a variable, then immediately save it with `save_to_cache` under a unique, descriptive key before using it in later calls. Pass the assigned prior result to filters, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally.",
+        "content": "- Execute each search, filter, sort, and nearest tool call once. Bind its returned result to a variable, then immediately save that variable—not a tool/function name or an inline second call—with `save_to_cache` under a unique key before using it downstream. Use the pattern `results = search_...( ...); save_to_cache(key=\"...\", value=results)`; do the same for filter, sort, and nearest outputs. For follow-ups, retrieve the exact matching cache key into a variable and pass that result as `prior_results` when filtering for new constraints, then bind and save the filtered output. Keep distinct variables and keys for separate domains and legs, and do not overwrite valid cache entries unintentionally."
+      },
+      {
+        "op": "replace",
+        "target": "- When the user requests proximity, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "- Call `search_nearest` only when the user explicitly asks for proximity (for example, “near” or “closest”); mentioning places to visit alone is not a proximity request. Use relevant current or cached results without rerunning unaffected searches. Set `groupBy` to the domain sought near the reference entity (for example, restaurants near a hotel means `groupBy=\"restaurant\"`), not automatically to the reference domain."
+      },
+      {
+        "op": "replace",
+        "target": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+        "content": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Omit unspecified optional arguments rather than passing `None`; do not infer a booking preference from trip purpose (for example, “business trip” alone does not specify `flight_class`). Do not add unrelated preferences."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

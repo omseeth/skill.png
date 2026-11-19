@@ -1,0 +1,109 @@
+{
+  "reasoning": "Failure-driven edits take priority and are carried forward. Every insertion target was checked against the current skill, and none touches the SLOW_UPDATE block. Three changes were made. (1) The SAVE-KEY CHECK edit named 'filtered_hotels1' as the next save key, which conflicts with the protected guidance (section B: loading a filtered_* key saves as final_<domain>, and that replaces Rule 23's scheme). I rewrote it to follow the protected scheme and kept the core point that an existing key is never reused. (2) I dropped the failure-driven LAST-LINE CHECKLIST append. It duplicates the new PRE-FLIGHT CHECK at the top, the protected section G final check, and the 'filter before search_nearest' item in the new -3 hotel-constraint rule, and the meta-skill says to shrink the skill instead of accreting. (3) The single success edit covers a pattern the failure edits do not put at the amenity-mapping lookup site. It pairs the prohibition with a positive trigger ('kids club' mapping only when literally stated) and does not conflict with the failure edits, so it is kept as lower priority. All other failure edits are kept as written, with their support counts and source types.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "# Travel Planning Skill",
+      "content": "\n\n## PRE-FLIGHT CHECK (do this before writing the first character of code)\n1. Every search_*, filter_*, search_nearest and sort_results call is written `<name> = tool(...)`, and the NEXT line is `save_to_cache(key=\"<key>\", value=<name>)`. A line that begins with `search_` or `filter_` is wrong. First-search templates: `attractions = search_attractions(state=\"<ST>\", type=[\"<type>\"])` then `save_to_cache(key=\"attractions\", value=attractions)`; `restaurants = search_restaurants(city=\"<city>\", cuisine=[\"<cuisine>\"], has_halal_options=True)` then `save_to_cache(key=\"restaurants\", value=restaurants)`. A named cuisine goes in cuisine=[...]. A dietary word ('halal', 'vegan', 'gluten-free') is a has_*_options flag. Both can appear in one call.\n2. Location: a two-letter capital code or a state name ('OR', 'AZ', 'CA', 'Georgia') is `state=\"OR\"` and city is omitted. `city=\"OR\"` or `city=\"AZ\"` is always wrong, even for 'I'm planning a trip to AZ'. Use `city=` only for a real city name.\n3. Pass attraction types, cuisines and flags exactly as the user wrote them, and nothing else.\n",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## CACHE GATE (run this before writing any code, every turn)",
+      "content": "\n\n-3. HOTEL CONSTRAINT + 'NEAR THE HOTEL' IN ONE MESSAGE. If the last message states a hotel constraint ('Yes, a pool would be great', a gym, a neighborhood) AND asks for a restaurant or attraction near the hotel, write the hotel filter FIRST. Load the most refined hotels key, then `h2 = filter_hotels(prior_results=h, <kwarg from the user's words, e.g. pool_present=True>)`, then save h2 under a new key. After that, load the restaurants or attractions key and call search_nearest with `hotels=h2`, the FILTERED result and never the unfiltered loaded hotels. Then save the nearest result. Output that is only get_results_from_cache + search_nearest + save is wrong, because the new hotel constraint is never applied. Anything already listed in the restaurants summary (for example the cuisine) is not re-passed.",
+      "support_count": 4,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## HARD OUTPUT RULES (check before EVERY response)",
+      "content": "\n- SAVE-KEY CHECK (do this on the last line of every block): compare every `save_to_cache(key=...)` with the keys printed in CACHE. A key that is already there is never reused. Loaded a raw key (hotels, restaurants, flights) -> save as filtered_<domain>. Loaded a filtered_* key -> save as final_<domain>; if that exists too -> final_<domain>2.\n- NO PLACEHOLDERS, NO NESTING: never write '<date>', '...' or any made-up value inside a call. A domain with a missing mandatory arg gets seek_information (see 4b) and no search call. Never put one tool call inside another call's kwargs (for example `return_flights=search_flights(...)`). Every call is its own `x = ...` line followed by its save_to_cache line.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## CACHE GATE (run this before writing any code, every turn)",
+      "content": "\n- REFINEMENT REPLY MAP (the domain's key is in CACHE, so never search again):\n  * Party size and/or rooms ('There are 3 rooms and 3 people', '2 of us and we need 2 rooms') with a hotel requested and a hotels key cached -> exactly `h = get_results_from_cache(key=<most refined hotels key>)`, `h2 = filter_hotels(prior_results=h, num_people=<N>, num_rooms=<M>)` (only the numbers stated), then save under an unused key. Write no flight line even though flight keys are cached. Do not re-pass checkin_date/checkout_date, stars, amenities, neighborhood or budget; they are already in the cache entry.\n  * One reply that gives a number for each of two domains ('Around 1075 for the flight and 125 per night for the hotel') with both keys cached -> one load/filter/save block per domain and no search_*. Each cached flight key (outbound and return) gets `filter_flights(prior_results=x, budget=1075)`. The hotels key gets `filter_hotels(prior_results=h, budget=125)`. Every result is saved under an unused key. This is not a 'bare number' reply, so the one-domain budget shortcut does not apply.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "1. Copy the CACHE keys of each domain the LAST user turn touches (flights / hotels / restaurants / attractions, including filtered_*, nearest_*, hotels2, final_* names).",
+      "content": "\n- 'YES' TO A HOTEL PROPOSAL WITH NO HOTELS KEY (assistant asked 'Are you looking for a family-friendly hotel?', CACHE holds only flight keys): the hotel is a FIRST SEARCH, not a filter. Write `hotels = search_hotels(city=<flight destination>, checkin_date=[<outbound date as written>], checkout_date=[<return date as written>])` + save 'hotels'. Pass only hotel constraints the user actually stated. 'Family-friendly' and 'kid-friendly' are not parameters and never an airline, and num_people comes only from a stated number. Never load or filter a flight key for a hotel reply. If only one flight date is known, output only seek_information for the check-out date.\n- FLIGHT + HOTEL + RESTAURANT OPENER WITH NO DATES (CACHE `{}`): write `restaurants = search_restaurants(city=<destination>, <every restaurant constraint stated: rating, dietary flag, cuisine>)` + save 'restaurants'. Then add ONE `seek_information(\"We need the departure date for the flight, and the check-in and check-out dates for the hotel.\")`. Write no search_flights or search_hotels call and no '<date>' placeholder.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Rule 9: Round-trip flights (+ hotel) are separate search calls",
+      "content": "\n- TWO LEGS, TWO STATEMENTS: a depart date plus a return date always yields BOTH searches. This holds even when the wording is hedged ('around May 21 possibly, returning May 28') and when it is only a 'trip' or 'weekend getaway'. Write `x = search_flights(start_airport_city=A, end_airport_city=B, departure_date=[\"<depart>\"])` + save, then `y = search_flights(start_airport_city=B, end_airport_city=A, departure_date=[\"<return>\"])` + save as 'return_flights'. search_flights has no return_flights or return_date kwarg. Writing only the outbound leg, or nesting the second search inside the first, is wrong. A party size ('5 people') is not passed to flight calls.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## HARD OUTPUT RULES (check before EVERY response)",
+      "content": "\n- FLIGHT PREFERENCE REPLY = EVERY FLIGHT KEY IN CACHE (class, airline, time or ticket price answered in the last message): list every CACHE key that holds flight results (departure_flights + return_flights, flights + return_flights, first_flights + second_flights, ...) and take each one's most refined name. Write all loads, then one filter per key, then one save per key, with the same new kwargs on each. Two-key template: `f1 = get_results_from_cache(key=\"<key 1>\")`, `f2 = get_results_from_cache(key=\"<key 2>\")`, `g1 = filter_flights(prior_results=f1, <kwargs>)`, `g2 = filter_flights(prior_results=f2, <same kwargs>)`, `save_to_cache(key=\"filtered_<key 1>\", value=g1)`, `save_to_cache(key=\"filtered_<key 2>\", value=g2)`. A reply that loads, filters or saves only the first flight key is wrong, as is one that touches hotels or restaurants. Kwargs come only from the last message ('I prefer business' -> flight_class=[\"business\"]; 'keep it under 1100' -> budget=1100).",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## HARD OUTPUT RULES (check before EVERY response)",
+      "content": "\n- FLIGHT TIME AND AIRLINE WORDS (search_flights and filter_flights; keep the user's 12-hour wording such as \"08:23 PM\", never '20:23:00'): 'depart / leave / fly out at T' -> `departure_time=[\"T\", \"T\"]`. 'arrive by T' -> `arrival_time=[\"12:00 AM\", \"T\"]`. One message with both ('depart at 08:23 PM and arrive by 09:24 PM') -> ONE call with `departure_time=[\"08:23 PM\", \"08:23 PM\"], arrival_time=[\"12:00 AM\", \"09:24 PM\"]`. Never put the arrival time inside departure_time. A bare two-letter capital code with no digits ('AM', 'AG') answering an airline or class question is an airline code (`airline=[\"AM\"]`), never a morning window or a time. A time the user stated in ANY turn ('a specific departure time 12:22 PM') goes into the first search_flights call of the leg it describes (outbound for a departure time) unless the CACHE summary already lists it.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## HARD OUTPUT RULES (check before EVERY response)",
+      "content": "\n- FIRST FLIGHT SEARCH CARRIES EVERY STATED PREFERENCE, AND 'X to Y' MEANS TWO SEARCHES: class wording such as 'okay with either business or economy' or 'business or first is fine' -> `flight_class=[\"business\", \"economy\"]` (every listed class) in BOTH legs. Airline and budget go in both legs. Departure/arrival time words go in the leg they describe. Any flight request whose dates are 'X to Y', 'out on X and back on Y' or 'round trip' is two search_flights calls: outbound with departure_date X, return with the cities swapped and departure_date Y. This holds even when a hotel is also requested and its dates use both X and Y. One flight search plus a hotel is wrong. Search_hotels then follows in the same block.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "append",
+      "content": "\n## Multi-city trips: one search per destination city\nWhen the CACHE holds paired per-city keys (first_flights/second_flights, first_hotels/second_hotels, or flights/flights2, hotels/hotels2), a newly requested or accepted attraction or restaurant type is searched once for EACH destination city, in the same block. Name the keys with the same convention (first_attractions and second_attractions, or attractions and attractions2). Example: 'Yes' to Sporting attractions with hotels cached for Tucson and Anchorage -> `first_attractions = search_attractions(city=\"Tucson\", type=[\"Sporting\"])` + save, then `second_attractions = search_attractions(city=\"Anchorage\", type=[\"Sporting\"])` + save. Searching only the first city is wrong.\n",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## HARD OUTPUT RULES (check before EVERY response)",
+      "content": "\n- DOMAIN LOCK (do this before the SEARCH GATE). Classify the LAST user message by its words. Hotel words (hotel, stars, gym, wifi, laundry, pool, kids club, spa, breakfast, shuttle, a hotel neighborhood, per-night price, rooms, nights, check-in/out) -> hotels. Cuisine, dietary words, restaurant rating, per-person price -> restaurants. Class, airline, flight time, ticket price -> flights. Attraction type or name -> attractions. Write code for that domain only, and load only that domain's keys. A reply such as 'a gym and laundry service' loads the newest HOTELS key (hotels2, filtered_hotels...), never filtered_restaurants and never a flight key, even when that key is newer or an earlier turn said 'economy'.\n  HOTEL TRIGGER: a hotel was requested in any turn, CACHE has no 'hotels' key, and check-in and check-out are known or derivable (outbound/return flight dates, or a stated start date plus 'N nights' via adjust_date). Then this block must contain `hotels = search_hotels(city=<destination>, checkin_date=[...], checkout_date=[...], <stars / neighborhood / amenities stated in any turn>, num_people only from a stated number)` followed by `save_to_cache(key=\"hotels\", value=hotels)`. This holds when only flight keys are cached (a message describing a hotel with stars and a neighborhood becomes a hotel search using the flight dates, with no filter_flights). It also holds when the message is only a date plus party size plus nights: save the flight search as 'flights' first if no flight key exists, then `checkout_date = adjust_date(...)`, then the hotel search.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "saved as filtered_attractions.",
+      "content": "\n\n- CHANGED-MIND EXCEPTION to the SEARCH GATE: when the user REPLACES a value already applied in that domain's cache ('Actually we want only Pakistani' after a Japanese filter, 'instead', 'switch to', 'only X' contradicting the CACHE summary), a filter would intersect with the old value. Write a fresh search instead: `restaurants1 = search_restaurants(city=<established city>, cuisine=[\"<new cuisine>\"], <other constraints still wanted, e.g. budget from the same message>)` followed by `save_to_cache(key=\"restaurants1\", value=restaurants1)`. Do not pass the replaced value. Use the next unused key (restaurants1, hotels1, attractions1). The same applies to every domain. A plain additional constraint still goes through filter_*.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+      "content": "\n- PARAMETER SHAPES: (1) An airport CODE the user names ('ANC is our preferred choice') is a plain string on the airport kwarg: arrival -> `end_airport=\"ANC\"`, departure -> `start_airport=\"XXX\"`. Never `end_airport_code=[\"ANC\"]`; a list raises a ValidationError. (2) A capitalized two-letter US state token in a location phrase ('attractions in MO') -> `state=\"MO\"` with no city, and the line is `attractions = search_attractions(type=[\"Art\"], state=\"MO\")` followed by its save_to_cache. (3) A multi-city opener ('flights from A to B and then B to C') followed by two date ranges: each range is the stay window in a city. This overrides the round-trip reading of Rule 9. Write exactly one search per named leg, with departure_date = the START of that leg's range. Save the A->B leg as \"first_flights\" and the B->C leg as \"second_flights\". Write no reversed legs.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "Without a hotels key, 'near the hotel' needs no search_nearest. Just run the normal first search.",
+      "content": "\n- HOTEL NEAR A CACHED ATTRACTION OR RESTAURANT: when CACHE holds a hotels key AND an attractions (or restaurants) key, and the assistant's last message offered 'a hotel near <that attraction/restaurant>', the user's hotel-amenity reply needs ONE block. Load the hotels key and the other domain's key. Run `filtered_hotels = filter_hotels(prior_results=hotels, <only the amenity kwargs in the last message>)` and save it. Then run `nearest_hotels = search_nearest(hotels=filtered_hotels, attractions=attractions, groupBy=\"hotel\")` and save it as nearest_hotels. Use `restaurants=` in place of `attractions=` for a restaurant. A hotel filter with no search_nearest is incomplete here.",
+      "support_count": 8,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "'kids club' -> has_kids_club=True.",
+      "content": "'kids club' -> has_kids_club=True (only when the user literally says 'kids club'; 'kid-friendly', 'family-friendly' or 'family vacation' never set it, so 'kid-friendly pool' -> pool_present=True only).",
+      "support_count": 4,
+      "source_type": "success"
+    }
+  ]
+}

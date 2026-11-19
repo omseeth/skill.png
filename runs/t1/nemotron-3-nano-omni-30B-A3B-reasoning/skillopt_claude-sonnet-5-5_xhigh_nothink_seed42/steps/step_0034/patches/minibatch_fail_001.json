@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "under_coverage_of_legs_or_domains",
+      "count": 4,
+      "description": "The reply needed a block per flight leg, per domain, or per constraint, but only part was written: a missing middle flight leg (T3), only one cached flight leg filtered (T6), the hotel half of 'flight budget + hotel budget' dropped (T7), and a bare '4' (num_people) dropped next to the budget (T5)."
+    },
+    {
+      "failure_type": "wrong_domain_or_stale_turn_rerun",
+      "count": 2,
+      "description": "The agent re-ran an earlier turn instead of the last one. It filtered restaurants by the old rating for a hotel amenity reply (T2). It re-filtered hotels by stars and re-searched restaurants although the key existed, with no search_nearest (T1)."
+    },
+    {
+      "failure_type": "tool_call_hygiene_validation_error",
+      "count": 2,
+      "description": "A search_flights call was nested inside another search_flights call as return_flights=... (T4). num_people was passed to search_flights (T8). Both raise a pydantic ValidationError."
+    }
+  ],
+  "patch": {
+    "reasoning": "Under-coverage appears in 4 of 8 failures. The fast-rule text keeps saying 'Write exactly three lines', and the agent applies that literally: one leg, one domain, one kwarg. I replace that wording with 'one group per key/domain' and add a compact reply-to-action table with generic placeholders. It covers flight reply = every leg, hotel service words = hotels' most refined key, bare number = num_people/num_rooms, and two domains in one message = two groups. A multi-city leg-ordering rule fixes the missing middle leg. A short hygiene bullet forbids nesting a search and passing num_people to flights. A Rule 26 clarification says that when a restaurants key already exists, the agent filters it and then calls search_nearest, instead of re-searching. All edits add small targeted text or swap one phrase, and none touches the protected block.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Write exactly three lines:",
+        "content": "Write one three-line group (load, filter, save) per key that must be refined: a flight class/airline/time/price reply needs one group per flight leg, and a message that names two domains needs one group per domain. Each group is:"
+      },
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\nREPLY -> ACTION TABLE (read first; the rows use placeholders, never copy their kwargs)\n- Flight class / airline / time / ticket-price reply: one load-filter-save group for EVERY flight key in CACHE (departure_flights AND return_flights, or flights AND return_flights, or each multi-leg key), identical kwargs in each. Zero hotel lines.\n- Hotel service or amenity words (room service, shuttle, wifi, gym, ...), stars or neighborhood: filter_hotels on the highest-numbered / most refined hotels key. Never filter restaurants or flights for it, even if a restaurant rating was discussed earlier.\n- A bare number answering 'how many travelers/people' -> num_people=N. Answering 'how many rooms' -> num_rooms=N. If the same message gives a per-night budget, put both in ONE filter_hotels call.\n- One message naming two domains ('X for the flight and Y per night for the hotel'): one group per domain, budget=X on every flight key and budget=Y on the most refined hotels key.\n- Cuisine or restaurant rating while a restaurants key exists: filter_restaurants on that key, never search_restaurants again. 'Near the hotel' then adds search_nearest (see Rule 26).\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 9: Round-trip flights (+ hotel) are separate search calls",
+        "content": "\n- MULTI-CITY LEGS: when the user names several hops ('A to B and then B to C', 'then I head back to A'), write ONE search_flights per hop. Dates are given in leg order: leg 1 departs on the first date, leg 2 on the next date, the final return leg on the last date. Example: 'A to B and then B to C', dates 'd1 to d2 and then d3 I head back to A' -> A->B on d1, B->C on d2, C->A on d3 (three searches, none skipped).\n- Every search_flights is its own statement `x = search_flights(...)` followed by its save. Never put one search call inside another call's arguments (there is no return_flights= kwarg). A party size such as 'for 2 people' is never passed to search_flights (no num_people kwarg)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Without a hotels key, 'near the hotel' needs no search_nearest. Just run the normal first search.",
+        "content": "\n- If the restaurants (or attractions) key ALREADY exists in CACHE, do not search it again. Load it, filter it with only the new constraints (e.g. cuisine, rating), save it, load the most refined hotels key WITHOUT filtering it, then `search_nearest(hotels=<hotels>, restaurants=<filtered restaurants>, groupBy=\"restaurant\")` and save it. Example: CACHE restaurants + hotels2, last turn '<cuisine> and a <rating> restaurant near the hotel' -> filter_restaurants(cuisine=[...], rating=[...]) + search_nearest, with no filter_hotels and no search_restaurants."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

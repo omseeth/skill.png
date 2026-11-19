@@ -1,0 +1,56 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "argument_mapping_and_constraint_fidelity",
+      "count": 3,
+      "description": "Some explicit constraints were omitted or mapped to the wrong arguments, while unprovided hotel counts were invented."
+    },
+    {
+      "failure_type": "date_format_handling",
+      "count": 2,
+      "description": "User-provided date strings were unnecessarily parsed and reformatted before being passed to tools."
+    },
+    {
+      "failure_type": "independent_domain_completion",
+      "count": 1,
+      "description": "The agent asked for missing hotel dates but failed to proceed with the requested restaurant search whose inputs were available."
+    },
+    {
+      "failure_type": "proximity_intent_and_tool_contract",
+      "count": 1,
+      "description": "A neighborhood request was treated as proximity, leading to an invalid nearest call with only one result domain."
+    },
+    {
+      "failure_type": "location_value_truncation",
+      "count": 1,
+      "description": "The full neighborhood phrase was shortened when passed to the hotel search."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits make already-established rules more operational: preserve date strings verbatim, complete independent domains despite missing inputs elsewhere, distinguish neighborhood requests from landmark proximity and honor the nearest-tool input contract, and audit argument coverage without inventing optional values.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "If required inputs are missing, ask for them while still completing other requested domains whose required inputs are available.",
+        "content": "If a required input is missing for one domain, seek only that missing input, but do not stop planning globally: in the same turn, execute and cache every other explicitly requested domain whose own required inputs are available."
+      },
+      {
+        "op": "replace",
+        "target": "Preserve user-provided date strings unless conversion is required, and use `adjust_date` rather than importing date libraries or doing date arithmetic in Python.",
+        "content": "Pass user-provided date strings to search and filter tools verbatim; do not parse, reformat, or normalize them to ISO using Python datetime. Convert only when the tool schema expressly requires a different representation. For date arithmetic, call `adjust_date` rather than importing date libraries or calculating in Python."
+      },
+      {
+        "op": "replace",
+        "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results. Do not pass the attraction name as a `neighborhood` value or approximate proximity with a neighborhood filter. If a later constraint changes an underlying domain result, such as filtering the hotel set, recompute and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call.",
+        "content": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, and provide exactly two domain result objects among `hotels`, `restaurants`, and `attractions`, with `groupBy` set to the requested anchor domain. A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results. By contrast, “near” a named neighborhood, district, or area is a location constraint: use the appropriate `neighborhood` filter with the full provided area phrase, not `search_nearest`. Do not pass an attraction name as a `neighborhood` value or approximate attraction proximity with a neighborhood filter. If a later constraint changes an underlying domain result, such as filtering the hotel set, recompute and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not infer unspoken counts or pass traveler counts to flight tools.",
+        "content": "Before finalizing each call, check that every explicit user constraint with a supported tool argument is represented, including distinct requested amenities; do not omit a criterion merely because a related one is included. Conversely, leave optional values unspecified unless explicitly provided, and never default unknown party or room counts to one."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

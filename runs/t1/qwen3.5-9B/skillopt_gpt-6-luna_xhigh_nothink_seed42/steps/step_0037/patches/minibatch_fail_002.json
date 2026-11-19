@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "entity_value_and_location_mapping",
+      "count": 2,
+      "description": "State abbreviations were sent as cities and a user-provided attraction category was changed."
+    },
+    {
+      "failure_type": "result_persistence",
+      "count": 2,
+      "description": "Attraction searches were emitted without assigning and saving their results."
+    },
+    {
+      "failure_type": "independent_prerequisite_handling",
+      "count": 3,
+      "description": "Ready flight or restaurant searches were blocked by missing information irrelevant to those searches, including optional party size."
+    },
+    {
+      "failure_type": "cache_reconciliation",
+      "count": 3,
+      "description": "New constraints were skipped, an obsolete category-specific result was used after a correction, or already-satisfied restaurant work was repeated."
+    },
+    {
+      "failure_type": "unnecessary_code_or_parameter_changes",
+      "count": 1,
+      "description": "Date strings were reformatted and extra restaurant work and optional parameters were added despite existing instructions and cache results."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits make exact field/value mapping and result persistence more operational, clarify that each deliverable has independent readiness, and distinguish ordinary cache deltas from explicit category corrections. Existing date-handling and no-duplicate guidance already covers the remaining isolated trajectory.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Preserve complete names, categories, criteria, and date strings unless a tool requires a format conversion. Map cities to `city`, states or regions to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field; do not put a state abbreviation in `city` or truncate a location value.",
+        "content": "Pass user-provided names, categories, and criteria exactly as stated; do not normalize a category such as “Touristy” to “Tourist.” Map cities to `city`, states or regions (including abbreviations such as `OR` or `GA`) to `state`, neighborhoods to `neighborhood` while retaining the full provided name, and airport codes to the corresponding airport-code field."
+      },
+      {
+        "op": "replace",
+        "target": "Before emitting code, audit that each intended operation is assigned and saved, and avoid duplicate calls for the same intended operation.",
+        "content": "Audit that each intended result-producing operation appears exactly once. Write it as an assignment followed by a save of that exact result (for example, `results = search_attractions(...)` then `save_to_cache(key=\"attractions\", value=results)`); never emit the search, filter, sort, or nearest call bare."
+      },
+      {
+        "op": "replace",
+        "target": "If required inputs are missing, ask for them while still completing other requested domains whose required inputs are available.",
+        "content": "Assess each pending deliverable independently: perform every operation whose own required inputs are known, even if another domain is blocked, and seek only genuinely missing required inputs for blocked work. Do not delay flight searches for an unspecified party size (flight tools do not take traveler counts), or restaurant and attraction searches for unrelated missing flight or hotel dates."
+      },
+      {
+        "op": "replace",
+        "target": "If a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only the new same-domain filter and save the update under a fresh relevant key.",
+        "content": "For an unmet constraint, treat a cache summary that omits it as incomplete. For an ordinary delta, retrieve the latest suitable same-domain, location, and itinerary-leg result into a variable, apply only the new constraint in one filter call, and save the exact output under a fresh key. When the user explicitly corrects or replaces a category, search afresh with the replacement and all other still-active criteria rather than filtering an older category-specific result. Leave domains already satisfying their current constraints untouched."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

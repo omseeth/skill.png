@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_name_format",
+      "count": 3,
+      "description": "Tool name was the Provider tagline ('Rocket League — Ranks, stats…', 'Flightera Flight Data — …'), or only the provider or only the API ('BestBuy Product Data', 'Zappos product detail by Product ID') instead of the exact '### Provider: API' heading."
+    },
+    {
+      "failure_type": "malformed_json_repeated_keys",
+      "count": 2,
+      "description": "A repeated 'optional parameters' key was appended after a filled list, or two calls were merged into one object with duplicate 'tool name' keys. This wiped out parameters and lost whole calls."
+    },
+    {
+      "failure_type": "incomplete_call_coverage",
+      "count": 3,
+      "description": "Long narrative or vague queries were only partly covered: 3 of 10 calls in one, 1 of 3-4 in another, and Lost Ark and Rocket League endpoints collapsed together in a third. Missing calls include the Wayfair search, Asos countries, autocomplete, Aliexpress, Amazon, currencies, airport data and per-city lookups."
+    },
+    {
+      "failure_type": "wrong_tool_or_input_binding",
+      "count": 4,
+      "description": "Inputs were attached to the wrong clause (role-account domain reused from another clause). Plain disposable and 'suggest' disposable siblings were swapped. A generic game-search tool was used instead of the named Zelda tool. A Ranks tool was called with an invented 'player' value. The dice-rolls tool was used for 'three dice'."
+    },
+    {
+      "failure_type": "missing_or_wrong_optional_params",
+      "count": 3,
+      "description": "Query-implied qualifiers were dropped or wrong: count 25 for chess puzzles, lang 'en' instead of 'en-US', and the demo key and minLength lost to key duplication."
+    }
+  ],
+  "patch": {
+    "reasoning": "Tool-name format is still the largest failure source: the model copies the Provider tagline or only half of the name. A mechanical rule with wrong/right examples should fix that. Duplicate-key and merged-object JSON errors are the second source, so an explicit per-object self-check is added. Long or vague queries are under-covered, so there is guidance to enumerate every clause and to pick topic tools that need only the stated inputs, with no placeholders. Clause-to-input binding, sibling disambiguation and provider-named tool choice caused several wrong calls, so they get compact rules. The edits are few and concrete, since the large multi-rule patch in step 6 was rejected.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Never give only the provider or only the endpoint, even when the query names the tool loosely.",
+        "content": "Never give only the provider or only the endpoint, even when the query names the tool loosely (query says 'the BestBuy Product Data tool' -> `BestBuy Product Data: BestBuyProductData`; 'Zappos product detail by Product ID' -> `Zappos Realtime Data: Zappos product detail by Product ID`). Build the name mechanically: it is the text after `### ` in that tool's block. NEVER use the text of the `Provider:` line (the long tagline after the dash, e.g. `Rocket League — Ranks, stats, news & more…`) and never put ` — ` in a tool name. When one provider has several endpoints (Lost Ark, Rocket League, Wayfair, fast Email verifier, Dice Roll Simulator), each call needs its own full `Provider: API` name."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not close the list early or leave stray brackets.",
+        "content": "\n- Self-check every object before answering: `{\"tool name\": ..., \"required parameters\": [...], \"optional parameters\": [...]}`, closed with `}`. The string `\"optional parameters\"` appears exactly once per object. Never append a second `\"optional parameters\": []` after a filled list, and never put a second `\"tool name\"` or a second parameter set inside one object. Every call, even to the same tool or in the same sentence, is its own `{...}`. Each parameter (e.g. a demo `X-RapidAPI-Key`, `minLength`) goes once into the list the schema assigns."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "\n- Long or narrative queries ('searched X, focused on SKU Y, exploring A, B and C ... They also investigated other platforms: ...') need one call per action across the WHOLE query, including every sentence after 'also', 'then' or a colon. The opening verb counts too ('searched for chairs on Wayfair' -> the Wayfair search call, even when a SKU follows). Map noun phrases to endpoints: 'categories and country availability' -> categories list + countries list; 'regional settings' -> the user/region-parameters endpoint; 'a specific store (ID, seller ID)' -> the store endpoint with both ids; 'ASIN on the German marketplace' -> product endpoint with domain `de`. Count your calls against the query's items before answering; stopping after the first sentence's items is a common miss.\n- Vague or topic-only queries ('flights between Winnipeg and London, currency exchange rates, airport data for both locations') get one call per topic from the tool that needs only the stated inputs: currency -> the currencies endpoint; 'airport data' -> the airport-data endpoint; each named place -> one location lookup/autocomplete call with that place as the `string`/query value (set airport/city flags `true` when airports or cities are asked for). Never choose a tool whose required value the query does not give (flight number, hotel id, player name), and never invent a value or placeholder such as `player` or a made-up flight number."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n- Bind each input to its own clause: copy the value from the clause that names that action ('disposable-mail.xyz for role accounts' -> Role Account with domain `disposable-mail.xyz`; do not reuse another clause's input). A bare domain goes in a `domain` parameter, never an `email` parameter.\n- When two clauses ask for the same kind of check on different inputs, let the clause words pick the sibling: 'disposable domain with suggested alternatives' -> the tool named '...Suggest Domain'; a plain 'is X a disposable domain' -> the plain domain-disposable tool (e.g. `MailCheck: Domain`).\n- A provider or game named in the clause wins over generic tools: 'for The Legend of Zelda, search games with Majora, limited to 25' -> the Zelda games-list tool (name `Majora`, limit `25`), not a generic game-search tool. 'Three regular dice' -> the dice-count tool (`dice`=`3`); use the 'rolls' tool only when the query also gives a number of rolls. '25 chess puzzles' -> count `25`. 'US market in English' -> country `US`, lang `en-US`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

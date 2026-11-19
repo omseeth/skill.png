@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_tool_execution_or_persistence",
+      "count": 5,
+      "description": "Plans omitted required refinements or flight legs, or left tool results unbound and unsaved."
+    },
+    {
+      "failure_type": "cache_scope_or_redundant_processing",
+      "count": 3,
+      "description": "Plans repeated already-covered filters, re-searched unchanged domains, or revisited unaffected flights."
+    },
+    {
+      "failure_type": "argument_cardinality_or_amenity_mapping",
+      "count": 3,
+      "description": "Plans used the wrong scalar/list shape, encoded an exact star value incorrectly, or confused sauna with spa services."
+    },
+    {
+      "failure_type": "round_trip_leg_conflation",
+      "count": 1,
+      "description": "A round-trip request was sent as one search instead of separate outbound and return legs."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make result persistence an unmistakable execution requirement and clarify two concrete schema/semantic ambiguities present in the batch. The existing cache-scope and flight-leg rules already address the other observed patterns, so they do not need duplicative edits.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- Never leave a required search, filter, sort, or nearest-results call as a bare expression: bind its exact return value to a local variable and save that same object with `save_to_cache` under a unique, descriptive key. Save each refined result under a new key before using it in a subsequent tool call. Do not substitute hand-built dictionaries or redefined models for tool result objects."
+      },
+      {
+        "op": "replace",
+        "target": "- Validate value encoding as well as argument names. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints.",
+        "content": "- Validate value encoding and cardinality as well as argument names. Match each field’s declared type: pass scalar fields as scalars and list fields as lists, even if prose in a field description suggests otherwise. For fields documented as lower/upper endpoint lists, represent an exact requested value x as `[x, x]`; do not pass a scalar or singleton list, widen the value, or treat it as a minimum. Follow the schema for non-exact bounds and do not invent endpoints."
+      },
+      {
+        "op": "replace",
+        "target": "- Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`.",
+        "content": "- Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`. Map a literal “sauna” to `has_sauna`, not `has_spa_services`, and a literal “hot tub” to `has_hot_tub`. Map “business center” or “business facilities” to `has_business_center`; do not infer other business amenities unless stated."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

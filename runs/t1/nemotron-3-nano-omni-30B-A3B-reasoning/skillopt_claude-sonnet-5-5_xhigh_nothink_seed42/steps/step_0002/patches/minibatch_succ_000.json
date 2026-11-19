@@ -1,0 +1,19 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Six of the eight successes were single-turn seek_information calls. Each time the user gave only preferences (last-minute, round-trip, party size, budget, gym/wifi, family with kids). The agent asked for just the missing mandatory dates in one short sentence, with no search call. Rules 6 and 7 already cover this.",
+    "Multi-domain requests (flight+hotel) combined all missing items across domains into one seek_information call. Rule 7 already covers this.",
+    "When the last turn added amenities and the cache held both 'hotels' and 'filtered_hotels', the agent loaded the most refined key and filtered only the new constraints. It saved under a new key. Rule 2 already covers this.",
+    "When all mandatory args finally appeared across turns (city from an earlier turn, dates in the last turn) and the hotel domain had no cache key, the agent ran search_hotels directly. It passed the dates verbatim plus the stated optional details (num_rooms, num_people). The restaurants cache entry was left alone. The tool call was correct, but the surrounding code was bloated: an invented cache key, a get_results_from_cache probe, if/else branches and print statements. Only the straight search + save matched the gold."
+  ],
+  "patch": {
+    "reasoning": "The seek_information and refine-from-cache behaviors are already encoded. The one uncovered pattern is the first search for a domain once the mandatory args are complete (often gathered across turns). The successful hotelrestaurant trajectory ran the right search but wrapped it in guessed-cache-key probing and branching, which added spurious tool calls and lowered tool F1 (0.57 vs 1.0). Encoding a simple straight-line search-then-save template makes this reliably clean.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "## Rule 9: First search for a domain (all mandatory args now known) is plain straight-line code\n- When every mandatory arg for a domain is now available (values may come from earlier turns, e.g. city stated in turn 1 and dates in the last turn) and the CACHE has no key for that domain, emit just: `x = search_*(...)` then `save_to_cache(key=\"<domain>\", value=x)`. Use a simple domain key such as \"hotels\", \"flights\", \"restaurants\" or \"attractions\".\n- Do NOT probe the cache with a key you invented (e.g. \"hotels_memphis_dec25\"), and do NOT wrap the search in if/else branches or 'is not None' checks. Do NOT add print() or seek_information fallbacks, and do NOT add comment-only 'checks'. Only keys that literally appear in the CACHE summary may be loaded.\n- Pass the user's dates and entity values verbatim (e.g. checkin_date=[\"December 25, 2025\"]). Include optional details the user explicitly stated (num_rooms, num_people, budget, amenities, cuisine, ...) as keyword args in the search call, and nothing the user did not say.\n- Search only the domain whose mandatory args just became complete. Leave other domains' existing cache entries untouched (e.g. restaurants already cached, now the hotel dates arrive: search_hotels only)."
+      }
+    ]
+  },
+  "source_type": "success"
+}

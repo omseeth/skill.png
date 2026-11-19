@@ -1,0 +1,26 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "cache_selection_and_refinement",
+      "count": 1,
+      "description": "The agent repeated a flight search instead of retrieving the compatible cached route-and-date results and filtering them."
+    },
+    {
+      "failure_type": "constraint_interpretation",
+      "count": 1,
+      "description": "The agent omitted the arrival-time constraint expressed as “arrive by” a specified time."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already directs the agent to refine compatible cached results, so repeating that rule would be redundant. The uncovered gap is translating an upper-bound time phrase into the two-endpoint flight time range.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Represent flight legs separately",
+        "content": "- Interpret flight time requests using the two-endpoint `departure_time` and `arrival_time` ranges: an exact “at t” means `[t, t]`; “by t” or “no later than t” means `[12:00 AM, t]` for that day's range. Put the range in the field matching whether the user means departure or arrival, and do not omit an explicitly stated time bound."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

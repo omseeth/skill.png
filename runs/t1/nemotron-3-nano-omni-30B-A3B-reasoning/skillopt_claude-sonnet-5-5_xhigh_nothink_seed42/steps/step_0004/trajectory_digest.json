@@ -1,0 +1,64 @@
+{
+  "step": 4,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 26,
+  "failure_patterns": [
+    {
+      "pattern": "stale_key_or_no_cache_reuse_on_refinement: On a follow-up turn the agent loaded the raw key (restaurants) although a filtered_* key existed, reused an already-existing save key, re-passed constraints the summary already showed, or re-ran search_flights on every leg instead of load, filter, save per leg key.",
+      "count": 26,
+      "task_ids": [
+        "attraction:train:13:42:0",
+        "flighthotelrestaurant:train:5:19:3",
+        "hotel:train:11:31:0",
+        "flight:train:22:18:2",
+        "hotel:train:3:17:1",
+        "hotelrestaurant:train:25:31:2",
+        "flighthotelrestaurant:train:4:1:2",
+        "restaurant:train:18:7:3",
+        "flighthotel:train:23:29:1",
+        "flighthotelrestaurant:train:25:34:3",
+        "hotelrestaurant:train:16:3:0",
+        "flighthotelattraction:train:4:34:3",
+        "flighthotelattraction:train:12:40:2",
+        "hotelattraction:train:12:9:0",
+        "hotel:train:6:21:4",
+        "hotelrestaurant:train:13:45:0",
+        "attraction:train:7:57:0",
+        "hotel:train:24:21:0",
+        "flight:train:11:4:1",
+        "hotel:train:3:59:0",
+        "flighthotel:train:10:9:2",
+        "hotelrestaurant:train:11:59:5",
+        "flight:train:23:16:2",
+        "restaurant:train:13:41:2",
+        "hotelattraction:train:16:34:3",
+        "restaurant:train:16:8:3"
+      ]
+    }
+  ],
+  "score_before": 0.395,
+  "score_after": 0.36,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "- The same guard applies to hotels and restaurants. A first hotel request that gives a city plus amenities ('kids club', 'beach access'), rating, stars, a purpose ('family vacation') or a party size, but no check-in/check-out dates, is still missing the dates. Output only `seek_information(\"We need to ask for the check-in and check-out dates.\")`. Never call search_hotels with invented or example dates (including the same date as check-in and check-out), and never infer num_people, num_rooms or other args from context. A restaurant request with no city ('find a restaurant for my birthday') gets `seek_information(\"We need the city for the restaurant.\")` only.",
+      "target": "- A round-trip request still needs the departure date. Ask for it; do not assume a return date."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n  - Exception: if the CACHE summary of a `filtered_*` key already shows the proposal from the assistant's last message as applied (e.g. 'Additionally filtering for neighborhood(s): [Downtown Anchorage]') and the user just agrees ('Okay, that sounds good', 'Sure'), nothing new needs filtering. Output only `x = get_results_from_cache(key=\"<that most refined filtered key>\")`. Do not re-filter, re-search or print(\"No planning needed\"). This exception applies only when the proposal is already listed as applied. A 'yes' to a proposal that is NOT yet in the cache summary is a new constraint (Rule 20).",
+      "target": "Only a refusal or 'no preference' ('Not really', 'Anything is fine') with an existing cache entry means pure retrieval."
+    },
+    {
+      "op": "replace",
+      "content": "## TOP CHECKLIST (read before writing any code)\n1. Output only straight-line tool calls. No import, if/else, loops, f-strings, helper variables for keys, print(), or comment blocks. Never reason inside comments.\n2. Every search_*, filter_*, sort_results and search_nearest result is assigned to a variable and saved: `x = search_attractions(city=\"Portland\", type=[\"Culture\"])` then `save_to_cache(key=\"attractions\", value=x)`. A bare `search_attractions(...)` or `filter_*(...)` with no assignment or save is wrong, including on the very first turn. First searches use the simple keys \"flights\", \"hotels\", \"restaurants\", \"attractions\" (a round trip uses departure_flights/return_flights per Rule 9).\n3. Only load keys that literally appear in the CACHE summary. Never invent keys such as \"departure_flights\" when the CACHE only has \"flights\". If the CACHE holds both a raw key and a filtered_*/nearest_* key for the same domain, load the most refined one. It already contains the earlier constraints, so do not re-pass them (cuisine, halal, city, dates, etc.).\n4. If the CACHE has ANY key for a domain, a follow-up turn must NOT call search_* for that domain, even for a one-word reply such as 'economy would be great'. A new time, budget, class, airline, amenity or neighborhood preference is `load -> filter_* -> save`. Save under a NEW key that is not already in the CACHE (if `filtered_restaurants` exists, save as `filtered_restaurants1`).\n5. Refine only the domain(s) the last user turn talks about. A hotel-only answer never touches flight or restaurant keys.\n6. `stars` and `rating` take a two-value range: '3 star' -> stars=[3, 3]; 'at least 4' -> rating=[4, 5].\n7. Never reply print(\"No planning needed\") when the last turn contains any new constraint or an affirmative answer to an assistant proposal.\n8. Call seek_information(...) as a bare statement (no `x = `). Never ask for a date the user already wrote (Rule 19).",
+      "target": "(No learned rules yet. Rules will be added through the reflection process.)"
+    },
+    {
+      "op": "replace",
+      "content": "- Check mandatory args PER DOMAIN. A domain with a missing mandatory arg gets NO search call, only seek_information(...) naming what is missing. Never put placeholder, example, guessed or default values into a search call. Never put a list of consecutive dates into checkin_date/checkout_date to cover the gap. A hotel request in any turn (even with amenities such as 'ocean view', 'pool', 'luxurious', 'anniversary', or '5 people') but no stated check-in and check-out dates means seek_information for the dates. Never invent a neighborhood such as 'downtown' that the user did not say.\n- If only ONE domain was requested (or every requested domain is missing something), output ONLY seek_information.\n- If SEVERAL domains were requested and only some are missing mandatory args, still run `x = search_*(...)` + `save_to_cache` for every domain whose args are complete (e.g. attractions with city/type, restaurants with city/cuisine). In a first turn the cache is empty, so these are fresh searches. Then add ONE seek_information(...) at the end naming only the incomplete domain's missing items. Do not output seek_information alone in that case, and do not call search_hotels/search_flights in that block.\n  - Hotel + Scenic attractions in San Jose, no dates: `attractions = search_attractions(city=\"San Jose\", type=[\"Scenic\"])`, `save_to_cache(key=\"attractions\", value=attractions)`, `seek_information(\"We need the check-in and check-out dates for the hotel.\")`.\n  - 'Hotel in St. Louis for 2, budget 80 per night, also restaurants in the city' (no hotel dates): `restaurants = search_restaurants(city=\"St. Louis\")`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then `seek_information(\"We need the check-in and check-out dates for the hotel.\")`.\n- Hard stop for hotels: if the conversation has no literal check-in and check-out dates (and none can be derived under Rule 21), do not call search_hotels.",
+      "target": "- If any mandatory arg is missing, output ONLY a seek_information(...) call that names what is missing. Do not also emit a search call with placeholders."
+    }
+  ]
+}

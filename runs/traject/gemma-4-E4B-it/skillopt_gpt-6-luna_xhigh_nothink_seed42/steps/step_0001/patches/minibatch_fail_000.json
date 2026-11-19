@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_selection",
+      "count": 5,
+      "description": "Chose a proxy or broadly similar endpoint, missed a more direct endpoint, or added an unrelated adjacent tool."
+    },
+    {
+      "failure_type": "argument_grounding",
+      "count": 4,
+      "description": "Dropped or misapplied requested constraints such as source, type, quantity, language, dates, or hierarchical location."
+    },
+    {
+      "failure_type": "output_format",
+      "count": 2,
+      "description": "Serialized required or optional parameter collections in a shape that did not match the required call schema."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill is empty, and the trajectories repeatedly show weak endpoint-to-request matching, incomplete transfer of query constraints into tool arguments, and malformed parameter serialization. These rules address those patterns while preserving the instruction not to invent values or add unrequested options.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Learned rules\n\n- **Map each request to the endpoint that actually performs it.** Break a multi-part query into independent requested outputs, then match each to the tool description. Prefer direct content retrieval over a related source directory or proxy; do not add adjacent tools that do not answer a requested subtask. Use repeated calls when separate targets need distinct arguments.\n- **Carry requested constraints into the documented parameters.** Translate stated or clearly implied filters—such as source, article type, count, date, language, page, and location hierarchy—into the matching required or optional fields. Follow the tool's documented value formats and types; distinguish country, state, and administrative-level fields. Include optional fields when they express a requested constraint, but do not add defaults or guess missing values. Derive canonical values only when the convention is unambiguous; do not invent opaque identifiers.\n- **Validate the final serialization.** Match the required answer format exactly: use the specified tool names and keys, represent required and optional parameters with the prescribed array/object shapes, include empty collections in the required shape, and sort calls as instructed. Check that every requested subtask is covered and that no unrelated call was added."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

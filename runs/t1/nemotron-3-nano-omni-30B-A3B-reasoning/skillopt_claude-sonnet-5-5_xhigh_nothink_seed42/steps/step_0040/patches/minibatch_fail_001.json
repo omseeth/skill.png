@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "no_key_domain_not_first_searched",
+      "count": 3,
+      "description": "Hotel dates, stars or neighborhood arrived while only 'restaurants' or only flight keys were cached. The agent filtered or re-saved the cached domain (re-applying an earlier flight class) instead of running a first search_hotels."
+    },
+    {
+      "failure_type": "invalid_return_flights_kwarg",
+      "count": 2,
+      "description": "A round trip or 'X to Y' date pair was written as one search_flights call with a fake `return_flights=departure_date` kwarg. This caused a NameError, dropped the return leg, and in one case dropped the hotel search."
+    },
+    {
+      "failure_type": "placeholder_dates_in_search_hotels",
+      "count": 1,
+      "description": "First turn with a hotel and restaurants request but no dates: search_hotels was called with '<date>' placeholders (copied from the -2 template) instead of search_restaurants plus seek_information."
+    },
+    {
+      "failure_type": "invented_num_people",
+      "count": 1,
+      "description": "'Family vacation' and 'kid-friendly' were turned into num_people=4, which the user never stated."
+    },
+    {
+      "failure_type": "wrong_domain_refiltering",
+      "count": 1,
+      "description": "A hotel budget reply ('Around 125') also re-filtered both cached flight legs with the earlier class."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four small, targeted edits to the existing wording, with no new gates. (1) The SEARCH GATE is too broad and makes the agent filter whichever domain happens to be cached. It now first names the domain the last message is about and sends a no-key domain to a first search, which covers T2, T3 and T7. (2) Rule -2 contains `<X>`/`<Y>` templates that were copied into a date-less first turn, so it now has a precondition that a real date is present and says other cached keys do not matter, covering T4 and T2/T3. (3) The agent invents a `return_flights=` kwarg, so the HARD rule now bans it, spells out the two-call pattern, and covers 'just the return flight', covering T5 and T8. (4) num_people was inferred from 'family', so the stated-values bullet now ties num_people to a literal number, covering T6. T1 is left alone because earlier rewrites of the flight-block rule were rejected as noise-level.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- SEARCH GATE (do this first): read the CACHE dict.",
+        "content": "- SEARCH GATE (do this first): read the CACHE dict, then name the domain the LAST user message is about (hotel words, stay dates, stars, neighborhood -> hotels; flight words -> flights; cuisine -> restaurants). A cached key of a DIFFERENT domain is irrelevant to this reply. If the message is about a domain with NO key and its mandatory args are known anywhere in the conversation (e.g. a hotel was requested earlier, CACHE holds only 'restaurants' or only flight keys, and the reply gives dates or stars/neighborhood), that domain gets its FIRST search now (`search_hotels(...)` saved as 'hotels'). Never answer it by filtering or re-saving another domain's key, and never re-apply an earlier class or budget to cached flights. Use seek_information only if a mandatory arg is truly missing."
+      },
+      {
+        "op": "replace",
+        "target": "-2. DATE ANSWER = SEARCH NOW (beats every seek_information rule below, including the 'vague timing' paragraph of Rule 6).",
+        "content": "-2. DATE ANSWER = SEARCH NOW. Applies ONLY when the user's last message literally contains a date or an 'X to Y' range. A message with no date (e.g. a first turn asking for a hotel and restaurants) never uses this rule or its `<X>`/`<Y>` templates: search the searchable domain (restaurants) and ask seek_information for the hotel dates. When it does apply, it beats every seek_information rule below, including the 'vague timing' paragraph of Rule 6, and it applies whatever other keys (e.g. 'restaurants') sit in CACHE."
+      },
+      {
+        "op": "replace",
+        "target": "- Use only kwargs listed in TOOL CONFIG. search_flights has NO return_date: a round trip is two search_flights calls.",
+        "content": "- Use only kwargs listed in TOOL CONFIG. search_flights has NO return_date and NO return_flights kwarg: a round trip, or any date pair ('X to Y', 'around X ... returning Y'), is two separate assigned+saved search_flights calls (outbound `departure_date=[\"<X>\"]`; return with the cities swapped `departure_date=[\"<Y>\"]`). Never write `return_flights=...`, `return_date=...` or a bare variable such as `departure_date` as an argument value (NameError). If the user wants 'just the return flight', make only the cities-swapped search with the return date, saved as \"flights\". The date pair still gives hotel check-in/check-out if a hotel was requested, and hotel amenities stated in earlier turns go into that search_hotels."
+      },
+      {
+        "op": "replace",
+        "target": "- Pass only values the user literally stated. Never invent an airline from words like 'kid-friendly'.",
+        "content": "- Pass only values the user literally stated. num_people only from a number the user wrote ('for 3', '4 of us') or 'solo'/'just me' = 1; 'family', 'kid-friendly', 'group' or 'vacation' give no num_people and no amenity kwarg. Never invent an airline from words like 'kid-friendly'."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

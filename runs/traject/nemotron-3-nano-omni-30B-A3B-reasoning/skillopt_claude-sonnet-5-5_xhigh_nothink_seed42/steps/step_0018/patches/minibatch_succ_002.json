@@ -1,0 +1,20 @@
+{
+  "batch_size": 1,
+  "success_patterns": [
+    "The query was split on commas into three clauses, and each became one call. No clause was dropped and no padding call was added.",
+    "Where the query named a provider and a fixed-size feed ('100 most recent ... using Moka News', 'Greek news in English'), the agent chose the endpoint whose heading matched. It wrote `[]`/`[]` for tools whose schema says Required: none, Optional: none, and invented no parameters.",
+    "Names were copied as `Provider: Endpoint` with no ` — `. The answer used one object per line, three keys per object, and a single closing `]</answer>`.",
+    "The one imperfection was optional_em 0.67. The agent put `limit`=`100` on the Medium call, but the '100' belonged to the Moka clause, whose endpoint name `Recent 100` already carries it. This is a count-leak across clauses, and it comes from the NUMBER AUDIT rule applied without a boundary."
+  ],
+  "patch": {
+    "reasoning": "The batch is a clean pass with one soft miss. NUMBER AUDIT says an unused number means a missed parameter, and that can push the agent to spread a number onto a neighbouring call. When the endpoint heading already carries the number ('Recent 100', 'Recent 50'), the number is consumed and is not a parameter anywhere. A single clause with its boundary states the exception and tightens the existing rule without adding a new section.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "An unused number means a missed parameter.",
+        "content": "An unused number means a missed parameter, EXCEPT when the chosen endpoint's own heading already carries it. 'Latest business articles from Medium, the 100 most recent news articles using Moka News, and Greek news in English' -> `Medium: /stories/{topic}` with `topic`=`business` only (no `limit`=`100`), `Moka News: Recent 100` with `[]`/`[]`, and `Greek News in English: Get All News` with `[]`/`[]`. A number used to pick a sibling endpoint is not also a parameter, and it never moves to a neighbouring clause's call."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,46 @@
+{
+  "reasoning": "Consolidated the overlapping cache-follow-up guidance into one workflow edit and merged both flight-time recommendations into the flight-leg guidance. Preserved unique additions for actual cache-output handling, quality sorting, field mappings, and continuing complete domains when another domain lacks mandatory inputs. Existing rules that were already covered were not repeated. Support counts reflect how many of the four source patches support each merged edit. [optimizer-ranked: selected 4/5 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- At each turn, inspect cache summaries before searching. If a relevant result exists for the same domain, city, dates, and itinerary leg, retrieve it with its exact key using `get_results_from_cache`, then apply the matching `filter_*` tool with that result as `prior_results` and the newly supplied constraints. If no suitable cached result exists, run a new search. Apply new preferences to all relevant cached results or itinerary legs, but do not repeat valid searches or regenerate unaffected domains.",
+      "content": "- At each turn, inspect cache summaries and resolve the latest user turn against the preceding assistant question and full conversation; a short answer may update the domain or leg that question concerns. Identify only the domains and itinerary legs changed by the turn. For each changed request, choose the most refined cached result whose domain, location, dates, leg, and original query scope can cover it; a broader compatible result may be narrowed with a filter, but never use a narrow result for a broader request. Retrieve it by exact key using `get_results_from_cache`, then apply the matching `filter_*` tool with the retrieved result as `prior_results` and the newly supplied filterable constraints. Preserve active earlier constraints; if a genuinely new search is needed, include all still-active supported constraints. Apply trip-wide changes separately to every affected leg, and do not repeat valid searches or regenerate unaffected domains or legs; if a leg is canceled, do not search it.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+      "content": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`; for a hotel in a named local district, use the city in `city` and the district in `neighborhood`; map a non-stop flight request to `num_layovers=[0]`; and map hotel beach access requested as a feature to `has_beach_access=True`. Use the tool's accepted format for preferences such as time ranges. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. For an explicit request for the best, good, or highly rated hotels or restaurants, sort applicable search or filtered results by the documented rating column (`rating_hotels` or `rating_restaurants`) in descending order; do not invent a rating cutoff or add ranking when it was not requested. Do not add unrelated preferences.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "## Flight itinerary legs\nTreat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to both legs, and do not combine distinct legs by repeating keyword arguments in one call.",
+      "content": "## Flight itinerary legs\nTreat each requested flight leg as a separate directional search with its own origin, destination, and `departure_date`. For a trip described from an earlier date until a later date, search outbound on the first date and return in the reverse direction on the later date unless the user specifies one-way travel or asks for only one leg. For an explicit return-only request, search only from the established destination back to the established origin, using the return date as `departure_date`; do not search the outbound leg or represent the return as `arrival_date` on an outbound search. Use `arrival_date` only for an explicitly stated arrival constraint on that leg. Apply explicitly trip-wide preferences, including flight class, to every affected leg, and do not combine distinct legs in one call. Format flight-time ranges as accepted 12-hour AM/PM strings (for example, `[\"12:00 AM\", \"07:26 AM\"]`), not 24-hour or seconds strings. Represent an exact-time request with two identical accepted time strings; represent an “arrive by” constraint as `[\"12:00 AM\", time]`.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Before calling a travel tool, check its required parameters against the full conversation and available context. If any required details are missing, use `seek_information` to ask only for those details; do not invent values, pass `None`, or run a partial search. For requests spanning multiple domains, bundle missing required details for all requested domains into the same information request. Do not ask for optional preferences.",
+      "content": "Before any call, validate mandatory inputs separately for each requested tool, domain, and flight leg. If a requested tool lacks a mandatory input, do not call it or run a partial search for that domain or leg; ask only for the missing mandatory details in one `seek_information` request across all incomplete domains or legs. Continue with every other requested domain or leg whose mandatory inputs are complete, assigning and caching its result. Never invent values, pass `None`, or ask for optional preferences.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Prioritize the cache-scope update because it improves turn-by-turn handling across domains and itinerary legs. Next, the criteria-mapping edit addresses several recurring constraint and ranking errors. The flight-leg edit fills important gaps for return-only trips, date semantics, and time formats. The required-input edit adds useful guidance to proceed with complete domains while asking about incomplete ones. The remaining edit is largely redundant with the existing variable and cache-saving rules.",
+    "selected_indices": [
+      0,
+      2,
+      3,
+      4
+    ]
+  }
+}

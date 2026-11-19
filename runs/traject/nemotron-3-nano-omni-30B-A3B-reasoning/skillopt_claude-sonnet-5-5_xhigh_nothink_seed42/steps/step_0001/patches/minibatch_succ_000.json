@@ -1,0 +1,33 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Each distinct clause of the query is mapped to exactly one tool, chosen by matching the endpoint's described action and the provider the query names. Similar-looking distractor tools from other providers or adjacent functions (account info, inbox, generators, bulk file tools) are ignored.",
+    "A single-value tool is fanned out into one call per entity (each email, each domain), and each call is emitted separately. When the query asks for the same action twice (e.g. 'similar items' at the start and again at the end), the identical call appears twice and matches the gold.",
+    "Required parameter values are copied verbatim from the query (SKUs, ASINs, zip codes, IDs, URLs, domains) under the exact parameter names in the tool spec. Tools with no required parameters get an empty list.",
+    "Optional parameters are added only when the query states them (timeout 10, smtp true, postalCode 10001, start/end timestamps, storeId/sellerId). Where the query names a qualifier, its value is converted to the API's format.",
+    "The answer is a short reasoning step followed by one valid JSON list sorted by tool name, with exactly the three required keys per call."
+  ],
+  "patch": {
+    "reasoning": "All 8 trajectories scored full_em=1.0 in single-turn parallel tool calling. The shared behaviors were: decompose the query into independent sub-requests, pick the matching endpoint for each, fan out per entity, copy required values verbatim, and add only query-stated optional parameters. Optional-parameter mismatches were the only partial misses. They came from adding empty-value optionals, from using 'US' where the API expects 'en-US', and from malformed duplicate keys. The skill is empty, so these rules are worth encoding.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Selecting Tools\n- Split the query into its independent sub-requests (often one per sentence or clause, e.g. 'First... Then... Finally...'). Map each sub-request to exactly one endpoint.\n- Match the endpoint whose description does the requested action on the requested object (e.g. 'small-cap gainers', 'growth technology stocks', 'get-images', 'get-home-services', 'MX records', 'Help Page').\n- If the query names a provider or tool (e.g. 'using Alpha Email Verification', 'Blaze Verify', 'fast Email verifier'), use that provider's endpoint.\n- Ignore look-alike distractors from other providers or with different functions: account info, inbox, temp-mail generators, bulk/file upload tools, search tools when an ID is already given.\n- Do not add helper or prerequisite calls the query does not ask for."
+      },
+      {
+        "op": "append",
+        "content": "## Fan-out and Repeats\n- If a tool takes one value (one email, one domain, one SKU) and the query lists N of them, emit N separate calls, one per value. Do not switch to a batch tool unless the query names it.\n- Keep the per-call constants. For example, if 'username info' is given for two domains, each call carries username=info plus its own domain.\n- If the query asks for the same action twice (e.g. 'similar items' mentioned early and again at the end), emit the identical call twice. Do not de-duplicate."
+      },
+      {
+        "op": "append",
+        "content": "## Parameter Values\n- Copy IDs, SKUs, ASINs, zip/postal codes, URLs, emails, domains and timestamps verbatim from the query. Use the parameter names exactly as written in the tool spec.\n- Always fill every required parameter. If there are none, use an empty list.\n- Add an optional parameter only when the query states it or clearly implies it (a timeout, a flag like SMTP checking, a date range, a postal code, a language/locale, store/seller IDs).\n- Check which list the spec puts each query-given value in. An ID the query supplies may be an *optional* parameter of that tool (e.g. storeId/sellerId). Put it in 'optional parameters' even if 'required parameters' is empty.\n- Never emit an optional parameter with an empty or placeholder value.\n- Convert natural-language qualifiers to the API's expected format (e.g. 'English (US)' -> 'en-US', not 'US'). Keep numbers and booleans as plain values (10, true).\n- Do not invent optional values (defaults like start=0 or extra filters) that the query does not mention."
+      },
+      {
+        "op": "append",
+        "content": "## Answer Hygiene\n- Reason briefly, then give one <answer> JSON list, sorted by tool name.\n- Each call has exactly three keys: \"tool name\", \"required parameters\", \"optional parameters\". Do not repeat a key within one object.\n- Use the tool name exactly as listed ('Provider: endpoint'), including punctuation and parentheses.\n- Parameters are {\"name\": ..., \"value\": ...} objects. Use [] when there are none."
+      }
+    ]
+  },
+  "source_type": "success"
+}

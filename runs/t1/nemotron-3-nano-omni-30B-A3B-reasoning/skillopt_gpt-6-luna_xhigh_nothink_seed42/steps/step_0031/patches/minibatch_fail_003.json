@@ -1,0 +1,51 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "incremental planning and cache routing",
+      "count": 2,
+      "description": "A changed preference triggered a fresh search instead of refining cached results, or a question about an assistant-suggested place was treated as a no-op."
+    },
+    {
+      "failure_type": "tool-result persistence",
+      "count": 2,
+      "description": "Attraction searches were emitted without assigning and saving their exact results."
+    },
+    {
+      "failure_type": "schema and user-value mapping",
+      "count": 2,
+      "description": "A state abbreviation was passed as a city, and an explicitly stated category was replaced with a near-synonym."
+    },
+    {
+      "failure_type": "unnecessary code and inferred criteria",
+      "count": 1,
+      "description": "Imports and model redefinitions caused a runtime error, while unrequested hotel amenities were added."
+    },
+    {
+      "failure_type": "verifier versus literal flight-class preference",
+      "count": 1,
+      "description": "The verifier expected first class despite the user explicitly preferring business class; changing the literal preference would contradict user intent."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the cache-versus-search decision more operational, explicitly handle questions about suggested targets, and make result persistence a non-optional step in generated code. Clarify state-only location handling and preservation of user-stated category labels. Do not duplicate existing rules against imports or inferred amenities, and do not encode the verifier's inconsistent business-to-first expectation.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "- For each latest-turn update, resolve every changed constraint to its domain, target, and relation, and keep it pending until handled. Decide separately for each affected domain: if an exact compatible result is listed in cache and the request only refines it, retrieve that exact key into a local variable and apply the delta with the appropriate requested tool; do not repeat the base search. If the cache does not cover a new target or request, search only when mandatory inputs are explicit; otherwise seek the missing information. Apply every new constraint and each named location independently, leave unaffected domains alone, and do not rely on variables from earlier executions. A question such as “What’s there?” about a place just suggested by the assistant makes that place a pending target, not a no-op; apply it to a compatible cached result or search if needed."
+      },
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- Every search, filter, sort, or nearest-results call that produces a result must be assigned to a local variable holding its exact return value and followed by `save_to_cache` under a unique, descriptive key. Never emit a bare result-producing call or omit its save; save each refinement under a new key, and do not substitute hand-built dictionaries or redefined models for tool result objects."
+      },
+      {
+        "op": "replace",
+        "target": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+        "content": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. A state-only location, including an abbreviation, belongs in `state` when supported, not `city`. For list-valued category fields, preserve the user’s stated category label rather than substituting a near-synonym from tool examples; examples are not exhaustive enum definitions unless the schema says they are. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

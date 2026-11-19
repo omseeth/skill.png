@@ -1,0 +1,66 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_planning_and_context_resolution",
+      "count": 2,
+      "description": "Agents skipped a ready restaurant search when flight or hotel information was still missing, including failing to resolve “there” to the trip destination."
+    },
+    {
+      "failure_type": "geographic_argument_mapping",
+      "count": 3,
+      "description": "Agents passed state abbreviations as cities or a named neighborhood as the hotel city instead of mapping each to its geographic field."
+    },
+    {
+      "failure_type": "cache_update_skipped",
+      "count": 1,
+      "description": "An added hotel-amenity request was treated as requiring no planning despite cached results lacking those criteria."
+    },
+    {
+      "failure_type": "result_persistence",
+      "count": 3,
+      "description": "Some searches were generated without saving their results under cache keys."
+    },
+    {
+      "failure_type": "time_format_or_bound_mapping",
+      "count": 1,
+      "description": "A flight search used rejected HH:MM:SS values and treated “by” times as an almost-exact interval."
+    },
+    {
+      "failure_type": "stay_length_date_derivation",
+      "count": 1,
+      "description": "An explicit hotel stay length was converted to a checkout date directly instead of using the date-adjustment tool."
+    },
+    {
+      "failure_type": "round_trip_coverage",
+      "count": 1,
+      "description": "A requested return leg and an earlier non-stop constraint were omitted from the flight plan."
+    },
+    {
+      "failure_type": "tool_invocation_contract",
+      "count": 2,
+      "description": "Agents imported the unavailable tools module despite the instruction to call injected functions directly."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify the ambiguous instruction about missing inputs so it blocks only the incomplete domain, and explain how to resolve contextual locations and map geographic levels and flight-time bounds. Stay-length derivation is also an explicit gap. Persistence, cache-filtering, direct-call, and round-trip rules already appear in the skill, so repeating them would not patch a content gap.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available.",
+        "content": "- Check mandatory inputs against the full conversation and relevant cached results separately for each requested domain. Flight searches require a departure date; hotel searches require check-in and checkout dates. If a hotel check-in date and an explicit stay length in nights are given but checkout is missing, derive checkout with `adjust_date(date=..., delta_days=...)`; do not infer an unstated stay length. If any requested domain still lacks required inputs, make exactly one `seek_information(...)` call listing only those missing values. Do not search or filter the incomplete domain, but do proceed in the same turn with independent requested domains whose required inputs are complete. Do not guess values or ask for optional preferences as if they were required."
+      },
+      {
+        "op": "replace",
+        "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "- Match arguments to the tool schema’s expected type, cardinality, and meaning. Map a supplied state or state abbreviation for an attraction search to `state`, not `city`; a city need not be supplied when the state is sufficient. For a clearly named hotel or restaurant neighborhood or district, pass its parent city as `city` and preserve the named area in `neighborhood` (for example, `city=\"San Antonio\"`, `neighborhood=[\"Downtown San Antonio\"]`). For flight time ranges, use the accepted 12-hour `h:mm AM/PM` format, not `HH:MM:SS`. Interpret “by” or “no later than X” as the earliest supported time through X, and “from” or “at least X” as X through the latest supported time. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft time-of-day preferences as actionable: translate them into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "\n- Resolve contextual location references such as “there,” “here,” and “nearby” against the most recent unambiguous destination or place in the full conversation. Use that known location for the new domain rather than treating the reference as missing or inventing a different place."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,66 @@
+{
+  "step": 5,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 28,
+  "failure_patterns": [
+    {
+      "pattern": "tool_invocation_contract_violation: Agents imported the unavailable tools module despite the skill requiring direct calls.",
+      "count": 28,
+      "task_ids": [
+        "hotelrestaurant:train:5:9:0",
+        "hotelrestaurant:train:14:10:3",
+        "restaurant:train:6:56:0",
+        "attraction:train:17:27:2",
+        "hotelrestaurant:train:13:51:0",
+        "flighthotelrestaurant:train:12:13:4",
+        "attraction:train:23:42:1",
+        "flighthotel:train:11:50:5",
+        "attraction:train:3:53:0",
+        "flighthotelattraction:train:12:30:3",
+        "flighthotelrestaurant:train:16:43:1",
+        "flighthotel:train:2:2:1",
+        "flighthotelrestaurant:train:22:30:3",
+        "hotelrestaurant:train:18:45:3",
+        "flighthotel:train:8:13:1",
+        "flighthotelattraction:train:13:19:2",
+        "hotel:train:16:36:2",
+        "flighthotel:train:21:6:1",
+        "attraction:train:1:8:0",
+        "hotelrestaurant:train:14:41:1",
+        "flighthotelattraction:train:15:30:1",
+        "flighthotelrestaurant:train:1:59:3",
+        "attraction:train:17:12:0",
+        "restaurant:train:25:28:0",
+        "attraction:train:5:15:2",
+        "flighthotelattraction:train:11:26:1",
+        "restaurant:train:2:4:4",
+        "hotelrestaurant:train:12:12:4"
+      ]
+    }
+  ],
+  "score_before": 0.225,
+  "score_after": 0.225,
+  "rejected_edits": [
+    {
+      "op": "append",
+      "content": "- Identify the specific travel service(s) requested from the full conversation; do not infer that every travel domain is requested merely from a destination, occasion, or generic travel context. If the requested service is unclear, seek clarification before planning. In addition to the date requirements above, flight searches require a usable origin, and hotel and restaurant searches require a city. When a hotel is clearly for the same trip at its destination and no different check-in date is stated, use the explicitly stated trip travel date as check-in; this does not establish checkout. If checkout is unknown, request it rather than assuming a stay length or a one-night stay.",
+      "target": ""
+    },
+    {
+      "op": "replace",
+      "content": "- Check mandatory inputs against the full conversation and relevant cached results separately for each requested domain. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not search, filter, or otherwise plan for an incomplete domain, but do proceed in the same turn with independent requested domains whose required inputs are complete; missing information for one domain does not block work in another. Do not guess or invent values, and do not ask for optional preferences as if they were required.",
+      "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available."
+    },
+    {
+      "op": "replace",
+      "content": "- On each turn, consider the full conversation and cached result summaries. For every requested domain and criterion, verify that a compatible cached result for the same subject explicitly supports it; the existence of other results or a broad summary is not proof that the request is satisfied. If a requested domain or category is not covered by compatible results, search for it. If a compatible result lacks newly requested criteria, retrieve it with `get_results_from_cache(key=\"...\")`, assign the return value, pass it as `prior_results` to the matching filter, assign the filter’s return value, and save the updated result under a unique cache key. For every new search or transformation—including filters, sorts, and nearest-result calls—assign its return value and call `save_to_cache` with that value under a unique key. Do not filter unrelated results or repeat constraints already applied. Return “No planning needed” only if compatible cached results explicitly satisfy every current domain and criterion and no further operation is needed.",
+      "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- Resolve other contextual follow-ups against the immediately preceding exchange as well. If the user asks about “there,” “that,” or “what’s there?” after the assistant proposed a place or category, treat that proposal as the subject of the request, not as a no-op. Use compatible cached results and apply the proposal as a new criterion when appropriate, or search the appropriate domain if the cache does not cover it; save the resulting transformation or search.",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated."
+    }
+  ]
+}

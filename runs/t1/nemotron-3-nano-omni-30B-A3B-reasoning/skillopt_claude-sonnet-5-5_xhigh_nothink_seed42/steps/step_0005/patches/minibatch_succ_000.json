@@ -1,0 +1,20 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Six of the eight trajectories are first-turn requests where the user gave only context (a purpose like 'business conference', 'family vacation', 'special occasion', 'weekend getaway', or an arrival-by time) and no concrete date or city. The agent output a single short seek_information(...) naming the missing mandatory item and made no search call. This is already covered by Rules 6 and 7.",
+    "A restaurant request with a cuisine but no city got only seek_information for the city. This is already covered by Rule 10.",
+    "A restaurant-only follow-up in a hotel+restaurant conversation, with hotels already filtered, loaded the 'restaurants' key, filtered with only the new cuisine and rating, and saved under a new key. It did not touch the hotel keys. This is already covered by Rules 13 and 17.",
+    "The one weak 'success' (flighthotelrestaurant:train:23:39:2) fabricated hotel checkout_date and num_people, re-filtered a cached flight budget that was already applied, and had code_success=0. The gold answer was seek_information for the checkout date only. The skill lacks an explicit statement that a flight departure date supplies check-in at most and never a checkout date."
+  ],
+  "patch": {
+    "reasoning": "The skill already covers nearly all the seek-only and refinement patterns that succeeded. The one gap is the hotel checkout date. A user who gives a single travel date for a flight plus hotel (the flight departure date) has not given a checkout date. The agent filled in 'next day' and a guessed num_people, which broke execution, and the gold answer asked only for the checkout date. This edit is narrow so it does not repeat the broad hotel-date rule that was rejected earlier. It only clarifies what counts as a hotel date and keeps the ask minimal.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- A round-trip request still needs the departure date. Ask for it; do not assume a return date.",
+        "content": "- A hotel needs its own explicit checkout date. A flight departure date or arrival date supplies at most the check-in date. It never supplies a checkout date, and a one-night stay is never a default. If a hotel is requested and only one date is known (e.g. 'fly on May 13, 2025, hotel near Downtown'), do NOT call search_hotels with a guessed checkout and do NOT infer num_people from context. Output `seek_information(\"We need the check-out date for the hotel.\")`, naming only what is missing. If flights for the stated date are already cached, leave them as they are; do not re-filter them with a budget or other constraint their CACHE summary already lists."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache/follow-up delta tracking",
+      "count": 6,
+      "description": "Agents missed the latest requested change, repeated prior work, or failed to use the appropriate cached base."
+    },
+    {
+      "failure_type": "scope control",
+      "count": 4,
+      "description": "Agents added redundant searches or proximity work, or did not keep separate location results independent."
+    },
+    {
+      "failure_type": "required-input handling",
+      "count": 2,
+      "description": "Agents invented missing hotel dates or failed to complete another requested domain whose required inputs were available."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers tool schemas, date inference, ratings, and proximity. These edits sharpen how agents distinguish new changes from completed work, branch independent alternatives, and continue ready searches when another domain needs clarification.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns.",
+        "content": "On each turn, reconcile the full conversation and cache, but anchor actions to the latest user turn: process newly stated or changed constraints and clearly unfinished earlier requests (for example, a search deferred because required information was missing and now supplied). Do not replay completed work or revive an older constraint solely because it is absent from a later summary."
+      },
+      {
+        "op": "replace",
+        "target": "If an update applies to multiple cached results, such as outbound and return flight legs, retrieve, filter, and process each independently.",
+        "content": "If an update applies to multiple cached results, such as outbound and return flight legs, retrieve, filter, and process each independently. Likewise, when the user supplies multiple alternative locations for one cached result, branch each location filter from the same retrieved base and save a separate result; do not chain one alternative's filtered output into another or reuse one output for multiple cache keys."
+      },
+      {
+        "op": "replace",
+        "target": "Check required inputs independently by domain: seek missing information, but proceed with other requested searches whose inputs are available.",
+        "content": "Check required inputs independently by domain: when one requested search lacks a mandatory input, seek that information but still run and save any other explicitly requested search whose own mandatory inputs are available (for example, search requested restaurants while asking for missing hotel dates). Never infer the missing input or withhold ready work from another domain."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

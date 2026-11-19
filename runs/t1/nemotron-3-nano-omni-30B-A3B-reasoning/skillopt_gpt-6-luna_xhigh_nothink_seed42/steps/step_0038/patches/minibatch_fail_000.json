@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_refinement_or_delta_failure",
+      "count": 4,
+      "description": "Agents re-searched, chose an older base result, omitted new filters, or resent criteria already covered by cache."
+    },
+    {
+      "failure_type": "incomplete_plan_or_result_persistence",
+      "count": 6,
+      "description": "Ready actions or pending domains/flight legs were omitted, or tool results were not bound and saved."
+    },
+    {
+      "failure_type": "schema_value_or_runtime_contract_violation",
+      "count": 3,
+      "description": "Some calls changed a user-provided category, used an unsupported argument, or imported runtime-provided tools and failed."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the action plan account for every still-pending domain and flight leg, clarify how to select and refine the latest compatible cached result, and turn result persistence into an explicit completion requirement. Add a narrow reminder to preserve literal categorical values. The runtime-import prohibition already exists in the protected section, so it is not repeated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "- At each turn, build an action checklist from the full conversation, not only the latest reply: include every still-pending requested domain, each separately described flight leg, and each target, location, and criterion. A follow-up answer supplies information but does not cancel other pending work. For each item, check mandatory-input readiness and whether a listed compatible result satisfies it. Execute every ready, unsatisfied item; seek missing mandatory values for blocked items. Leave fully satisfied and unchanged items alone. Use `print(\"No planning needed\")` only when no unsatisfied request remains."
+      },
+      {
+        "op": "replace",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "- For each changed checklist item, compare its exact target, domain, location or flight leg, and criteria with the listed cache summaries. If a compatible result exists, retrieve the most recent result that already includes the prior criteria using its exact key. Apply every uncovered criterion with the appropriate filter, passing the retrieved result as `prior_results` when required, and save the refinement under a new key. Do not search afresh or use an older base result when refinement is possible. Search only when no compatible prior result exists and mandatory inputs are explicit. Do not repeat covered filters, process unaffected items, or rely on variables from earlier executions."
+      },
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- For every search, filter, sort, or nearest-results call, bind the exact return value to a local variable and save that same object under a unique, descriptive key before proceeding. This is required for every flight leg and refinement; a tool call without its save is incomplete. Save refinements under new keys. Do not substitute hand-built dictionaries or redefined models for tool result objects."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`.",
+        "content": "\n- Preserve user-supplied categorical values exactly when they fit a supported schema field; do not replace a stated category or type with a near synonym."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

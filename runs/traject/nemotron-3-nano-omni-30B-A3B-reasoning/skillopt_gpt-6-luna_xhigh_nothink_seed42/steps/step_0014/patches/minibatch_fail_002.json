@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint selection / requested-result mismatch",
+      "count": 5,
+      "description": "Several calls used a related endpoint that did not provide the requested result, or substituted for a distinct requested operation."
+    },
+    {
+      "failure_type": "qualifier-to-schema mapping",
+      "count": 6,
+      "description": "Calls dropped or mis-mapped constraints such as sort preference, forecast horizon, categories, language, location hierarchy, and parameter types or buckets."
+    },
+    {
+      "failure_type": "output serialization",
+      "count": 3,
+      "description": "The response was not valid JSON because the call list or its objects were malformed."
+    },
+    {
+      "failure_type": "unsupported-call overgeneration",
+      "count": 2,
+      "description": "Agents added calls unrelated to a requested result, including an irrelevant sports endpoint and numerous unrelated educational endpoints."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already covers action reconciliation, exact tool names, schema fidelity, and JSON validation, so those rules should not be duplicated. These edits clarify two easily confused endpoint-selection cases and make sorting versus filtering and forecast cadence versus horizon more explicit.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## List and catalog requests",
+        "content": "- A request to find or check whether a retailer carries products of a described kind is product discovery, not a request to enumerate catalog categories. Choose the retailer's best documented product-search or discovery endpoint; use category enumeration only when the user asks for categories."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Map constraints to the schema",
+        "content": "- Classify each qualifier by its role before mapping it: output type, inclusion filter, scope, time window, or ranking/sort. Map ranking preferences such as helpfulness to documented sort fields, not nearby filters such as star rating. Preserve all coordinated criteria using the endpoint's documented fields and encoding."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Select the right endpoint",
+        "content": "- For forecasts and other time-series requests, match both the requested cadence and horizon to the endpoint's documented output. A daily forecast over several weeks is not covered by a short hourly forecast or a current-conditions endpoint."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

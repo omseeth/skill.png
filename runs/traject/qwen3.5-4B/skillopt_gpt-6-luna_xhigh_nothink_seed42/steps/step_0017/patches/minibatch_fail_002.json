@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_or_granularity",
+      "count": 5,
+      "description": "Selected an operation with the wrong result type or cardinality, omitted a distinct forecast operation, or added a related but unrequested endpoint."
+    },
+    {
+      "failure_type": "argument_mapping",
+      "count": 6,
+      "description": "Mis-mapped geographic hierarchy, selector values, marketplace identifiers, or explicit filters and bounds."
+    },
+    {
+      "failure_type": "serialization_and_schema_placement",
+      "count": 3,
+      "description": "Duplicated parameters or wrapper keys, lost a required value, or placed an optional parameter in the required bucket."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains broad coverage and schema-validation rules, so these edits target narrower recurring ambiguities: treating broad capability descriptions as an endpoint contract, confusing marketplace codes with hostnames, and mapping named places into hierarchical location fields.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Treat endpoint eligibility as a gate: confirm the endpoint's own operation and schema support the requested result kind and granularity, and can represent every compatible explicit qualifier. A topical neighbor or broader operation is not sufficient. A named provider or source is a hard constraint for that outcome; do not fulfill or supplement it with another provider when a fitting named-source endpoint exists.",
+        "content": "\n- Treat the endpoint's named operation and schema as the decisive contract; generic provider or capability copy does not expand what that operation returns. When sibling endpoints differ by operation or cardinality, match the requested outcome directly (for example, current conditions versus hourly forecast, one-card draw versus multi-card draw, or product lookup versus category listing). Count an additional capability only when that specific endpoint's contract explicitly provides it."
+      },
+      {
+        "op": "insert_after",
+        "target": "- If a schema declares an enum but does not list its accepted values, do not replace a user-stated label with a synonym or guessed canonical spelling; retain the literal term when its meaning is clear, and do not guess when support is unclear. Preserve the spelling and case of named source values unless the endpoint documents normalization.",
+        "content": "\n- For marketplace selectors such as `domain` or `site`, use the API's documented marketplace-token format. Do not construct a hostname or URL from the provider name when the field expects a bare market code; preserve the documented bare-versus-hostname form."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Check temporal scope explicitly: current conditions are not forecasts, and location-specific active alerts are not aggregate alert counts. When coordinates are supplied and a matching coordinate-based endpoint exists, use it rather than inferring a city or changing the location form.",
+        "content": "\n- For hierarchical location filters, map each supplied place to the endpoint's documented geographic level: keep the country identifier in its country-level field and map state/province and city to the corresponding subdivision fields. Do not put a country code in an administrative-division field or substitute an ISO abbreviation for a named subdivision. Include further levels only when their values can be reliably mapped."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

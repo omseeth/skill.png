@@ -1,0 +1,34 @@
+{
+  "reasoning": "Failure-driven edits are kept in full (13 edits), and the four success-driven edits are added because none of them conflicts with a failure edit. (1) The success edit on a one-way flight + hotel with only a flight date covers a case the failure edits do not address, and it agrees with the failure rule that a hotel needs its own checkout date. (2) The success 'step 5' (domain has no key and a mandatory arg is missing -> lone seek_information) agrees with failure rule 0b: 0b writes a first hotel search only when explicit check-in and check-out dates exist. Both this edit and the failure edit about a bare 'Yes' to an attraction type anchor on step 4, which is fine because they cover different situations. (3) The success 'first attractions search exception' in Rule 26 (named attraction + type, no attractions key) is consistent with the failure edits, none of which touch Rule 26. (4) The success bare-headcount rule for Rule 25 puts num_people on hotel filters only, which matches the failure rules that keep party size out of flight and restaurant calls. No edit targets the protected SLOW_UPDATE block. [optimizer-ranked: selected 3/17 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "do not re-filter them with a budget or other constraint their CACHE summary already lists.",
+      "content": "\n  - Flight + hotel where only a one-way flight date is known and CACHE has no flights key (e.g. turn 1 'one-way flight from San Jose to Atlanta and a hotel', reply 'It's May 15, 2025'): the block is the flight search `flights = search_flights(start_airport_city=\"San Jose\", end_airport_city=\"Atlanta\", departure_date=[\"May 15, 2025\"])` plus `save_to_cache(key=\"flights\", value=flights)`, FOLLOWED BY one `seek_information(\"We need the check-out date for the hotel.\")`. Do not drop the seek_information just because the flight search ran, and do not call search_hotels.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "4. Domain has NO key and all its mandatory args are known -> first search (`x = search_*(...)` then `save_to_cache`).",
+      "content": "\n5. Domain has NO key and a mandatory arg is still missing (e.g. a hotel reply about budget, stars, neighborhood or amenities while no check-in/check-out dates were ever given, or only a flight date exists and no checkout date) -> the ONLY output is one `seek_information(...)` naming the missing items. Another domain's cached result (flights, attractions, restaurants) is never a substitute. Never write `x = get_results_from_cache(key=\"<other domain key>\")` followed by `save_to_cache` of the same value, because a loaded result saved unchanged is always wrong. Example: CACHE holds only 'attractions' (Anchorage, Culinary), the user asked for a hotel for 5 and says 'around 80 per night' -> `seek_information(\"We need to ask for the check-in and check-out dates\")` only. Example: CACHE holds 'flights' and 'filtered_flights' for May 20, and the user says 'Yes, near Downtown Anchorage with a 4 star rating' for the hotel -> `seek_information(\"We need to ask for the checkout date\")` only.",
+      "support_count": 6,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Rule 26: Proximity requests ('near the hotel', 'near <attraction>') need search_nearest (overrides the 'do not touch the hotel cache' and 'type if stated' parts of Rule 10)",
+      "content": "- FIRST attractions search exception: if the CACHE has NO 'attractions' key and the user names a specific attraction together with its type ('Yes, we want to visit Pittock Mansion, which is a Social attraction.', with 'hotels' cached for Portland), this is the first attractions search, not a proximity follow-up. Write only `attractions = search_attractions(city=\"Portland\", attraction_name=[\"Pittock Mansion\"], type=[\"Social\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. Pass both name and type as stated. Do not load hotels, do not call search_nearest and do not filter_hotels. The name-only + search_nearest flow below applies only when an 'attractions' key already exists from an earlier type search.",
+      "support_count": 6,
+      "source_type": "success"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Ranked by support (failures addressed), generality, and whether the edit fills a gap or resolves a conflict in the current skill. Edit 13 (support 8) covers the most common failure: a flight date is known and a hotel was requested without a checkout date, so the block needs the flight search plus a closing seek_information. Edit 14 (support 6) is a general rule for any domain with no key and a missing mandatory arg, preventing loading and re-saving another domain's cache or searching with guessed values. Edit 15 (support 6) resolves a conflict between Rule 26/Rule 25 (force search_nearest for a named attraction) and the first-search case where no attractions key exists. Edit 16 (support 6) is a close fourth but narrower, and its num_people filter on hotels is less certain. Lower-support edits (0-12 except 9) are mostly restatements of existing rules or single-case patterns.",
+    "selected_indices": [
+      13,
+      14,
+      15
+    ]
+  }
+}

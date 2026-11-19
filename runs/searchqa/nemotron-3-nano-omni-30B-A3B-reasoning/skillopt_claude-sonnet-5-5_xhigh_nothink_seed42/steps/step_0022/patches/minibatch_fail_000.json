@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "The passages held a verbatim archive answer ('a eucalyptus tree'; '...ILLNESS, GERMANY.'). The agent trimmed it to 'Eucalyptus' or swapped in a 'more accurate' name, 'German Empire', so Rule 3's copy-exactly instruction lost to Rule 4 trimming and the agent's own knowledge."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 4,
+      "description": "The right entity in the wrong surface form: 'Václav' vs 'Vaclav', 'Superior' vs 'Lake Superior', 'fungus' vs 'Fungi', 'Show Boat' vs 'Showboat'."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A bare title+name clue ('Sultan Haji Hassanal Bolkiah') wants the country he rules ('Brunei'). The agent gave the title phrase 'Sultan of Brunei'."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "The clue 'material cost of this war was greater than all other wars put together' got 'World War I' from the agent, not 'World War II'. The archive snippet was truncated and the agent's own knowledge was weak."
+    }
+  ],
+  "patch": {
+    "reasoning": "Two of the eight failures had the exact gold string in the passages, and the agent still reshaped it. The fix is an explicit precedence statement placed inside Rule 3 saying that a verbatim archive answer is copied exactly and overrides Rule 4 trimming. The remaining edits are short, conditional form rules: ASCII spelling of names, keeping the type noun for ordinary-word geographic names, plural for bulk-grown organisms, and a bare ruler name pointing to its country. None of these is a blanket shorten or lengthen rule, so they should not disturb stable passes. They avoid the large rewrite that was rejected last step.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Before the answer tags, briefly quote the matched line.",
+        "content": "Before the answer tags, briefly quote the matched line.\n- PRECEDENCE: a verbatim archive answer beats every Rule 4 trimming rule and any 'more accurate' name from your own knowledge. Copy it exactly as printed, including a leading article, a type noun, or a plain country name: '... | a eucalyptus tree.' -> 'a eucalyptus tree' (not 'Eucalyptus'); '...THIS NATION'S MONARCH, UNABLE TO TALK DUE TO ILLNESS, GERMANY.' -> 'Germany' (not 'German Empire'). In flat flashcard dumps (StudyStack and similar) the answer is the capitalized words after the clue's last word, often after a comma. Strip only a contestant tag such as 'right: Name'."
+      },
+      {
+        "op": "insert_after",
+        "target": "Still apply the person-name rule above.",
+        "content": "\n- SPELLING: write names in plain ASCII letters without diacritics ('Vaclav Havel', not 'Václav Havel'), as answer keys do. Passages often show the accent dropped or garbled ('Vclav'), so use the unaccented spelling from any passage or strip the accent yourself. Exception: if a verbatim archive answer (Rule 3) prints an accent, copy it.\n- GEOGRAPHY TYPE WORD: a lake, mountain, river, sea, island or desert whose bare name is also an ordinary word or adjective (Superior, Great, Red, Black, Dead) keeps its type noun: 'Lake Superior', not 'Superior', even when the clue lists sibling names without it. Names that clearly identify the place alone (Amazon, Sirius) stay bare. For organisms the clue says are grown or farmed in bulk (fungi, bacteria, algae), give the plural or collective form ('fungi')."
+      },
+      {
+        "op": "insert_after",
+        "target": "Give the bare name ('Ronald Reagan'), not the event, the place or the date.",
+        "content": "\n- A clue that is only a ruler's or head of state's title and name ('Sultan Haji Hassanal Bolkiah') with biographical passages asks for the COUNTRY or state he or she leads ('Brunei'). Do not answer with the title phrase ('Sultan of Brunei') or the person's own name."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

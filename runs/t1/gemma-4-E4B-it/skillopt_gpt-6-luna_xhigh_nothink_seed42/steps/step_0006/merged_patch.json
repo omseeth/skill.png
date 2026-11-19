@@ -1,0 +1,47 @@
+{
+  "reasoning": "Preserved all five failure-driven edits as the higher-priority corrective guidance, including the cache, criteria-mapping, proximity, and hotel-date updates. Added the success-driven flight-date distinction because it covers a separate case not addressed by the failure edits: a destination event date does not establish a flight departure date. No protected-section edits are included.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- At each turn, inspect cache summaries and identify which domains or itinerary legs the latest turn changes. For each changed request, retrieve by exact key a compatible cached result for the same domain, location, dates, and leg whenever its candidate set can be narrowed to the request. It need not already include newly supplied filterable criteria such as cuisine, budget, rating, or amenities. Apply the matching `filter_*` tool to that result with the new constraints, retaining constraints already embodied in the cached result. Do not repeat a base search just to add filterable criteria. Search only when no compatible cached result exists or the request's scope has changed; leave unaffected domains and legs alone.",
+      "content": "- Reconstruct the current request from the full conversation, interpreting even a short reply in the context of the preceding assistant question. Identify only the changed domains or itinerary legs. For each changed request, inspect cache summaries and retrieve by exact key the most refined compatible result for the same domain, location, dates, and leg whose scope still covers the current request and its active constraints. Apply the matching `filter_*` tool only for genuinely new supported criteria, retaining constraints already embodied in the result. Do not repeat a base search just to add filterable criteria or regenerate unaffected domains or legs. If a follow-up adds no new supported constraint (including a reply declining further preferences), do not rerun or filter the search; if the user still wants the existing recommendations, retrieve the compatible cached result by its exact key. Search only when no compatible result can cover the request or its scope has changed.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.\n- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+      "content": "- Pass only criteria supported by the conversation, map each value to its corresponding field, and preserve the user's entity text and category labels rather than substituting similar labels. For attractions, put a state abbreviation in `state`, not `city`. Interpret “at least N” ratings as the inclusive range from N to the field's maximum, and an unqualified exact rating as `[N, N]`. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for “at least N stars,” use the inclusive range from N to the field's maximum, and for an exact star category use the same value as both bounds. Use the tool's accepted formats for preferences such as time ranges, and use an example format only when supported by the tool. Do not add unrelated preferences.\n- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Assign every search, filter, sort, and nearest-results call to a variable and immediately save that same result with `save_to_cache` under a unique, descriptive key, even when it is the final call. For example, use `results = search_restaurants(...)` followed by `save_to_cache(key=\"restaurants\", value=results)`. Do not call these tools inline, print their results instead of saving them, or save an assumed or differently named variable. Pass the assigned result to later filters or nearest calls, use distinct variables and keys for separate domains or legs, and do not overwrite valid cache entries unintentionally.",
+      "content": "- For flight-time ranges, use the tool's accepted 12-hour AM/PM format (for example, `[\"12:12 AM\", \"11:59 PM\"]`), not `HH:MM:SS`. For a one-sided time constraint, use the stated time as the relevant boundary and the appropriate start- or end-of-day time for the other boundary.",
+      "support_count": 1,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- When the user requests proximity, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "content": "- When the user requests proximity between domains, pass the relevant hotel and attraction or restaurant results to `search_nearest`, reusing compatible cached results rather than searching again solely to compute proximity. If the user names a specific attraction, restaurant, or hotel as the proximity target, ensure the results passed to `search_nearest` are scoped to or demonstrably include that named entity; a general city- or category-level result is not sufficient evidence. If needed, run a focused search using the exact name in the appropriate name field, assign and cache its result, and reuse any already-compatible result from the other domain. Set `groupBy` to the type of entity the user wants recommendations grouped around, not merely the location anchor: for example, restaurants near a hotel means `groupBy=\"restaurant\"`, while hotels near attractions means `groupBy=\"hotel\"`.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "Before calling a travel tool, validate its mandatory parameters separately for each requested domain and itinerary leg using the full conversation and available context. If any are missing, do not call that incomplete tool or run a partial search; use one `seek_information` request listing only the missing mandatory details across incomplete requests. Continue with fully specified independent domains or legs, and save their results. Never invent values, pass `None`, or ask for optional preferences. For hotels, when the check-in date and an explicit stay length in nights are known but checkout is not, use `adjust_date` to calculate checkout. Do not infer a stay length; ask when a required date cannot be obtained or derived from explicit information.",
+      "content": "Before calling a travel tool, validate its mandatory parameters separately for each requested domain and itinerary leg using the full conversation and available context. If any are missing, do not call that incomplete tool or run a partial search; use one `seek_information` request listing only the missing mandatory details across incomplete requests. Continue with fully specified independent domains or legs, and save their results. Never invent values, pass `None`, or ask for optional preferences. Hotel searches require a city, check-in date, and checkout date. Use actual dates supplied or derived from explicit information, never example, current, or placeholder dates. Reuse explicit dates already established for the same trip as the hotel check-in and checkout dates when they identify the stay and the user has not supplied separate hotel dates. When check-in and an explicit stay length in nights are known but checkout is not, use `adjust_date` to calculate checkout. Do not infer a stay length; ask for any required date that cannot be obtained or derived from explicit information.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "## Flight itinerary legs",
+      "content": "Use a date as a leg's `departure_date` only when it is explicitly linked to that flight leg. A date given for a destination event, such as a reunion, does not by itself establish the flight's departure date. Arrival-time constraints do not replace a missing departure date; ask for the departure date rather than inferring it.",
+      "support_count": 8,
+      "source_type": "success"
+    }
+  ]
+}

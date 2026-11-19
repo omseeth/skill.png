@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_incremental_cache_coverage",
+      "count": 5,
+      "description": "Plans missed or redundantly reapplied turn-specific criteria instead of using the most relevant cached results and applying only the new constraints."
+    },
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 5,
+      "description": "Required search or refinement results were omitted, left unsaved, or not persisted separately for each requested flight leg."
+    },
+    {
+      "failure_type": "missed_affirmative_acceptance",
+      "count": 2,
+      "description": "An affirmative reply to an assistant's proposed search or amenity was not consistently treated as a request to carry it out."
+    },
+    {
+      "failure_type": "unsupported_inference_or_schema_mismatch",
+      "count": 3,
+      "description": "Broad preferences were mapped to unrelated fields or defaults, and an unsupported parameter was sent to a flight tool."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already instructs agents to save result objects, respect schemas, and handle cache deltas, so repeating those rules would not address the remaining gap. These edits make affirmative acceptance operational and clarify which cache stage to use when both base and refined results are listed.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Resolve elliptical latest turns against the immediately preceding assistant question and all still-pending user requests before deciding what action is needed. A direct answer can introduce a new destination, neighborhood, cuisine, amenity, or other criterion; it is not merely confirmation that an existing base result is adequate. If the answer names multiple locations, apply the other still-valid criteria independently to each location and create a distinct result for each.",
+        "content": "\n- When the assistant offers or asks about a specific search, activity, category, or constraint, an affirmative reply accepts that proposal as an action or criterion. Carry the proposal's concrete details into the appropriate tool call; do not treat agreement as a no-op or as evidence that cached results already cover it."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "\n- If the cache listing contains both base and refined results for an affected domain, prefer the most-refined compatible result whose summary covers the still-valid earlier criteria. Refine that result only with the new criteria; do not restart from a base result when a suitable refinement is listed."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

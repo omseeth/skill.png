@@ -1,0 +1,51 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_and_reuse",
+      "count": 4,
+      "description": "Agents repeated searches or filters for cached and unchanged domains, or tried to filter a cached entity-specific result into a broader category."
+    },
+    {
+      "failure_type": "proximity_composition",
+      "count": 2,
+      "description": "Nearest searches omitted a required dataset or prioritized the wrong domain instead of using compatible cached inputs and obtaining only a missing scope."
+    },
+    {
+      "failure_type": "rating_interpretation",
+      "count": 1,
+      "description": "A bare numeric restaurant rating was treated as a minimum rather than an exact rating."
+    },
+    {
+      "failure_type": "flight_leg_mapping",
+      "count": 1,
+      "description": "The round-trip search included an arrival date on the outbound leg and did not match the expected leg mapping."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch exposes specific execution gaps despite the skill’s existing general cache guidance: late hotel party-size details need an explicit filter path, a narrow entity result cannot be broadened into a category search, and nearest calls need two compatible datasets with the requested priority. Clarifying bare numeric ratings addresses the exact-rating mismatch. The flight-leg rule is already explicit in the skill, so it is not weakened based on a trajectory whose expected direction conflicts with that rule.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Map explicit traveler descriptors to supported party-size fields when the count is unambiguous: for hotel searches, “solo” or “traveling alone” means `num_people=1`. Use stated party sizes directly, but do not infer an exact count from vague terms such as “family.”",
+        "content": "\n- If room or party counts arrive after compatible hotel results are cached, retrieve the most constrained compatible hotel result and use `filter_hotels` with only the newly supplied `num_rooms` and/or `num_people`. Do not repeat the hotel base search or regenerate unchanged domains or legs."
+      },
+      {
+        "op": "replace",
+        "target": "A result restricted to a different category or entity does not establish that a newly requested specific entity is included; search if the cached scope cannot cover it.",
+        "content": "Cache compatibility requires the cached candidate scope to cover the request, not merely to share its domain or location. An entity-specific result cannot be broadened into a new category search (for example, filtering one named attraction to find all Scenic attractions); base-search the uncovered broader scope. Filter only when the cached candidate set already covers the requested scope."
+      },
+      {
+        "op": "replace",
+        "target": "- Call `search_nearest` when the user explicitly requests or accepts proximity, including a clear spatial relation such as asking for restaurants near a hotel or a hotel with access to nearby attractions. Merely requesting a hotel and a restaurant recommendation, or independently mentioning a planned attraction visit in the same trip or city, does not imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "- Call `search_nearest` only when the user explicitly requests or accepts proximity; mentioning domains together does not imply it. The call requires exactly two of its dataset arguments (`hotels`, `restaurants`, `attractions`). Retrieve compatible cached inputs and, if a requested proximity scope is missing, search only for that missing dataset using established location and category context. Never call it with only one dataset or refilter an unchanged input scope. Set `groupBy` to the domain the user wants prioritized (for example, “restaurants near the hotel” means `groupBy=\"restaurant\"`)."
+      },
+      {
+        "op": "replace",
+        "target": "For restaurant ratings and hotel guest ratings, interpret a requested “N-star rating” or “N or higher” as a minimum threshold unless the user explicitly requests an exact rating; use the inclusive range `[N, 5]` in `rating`. Use `[N, N]` only for an explicitly exact rating.",
+        "content": "For restaurant and hotel guest ratings, treat a bare numeric rating request (for example, “a restaurant with 3.5 rating”) as exact and use `[N, N]`. Use `[N, 5]` for “at least N,” “N or higher,” or another explicit minimum. Preserve the distinction between hotel guest `rating` and hotel star category `stars`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

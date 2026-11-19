@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_cache_refinement_errors",
+      "count": 5,
+      "description": "Plans searched again or refined stale/base results instead of applying only the new constraint to a compatible cached result."
+    },
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 5,
+      "description": "Search results were not consistently assigned to variables and saved to cache."
+    },
+    {
+      "failure_type": "missing_mandatory_information_and_partial_execution",
+      "count": 2,
+      "description": "Plans missed available domain searches while dates were missing for other domains, or invented hotel dates and defaults."
+    },
+    {
+      "failure_type": "unsupported_inference_or_extra_work",
+      "count": 2,
+      "description": "Plans added an unrequested dietary preference or repeated work for a domain already covered by cache."
+    },
+    {
+      "failure_type": "unsafe_result_rendering",
+      "count": 1,
+      "description": "Code indexed result dictionaries by an undocumented key and crashed while trying to print recommendations."
+    }
+  ],
+  "patch": {
+    "reasoning": "The cache, persistence, inference, and partial-readiness failures are already explicitly addressed by the skill, so repeating those rules would not patch a content gap. The skill does not yet caution against manually rendering tool results using undocumented fields; add that guard to prevent runtime failures.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "\n- Treat tool results as objects to pass to other tools or cache, not as data to manually render. Do not iterate over `search_results`, index returned dictionaries by guessed keys, or print user-facing summaries unless the result schema documents those fields and the task explicitly requires that output."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,51 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "dropped_requested_domain",
+      "count": 2,
+      "description": "A requested, searchable domain was left out of the first-search block. T2: only seek_information, no restaurant search. T4: round-trip flights only, hotel and its neighborhood dropped."
+    },
+    {
+      "failure_type": "fabricated_mandatory_args",
+      "count": 2,
+      "description": "The agent invented a flight origin (T3, 'Fresno') or copied TOOL CONFIG example dates (T5) instead of asking. The hotel search that was possible in T3 was not run."
+    },
+    {
+      "failure_type": "stale_constraint_in_filter",
+      "count": 2,
+      "description": "On a one-value reply the agent re-passed earlier or already-cached constraints and omitted the new one. T6: 'Around 30' became stars + rooftop bar. T1: 'Downtown San Antonio' became kids club."
+    },
+    {
+      "failure_type": "missing_implied_param",
+      "count": 2,
+      "description": "Phrases that map to a parameter were ignored. T4: 'non-stop' should give num_layovers=[0]. T7: 'solo trip' should give num_people=1."
+    }
+  ],
+  "patch": {
+    "reasoning": "Rule 4b says 'the ONLY output is seek_information' on a first turn, which conflicts with the per-domain split in Section E and the Quick decision order. Edit A reconciles them. Edit B states positive, checkable triggers for multi-domain first turns: search the complete domains, then one closing seek_information. It also bans copying example cities or dates and says a missing flight origin is never guessed. Edit C adds the two missing phrase-to-parameter mappings, 'non-stop' and 'solo', while keeping 'no unstated defaults'. Edit D is a top-of-gate rule that each filter_* kwarg comes from a value in the user's LAST message, which is the shared cause of the T1 and T6 failures. The edits are kept small and avoid the broad 'reply names several domains' and 'date reply = search' changes that regressed in the previous step.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "the ONLY output is one short `seek_information(...)` naming just the missing items. This holds on a first turn (CACHE `{}`).",
+        "content": "that domain gets one short `seek_information(...)` naming just its own missing items. It is the WHOLE output only when no other requested domain is searchable; otherwise follow the PER-DOMAIN SPLIT in the HARD OUTPUT RULES. This holds on a first turn (CACHE `{}`)."
+      },
+      {
+        "op": "replace",
+        "target": "Never add default time windows, flight_class, budget, num_layovers or num_people on flights.",
+        "content": "Never add unstated defaults: time windows, flight_class, budget, num_layovers or num_people. Two stated phrases do map: 'non-stop' / 'direct' -> `num_layovers=[0]` on every flight search, and on hotel tools 'solo' / 'just me' -> `num_people=1`."
+      },
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- MANDATORY ARGS ARE QUOTED, NEVER INVENTED. Every city, flight origin and date in search_flights / search_hotels must be quoted from the conversation. Cities and dates in TOOL CONFIG examples ('2025-08-03', 'Key West') and in this document's examples ('Fresno') are illustrations; never copy them. 'A trip to Anchorage' with no departure city has NO origin: never guess one. No departure date -> no search_flights. No check-in AND check-out date -> no search_hotels. 'Near the beach', 'pool and wifi' and 'non-stop' are optional details, not dates.\n- PER-DOMAIN SPLIT (first search, none of the requested domains cached): handle each requested domain on its own. Search every domain whose mandatory args are quoted, then end with ONE seek_information naming only what is still missing (add the departure city if no origin was named).\n  - hotel + restaurant, city known, no hotel dates -> `restaurants = search_restaurants(city=\"<city>\")` + save 'restaurants', then `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. The seek_information alone is wrong.\n  - flight + hotel, destination and both dates known, origin not named -> `hotels = search_hotels(city=\"<destination>\", checkin_date=[\"<outbound date>\"], checkout_date=[\"<return date>\"])` + save 'hotels', then `seek_information(\"We need the departure city for the flight.\")`. No search_flights.\n  - flight + hotel, no dates at all -> only `seek_information(\"We need the departure date for the flight, and the check-in and check-out dates for the hotel.\")`.\n  - hotel requested in an earlier turn and the dates arrive now, origin and destination known -> both flight legs AND search_hotels in the same block (check-in = outbound date, check-out = return date), carrying the neighborhood and amenities stated in any turn ('hotel in Downtown San Antonio' -> neighborhood=[\"Downtown San Antonio\"])."
+      },
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\n-1. LAST-MESSAGE LITERAL RULE (every filter_* call): split the user's LAST message into its separate values and write exactly one kwarg per value, nothing else. Values from earlier turns and everything the CACHE summary lists (stars, amenities, class, kids club, rooftop bar...) are already applied, even when the last message is only a number or a place name. Check: count the values in the last message; the filter has that many kwargs. 'Around 30.' answering a per-night budget question -> `budget=30` only. 'Yes, Downtown San Antonio would be perfect.' answering an area question -> `neighborhood=[\"Downtown San Antonio\"]` only. A 'Yes' plus a place, number or amenity answers the assistant's LAST question, not an older one."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

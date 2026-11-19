@@ -1,0 +1,44 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "Returned only one component of a canonical proper name instead of the full named entity."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "Over-synthesized alternatives or inferred an answer relation from an underspecified elliptical prompt."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 3,
+      "description": "Expanded people’s names beyond the concise form expected by the clue or answer source."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "Missed the requested referent despite existing guidance: gave the altered title instead of the Shakespeare title, and a description instead of the named object."
+    }
+  ],
+  "patch": {
+    "reasoning": "The people-name guidance currently favors retaining every supported name element, which can conflict with a clue’s conventional short form or a directly paired answer label. Add a distinction for completing a named entity in a fragment, and for choosing a principal answer rather than combining exceptions. The title-relation and formula failures already contradict explicit rules, so duplicating those rules is unlikely to help.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "For people, use the full identity supported by substantive context; do not answer with only a surname merely because a clue echo abbreviates it. Preserve initials, titles, and other name elements when the clue or a reliable passage supplies them—do not strip them for stylistic normalization.",
+        "content": "For people, use the name form appropriate to the clue and the requested scope. When a reliable passage directly pairs the exact clue with an answer label, reproduce that label, even if it uses a surname alone. Otherwise use the conventional public name at the level needed to identify the person: retain distinguishing initials or other elements when needed, but do not add optional middle initials or expand a familiar name solely because they appear in background sources."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Complete Named Entities in Clue Fragments\nWhen a clue uses a blank inside the conventional name of an entity, determine whether it asks you to identify the entity or explicitly to supply only the missing word. For an entity-identification clue, return the full conventional name, not just one component of it; give only the missing token when the wording specifically requests that token."
+      },
+      {
+        "op": "append",
+        "content": "\n\nWhen a question seeks a conventional answer and the evidence distinguishes a principal or usual source from occasional alternatives, return the principal answer rather than combining all listed possibilities. Enumerate alternatives only when the question asks for a complete list."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

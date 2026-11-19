@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_result_persistence_and_variable_binding",
+      "count": 5,
+      "description": "Search results were not saved, or cache writes referenced an undefined variable instead of the assigned result."
+    },
+    {
+      "failure_type": "attraction_criteria_mapping",
+      "count": 4,
+      "description": "Attraction category labels were changed to similar terms, and a state abbreviation was placed in the city field."
+    },
+    {
+      "failure_type": "followup_intent_resolution",
+      "count": 2,
+      "description": "Short replies were not resolved against the preceding assistant question, causing an unrelated nearest call or a fresh search instead of filtering cached results."
+    },
+    {
+      "failure_type": "flight_leg_interpretation",
+      "count": 1,
+      "description": "An explicitly supplied travel date range was used only for the outbound flight, omitting the reverse return leg."
+    },
+    {
+      "failure_type": "required_argument_and_independent_domain_selection",
+      "count": 1,
+      "description": "The agent asked for optional or already-known details and failed to search the fully specified restaurant domain while hotel dates were missing."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already states the basic cache, filtering, and required-input rules, so the edits focus on clearer procedural checks and ambiguities exposed by the trajectories: verify result-variable persistence before returning code, preserve user-supplied category labels, resolve terse replies using dialogue context, and interpret an explicit flight date window as outbound and return dates.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Tool results and constraints",
+        "content": "\n- Before returning generated code, perform a cache-integrity audit: every search, filter, sort, and nearest-results call must be assigned to a variable and immediately followed by saving that exact result. Verify that each `value=` refers to a variable assigned by the matching call; never guess a result variable or substitute printing for the required cache write."
+      },
+      {
+        "op": "replace",
+        "target": "- Pass only criteria supported by the conversation, map each value to the field that expresses it, and preserve the user's entity text. For example, put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences.",
+        "content": "- Pass only criteria supported by the conversation and map each value to the field that expresses it. Preserve the user's entity text, including categorical labels: do not normalize, paraphrase, or replace an attraction `type` with a similar category found in a tool example. Put a state abbreviation in `state`, not `city`. Use the tool's accepted format for preferences such as time ranges; use an example format only when supported by the tool. Distinguish hotel stars (`stars`) from guest ratings (`rating`); for a supported “at least N stars” constraint, use the inclusive range from N to the field's maximum, and for an exact category use the same value as both bounds. Do not add unrelated preferences."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Cache-aware tool workflow",
+        "content": "\n- Resolve a terse reply against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that new search using established trip context. A reply that supplies a filter for an existing result instead requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested."
+      },
+      {
+        "op": "replace",
+        "target": "## Flight itinerary legs\n\nDo not infer a return leg or ask for a return date solely because the user mentions a vacation, getaway, or destination. Request a return date only when the user explicitly asks for a round trip or return leg, or supplies a return date.\nTreat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to both legs, and do not combine distinct legs by repeating keyword arguments in one call.",
+        "content": "## Flight itinerary legs\n\nDo not infer a return leg or ask for a return date solely because the user mentions a vacation, getaway, or destination. Request a return date only when the user explicitly asks for a round trip or return leg, or supplies a return date.\nWhen a flight request gives a trip date window explicitly as a range from an earlier date to a later date, treat the earlier date as the outbound departure date and the later date as the reverse-direction return departure date, unless the user specifies one-way travel or requests only one leg. Do not interpret a list of alternative departure dates as a return date.\nTreat each explicitly described flight leg as a separate directional search with its own origin, destination, and departure date. For a round trip, search the outbound leg on the departure date and the return leg in the reverse direction on the return date; do not represent the return as `arrival_date` on the outbound search. Apply an explicitly requested flight class to both legs, and do not combine distinct legs by repeating keyword arguments in one call."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

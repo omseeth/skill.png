@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every success was a 'this [category noun]' or a fragment clue. The agent named the one entity matching the category noun and gave it as a bare, short answer (Lima, Georgia, Pennsylvania, Rikki-Tikki-Tavi, Thunder Road, Eight Is Enough, Isabella Rossellini).",
+    "When the context held several related entities (a film and its theme song, a series and its author, a daughter and her mother), the agent picked the one whose type matched the clue's category noun. It excluded entities already named in the clue, such as Ingrid Bergman, Robert Mitchum and Tom Braden.",
+    "For a definition-style clue ('It's the cry of a sheep or goat'), the agent answered with the single headword defined across the dictionary snippets, in base form (bleat).",
+    "Epithets and wordplay in the clue ('peachy state', 'missing one of its N's') were resolved by combining a common-knowledge nickname with a context detail, such as 'highest point' or 'Pennsylvania is misspelled on the Liberty Bell'.",
+    "When the clue text appeared verbatim in an archive snippet with the answer cut off, the agent still got it right. It used the entity that dominated the passage titles and details around that snippet."
+  ],
+  "patch": {
+    "reasoning": "The successes show habits the skill only partly covers: choosing among several related entities by category type, handling definition-style clues, and using context when a verbatim clue is truncated. Encoding these should reduce wrong-entity and wrong-form answers. Edits go into existing rules rather than new sections.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "- When the context mentions several related entities (a film and its theme song, a series and its author, a daughter and her mother, a mountain and its state), choose the one whose TYPE matches the clue's category noun. 'this film' -> the film (Thunder Road), not its song; 'this family series' -> the series (Eight Is Enough), not the columnist; 'this daughter' -> the daughter, not the famous mother. Always exclude entities already named in the clue."
+      },
+      {
+        "op": "insert_after",
+        "target": "- If the clue is a fragment, work out what single thing connects it to the context.",
+        "content": "\n- Definition-style clues ('It's the cry of a sheep or goat', 'a word meaning...') want the single headword being defined, in its base dictionary form (e.g. 'bleat', not 'bleated' or 'bleating'). Take it from the word repeated in the dictionary/definition snippets.\n- Epithets and wordplay ('this peachy state', 'missing one of its N's') are resolved by combining the nickname or hint with a concrete detail from the context (e.g. highest point, misspelled word on an object)."
+      },
+      {
+        "op": "replace",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "- Otherwise, build the answer from passages that match several of the clue's details. If the clue text appears verbatim in an archive snippet but the answer is cut off, use the surrounding passages: the entity that dominates the passage titles and matches the most clue details (e.g. the film title in 'Thunder Road (film)' pages) is the answer. Answer directly and do not talk yourself out of a well-supported entity."
+      }
+    ]
+  },
+  "source_type": "success"
+}

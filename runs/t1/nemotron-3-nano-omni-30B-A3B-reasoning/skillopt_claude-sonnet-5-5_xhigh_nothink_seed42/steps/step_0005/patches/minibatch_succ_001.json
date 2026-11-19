@@ -1,0 +1,18 @@
+{
+  "batch_size": 2,
+  "success_patterns": [
+    "Flight + hotel request with no dates anywhere in the conversation: the agent emitted a single seek_information about the missing date and made no search call, which matches Rules 6 and 7.",
+    "Multi-turn flight + hotel request where dates arrive in the last turn: the agent used the dates to run two one-way flight searches plus one hotel search in the same block, saved each under its own key, and carried the hotel amenity from turn 1 ('hotel with a kitchen' -> has_inroom_kitchen=True) together with the new party detail from the last turn (num_rooms=3). This is Rule 9 plus Rule 14, but the carry-over of earlier-turn optional constraints into the first search is only implicit."
+  ],
+  "patch": {
+    "reasoning": "Both successes follow existing rules. The one behaviour that is only implicit is that an optional constraint stated in an earlier turn (a hotel amenity) must not be dropped when the missing mandatory dates arrive in a later turn. It must be mapped to the single matching hotel parameter and combined with details from the last turn. Making this explicit prevents the agent from searching with only the dates and the last turn's details.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Include optional details the user explicitly stated (num_rooms, num_people, budget, amenities, cuisine, ...) as keyword args in the search call, and nothing the user did not say.",
+        "content": "- Carry over optional constraints from EARLIER turns into the first search once the dates arrive. Each constraint goes only to its own domain's search, together with new details from the last turn. Example: turn 1 'round-trip flight Lexington to Las Vegas, a hotel with a kitchen for a family vacation', last turn 'depart May 19, 2025, return May 22, 2025, we need 3 rooms' -> two search_flights calls (outbound and return, saved as departure_flights / return_flights) plus `search_hotels(city=\"Las Vegas\", checkin_date=[\"May 19, 2025\"], checkout_date=[\"May 22, 2025\"], num_rooms=3, has_inroom_kitchen=True)` saved as \"hotels\". 'Kitchen' maps to has_inroom_kitchen only. The purpose ('family vacation') adds nothing, and the party size is not a flight parameter."
+      }
+    ]
+  },
+  "source_type": "success"
+}

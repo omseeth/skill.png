@@ -1,0 +1,40 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "follow_up_state_reconciliation",
+      "count": 5,
+      "description": "Follow-ups were treated as isolated new tasks, so earlier pending requests or new constraints were skipped or misapplied."
+    },
+    {
+      "failure_type": "tool_call_integrity",
+      "count": 6,
+      "description": "Generated code included undefined variables, duplicate or unsaved result calls, or unsupported helper/date-handling code."
+    },
+    {
+      "failure_type": "location_and_proximity_routing",
+      "count": 3,
+      "description": "Neighborhood constraints were mistaken for proximity requests or handled by rerunning nearest instead of filtering affected results."
+    },
+    {
+      "failure_type": "contextual_criterion_mapping",
+      "count": 1,
+      "description": "A short answer was mapped to the wrong flight field instead of being interpreted in the context of the assistant's question."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing skill already covers cache reconciliation, saving tool results, and avoiding helper code, so those rules need not be duplicated. These focused clarifications address ambiguity in short compound answers and distinguish neighborhood filters across requested domains from proximity operations.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n- **Interpret clarification answers in context:** Map a short answer to the field or fields the assistant asked about, rather than interpreting an ambiguous word or abbreviation in isolation. If the reply supplies multiple criteria for one domain, capture all of them and include them together in the same follow-up filter call where supported; do not select only one criterion."
+      },
+      {
+        "op": "replace",
+        "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results. Do not pass the attraction name as a `neighborhood` value or approximate proximity with a neighborhood filter. If a later constraint changes an underlying domain result, such as filtering the hotel set, recompute and save `search_nearest` using the updated result and the latest suitable cached result for the other domain. If the latest suitable cached base is already the combined nearest result and supports applying the new constraint directly, filter and save it instead of making an unnecessary nearest call.",
+        "content": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. A request for a hotel or restaurant “near” a named attraction or landmark is a proximity request: retrieve the attraction results from cache or search for them if absent, then use them with the hotel or restaurant results. Do not pass the attraction name as a `neighborhood` value or approximate proximity with a neighborhood filter. A new neighborhood or area preference is a location constraint, not a request to rerun `search_nearest`: apply and save the same-domain filter to each explicitly targeted domain independently. If the user says the area applies to both hotels and restaurants, update both; use the latest suitable cached result for each, including a combined nearest result when it is a suitable filter base. Recompute `search_nearest` only when a proximity result itself must be refreshed and cannot be updated by filtering a suitable cached combined result."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

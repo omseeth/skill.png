@@ -1,0 +1,48 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 4,
+      "description": "Responses chose an epithet or related candidate instead of resolving the clue’s referent and matching the requested semantic kind."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A time-sensitive label such as “current” was interpreted without anchoring it to the clue’s reference date and biographical details."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "An elliptical clue led the agent to answer the retrieval results’ topic rather than the salient shared attribute of the named entities."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 2,
+      "description": "The answer had the right general concept but missed the expected canonical name form or singular headword."
+    }
+  ],
+  "patch": {
+    "reasoning": "Operationalize the existing semantic-type guidance by requiring candidates to match the clue’s target and all distinguishing details, not merely be associated with them. Add guidance for temporal and elliptical clues, and standardize the final answer form to reduce strict-match failures.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "## Type the Unknown Before Answering\nFor a clue-like prompt, identify the semantic type of the requested answer before retrieving it. Preserve the head noun in phrases such as “this phenomenon”: answer with a phenomenon, not an associated personification. In “a person like X” constructions, treat X as an example and give the relevant shared role or category. If a declarative clue describes an entity using a pronoun, resolve the pronoun’s referent rather than treating the statement as a request to judge its truth. Reject candidates that are associated with the answer but are not the requested kind of thing.",
+        "content": "## Type the Unknown Before Answering\nBefore retrieving, paraphrase what the clue asks for as a type of answer (for example, a person, place, object, ingredient, or phenomenon). Match the clue’s actual target: an epithet or description usually points to the named entity it describes, while an ingredient is not the dish made from it and a look-alike is not necessarily a specialized kind of double. For pronouns and demonstratives, resolve the referent. Check that a candidate fits the clue’s distinctive details together, not just one associated topic or name; reject near-misses that do not satisfy the requested type or relationships."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Anchor Time-Sensitive Clues\nInterpret words such as “current,” “former,” and “now” relative to the clue’s own source or reference date, which may differ from today. Use the distinctive biographical or historical details to disambiguate candidates rather than relying on a present-day title alone."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Handle Elliptical Clues\nWhen a prompt is only a fragment and has no explicit question, infer the most salient answer relation or shared category from the named entities and the clue context. Do not mistake the dominant topic of retrieved passages for the requested answer; avoid adding a relation that the prompt does not support."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Use Canonical Answer Forms\nFor strict short-answer tasks, give the conventional canonical form: preserve meaningful, supported parts of a proper name (including customary titles when relevant), and use the singular headword when a clue asks for a term even if its description uses a plural. Keep the answer concise and do not add explanatory wording."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

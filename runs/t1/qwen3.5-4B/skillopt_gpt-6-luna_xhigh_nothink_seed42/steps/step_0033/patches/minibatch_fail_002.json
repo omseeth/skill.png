@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "follow_up_action_misclassification",
+      "count": 6,
+      "description": "Explicit follow-up criteria were ignored, sent to the wrong action, or accompanied by unnecessary work on unchanged domains."
+    },
+    {
+      "failure_type": "cache_write_omission",
+      "count": 3,
+      "description": "Generated search or filter results were not saved to cache."
+    },
+    {
+      "failure_type": "runtime_import_violation",
+      "count": 1,
+      "description": "An import from a nonexistent tools module caused execution to fail."
+    },
+    {
+      "failure_type": "invalid_controlled_choice_casing",
+      "count": 1,
+      "description": "A flight class value used title case instead of the schema-accepted lowercase choice, causing a runtime error."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed problems are already covered by the skill, so the patch avoids repeating cache-write and no-import instructions. It clarifies how to handle a newly completed pending search, distinguishes neighborhood preferences from proximity requests, and resolves ambiguity about accepted flight-class casing.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result.",
+        "content": " If a later reply supplies the missing required inputs for a previously requested but not-yet-searched domain, perform that pending search in the same turn; do not refresh or transform domains whose criteria are unchanged."
+      },
+      {
+        "op": "replace",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- For recommendations near another result type, first apply any newly stated criteria to the compatible current results for each participating domain, then call `search_nearest` with those updated results and save its output. A preference to stay in a named neighborhood is a domain location criterion, not a proximity request: apply it through the supported `neighborhood` field, and call `search_nearest` only when proximity is requested. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel."
+      },
+      {
+        "op": "insert_after",
+        "target": "For flights, pass an explicitly provided airport code in the corresponding `start_airport_code` or `end_airport_code` field; do not substitute it for a city or airport-name value.",
+        "content": "\n\nFor `flight_class`, use the schema's lowercase choices: `\"economy\"`, `\"business\"`, or `\"first\"`, even if the user or an example uses different casing."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

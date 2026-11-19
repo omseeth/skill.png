@@ -1,0 +1,38 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "request_coverage",
+      "count": 8,
+      "description": "Agents omitted or misread latest-turn actions, including attraction requests and explicit proximity relations."
+    },
+    {
+      "failure_type": "cache_selection_and_refinement",
+      "count": 6,
+      "description": "Agents used stale or less-refined results, repeated covered criteria, or searched when a compatible result was cached."
+    },
+    {
+      "failure_type": "schema_and_constraint_fidelity",
+      "count": 3,
+      "description": "Agents used unsupported or incorrectly encoded fields and added unstated filters or cross-domain preferences."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that an attraction request remains actionable even when it does not imply proximity, make explicit “near” relations translate into nearest-results calls rather than neighborhood filters, and reinforce omission of unstated options and separation of domain-specific constraints. Existing cache guidance already covers cache selection and refinement, so it is not duplicated.",
+    "edits": [
+      {
+        "insert_after": "Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+        "content": "\n- This no-nearest rule does not cancel an attraction request: when the user wants to visit a named attraction, retrieve a compatible result for that exact name or search with `attraction_name`; include an explicitly stated attraction `type` as well. A generic or category-only attraction result does not cover a separately named site."
+      },
+      {
+        "insert_after": "- Pass the relevant result objects for the two domains being compared. Set `groupBy` to the domain whose candidates the user wants ranked or recommended (the focal domain), not the reference domain: hotels near an attraction use `groupBy=\"hotel\"`, while restaurants near a hotel use `groupBy=\"restaurant\"`.",
+        "content": "\n- For an explicit request for hotels or restaurants near a named attraction, treat “near” as a cross-domain relation: do not pass the attraction name as a hotel or restaurant `neighborhood`. Ensure the exact attraction result is available, then call `search_nearest` with both relevant results and the requested focal domain."
+      },
+      {
+        "replace": "Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+        "content": "Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Omit optional fields the user did not state rather than setting them to `False`. Keep each constraint attached to its stated domain; for example, a flight budget is not a hotel budget. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

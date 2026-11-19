@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Agent answered a thing named in the clue or a passage title instead of the owner, creator or person the pointer asks for. Examples: 'En folkefiende' for 'his 1882 drama' (Henrik Ibsen), 'World Golf Hall of Fame' for 'this organization's Hall of Fame' (LPGA), 'segregated school' for 'this man' (Oliver Brown)."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "A bare list of real names ('Edward Kennedy, John Kerry') or a bare quoted catchphrase ('Yabba Dabba Do!') got one of the names or a passage-title echo ('I Yabba-Dabba Do!') instead of the shared category (Massachusetts) or the work (The Flintstones)."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "Agent chose the dominant entity in the passages (Corazon Aquino) although the clue's role descriptor ('former first lady') fits another person that a passage names explicitly (Imelda Marcos)."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 2,
+      "description": "Name form mismatch. The agent used the encyclopedic 'George H. W. Bush' where the clue itself says 'George Bush'. It gave bare 'Superior' where the clue never supplied the type word and the key is 'Lake Superior'."
+    }
+  ],
+  "patch": {
+    "reasoning": "Five of the eight failures put the wrong kind of entity in the answer: the thing named in the clue or in a passage title, or one name from a list, instead of the person, owner, creator, show or shared place the clue points to. I add two compact rules with examples taken from this batch: one for possessive and owner pointers, and one for bare name lists and bare catchphrases. A third rule makes the agent check the clue's role descriptors against the candidate, so a prominent but mismatched person is not chosen. The fourth rule gives name-form guidance: copy the clue's own form of a name, and keep the type word when the clue did not state it. These rules do not duplicate earlier rules, and none of them repeats the broad category-check edit that was rejected earlier.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- 'One of these <role/title>' ('the 14th one of these spiritual leaders') asks for the title or category noun itself (Dalai Lama), not the individual named in the clue.",
+        "content": "\n- Possessive / owner pointers: when the clue says 'his/her 1882 drama', 'this organization's Hall of Fame', 'this man sued ...', the thing named in the clue (a title, a hall of fame, a lawsuit topic) is only an ANCHOR. The answer is the person or body that owns, wrote, founded or did it. '\"En Folkefiende\" is the Norwegian title of his 1882 drama' -> 'Henrik Ibsen' (not 'En folkefiende'). 'Nancy Lopez & Beth Daniel are in this organization's Hall of Fame, founded in 1967' -> 'LPGA' (the organization that founded it, not 'World Golf Hall of Fame'). 'In the 1950s this man sued the Topeka Board of Education over which school his daughter might attend' -> 'Oliver Brown' (a person's name, never a description like 'segregated school'). Scan the passages for the person or body that is paired with the clue's details."
+      },
+      {
+        "op": "insert_after",
+        "target": "- If the clue is a fragment, work out what single thing connects it to the context. Examples: places plus language context -> the language or nationality; a phrase with '...' -> the missing word; 'his/her/this [work]' -> the person who created it. The context passages about the topic usually reveal the link.",
+        "content": "\n- A bare list of REAL people ('Edward Kennedy,John Kerry') with no verb asks for the one thing they all share: the state, party, team, country or school the passages tie to all of them ('Massachusetts'). NEVER answer with one of the listed names, even a variant ('Ted Kennedy'). A bare quoted catchphrase or exclamation ('\"Yabba Dabba Do!\"') asks for the show, character or person it belongs to ('The Flintstones'). Passage titles that merely contain the quoted words (a TV movie or video called 'I Yabba-Dabba Do!') are search hits, not the answer. Name the franchise or origin they all point back to."
+      },
+      {
+        "op": "insert_after",
+        "target": "- If the context offers several candidates (a different player in the same article, a film and its song), pick the one that satisfies ALL distinctive details: exact numbers, team, years, place. Do not choose one that fits only some.",
+        "content": "\n- ROLE CHECK for person clues: the descriptors in the clue ('former first lady', 'president of the Senate', 'wife of ...') must hold for the candidate at the time of the event. The most famous or most frequent name in the passages is often a distractor (the sitting president, not the former first lady). Search the passages for the descriptor itself next to the event ('Eight candidates, including former First Lady Imelda Marcos') and answer with that person ('Imelda Marcos'), even if she appears in only one passage."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For nickname clues about a person ('known as \"Uncle Walter\"'), answer with the real name as it appears in the context (Walter Cronkite), not the nickname. Still apply the person-name rule above.",
+        "content": "\n- Match the clue's own form. If the clue already names the person in a particular form ('announced that George Bush won'), answer in that same form ('George Bush'), not the encyclopedic 'George H. W. Bush' with added initials. Conversely, when the clue never states the type word ('The Great Lakes are Huron, Ontario, Michigan, Erie & this one ...'), the standard full name includes it ('Lake Superior', not bare 'Superior'). The delete-clue-words test only strips words the clue actually contains."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_or_tool_identity_mismatch",
+      "count": 5,
+      "description": "Calls used an abbreviated or incorrectly formatted tool name, a neighboring operation, or a less suitable endpoint."
+    },
+    {
+      "failure_type": "schema_and_serialization_mismatch",
+      "count": 6,
+      "description": "Arguments missed schema placement or supported fields, or their values did not match the active name/value serialization format."
+    },
+    {
+      "failure_type": "constraint_mapping_error",
+      "count": 4,
+      "description": "Explicit inputs were omitted or replaced with guessed values instead of being mapped to compatible fields."
+    },
+    {
+      "failure_type": "invalid_output_format",
+      "count": 1,
+      "description": "Malformed JSON prevented the call list from being parsed."
+    }
+  ],
+  "patch": {
+    "reasoning": "A more actionable final audit targets the recurring endpoint-selection, argument-mapping, and serialization errors while preserving the existing coverage and schema checks. It also explicitly checks that the finished output parses as the required JSON.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before responding, perform a two-way audit: map every requested outcome to the call or calls that fulfill it, checking each endpoint's operation, source, and requested result granularity; then ensure every call serves at least one requested outcome and remove unmatched calls. For each remaining call, compare its arguments field by field with that endpoint's schema and the request: use exact parameter names and declared types, place each parameter exactly once in the required or optional bucket specified by the schema, and include each compatible explicit constraint in its accepted form. When supported, preserve both bounds of a range rather than using an exact-value field. Omit unsupported or unrequested values, and do not fabricate missing required values. Emit one call object per endpoint invocation. Finally, validate the complete response as valid JSON in the exact active format and wrapper, with exact tool names, allowed keys, required empty arrays, and well-formed parameter objects; check for duplicate keys, malformed wrappers, bundled calls, or extra text.",
+        "content": "- Before responding, run a call-by-call audit. Map every requested outcome to a call and remove calls that serve none; verify each operation fits the requested result, and copy the full tool identifier exactly from the tool list, including its provider prefix, spacing, and punctuation. Check every argument against that operation's own schema and the request: exact field and grounded value, required/optional placement exactly once, and all compatible explicit constraints, including supported counts, pages, and both range bounds. Use the schema's accepted value type while also following the active answer format's wire representation; in name/value-entry formats, do not assume the serialized JSON value must use the API's underlying NUMBER or BOOLEAN type when the format requires string-valued entries. Omit unsupported or unrequested values and never fabricate missing required inputs. Emit one invocation per object, then verify the complete response parses as valid JSON in the exact required wrapper, with exact keys and any required empty arrays."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

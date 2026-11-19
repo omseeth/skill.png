@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "fabricated_mandatory_dates",
+      "count": 2,
+      "description": "With CACHE empty and no dates given (family vacation hotel+restaurant opener; flight+hotel weekend getaway then 'business'), the agent searched with the skill-example date 'May 16, 2025' (and num_people=4) instead of seeking dates."
+    },
+    {
+      "failure_type": "wrong_domain_or_stale_refilter_on_hotel_reply",
+      "count": 2,
+      "description": "Hotel replies ('gym and wifi'; '2 of us and 2 rooms') triggered flight filters (airline=['Memphis']) or a full re-filter of flights and hotels, instead of one filter_hotels on the most refined hotels key."
+    },
+    {
+      "failure_type": "flight_key_handling",
+      "count": 2,
+      "description": "One flight leg skipped on a class reply (return_flights ignored), and a filter loaded a nonexistent 'flights' key when the CACHE had no flight key and the user gave a date range for a return-only flight plus hotel."
+    },
+    {
+      "failure_type": "missing_flight_time_constraints",
+      "count": 1,
+      "description": "User-stated 'arrive on <date> by <time>' and 'depart by <time>' were dropped from the first search_flights; gold uses arrival_date/arrival_time/departure_time windows."
+    },
+    {
+      "failure_type": "output_hygiene",
+      "count": 1,
+      "description": "Bare unassigned search_restaurants call, no save_to_cache, and a stray </parameter> tag caused a SyntaxError."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four small edits, one per recurring pattern, with no new top-level gates. (1) Strengthen the existing DATE GATE so a class/airline/amenity reply or a first-turn opener never yields a search with a remembered example date, and name the correct output (seek_information plus any searchable domain). (2) Add one bullet to the scope section that owns hotel-domain replies when a hotels key exists. It covers rooms and party size, bans flight lines and airline hallucinations, and uses placeholders so no kwarg values leak. (3) Extend the flight-reply rule to name both legs and to say it only applies when a flight key is actually in CACHE, which covers the under-fire and the missing-key load. (4) Add the missing rule that user-stated flight times and arrival dates are real constraints with 12-hour windows, filling a gap that 'never invent default time windows' had suppressed.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "find the date the user literally wrote in the conversation (e.g. 'May 16, 2025'). Found -> search with it.",
+        "content": "find the date the user literally wrote in a USER message (a flight class, airline, budget, stars, amenity, 'family'/'weekend' or party-size reply is never a date). Found -> search with it. If no user message holds a concrete date (first-turn openers like 'family vacation', 'weekend getaway', a flight + hotel request, or a bare 'I'm looking at business'), NO search_flights / search_hotels is allowed, whatever dates you remember from this skill's examples: write seek_information for the missing dates, preceded by the searches of any other requested domain whose mandatory args are known (e.g. `search_restaurants(city=...)` saved as 'restaurants'). 'family' gives no num_people."
+      },
+      {
+        "op": "insert_after",
+        "target": "At most `x = get_results_from_cache(key=\"<flight key>\")` for each cached flight key.",
+        "content": "\n   - A hotel-domain reply when a hotels key IS in CACHE (stars, amenity words such as gym/wifi/pool mapped via Rule 27, neighborhood, per-night budget, party size, rooms, or a 'Yes' to the assistant's hotel-amenity offer): output exactly three lines. Load the MOST REFINED hotels key (a `filtered_hotels*` key beats `hotels`), `h2 = filter_hotels(prior_results=h, <only kwargs from the last message>)`, save under an unused key. 'N of us' -> `num_people=<N>`; 'M rooms' -> `num_rooms=<M>`; both go in the same call. Write ZERO flight lines (flight keys and an earlier class stay untouched) and do not re-pass stars, neighborhood or amenities already in the summary. `airline=` only takes a carrier code the user typed; a city name, 'gym' or 'wifi' is never an airline."
+      },
+      {
+        "op": "replace",
+        "target": "stopping after the first key is wrong.",
+        "content": "stopping after the first key is wrong (with `flights` and `return_flights` both cached, 'economy' needs the filtered `flights` block AND the filtered `return_flights` block). This rule applies only when at least one flight key is literally in CACHE. With NO flight key, a date range or a 'just the return flight' reply is a first search (rule -2): search only the leg(s) requested, plus the hotel if one was requested, and never load a 'flights' key that is not in CACHE."
+      },
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- STATED FLIGHT TIMES ARE CONSTRAINTS (first search_flights call and filter_flights): collect every flight date and time the user gave in ANY turn into the one call for that leg, using 12-hour strings as written ('04:33 AM'). 'depart by / before T' -> `departure_time=[\"12:00 AM\", \"T\"]`; 'depart after T' -> `departure_time=[\"T\", \"11:59 PM\"]`; 'arrive on <date> by T' -> `arrival_date=[\"<date>\"]` and `arrival_time=[\"12:00 AM\", \"T\"]`, plus `departure_date` for the departure day. 'As early as possible' alone adds no window; the explicit 'by T' does. Use only times the user stated and never invent a window."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

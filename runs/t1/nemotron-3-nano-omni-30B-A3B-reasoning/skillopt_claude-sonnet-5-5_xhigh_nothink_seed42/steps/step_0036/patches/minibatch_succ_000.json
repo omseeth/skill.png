@@ -1,0 +1,21 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "First-turn openers that give only a destination plus an occasion (birthday, business conference) and name no service produce a single seek_information with no search and nothing saved. Cache comparison passes because the cache stays empty.",
+    "A first restaurant request with a city is a bare `search_restaurants(city=...)`, dropping descriptors like 'business lunch'. The result is assigned and saved as 'restaurants'.",
+    "A restaurant refinement (cuisine, rating) loads the cached 'restaurants' key and passes only the last message's kwargs ('at least 4.0' becomes rating=[4.0, 5]). Cached hotel keys are left alone.",
+    "A flight class reply with several flight keys cached (first_departure_flights, second_departure_flights, first_return_flights) gets one load/filter/save block per key. The same kwarg is used in every block and no hotel lines appear.",
+    "Code stays plain: every call is assigned and saved, with no imports, comments or prints. Key names are not scored, so any unused name works."
+  ],
+  "patch": {
+    "reasoning": "Nearly every success is already covered by the existing rules. The one gap is the destination-plus-occasion opener with no service named. It is not the flight-implying case in Rule 7, because there is no origin. In the batch it was handled correctly by emitting a lone seek_information. One short line pins this down and guards against the failure mode in the weakest 'success', where `<date>` placeholders were written into search calls. The meta-skill advises shrinking the skill, so this is a single compact insertion and does not add a new gate or example block.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Mention only MISSING MANDATORY parameters. Never ask for optional ones.",
+        "content": "- Destination-plus-occasion opener with NO service named and no dates ('a trip to Colorado Springs for my birthday', 'headed to Las Vegas for a business conference'): output ONE short seek_information (what they need, hotel dates or flight date) and nothing else. Never call search_* with placeholders such as '<date>'. Nothing is saved on that turn."
+      }
+    ]
+  },
+  "source_type": "success"
+}

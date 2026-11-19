@@ -1,0 +1,46 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "tool_choice_among_sibling_validators",
+      "count": 3,
+      "description": "Several providers offer equivalent email checks. The agent used one tool for every item or picked a different provider's MX tool, while the gold answers spread items across the matching validators or kept MX and disposable checks on one provider (T1, T2, T3)."
+    },
+    {
+      "failure_type": "missing_call",
+      "count": 1,
+      "description": "The final clause of a long First/Then/Finally narrative (mark-price klines on Bybit) got no call, and the answer ended without a closing `</answer>` (T4)."
+    },
+    {
+      "failure_type": "wrong_parameter_value",
+      "count": 1,
+      "description": "The Alpha Vantage `function` was set to TIME_SERIES_DAILY instead of the endpoint's own name DIGITAL_CURRENCY_DAILY (T4)."
+    }
+  ],
+  "patch": {
+    "reasoning": "T4 has deterministic, generalizable fixes: the `function` value must equal the endpoint name, every narrative clause needs a call, and the answer must be closed. T1-T3 are all email tasks where the gold spread items over sibling validators or kept related checks on the same provider. Guidance on that raises tool overlap and corrects the MX-provider choice without contradicting the existing 'do not stack validators on one input' rule. The edits avoid the earlier rejected edits, which were broad and rewrote the parameter section.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+        "content": "\n- A `function`-style selector parameter takes the endpoint's own name as its value. Alpha Vantage `DIGITAL_CURRENCY_DAILY` -> function `DIGITAL_CURRENCY_DAILY` (never `TIME_SERIES_DAILY`). 'ETH in USD' -> symbol `ETH`, market `USD`.\n- Fill EVERY required parameter from values stated or implied in the query, and copy stated numbers and timestamps verbatim. For a kline tool, 'hourly (60-minute)' -> interval `60`, 'linear perpetual' -> category `linear`, and the given start and end timestamps go in as `start` and `end`. 'Pulling 500 recent trades' -> limit `500`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Before answering, tick each sentence of the query (first and last included) against your calls. Add any missing call and delete any call that no clause asks for.",
+        "content": "\n- In 'First..., Then..., Finally...' narratives, every sentence that names an endpoint ('Bybit's Public Trading Records', 'Alpha Vantage's DIGITAL_CURRENCY_DAILY') or describes a data request ('mark price movements ... klines' -> `Bybit: Get Mark Price Kline`) gets its own call. The LAST sentence is the one most often dropped, so check it explicitly. A closing sentence about purpose ('this allowed me to examine...') asks for no call. Always finish the answer with `}]</answer>`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Never pick a tool just because a parameter value fits (e.g. a country code).",
+        "content": "\n- When several providers offer the same specific check (e.g. two different MX-record tools), prefer the provider that also supplies the tool for another check in the same query. 'MX records' plus 'disposable' -> `Email Existence Validator: Get the MX Records` and `Email Existence Validator: Check for Disposable emails`, not `Email API: Check Email MX Records`. Prefer a validator whose own description names the exact check (disposable, MX, SMTP, role account) over a generic one."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "\n- A generic 'validate / verify validity / check legitimacy / evaluate if disposable' clause over 3 or more emails or domains, where 3 or more tools genuinely fit (validators, disposable checkers, domain checkers), is normally answered by spreading the items across 2-4 of those matching tools, about 1-2 items per tool, with each item appearing in exactly one call. Do not run all items through a single validator. Use a tool whose description matches the check, skip tools for other purposes (inbox, send, generate, scrape, help page, heartbeat), and keep specific checks (MX records, SMTP, role account, free provider) on their one matching tool. Never run two different validators on the same item."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,41 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_cache_lifecycle",
+      "count": 3,
+      "description": "A pending refinement or search was omitted, or its cached input was not retrieved and its result was not saved."
+    },
+    {
+      "failure_type": "unscoped_or_unsafe_tool_code",
+      "count": 2,
+      "description": "Trajectories added unsupported or unrelated work, or used code that prevented the intended tool actions from executing."
+    },
+    {
+      "failure_type": "flight_leg_direction_and_date",
+      "count": 1,
+      "description": "A request for only the return flight was treated as an outbound flight and its later date was misused."
+    },
+    {
+      "failure_type": "lost_hotel_preference",
+      "count": 1,
+      "description": "A previously stated hotel preference for beach access was dropped when the dates became available."
+    }
+  ],
+  "patch": {
+    "reasoning": "A per-item action checklist makes cache retrieval, refinements, searches, and result saving explicit before code is emitted, addressing repeated omissions without expanding the already-covered runtime and scope rules. The flight and hotel additions clarify two interpretation gaps exposed by the batch.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- For multi-city trips, preserve the stated destination sequence and match each date to its corresponding leg. Do not combine dates or invent arrival dates.",
+        "content": "\n- If the user requests only the return flight, search the reverse of the stated outbound route. The return flight departs on the stated return date; do not search the outbound leg or use that date as an arrival date."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`.",
+        "content": "\n- When a user asks for a hotel near the beach and the hotel schema supports `has_beach_access`, represent that preference with `has_beach_access=True`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

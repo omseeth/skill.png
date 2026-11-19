@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Wrong slot type or an echoed clue word: 'New Albion' (a place) for 'this English circumnavigator', 'Area of a circle' for 'Its area equals pi r squared', and 'Starr' (a word from a neighboring clue) for a caption clue asking for a president. The skill already has these rules but they are not applied."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "An explicit hard constraint was skipped: 'FLOOSIE' has 6 letters for a '(4)' clue even though the skill uses this exact example, and the archive flashcard line '...SAN FRANCISCO, DRAKE.' was not copied."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "Form rules not applied: a long event name instead of the short generic 'the marathon', and 'meander' instead of the '-ing' form 'Meandering' for a clue defined by 'following a winding course'."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "The gold key adds an optional part ('Funk & Wagnalls' instead of 'Funk'). This is not fixable by a rule."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "The gold key adds optional wording ('(The People's Republic of) China'). This is not fixable by a rule."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures are rule_ignored. The agent emits a bare answer, so rules buried in a long list never fire. The strategic block asks for a check line but sits at the bottom and is skipped. Edit 1 adds a short, forced three-field procedure at the very top of the editable part. It bundles the checks that would have caught the recurring misses: slot type, quoted evidence, candidate substitution, letter count, caption clues and part of speech. Edit 2 patches a real gap in Rule 3: flashcard dumps put the answer after a comma at the end of the clue, and archive pages list many clues in a row, so the agent must not take a neighbor clue's word. I deliberately wrote no edits for the optional-word gold keys, which would regress stable passes.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Question Answering Skill",
+        "content": "\n## STEP 0 (mandatory, every question): write ONE line before the answer tags\n`Type: <noun the clue asks for> | Evidence: <quoted passage line or own fact> | Check: <result>`\nThen give the bare answer. Write the line even when you feel sure.\n- **Type**: take the noun after 'this/these/its/his/her/who' (person, city, country, word, thing, work). Places, events, ships, titles and names that merely appear in the clue or passages are anchors, not the answer. 'this English circumnavigator ... put the ship in at an inlet' asks for the PERSON, not the name given to the inlet. 'Its area equals pi r squared' asks for the thing that owns the property (the shape), not 'area of ...'. A clue that is just a caption such as 'seen here: (U.S. president, '81-'89)' asks for the person fitting the parenthetical, not a word from a neighboring clue.\n- **Evidence**: first look for the clue's own words repeated in a passage (Rule 3) and quote the answer attached to it. If none is attached, use your own knowledge of who or what fits EVERY detail.\n- **Check** (all four must pass): (a) put the answer into the clue's blank or 'this' slot. It must read correctly, be the right kind of thing, and not repeat a noun already in the clue. (b) If the clue ends with '(N)', count the answer's letters; if the count is not N, pick another word. (c) A real person gets the full name (add 'Sir' for a knight) with no middle initial. (d) Match the part of speech and length of the definition. A definition that starts with an '-ing' verb ('following a winding course') wants the '-ing' word. 'this <generic event or thing>' wants the short generic name even if passages give a long proper name with a city or sponsor.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 3: Look for the clue repeated verbatim in the context",
+        "content": "- Flashcard or quiz dumps often run the clue straight into its answer after a comma or dash, then start the next clue: 'IN 1579 THIS ENGLISH CIRCUMNAVIGATOR PUT THE GOLDEN HIND IN FOR REPAIRS ... SAN FRANCISCO, DRAKE. THIS CITY...'. The word(s) right after the clue's last words are the answer. Take that answer, then apply Step 0 form checks (for example, a full person name).\n- Archive pages list MANY clues in a row. Only take an answer attached to YOUR clue's text. A word from a neighboring clue (another clue in the same category, a contestant's name, a quoted word like 'Starr') is NOT the answer."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

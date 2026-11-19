@@ -1,0 +1,31 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "schema_field_mapping",
+      "count": 3,
+      "description": "State abbreviations for attraction searches were passed as city values instead of state values."
+    },
+    {
+      "failure_type": "tool_result_handling",
+      "count": 3,
+      "description": "Fresh search results were not saved correctly: calls were omitted from the cache or the function itself was passed instead of its result."
+    },
+    {
+      "failure_type": "cache_reuse_failure",
+      "count": 2,
+      "description": "Filterable updates to already-cached hotel and flight results triggered new base searches instead of retrieval and filtering."
+    }
+  ],
+  "patch": {
+    "reasoning": "These mistakes occur despite detailed guidance elsewhere in the skill, suggesting the key execution decisions need a more prominent turn-level order. Replacing the opening boundary with a compact dispatch makes cache reuse, result saving, and location-field selection explicit before tool calls.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "**Turn-level dispatch (apply before any tool call):** Read the full conversation, preceding assistant offer, and cache summary; classify each changed domain or leg before acting.\n1. If a compatible cached result covers the scope and the latest turn adds or changes a filterable constraint, retrieve it by its literal cache key, assign it locally, apply the matching filter, and save the filter's assigned result. Do this separately for each affected leg; leave unchanged domains alone and do not repeat the base search.\n2. Otherwise, base-search only for a genuinely new or uncovered scope, including all active supported criteria. Assign each result-producing call once and immediately save the returned result—not the tool function or an inline call.\n3. Map locations to the field that matches their meaning: for attraction searches, a state or region abbreviation belongs in `state`, not `city`; use `city` for city names. Preserve the supplied value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 5,
+      "description": "The answer echoed a name or word the clue already states (Zeb, Ben Bradlee, Sumter National Forest, Saratoga, the foreign word 'orzel') instead of the thing the clue's 'this/they/it' slot stands for: an alternate name, a category or role, the owning state, the product, or the English meaning."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "A verbatim archive answer was in the context as a bare surname ('Genet'), but the agent expanded it to a full name because of the first+last-name form rule."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "A plural 'these' clue ('species of these') was answered with a singular noun."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A mononymous historical figure was answered as a different namesake with a longer full name (Lucius Junius Brutus, 510 BC) instead of the one matching the clue's date; the key was the single name."
+    }
+  ],
+  "patch": {
+    "reasoning": "Five of the eight misses are the same slip: the agent restated an anchor already in the clue instead of the thing the slot stands for. The existing anchor rules are generic and are not applied. The patch adds a short list of concrete clue shapes that each map to a different answer. It also adds a foreign-gloss rule, a rule that a verbatim archive answer is copied exactly (resolving its conflict with the first+last-name form rule), and plural and single-name guards. It deliberately avoids a heavy mandatory answer-line template, because three earlier template edits were rejected with score drops. Each edit is one or two bullets keyed to a visible clue feature.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Rule 2: Answer the referent, not a word from the clue",
+        "content": "\n- ANCHOR SHAPES (the clue already names it, so your answer must be something else; if your candidate contains a name or word from the clue, switch):\n  - 'His name was X, but everyone called him this' / 'known as this': answer ONLY the alternate name or title ('Grandpa'), never 'Grandpa X'.\n  - 'A <thing> to this person, like <Named Person>': the named person is just an example. Answer the ROLE or category noun they belong to ('The editor', 'The mayor'), not the example.\n  - 'this state's / country's / company's <Named Place or Thing>', 'Divisions of this state's X forest': answer the OWNER (the state, country or company), never the named place or thing.\n  - 'They/These/It was once called \"<Place> <Product>\" after the town where it was first made': the pronoun is the PRODUCT (Potato chips), not the town or the name in quotes.\n  - Never repeat in the answer a proper noun or a distinctive word that the clue itself states."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 1: Questions are Jeopardy-style clues; always answer with the missing entity",
+        "content": "\n- FOREIGN-WORD GLOSS: 'This, an <foreign word> in <country>, ...' or 'called <foreign word> in <language>' gives the foreign word as a hint. The answer is the ENGLISH thing or word it translates to ('eagle' for 'orzel'), never the foreign word itself. Use the passages that translate it (e.g. 'orze, eagle')."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 3: Look for the clue repeated verbatim in the context",
+        "content": "\n- VERBATIM MEANS EXACT: if the archived answer is a bare surname or single word ('Genet', 'Brutus'), output exactly that. Do NOT expand it to a full name or add a first name, and do not apply the first+last-name rule from the strategic block to it. Rule 3 wins over the form rules."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 4: Exact-match formatting of the final answer",
+        "content": "\n- PLURAL SLOT: 'species / kinds / types / examples / ones of these', 'these', or a plural noun in the clue -> give the plural category noun ('Bears', not 'bear'). Check the clue's grammatical number before answering.\n- NAMESAKES: when a passage names several people with the same surname, pick the one whose dates and deeds match the clue (the year, the office, the co-conspirator), not the most prominent or first-listed. For ancient figures conventionally known by one name (Brutus, Cassius), the short single name is the standard key form."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

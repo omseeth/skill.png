@@ -1,0 +1,21 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "In 5 of the 8 trajectories the clue is a near-verbatim sentence in several passages with one slot blanked, or it appears in a glossary, flashcard or blog dump. The agent copied the slot filler (coddling, dew point, hydroponics, Delta, Mongolia) rather than relying on its own knowledge. Rule 3 already covers this.",
+    "The agent answered with the bare instance of the clue's category noun (Mississippi for 'state', Mongolia for 'nation', The Incredibles for 'film', Hydroponics for 'science'). It did not echo the anchors in the clue (Itawamba, Tupelo, Central Asian). Rule 2 already covers this.",
+    "In the 'this \"point\"' clue the agent kept the quoted generic head noun and answered 'dew point', not the stripped 'dew'. This is a pun or compound where the quoted word is the head of the standard term. It is the only pattern not clearly covered, and it sits in tension with the DELETE-CLUE-WORDS test.",
+    "The 'Seen here ... this film' media cue was ignored and the answer came from the textual hooks (sock puppet version, hidden on DVD), which the passages tie to a single title.",
+    "The double-meaning clue ('The mouth of the Mississippi or a Helen Reddy \"Dawn\"') was solved by one word that fits both halves (Delta). A quiz-blog or spam page repeating the clue with 'Q - ... A' confirmed it."
+  ],
+  "patch": {
+    "reasoning": "Almost every success pattern in this batch is already encoded in Rules 2 and 3. The one gap is a quoted generic noun in the clue (this \"point\"). The strict DELETE-CLUE-WORDS test could push an agent to drop it and answer 'dew', which is wrong. A short clarification next to the existing quoted-word rule removes that conflict without adding a new section, and it extends the existing exception that keeps the head noun.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- A word in quotation marks inside the clue (a 'drag', a nickname) is usually a pun or hint tied to the answer. Look for passages where that word appears next to a candidate and answer with that candidate.",
+        "content": "\n- When the quoted word is itself a generic head noun right after 'this' ('Fog forms when air cools to this \"point\"', 'this \"bubble\"'), it is the head of a standard compound that the passages repeat ('dew point'). Answer with the full compound, keeping the quoted word. Do not strip it to the bare modifier ('dew'). This is the head-noun exception to the delete-clue-words test, not an echo error. Likewise, a two-part clue ('X, or Y') whose passages quote the clue followed by 'Q - ... A ...' or similar is answered with the one word that fits both halves ('Delta')."
+      }
+    ]
+  },
+  "source_type": "success"
+}

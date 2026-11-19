@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "answer_format",
+      "count": 4,
+      "description": "Answers missed the expected form: a member label was incomplete, a term was overexpanded, a multiword name was only partially supplied, or grammatical number was wrong."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Agents answered a declarative clue as true/false or chose an answer at the wrong level of specificity despite the clue's requested target."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A bare personal name was intended to cue its clearly supported country association, but the agent returned the person's title."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify when a class noun is essential to the requested member or role, cover fill-in clues that ask for a complete conventional name, and address the bare-person-name relation cue. The other failures concern target scope, truth judgments, or number already covered by the skill, so they do not warrant duplicating existing rules.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Return only the identifying portion requested: do not repeat title wording already supplied by the clue or append a generic class word when it is implicit, unless the full name is requested or needed to distinguish the answer.",
+        "content": "Return only the identifying portion requested: do not repeat title wording already supplied by the clue or append a genuinely redundant class word. However, when the clue asks for a member or person of a class (for example, “one of these”), give the conventional noun phrase naming that member or role, including its class noun and any grammatically required article; a rank or modifier alone may not fill the requested slot."
+      },
+      {
+        "op": "insert_after",
+        "target": "For fragmentary quotes, titles, nicknames, or familiar sayings and proverbs, infer the omitted word or phrase that completes the clue rather than echoing the supplied text.",
+        "content": "For a fill-in-the-blank clue that shows part of a conventional multiword proper name or fixed named expression, give the complete conventional name when the prompt asks for the entity or name—not just the missing token. Return only the blank's missing word when the prompt explicitly asks for that word."
+      },
+      {
+        "op": "insert_after",
+        "target": "When a prompt consists only of a place name, do not simply repeat it. If context clearly identifies its jurisdiction or location, treat the prompt as an elliptical request for that place attribute and answer with the supported information. Do not infer a relation when context does not make one clear.",
+        "content": "\nWhen a trivia-style prompt consists only of a person's name, use the surrounding context to identify whether a specific association—such as the country the person rules or represents—is the implied target. Prefer that clearly central, supported association over restating the person's title or office; do not guess when context does not make the relation clear."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

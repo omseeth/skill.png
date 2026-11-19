@@ -1,0 +1,61 @@
+{
+  "reasoning": "Combined overlapping cache-completion guidance into one edit, including the need to update each affected itinerary result separately. Merged the three nearest-result proposals into one replacement covering named anchors, explicit lack of proximity, cache reuse, filters, and organizing domain. Kept the distinct date, proposed-place, neighborhood, room-count, and schema-mapping clarifications. Did not repeat the already explicit runtime/import guidance or edit the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Use “No planning needed” only when cached results already satisfy every current request.",
+      "content": "Use “No planning needed” only when cached results already satisfy every current request. Any newly stated criterion or action leaves its affected domain incomplete until it has been handled. Before returning, compare each requested action and criterion with compatible cache summaries; an absent criterion or entity is still pending. If a new criterion applies to multiple still-requested results, such as outbound and return flights, update each affected result separately; one leg’s filtered result does not satisfy another. Assign each search or transformation result to a variable and save that exact result under the appropriate cache key before returning. When the user accepts an offer to show recommendations already covered by cache, retrieve the relevant cached result rather than repeating the search.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Associate dates with explicitly stated itinerary legs in the order and context given, and do not ask again for dates already supplied.",
+      "content": "Associate dates with explicitly stated itinerary legs in the order and context given, and do not ask again for dates already supplied. When the user answers a pending date question for a requested flight-and-hotel itinerary with one date and gives no separate lodging check-in date, use that date for the outbound departure and hotel check-in. If an unambiguous hotel duration in nights is also stated, derive checkout from that check-in date.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+      "content": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated. If the user asks about a specific place or option the assistant just proposed (for example, “What’s there?”), treat the follow-up as an actionable request about that proposal: retrieve compatible cached results and apply any supported matching filter, or search if needed, then save the result.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Map location values by kind: put a named district or neighborhood in a supported `neighborhood` field while retaining its containing city in `city`, and put state names or standard postal abbreviations in `state`, not `city`.",
+      "content": "Map location values by kind: put a named district or neighborhood in a supported `neighborhood` field while retaining its containing city in `city`, and put state names or standard postal abbreviations in `state`, not `city`. Preserve the complete user-stated neighborhood or district phrase in `neighborhood`; do not shorten it or drop a city qualifier.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "When party size is explicit for the hotel stay, pass it as `num_people` (use `1` for an explicitly solo trip), but do not infer `num_rooms`.",
+      "content": "When party size is explicit for the hotel stay, pass it as `num_people` (use `1` for an explicitly solo trip); when the room count is explicit, pass it as `num_rooms`. Do not infer either value.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Map ordinary-language descriptions to a supported schema criterion when the meaning is unambiguous (for example, map “laundry facilities” to `has_laundry_service` when that field is in the tool schema); if no field represents a preference, omit it rather than adding an unsupported argument.",
+      "content": "Map ordinary-language descriptions to a supported schema criterion when the meaning is unambiguous (for example, map “laundry facilities” to `has_laundry_service` and “fitness center” to `has_fitness_class` when those fields are in the tool schema); if no field represents a preference, omit it rather than adding an unsupported argument.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+      "content": "- For a new explicit request for recommendations near another result type, ensure compatible results for both types are available. If the user names a specific place or entity as the anchor, a broad category result is not a match; retrieve or search for that named entity. Apply all new filters to both relevant result sets before calling `search_nearest`, and save its result. Do not call `search_nearest` merely because multiple result types are requested; if the user explicitly says one need not be close to another, proximity is not requested. Set `groupBy` to the requested organizing base; when lodging is the base, group by hotel. If a compatible nearest result is already cached and the user adds criteria to one or both constituent types, retrieve and filter each affected result separately and save each filtered output; do not rerun `search_nearest` unless refreshed proximity results are requested or otherwise needed.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

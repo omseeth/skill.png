@@ -1,0 +1,25 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Tools and required parameters were chosen correctly in all 8 trajectories. One call was made per entity, and the 'check each email with tool A, then each domain with tool B' pattern was expanded into N calls per tool (e.g. 3 emails x 2 tools = 6 calls).",
+    "Tools named in the query (Flightera aircraftInfo, Alpha Email Verification, Email Existence Validator, OpenCritic hall-of-fame) were matched to the endpoint whose description fits the verb. Quantity and unit qualifiers (dice=5, sides=8, ks=16, min_duration=300, from_record_date) were mapped into optional parameters.",
+    "Most remaining misses were optional-parameter details: a repeated `publisher` key instead of one comma-separated value, `minLength` instead of `wordLength` for an exact length, and a dropped adjective qualifier ('federal' -> level_of_government). Others were a `page` added for 'most recent', `en_US` instead of `en-US`, an omitted `Content-Type` header parameter, and one request split across two calls of the same tool.",
+    "A single clause with several qualifiers (limit and page) belongs in ONE call, not one call per qualifier."
+  ],
+  "patch": {
+    "reasoning": "Tool selection was already correct, so the remaining score loss is in optional-parameter fidelity. The same slips recurred across trajectories: repeating a parameter name for multiple values, using min/max instead of an exact-value parameter, ignoring adjective qualifiers, adding unrequested paging, and splitting one request across duplicate calls. The Content-Type header-style parameter appeared in both CSGO tasks with gold value `application/json`. These rules extend the existing Parameters and Which-calls sections without duplicating them.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value.",
+        "content": "- Exact vs bounded values: '7-letter word' or 'exactly 16 strokes' -> the exact-value parameter (`wordLength`=`7`), not `minLength`/`maxLength`. Use min/max parameters only for 'at least' / 'at most'.\n- Adjectives that name a level, status or category are qualifiers too. 'Active federal politicians' -> `active`=`true` AND `level_of_government`=`Federal`; 'US sources' -> `country`=`us`/`US`, following the case style the schema shows. Scan each clause word by word for such qualifiers.\n- Several values for one parameter (e.g. two publishers, CNN and BBC) -> ONE entry with a comma-separated value (`cnn.com,bbc.com`). Never repeat the same parameter name in the list.\n- If the schema lists a header-style optional `Content-Type`, include it with value `application/json`.\n- Locale/language codes use the hyphen form (`en-US`), not `en_US`.\n- Include `page`/`limit` only when the query mentions a page or a count. 'Most recent reviews' -> just the sort field (e.g. `sort_order`=`DATE_DESCENDING`), with no invented `page`.\n- Do not invent parameters the query gives no basis for (random-fact ranges, max, fragment, json, notfound). Never emit a parameter with an empty value."
+      },
+      {
+        "op": "replace",
+        "target": "- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names.",
+        "content": "- One clause = one call. Put ALL of its qualifiers (e.g. `limit` AND `page`, '15 most recent from page 1') into that single call's `optional parameters`. Never split one request into two calls of the same tool, each carrying part of the qualifiers.\n- Do not add 'helper', 'random', 'new releases' or 'list' calls that no clause names."
+      }
+    ]
+  },
+  "source_type": "success"
+}

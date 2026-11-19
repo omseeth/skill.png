@@ -1,0 +1,56 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "missed_actionable_offer",
+      "count": 1,
+      "description": "The agent ignored acceptance of a new restaurant-search offer and failed to request missing mandatory flight and hotel dates."
+    },
+    {
+      "failure_type": "cache_scope_misclassification",
+      "count": 1,
+      "description": "The agent repeated a restaurant base search instead of filtering compatible cached city-wide results for the newly specified cuisine."
+    },
+    {
+      "failure_type": "tool_argument_and_result_mapping",
+      "count": 1,
+      "description": "The agent passed a state abbreviation as a city and saved the search function rather than its returned result."
+    },
+    {
+      "failure_type": "unsupported_proximity_operation",
+      "count": 1,
+      "description": "The agent ran a nearest-results operation based on an assistant suggestion, although the user only supplied hotel amenities."
+    },
+    {
+      "failure_type": "category_value_normalization",
+      "count": 1,
+      "description": "The agent changed the user's attraction category wording to a nearby category value."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that same-scope cuisine refinements use compatible cached results, and that accepting a new-domain offer remains actionable even when other requests need mandatory details. Strengthen the attraction example to prevent field, value, and cache-result mistakes, and distinguish clear acceptance of a proximity offer from merely answering a hotel-preference question.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.",
+        "content": "**Follow-up decision boundary:** Decide whether a request is a new search or a refinement by comparing its domain, location, dates or leg, and candidate-set scope with the cache. If no compatible cached candidate set covers the requested scope, make a base search with all active supported criteria. If a cached set for the same scope is at least as broad as the request, treat newly specified filterable preferences—including a cuisine not previously applied—as filters: retrieve the exact compatible key, apply the matching filter, and save the result. A refinement does not require a new base search merely because its value is new; filters can narrow a candidate set but cannot broaden one. Repeat this retrieve-filter-save sequence for each affected leg."
+      },
+      {
+        "op": "insert_after",
+        "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+        "content": "\n\nAn explicit acceptance of an offered new domain is actionable, even when other requested domains or legs remain incomplete: search the accepted domain if its mandatory inputs are available, and use one `seek_information` call for the missing mandatory details of the incomplete requests. Do not let missing details for one request block an independent complete search, and do not return a no-op while an accepted new scope remains unsearched."
+      },
+      {
+        "op": "replace",
+        "target": "For attractions, put the requested category in `type` with its exact value (for example, if the requested type is `Scenic`, pass `type=[\"Scenic\"]`).",
+        "content": "For attractions, map a geographic state abbreviation to `state`, not `city`, and pass the user's requested category text to `type` verbatim. Do not change spelling or convert an adjective to a nearby category value. Assign and cache the actual search result, for example: `attractions = search_attractions(state=\"<state abbreviation>\", type=[\"<exact user-provided category>\"])` followed by `save_to_cache(key=\"<descriptive key>\", value=attractions)`; never save the search function itself."
+      },
+      {
+        "op": "replace",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "- Call `search_nearest` only when the user explicitly requests proximity or clearly accepts a direct offer to find one domain near another. A mere assistant statement that it can help find something near a place is not acceptance; nor does answering a separate question about hotel amenities authorize proximity work. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

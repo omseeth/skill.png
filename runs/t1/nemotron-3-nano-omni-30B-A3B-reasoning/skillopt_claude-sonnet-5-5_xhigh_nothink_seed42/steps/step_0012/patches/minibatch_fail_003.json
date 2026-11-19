@@ -1,0 +1,25 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_cache_key_selection_and_overwrite",
+      "count": 1,
+      "description": "On a restaurant refinement the agent loaded the stale raw key 'restaurants' instead of the most refined 'filtered_restaurants', which already had the neighborhood filter applied. It then saved under 'filtered_restaurants', overwriting an existing key. The gold code loads 'filtered_restaurants' and saves under a new key, 'filtered_restaurants1'. The tools and the rating param were correct, so the cache_em failure came only from the keys."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already says to chain from the most refined key and use a unique save key. But its templates (Rule 13 and the Rule 17 examples) show the save key as 'filtered_<domain>' without saying that a name already in CACHE must not be reused. The agent copied that template even though 'filtered_restaurants' existed, and it loaded the raw 'restaurants' key. Two small edits fix this. First, the Rule 13 template gets a numbering scheme for save keys. Second, a concise rule gives a concrete key-selection procedure with a worked example from this failure.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "`save_to_cache(key=\"<new unique key, e.g. filtered_<domain>>\", value=y)`",
+        "content": "`save_to_cache(key=\"<new key that is NOT already in CACHE: filtered_<domain> if absent, otherwise filtered_<domain>1, then filtered_<domain>2, ...>\", value=y)`"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 26: Choose the most refined CACHE key to load, and never overwrite a key\n- Before writing a refinement, list the CACHE keys of the domain being refined. The key to LOAD is the most refined one. It is the key whose summary carries extra 'Additionally filtering for ...' lines, or the most recently created `filtered_*` key. Loading the raw search key (e.g. 'restaurants') when a `filtered_*` key exists silently drops the filters already applied, so it is wrong.\n- The key to SAVE must be a name that does NOT appear in CACHE. If 'filtered_<domain>' already exists, save as 'filtered_<domain>1'. If that also exists, use 'filtered_<domain>2', and so on. Never reuse an existing key name, because that overwrites earlier results.\n- Example: CACHE = {'restaurants': '... cuisine(s): [Bengali].', 'filtered_restaurants': '... Additionally filtering for neighborhood(s): [Downtown San Antonio].'} and the last turn is 'something with a 3.0 star rating' -> `r = get_results_from_cache(key=\"filtered_restaurants\")`, `r2 = filter_restaurants(prior_results=r, rating=[3.0, 5])`, `save_to_cache(key=\"filtered_restaurants1\", value=r2)`. Do not load 'restaurants' and do not save to 'filtered_restaurants'.\n- The same load-most-refined and save-new-key logic applies to every domain and flight leg (e.g. load 'filtered_hotels', save 'filtered_hotels1')."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

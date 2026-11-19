@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 7,
+      "description": "Result-producing calls were often left unbound or their results were not saved to cache."
+    },
+    {
+      "failure_type": "cached_result_refinement",
+      "count": 3,
+      "description": "The agent searched again or skipped work instead of applying a new constraint to a compatible cached result."
+    },
+    {
+      "failure_type": "round_trip_leg_mapping",
+      "count": 2,
+      "description": "A return date was treated as part of a single flight search rather than a separate reversed-route leg."
+    },
+    {
+      "failure_type": "location_schema_mapping",
+      "count": 2,
+      "description": "A state-only attraction location was passed as a city instead of using the state field."
+    },
+    {
+      "failure_type": "omitted_hotel_search",
+      "count": 1,
+      "description": "An explicitly requested hotel was omitted despite a stated trip date and stay length."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly requires saving results, using schema-supported location fields, and refining compatible cached results, so those instructions are not duplicated. The edits address remaining interpretation gaps: recognizing a two-date answer as outbound and return dates, resolving follow-ups about an assistant-suggested place against the active cached domain, and deriving checkout from an explicitly stated stay length.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Represent flight legs separately",
+        "content": "\n- When a flight itinerary is already established and the user answers a request for travel dates with a two-date range (for example, “from [date] to [date]”), treat the first date as outbound departure and the second as return departure unless the conversation clearly indicates otherwise. Search the return as a separate leg with the route reversed; do not put both dates on one outbound search or use the return date as `arrival_date`."
+      },
+      {
+        "op": "insert_after",
+        "target": "- When refining a cached result, do not resend criteria already represented in that result; apply the newly introduced preference with the appropriate filter.",
+        "content": "\n- Resolve follow-up references using the full dialogue, including places most recently suggested by the assistant. If the user asks what is at or around a suggested place, treat that place as a target for the active domain and refine a compatible cached result with the appropriate supported field (such as an attraction `neighborhood`), rather than concluding that no planning is needed."
+      },
+      {
+        "op": "insert_after",
+        "target": "Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+        "content": " If the conversation explicitly provides a hotel check-in or trip-start date and an exact number of nights, use that date as check-in and calculate checkout with `adjust_date(date=..., delta_days=<number of nights>)`. Do not ask for checkout or invent a stay length when these values are already explicit."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

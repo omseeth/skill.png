@@ -1,0 +1,46 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 4,
+      "description": "Existing form and type rules were not applied. The answer kept 'Egg White Denver' for a 'Denver type of this' clue, kept '& Company' and 'on the Sunset Strip', and gave a base (NaOH) for a clue asking for an acid."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "Answered with the causeway named in the passages when the slot was 'this Persian Gulf nation'. This is a related-entity type error."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "'Current king' was read as today's holder, but the clue is dated and its education details match the earlier king. No rule says to let the other details beat 'current/present/new'."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "A middle-name clue got the middle name spelled out ('Warren Gamaliel Harding'). The key uses First + middle initial + Last. The existing no-middle-initial rule does not cover clues about a middle name."
+    }
+  ],
+  "patch": {
+    "reasoning": "Four of seven failures are rule_ignored cases where the rule and often the exact example already exist, deep in a long document. The agent outputs a bare answer and never reaches them. Steps 31-34 added a mandatory 'Type | Evidence | Check' output line and were all rejected, with scores dropping as far as 0.38. So this patch adds no new output format. It adds a very short READ-FIRST block at the top with two checks, one for slot type and one for stripping clue words and add-ons, and no required output line. It also fills two real gaps: dated words such as 'current', and clues about a middle name. It shrinks nothing and does not touch the protected block.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Question Answering Skill",
+        "content": "\n\n## READ FIRST (two silent checks, no extra output format)\n1. SLOT: find the clue's 'this/these/he/she/its' noun. Your answer must be an instance of exactly that noun. 'this ... nation' -> the country, not a bridge, causeway or city the clue or passages mention. 'this ... acid' -> an acid, not a base or alkali. A related thing from the passages is never the answer.\n2. STRIP: remove from your answer every word the clue already states, plus add-ons such as '& Company', 'Inc.', a show subtitle, or a brand or modifier from a passage. 'the Denver type of this' -> the bare dish noun, not '<Modifier> Denver <dish>'. A company or show -> its short common name.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "- Honor qualifiers when the context offers several names for the same thing: 'Greek god of erotic love' -> 'Eros' (not Roman 'Cupid').",
+        "content": "\n- DATED WORDS: 'current', 'present', 'new', 'recent', 'latest' reflect when the clue was written, not today. Do not substitute today's office-holder. Choose the person or thing that matches the clue's other concrete details (school, years, career, place) in the passages. The older holder may be the answer even though he or she is no longer 'current'."
+      },
+      {
+        "op": "insert_after",
+        "target": "Give the bare name ('Ronald Reagan'), not the event, the place or the date.",
+        "content": "\n- A clue about a person's MIDDLE NAME or initial ('His middle name was ...') asks for that person. Write the name as First + middle INITIAL + Last, the way the figure is conventionally styled ('Firstname G. Lastname'). Never spell out the middle name in the answer and never answer with the middle name alone. This is the one case where a middle initial is kept."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

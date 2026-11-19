@@ -1,0 +1,58 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "multi_request_turn_incomplete",
+      "count": 3,
+      "description": "A last turn with several requests was only partly handled: the hotel amenity filter and search_nearest were missing for 'near the hotel', and a named attraction in a turn with amenities got an extra search_nearest."
+    },
+    {
+      "failure_type": "reply_treated_as_retrieval_or_wrong_filter",
+      "count": 2,
+      "description": "A 'Yes' to another attraction type was handled as a cache retrieval. A party-size reply was handled as a neighborhood filter built from an attraction name on the raw hotels key."
+    },
+    {
+      "failure_type": "re_search_instead_of_filter",
+      "count": 1,
+      "description": "A flight-class reply re-ran search_flights on both legs and added redundant filters. It should have loaded 'flights' and 'return_flights' and filtered each."
+    },
+    {
+      "failure_type": "malformed_code_structure",
+      "count": 2,
+      "description": "A bare search_attractions call had no assignment or save. Another output used 'from cache import ...' (ModuleNotFoundError) and dropped the requested hotel search."
+    },
+    {
+      "failure_type": "over_seeking_mandatory_param",
+      "count": 1,
+      "description": "seek_information asked for the restaurant city although the user wrote 'in St. Louis'."
+    },
+    {
+      "failure_type": "wrong_param_mapping",
+      "count": 1,
+      "description": "'fitness center' maps to gym_present=True in the gold, but Rule 22 says has_fitness_class."
+    }
+  ],
+  "patch": {
+    "reasoning": "The failures cluster in a few places where the rules exist but the model does not apply them. First, multi-part last turns where each request needs its own calls (hotel filter, restaurant filter, search_nearest, named-attraction search) and the Rule 25 exception conflicts with Rule 10. Second, short replies ('Yes, that sounds great', 'There are 3 of us') that must trigger a new search or filter and not a retrieval or an invented neighborhood. Third, malformed or over-cautious first-turn output: bare calls, imports, wrongly asking for a city that was given. Fourth, flight-class replies that triggered re-searches. Worked examples that mirror these failures are more likely to be followed than more abstract rules. A direct fix is also made to the contradictory fitness-center mapping.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Rule 26: Multi-part last turns, 'near the hotel', and named attractions (overrides the Rule 25 exception when other requests share the turn)\n- Before writing code, split the last user turn into separate requests (for example 'yes to a kids' club' = hotel filter, 'Romanian restaurant' = restaurant filter, 'near the hotel' = search_nearest). Every request gets its own calls. Do not drop a request, and do not add calls for things the user did not ask for.\n- Restaurants wanted 'near the hotel' when both domains are cached: filter each domain with ONLY the new constraint (anything the CACHE summary already lists, such as rating or budget, is not repeated), then combine with search_nearest. Example, CACHE has 'filtered_hotels' (budget, pool applied) and 'filtered_restaurants' (rating, budget applied), and the last turn is 'Yes, a kids' club would be great. Can you recommend a restaurant with Romanian near the hotel?':\n  `filtered_hotels = get_results_from_cache(key=\"filtered_hotels\")`\n  `filtered_restaurants = get_results_from_cache(key=\"filtered_restaurants\")`\n  `final_hotels = filter_hotels(prior_results=filtered_hotels, has_kids_club=True)`\n  `save_to_cache(key=\"final_hotels\", value=final_hotels)`\n  `final_restaurants = filter_restaurants(prior_results=filtered_restaurants, cuisine=[\"Romanian\"])`\n  `save_to_cache(key=\"final_restaurants\", value=final_restaurants)`\n  `nearest_restaurants = search_nearest(hotels=final_hotels, restaurants=final_restaurants, groupBy=\"restaurant\")`\n  `save_to_cache(key=\"nearest_restaurants\", value=nearest_restaurants)`\n  Use groupBy=\"restaurant\" when the user wants restaurants near the hotel, and groupBy=\"hotel\" when the user wants hotels near restaurants or attractions.\n- A named attraction in the SAME turn as hotel amenities ('Wifi, a gym, and a rooftop bar would be great. Also, we're interested in visiting Forestiere Underground Gardens.'): do exactly two things. Filter hotels from the latest hotels key with only that turn's amenities, then `attractions = search_attractions(city=\"Fresno\", attraction_name=[\"Forestiere Underground Gardens\"])` plus its save_to_cache. Do NOT add search_nearest in that turn. The Rule 25 nearest-hotels exception applies only when the named attraction is the only new thing in the turn."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 27: Short replies when attraction or nearest_* keys are already cached\n- The assistant offered another attraction type ('Are you interested in visiting any other Social attractions?') and the user accepts ('Yes, that sounds great.'). This is a NEW attraction search for the offered type even though 'attractions' and 'nearest_hotels' already exist. Never answer with only get_results_from_cache. Use the city from the conversation, the type word exactly as the assistant said it, and a new key:\n  `attractions_2 = search_attractions(city=\"St. Louis\", type=[\"Social\"])`\n  `save_to_cache(key=\"attractions_2\", value=attractions_2)`\n- A party-size reply ('There are 3 of us.') after the assistant asked how many travelers means `num_people=3` on a hotel filter and nothing else. Load the most refined hotel key. When a nearest_* key (for example 'nearest_hotels') is the latest hotel-related key and no later filtered hotel key exists, load it:\n  `nearest_hotels = get_results_from_cache(key=\"nearest_hotels\")`\n  `filter_nearest_hotels = filter_hotels(prior_results=nearest_hotels, num_people=3)`\n  `save_to_cache(key=\"filter_nearest_hotels\", value=filter_nearest_hotels)`\n- An attraction name ('near Portland Japanese Garden') is already applied by the nearest_* key. Never copy an attraction name into `neighborhood`. Use `neighborhood` only when the user names a district or area. Do not filter the raw 'hotels' key when a more refined hotel key exists."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 28: Worked output shapes for the most common slips (copy the shape)\n- City stated in the request: 'find me Italian restaurants in St. Louis' gives city \"St. Louis\" ('St.' is part of the city name). Never seek_information when the city is in the conversation:\n  `restaurants = search_restaurants(city=\"St. Louis\", cuisine=[\"Italian\"])`\n  `save_to_cache(key=\"restaurants\", value=restaurants)`\n- One-turn attraction request: 'Touristy attractions in Anchorage' gives the user's type word unchanged, assigned and saved (never a bare call):\n  `attractions = search_attractions(city=\"Anchorage\", type=[\"Touristy\"])`\n  `save_to_cache(key=\"attractions\", value=attractions)`\n- Round trip + hotel + restaurants, dates arrive late. Earlier turns: 'round-trip flight from Tucson to Atlanta, a hotel with a fitness center, vegan restaurants'. CACHE already has 'restaurants'. Last turn: 'May 16, 2025 to May 30, 2025'. Output exactly three searches, with no import, no cache read of 'restaurants' and no comments:\n  `departure_flights = search_flights(start_airport_city=\"Tucson\", end_airport_city=\"Atlanta\", departure_date=[\"May 16, 2025\"])`\n  `save_to_cache(key=\"departure_flights\", value=departure_flights)`\n  `return_flights = search_flights(start_airport_city=\"Atlanta\", end_airport_city=\"Tucson\", departure_date=[\"May 30, 2025\"])`\n  `save_to_cache(key=\"return_flights\", value=return_flights)`\n  `hotels = search_hotels(city=\"Atlanta\", checkin_date=[\"May 16, 2025\"], checkout_date=[\"May 30, 2025\"], gym_present=True)`\n  `save_to_cache(key=\"hotels\", value=hotels)`\n- Flight class reply. CACHE has 'flights' (outbound), 'return_flights' and 'hotels', and the user says 'I'd prefer economy'. Filter BOTH legs from their cached keys. Do NOT call search_flights, do not touch hotels, and do not add redundant second filters:\n  `flights = get_results_from_cache(key=\"flights\")`\n  `filtered_flights = filter_flights(prior_results=flights, flight_class=[\"economy\"])`\n  `save_to_cache(key=\"filtered_flights\", value=filtered_flights)`\n  `return_flights = get_results_from_cache(key=\"return_flights\")`\n  `filtered_return_flights = filter_flights(prior_results=return_flights, flight_class=[\"economy\"])`\n  `save_to_cache(key=\"filtered_return_flights\", value=filtered_return_flights)`"
+      },
+      {
+        "op": "replace",
+        "target": "- Hotel amenity wording: 'fitness center' or 'fitness classes' -> `has_fitness_class=True`; 'gym' -> `gym_present=True`.",
+        "content": "- Hotel amenity wording: when the user asks for a 'fitness center', 'gym' or 'fitness room' -> `gym_present=True`. Only the words 'fitness class' / 'fitness classes' (including a reply to an assistant question that named 'fitness classes') -> `has_fitness_class=True`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

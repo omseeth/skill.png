@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "schema_binding_and_parameter_placement",
+      "count": 4,
+      "description": "Optional fields were placed in required parameters, or a parameter from a sibling endpoint was incorrectly applied."
+    },
+    {
+      "failure_type": "canonical_values_and_serialization",
+      "count": 6,
+      "description": "Calls used noncanonical selector values or casing, or serialized numeric and boolean-like values in the wrong form."
+    },
+    {
+      "failure_type": "coverage_or_facet_omission",
+      "count": 2,
+      "description": "Some requested operations or scope-defining facets were omitted despite being relevant to the request."
+    },
+    {
+      "failure_type": "endpoint_capability_mismatch",
+      "count": 1,
+      "description": "An overlapping but nonmatching endpoint was selected for an email-validity check."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most repeated actionable errors are required/optional misplacement, including leakage of a parameter between sibling endpoints, and native JSON numbers or booleans where the answer contract requires string values. Make the endpoint-local schema rule and serialization check more explicit. The existing coverage-ledger and endpoint-matching guidance already addresses the remaining patterns, so avoid duplicating it.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Use each endpoint's exact parameter names and required/optional placement. Build the required-parameter list from fields the schema marks required, and put schema-optional fields only in the optional list—even when the user explicitly requests them. Bind every constraint only to the call it modifies; do not carry dates, limits, filters, or pagination across operations.",
+        "content": "- Use each endpoint's exact parameter names and required/optional placement. Treat its schema's required and optional lists as authoritative and endpoint-local: put only required-list fields in `required parameters`, optional-list fields only in `optional parameters`, and keep the required list empty when none are marked required. Never borrow a parameter from a sibling endpoint or infer that a field is required because the user explicitly requests it. Bind every constraint only to the call it modifies; do not carry dates, limits, filters, or pagination across operations."
+      },
+      {
+        "op": "replace",
+        "target": "- In this answer format, encode scalar `value` fields as JSON strings, including numeric and boolean-like parameter values, unless the task's response contract explicitly requires native JSON numbers or booleans.",
+        "content": "- In this answer format, serialize every scalar `value` as a JSON string, even when the endpoint schema types the parameter as NUMBER or BOOLEAN; the schema type describes API meaning, not JSON representation. Use native numbers or booleans only when the response contract explicitly requires them, and verify that each value is quoted before output."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

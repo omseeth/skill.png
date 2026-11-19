@@ -1,0 +1,26 @@
+{
+  "reasoning": "Preserved all six failure-driven edits, prioritizing cache-scope handling, accepted proximity offers, flight-leg validation, amenity mapping, and domain-specific party-size interpretation. Retained the success-driven required-input clarification and its bounded cross-domain context rule because it does not directly conflict with the failure patches. No edits target the protected section. [optimizer-ranked: selected 2/7 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "Maintain active supported constraints for each domain across the full conversation. When making a new search, include all still-active criteria the user has already supplied, even if the latest turn only supplies a location or another missing detail. When filtering, account for active criteria not already embodied in the cached result as well as newly supplied criteria. Drop or replace a constraint only when the user withdraws or changes it.",
+      "content": "Maintain active supported constraints for each domain across the full conversation. At each turn, resolve the latest reply using the full conversation, preceding assistant question or offer, and cache summaries; identify only scopes changed by that turn. Do not regenerate, refilter, or resave unchanged domains or legs, except to retrieve compatible datasets needed for an explicit proximity operation. For a genuinely new or uncovered scope, include all still-active supported criteria, even when the latest turn supplies only a missing detail. Drop or replace a constraint only when the user withdraws or changes it.",
+      "support_count": 3,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "content": "- Call `search_nearest` only when the user explicitly requests proximity or accepts an assistant's offer to find proximity; merely mentioning a hotel and attractions or restaurants for the same trip or city does not imply proximity. For an accepted offer, retrieve the compatible cached hotel and target-domain datasets and run `search_nearest`; do not substitute a new category when the offered scope is already cached. If an anchor or target scope is genuinely missing, obtain only the missing relevant dataset using the established trip context. When the user asks for something near a named place, resolve the target domain from context and treat the named place as a proximity anchor, not as a neighborhood or entity filter on the target domain. Use the supported entity field for the anchor and the established trip context for target-domain candidates. Set `groupBy` to the domain the user wants recommendations for: “restaurants near the hotel” means `groupBy=\"restaurant\"`, while “a hotel with restaurants nearby” means `groupBy=\"hotel\"`. Preserve an earlier explicit proximity request unless withdrawn, and refresh the nearest results when a changed input requires it.",
+      "support_count": 2,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 0 most directly strengthens turn-level scope classification across follow-ups and prevents unnecessary work on unchanged domains. Edit 2 closes a specific recurring gap: accepting a proximity offer must use compatible cached datasets for nearest results and preserve active proximity requests. Edit 1 largely duplicates existing cache guidance; the remaining edits address narrower cases.",
+    "selected_indices": [
+      0,
+      2
+    ]
+  }
+}

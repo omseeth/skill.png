@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cached_result_reuse_and_scope",
+      "count": 5,
+      "description": "Agents reran searches or skipped the requested nearest operation instead of updating compatible cached results and avoiding unchanged domains."
+    },
+    {
+      "failure_type": "round_trip_leg_modeling",
+      "count": 2,
+      "description": "Agents treated a return date as an arrival date on the outbound search rather than searching a separate reverse-direction return leg."
+    },
+    {
+      "failure_type": "result_binding_and_cache_persistence",
+      "count": 2,
+      "description": "Agents saved a tool function instead of its returned result or referenced an undefined result variable."
+    },
+    {
+      "failure_type": "explicit_hotel_stay_length_execution",
+      "count": 1,
+      "description": "An agent failed to derive checkout from an explicitly stated number of nights and omitted an otherwise complete hotel search."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already explicitly covers separate return legs, result assignment and saving, explicit stay-length date calculation, and cache-first filtering. Repeating those rules would not patch a gap. However, the nearest-results rule requires an explicit request while another rule permits direct acceptance of a proximity offer; reconcile them so an accepted offer triggers the operation using compatible cached inputs.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+        "content": "- Call `search_nearest` only when the user explicitly requests proximity between domains or directly accepts an assistant question or offer that explicitly proposes finding one domain near another; merely mentioning a hotel and attractions or restaurants for the same trip or city does not imply proximity. For an explicit or accepted request, retrieve compatible cached results for the relevant domains by their exact keys and use them as inputs; search only for an input that is absent or cannot cover the requested scope. Do not repeat compatible searches merely because the user accepted the proximity operation. Assign and save the `search_nearest` result. Set `groupBy` to the domain the user wants prioritized."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

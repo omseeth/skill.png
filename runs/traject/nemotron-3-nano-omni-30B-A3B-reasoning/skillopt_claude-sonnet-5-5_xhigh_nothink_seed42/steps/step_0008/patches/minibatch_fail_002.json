@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "missing_calls",
+      "count": 3,
+      "description": "Long or list-style queries were under-enumerated. T4 made 3 of 7 calls and T8 made 2 of 6, dropping the whole list of named sources. T7 skipped the 'key company overview metrics' clause."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 4,
+      "description": "Wrong sibling endpoint or a tool whose schema cannot express the request. T2 used the email-only 'Validate Email By Service' with an invented `domain` parameter instead of FreeDomain. T8 used the Events endpoint for 'figures' and added a generic Newscatcher search. T7 took Mboum for upgrades/downgrades although the query named Yahoo Finance. T5 and T6 spread email validators differently from the gold."
+    },
+    {
+      "failure_type": "param_placement_and_duplicate_key",
+      "count": 3,
+      "description": "T1 put optional-schema params (`amount`, `starid`) into `required parameters` and emitted a second `optional parameters` key in the same object. T7 repeated the key too. T8 split Required-schema params between required and optional."
+    },
+    {
+      "failure_type": "tool_name_format_and_unclosed_list",
+      "count": 1,
+      "description": "T3 wrote the provider line with its ' — tagline' as the tool name and omitted the closing `]`, so nothing parsed."
+    }
+  ],
+  "patch": {
+    "reasoning": "Each edit is short and mechanical, to avoid the regressions from the earlier bundled edits. The first fixes the formatting failures that zero a whole answer: tagline tool names, repeated keys, unclosed brackets. The second makes parameter placement follow the schema's Required/Optional lists. The third adds tool-selection cues for the observed sibling confusions and tells the agent to treat a missing schema parameter as a signal of the wrong tool. The fourth forces a numbered per-clause and per-list-item checklist, to fix the largest failure class, under-enumeration of long queries.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Do not close the list early or leave stray brackets.",
+        "content": "\n- The name is only the text after `### ` (`Provider: API`). Never paste the `Provider:` line, its ` — tagline`, or any description. Write each call object separately: `\"optional parameters\"` appears once per object, last. A pattern like `\"optional parameters\": [...], \"optional parameters\": []` is a bug that drops values. Finish with `}]</answer>`; the single `]` that closes the whole list must be present."
+      },
+      {
+        "op": "insert_after",
+        "target": "Do not borrow a similar name from a sibling tool (use `region` if the tool has `region`, not `loc`).",
+        "content": "\n- Copy placement from the schema, not from how important the value seems. If the schema says `Required parameters: none`, `required parameters` is `[]` and every value from the query goes in `optional parameters` (e.g. `starid`, `amount`, `id`, `symbol`). If a schema lists both `page` and `topic` under Required, both go in `required parameters`. Never split one schema's required names across the two lists."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n- Match the object noun and check the schema can take your values. 'Figures' or 'people' -> the `...People...` endpoint, not Events. 'Domain available for registration' -> the free-domain/availability tool. 'Company overview metrics' with no dedicated endpoint -> a generic or customizable endpoint (`function`=`OVERVIEW`, `symbol`=ticker). 'Help documentation' -> the Help Page tool. If a parameter you need (e.g. `domain`) is not in a tool's schema, that is the wrong tool. Never put an invented parameter name into an email-only tool.\n- When the query names a data provider for a clause ('from Yahoo Finance') and several providers offer near-identical endpoints (Yahoo Finance_v2 vs Mboum Finance), prefer the named provider's endpoint for the related requests (e.g. analyst upgrades/downgrades) when it has one."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Make a short checklist of the query's requests. Each request gets one call from the single tool that best matches it, and every call must trace to a clause.",
+        "content": "\n- For long or list-style queries, write a numbered checklist with one line per clause AND one line per item in any list ('BBC, CNN Arabic, France24 Arabic, Hibapress, and dev.to' = 5 lines). Then map every line to a call. If the query has 7 clauses and your answer has 3 calls, you stopped early. Each named game, platform or source and each action verb gets its own call: 'create a weapon' -> the Create tool; 'classes' and 'dungeons' -> two separate Lost Ark calls; 'first page of cards, 20 per page' -> Hearthstone with page `1` and pageSize `20`. For a source with no dedicated endpoint (e.g. BBC), use a generic by-source endpoint with the source id (e.g. BizToc `News / Source`, source_id `bbc`). Do not add a generic search tool to cover items that already have dedicated endpoints."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incomplete_result_persistence",
+      "count": 7,
+      "description": "Result-producing calls were left unbound or their returned results were not saved to cache."
+    },
+    {
+      "failure_type": "conversation_and_cache_coverage",
+      "count": 4,
+      "description": "Plans missed pending domain requests or constraints, selected the wrong domain, or repeated work already covered by cache."
+    },
+    {
+      "failure_type": "flight_leg_handling",
+      "count": 2,
+      "description": "Round-trip dates or directions were combined or assigned to the wrong flight leg."
+    },
+    {
+      "failure_type": "schema_or_entity_semantics",
+      "count": 3,
+      "description": "A traveler count was sent to flight search, a state was treated as a city, or a user-provided category value was normalized."
+    },
+    {
+      "failure_type": "cross_domain_relation_missed",
+      "count": 1,
+      "description": "A request for lodging with access to a category of attractions was not treated as a hotel-attraction proximity request."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures involve skipped persistence or incomplete per-domain planning despite the existing guidance. Making result persistence and the re-audit of pending requests more operational addresses those recurring omissions. The remaining edits clarify semantic proximity language and close gaps around geographic fields and preserving user-provided category values. Flight-leg rules already cover the observed date-direction errors, so they are not repeated.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- For every search, filter, sort, and nearest-results call, assign the exact returned object to a local variable and immediately save that same object with `save_to_cache` under a unique, descriptive key—before using it downstream or finishing the plan. Never leave a result-producing call bare or omit its save. Save each refinement under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "\n- When a user reply supplies information requested earlier, re-audit every still-pending request across the full conversation, not only the domain discussed in the immediately preceding question. Decide independently for each domain whether its request is still pending, already covered by a compatible cache result, or newly actionable; do not repeat completed work or let one domain's cache satisfy another domain's request."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Interest in visiting or dining at a place alone does not imply a proximity request or require a nearest-results call.",
+        "content": "\n- Interpret relational wording semantically: requests for options \"near\" a place or lodging \"with access to\" another supported domain explicitly ask for proximity. Search for the requested candidates and reference target with their stated criteria, then call `search_nearest` with `groupBy` set to the domain the user wants recommended."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Parse locations hierarchically when the user gives both a city and an area within it: use the parent city in `city` and pass the named district or area verbatim in `neighborhood` when supported. Preserve the complete location label rather than shortening it or passing the combined city-and-area phrase as the city; for example, a request for Downtown Tucson uses `city=\"Tucson\"` and `neighborhood=[\"Downtown Tucson\"]`.",
+        "content": "\n- Match geographic granularity to the schema: a state name or state abbreviation belongs in `state`, not `city`. Preserve user-provided categorical values verbatim in supported fields such as attraction `type` and restaurant `cuisine`; do not replace them with a guessed synonym or normalized category."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

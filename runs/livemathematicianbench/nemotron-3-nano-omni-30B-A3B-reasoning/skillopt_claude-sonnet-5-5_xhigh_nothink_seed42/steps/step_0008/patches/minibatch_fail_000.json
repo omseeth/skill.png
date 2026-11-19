@@ -1,0 +1,44 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "strength_mismatch",
+      "count": 5,
+      "description": "Three picks were degraded copies of the full claim: a non-uniform hedge over the FPT bound, a p=0 exception over the full p-range, and a 'subset of' over the full object. Two picks were inflated: data-only estimate and 'conversely every such divisor occurs'."
+    },
+    {
+      "failure_type": "option_confusion",
+      "count": 2,
+      "description": "The agent chose a one-symbol swap (divides 2l instead of l) and the trivial converse direction (isomorphic implies equal spectra) over the hub option, which is the nontrivial theorem."
+    },
+    {
+      "failure_type": "condition_miss",
+      "count": 1,
+      "description": "The agent took the classical Fermat conclusion 'sg f = 0 at an extremum' for a generalized derivative, when the hub states only the bound |sg·v| <= ||v||."
+    }
+  ],
+  "patch": {
+    "reasoning": "In all 8 failures the correct option was the hub: every other option is a one-edit copy of it (hedge tail added, range restricted, clause truncated, extra clause added, or symbol swapped). The skill already has the hub test, but it sits deep in the document and is easy to skip, and the agent picked the degraded or inflated copy anyway. The previous step's S-literal labelling pushed the agent toward weaker plain options, so this patch avoids a plain-versus-strong mood. It adds a short, structural HUB-FIRST step at the top. The hub is the option from which the others derive by edits. Each edit is read by direction: a hedge, restriction or truncation means a degraded copy; an unproved extra means an inflated copy; a swapped symbol means a corrupted copy. Overriding the hub requires a concrete failed test. It also notes that the hub can be the lone option of its kind among clustered variants (one FPT bound among XP-style hedges). I remove the odd-one-out bullet and the numerics bullet, which the new step subsumes and which pushed toward weaker, rate-free options. I rewrite tie-breaker clause (iv) so an explicit rate is not penalised against a hedge.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Mathematical Multiple-Choice Skill",
+        "content": "\n\n## HUB-FIRST (write this before the clause analysis, at most 6 lines)\n1. For each option, list which other options are ONE edit away from it (drop or add a clause, add a hedge tail, restrict a range, swap a symbol, constant, direction or quantifier). The HUB is the option that explains all the others as edited copies of itself. It is the default answer. Count by edit direction, not by majority: the hub can be the lone option of its kind (e.g. one FPT bound among several XP-style or hedged variants).\n2. Read each edit by direction, not by feel:\n   - other = hub + hedge or negative tail ('only', 'need not', 'does not provide', 'non-uniform', 'not FPT', 'no universal comparison at p=0'), or hub restricted to a subset, subrange or 'each fixed k', or hub cut short ('a subset of X', a bare first clause): a DEGRADED copy. Discard it even if it feels safe.\n   - other = hub + unconditional extra ('conversely every such value occurs', 'unique', an estimate bounded by data alone, a classical conclusion such as 'derivative = 0 at an extremum' for a weak or generalized derivative, an explicit constant, 'even without H'): an INFLATED copy. Discard it unless you can prove the extra in 2 lines.\n   - other = hub with one symbol, constant or direction swapped (2l for l, reversed implication, the trivially true converse of the nontrivial direction): a CORRUPTED copy. Discard it unless you computed the swapped detail yourself.\n3. Override the hub only by naming a clause in it that fails a concrete test (small case, zero data, scaling, degenerate input). 'Too plain', 'too strong', 'too weak' or 'safer' is not a test.\n4. If both X and X+extra are candidate hubs, take X+extra only when the extra is a one-line consequence (explicit formula for the named quantity, iff with both directions derivable, finite-time blow-up, full range). Otherwise take X.\n"
+      },
+      {
+        "op": "delete",
+        "target": "- When options differ only by where a coefficient or index sits (λ on the s_1 term vs the s_2 term, A before B, i vs j), count how many options use each placement. If one option is the isolated swap and all others agree on the other placement, the swap is the corruption (distractors are single edits of the truth and so mostly inherit its details). Confirm with the stem's naming order or a limiting case (a parameter → 0) when possible."
+      },
+      {
+        "op": "delete",
+        "target": "- Options with specific numerics (explicit asymptotic coefficients, exact constants, extra sign or monotonicity claims, a 'moreover' clause on large-time behaviour) are the typical inflated distractors. Keep one only if you can derive the extra detail."
+      },
+      {
+        "op": "replace",
+        "target": "(iv) contains no explicit rate, constant, or dependence list that you cannot derive.",
+        "content": "(iv) contains no explicit rate or constant that you cannot derive (but an explicit rate or formula for the named quantity beats a hedge such as 'only XP', 'non-uniform' or 'need not', which is a degraded copy of it)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

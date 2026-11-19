@@ -1,0 +1,48 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "parameter_placement_wrong_list",
+      "count": 2,
+      "description": "A parameter the schema lists as Required (e.g. Bybit `end`) was put under optional. Optional-in-schema lat/lon were put under required, and the tool name was truncated to `/alerts` instead of `/alerts?{parameters}`."
+    },
+    {
+      "failure_type": "value_format_case_or_invented",
+      "count": 3,
+      "description": "The query's capitalisation was kept ('Business', 'UK') where the expected value was lowercase ('business', 'uk'). The `function` value was invented ('TIME_SERIES_DAILY') instead of using the endpoint name given in the query ('DIGITAL_CURRENCY_DAILY')."
+    },
+    {
+      "failure_type": "missing_clause_calls",
+      "count": 1,
+      "description": "The final narrated clauses (flightSearch for LX38, flightInfo for TG215) were dropped from a long past-tense query."
+    },
+    {
+      "failure_type": "wrong_tool_selection",
+      "count": 2,
+      "description": "'Country data' was mapped to the airport-data tool instead of 'Data of countries'. A coordinate-based weather request used API-Ninjas (optional lat/lon) instead of Easy Weather, whose required params are latitude/longitude."
+    }
+  ],
+  "patch": {
+    "reasoning": "Earlier large rulebooks were rejected, probably because they were long and over-constrained. These four edits are short and each targets a failure seen repeatedly in this batch: tool-name copying, required/optional placement, value casing and invented values, and dropped or mismatched clauses. They add no behaviour restrictions, such as banning calls, beyond what the base prompt already says.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Learned rules\n\n### Tool names\n- Copy the tool name verbatim from the `### ` heading, including suffixes and symbols such as `?{parameters}`, `{artist}`, `/v1/weather`, `(New)`. Never trim, tidy or shorten it (`National Weather Service: /alerts?{parameters}`, not `.../alerts`)."
+      },
+      {
+        "op": "append",
+        "content": "\n### Parameter placement\n- Put each parameter in the list where the chosen tool's schema puts it. Every name under `Required parameters` must appear in `required parameters`, even range-style fields such as `start`/`end` or `interval`, and even if it seems optional. Every name under `Optional parameters` goes in `optional parameters`, even when it carries the query's main input. If the required list is `none`, use `[]`.\n- When several tools could serve a clause, prefer the dedicated one whose parameter names mirror the inputs in the query. Example: latitude/longitude given -> the tool whose *required* params are latitude/longitude, not a generic tool where lat/lon are optional extras. Use only parameter names the chosen tool lists."
+      },
+      {
+        "op": "append",
+        "content": "\n### Parameter values\n- If the query names a value for a `function`/`type`/`endpoint`-style field (for example the endpoint name `DIGITAL_CURRENCY_DAILY`), use it verbatim. Never substitute a similar-sounding value you invented.\n- Categories, topics and country/region codes: write them lowercase (`business`, `us`, `uk`) even when the query capitalises them. A hint like 'country code like US, CA' is only an example, not an enum. When the schema lists explicit allowed options, copy their exact form. Keep the query's case for names, IDs, tickers, symbols, flight numbers and search keywords.\n- Dates are `YYYY-MM-DD`. A range such as 'between January 1-31, 2024' fills both the from and to fields (e.g. dtFrom `2024-01-01`, dtTo `2024-01-31`). Quote every value as a string."
+      },
+      {
+        "op": "append",
+        "content": "\n### Coverage and matching\n- Before answering, list every action in the query in order. Narrated past-tense steps ('they retrieved...', 'they searched...', 'finally ...') each count as one call. Check that the answer has one call per item. The last sentence is the one most often dropped, so re-read it and confirm its tool is included.\n- Match the key noun and provider of each clause literally to a tool name. 'Country data' -> the 'Data of countries' tool, not airport or route data. 'Specific flight searches' and 'detailed info about flight X' -> that provider's flightSearch and flightInfo tools. When a clause names a provider ('Flightera', 'Priceline'), use that provider's endpoint."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

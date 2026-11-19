@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "no_key_domain_not_first_searched",
+      "count": 3,
+      "description": "Hotel details (dates, stars, neighborhood, check-out, 'Yes' to a hotel offer) arrived while CACHE had no hotels key. The agent re-filtered flights, loaded a nonexistent 'hotels' key (None crash), or re-saved the restaurants entry unchanged instead of calling search_hotels."
+    },
+    {
+      "failure_type": "event_date_taken_as_departure_date",
+      "count": 1,
+      "description": "The reunion date, given in answer to 'What's the reunion date?', was used as departure_date. The gold output was seek_information for the departure date."
+    },
+    {
+      "failure_type": "flight_filter_misread_or_missing_nonstop",
+      "count": 2,
+      "description": "'AM' was read as morning, so invented 24-hour departure_time/arrival_time filters were passed and caused a ValidationError. In another task 'non-stop' was ignored (no num_layovers=[0]), a hotel from turn 1 was dropped, and the code only did a partial flight search."
+    },
+    {
+      "failure_type": "party_size_misrouted",
+      "count": 1,
+      "description": "'There are 3 of us' loaded the raw 'hotels' key and added an attraction name as neighborhood, instead of filtering nearest_hotels with num_people only."
+    },
+    {
+      "failure_type": "malformed_search_nearest",
+      "count": 1,
+      "description": "An amenity-plus-named-attraction turn produced search_nearest with a single argument (an attractions result passed as hotels=). The hotel amenity filter and the search_attractions call were never written."
+    }
+  ],
+  "patch": {
+    "reasoning": "The largest cluster (3 of 8, plus one dropped hotel) is a hotel message arriving while CACHE has no hotels key: the agent latched onto whichever other key existed. Rule -2 is rewritten to start with an explicit key-existence test and the required search_hotels action, rather than adding a new gate. Three smaller fixes target distinct failures. First, the DATE GATE gets an event-date carve-out; its existing 'search_flights never takes num_layovers' sentence is also wrong for 'non-stop', so that sentence is replaced with the correct non-stop rule plus the 'AM is an airline, not a time' guard. Second, a short Rule 26 hygiene bullet covers the malformed search_nearest and the amenity-filter-first ordering. Edits are short, use placeholders instead of task values, and avoid the previously rejected -1 flight-rule and Rule 2/17 criteria rewrites.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "-2. DATE ANSWER = SEARCH NOW (beats every seek_information rule below, including the 'vague timing' paragraph of Rule 6). If the assistant just asked for dates and the user's reply holds a date or an 'X to Y' range, never ask again.",
+        "content": "-2. NO-KEY HOTEL = search_hotels NOW; DATE ANSWER = SEARCH NOW (beats every seek_information rule below, including the 'vague timing' paragraph of Rule 6). First test: does a hotels-type key (hotels, filtered_hotels*, final_hotels*, nearest_hotels) literally appear in CACHE? If NOT, a hotel was requested anywhere, and the last message gives any hotel detail (check-in/check-out date, stars, neighborhood, amenity, per-night budget, or a 'Yes' to the assistant's hotel offer), write `hotels = search_hotels(...)` + `save_to_cache(key=\"hotels\", value=hotels)`, carrying every hotel constraint from every turn (stars=[n, n], neighborhood, budget, the amenity just accepted, num_people when a headcount was stated). Do this whatever other keys CACHE holds (flights, restaurants, attractions): never apply the hotel message to those keys, never load a 'hotels' key that CACHE lacks, and never load a key and save it unchanged. Check-in is the user's check-in date, else the flight departure date; check-out is the date the user stated; copy date strings exactly as written. If the assistant just asked for dates and the user's reply holds a date or an 'X to Y' range, never ask again."
+      },
+      {
+        "op": "replace",
+        "target": "'One-way', 'N travelers', 'solo trip', 'weekend getaway', 'birthday' and 'special occasion' are context, not dates.",
+        "content": "'One-way', 'N travelers', 'solo trip', 'weekend getaway', 'birthday' and 'special occasion' are context, not dates. An EVENT date (reunion, wedding, conference, party) given in answer to the assistant asking for the event date is NOT a departure date (this overrides Rule 24 and -2 for event-date questions). A flight request with only that date still lacks departure_date, so the whole output is `seek_information(\"We need the departure date for the flight.\")` with no search. Once a departure date is given later, the event date goes in arrival_date."
+      },
+      {
+        "op": "replace",
+        "target": "search_flights never takes num_people or num_layovers.",
+        "content": "search_flights never takes num_people. Pass num_layovers=[0] on EVERY flight leg only when the user wrote 'non-stop', 'nonstop' or 'direct'; otherwise never pass num_layovers. A bare capital two-letter code ('AM', 'AG', 'AN') answering an airline/class question is airline=[...], never a time of day ('AM' is not morning). Never write departure_time/arrival_time unless the user gave a clock time, and never repeat one the CACHE summary already lists."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 26: Proximity requests ('near the hotel', 'near <attraction>') need search_nearest (overrides the 'do not touch the hotel cache' and 'type if stated' parts of Rule 10)",
+        "content": "- search_nearest needs exactly TWO of hotels / attractions / restaurants, each loaded from its own domain's key (`hotels=<hotels key>`, `attractions=<attractions key>`). One argument, or a result under the wrong kwarg, raises a ValidationError. When one message gives hotel amenities AND names an attraction to visit, write the amenity `filter_hotels` first (most refined hotels key, only the new amenity kwargs, saved under an unused key), then `search_attractions(city=<trip city>, attraction_name=[...])` saved as 'attractions'. Add search_nearest only if the user asked for something near it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

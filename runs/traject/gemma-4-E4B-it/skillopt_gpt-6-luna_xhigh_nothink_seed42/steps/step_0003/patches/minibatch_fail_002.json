@@ -1,0 +1,30 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection",
+      "count": 4,
+      "description": "Several calls chose a semantically similar endpoint over one that more directly matched the requested operation or source."
+    },
+    {
+      "failure_type": "tool_inventory_and_scope",
+      "count": 2,
+      "description": "One trajectory added an unrelated topical call, while another used a plausible endpoint that was not in the available tool list."
+    },
+    {
+      "failure_type": "parameter_mapping",
+      "count": 2,
+      "description": "Some calls omitted settings needed to express the requested full or default scope, or a documented request-format setting."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing rules already discourage adjacent calls and require schema-based arguments, but the trajectories show that these checks need a more explicit final audit: tool names must come from the supplied inventory, every call must map to a requested deliverable, and unrestricted requests may require explicit documented scope values rather than omitted filters.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Additional preflight checks\n\n- **Use the supplied tool inventory as a closed set.** Never infer or emit a plausible endpoint name that is absent from the available tools. Compare candidates using the endpoint-specific operation and schema, not just a provider's broad description. If a requested source has no dedicated endpoint, use a listed source-selectable endpoint only when its documented parameters can express that source and a source identifier is documented or unambiguous; otherwise do not substitute an adjacent feed.\n- **Audit every call against the request.** Be able to associate each call with a specific requested deliverable and verify that its endpoint and arguments preserve that deliverable's action, entity, and scope. Remove calls justified only by a shared topic or keyword.\n- **Represent explicitly unrestricted scope.** When a request clearly calls for all categories, an unrestricted selection, or a standard full set, provide documented or unambiguous `all`/default values for exposed scope controls when omitting them could narrow or change the result. Apply documented format or protocol settings when the endpoint contract calls for them. Do not guess unsupported enum values or defaults."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

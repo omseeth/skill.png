@@ -1,0 +1,30 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "Cache lifecycle and result persistence",
+      "count": 4,
+      "description": "Hotel searches or refinements were not consistently assigned, saved under a unique cache key, or based on an explicitly retrieved cached result."
+    },
+    {
+      "failure_type": "Incremental refinement and state carryover",
+      "count": 2,
+      "description": "Refinement calls repeated earlier constraints or supplied stale date and trip details instead of applying only the new preference."
+    },
+    {
+      "failure_type": "Premature no-op across domains",
+      "count": 1,
+      "description": "The agent returned no planning because flights and hotels were cached, even though a newly requested restaurant search had no cached result."
+    }
+  ],
+  "patch": {
+    "reasoning": "The common hotel failures show that cache handling needs a reliable retrieve–refine–save procedure and that refinements should add only the current turn’s new criteria. The restaurant failure shows that cache coverage must be checked separately for each requested domain before deciding no planning is needed.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Cache-aware incremental planning\n- Evaluate cache coverage independently for each requested travel domain. A cached result for one domain does not satisfy a request for another. Return `print(\"No planning needed\")` only when every requested action is already covered by a relevant, valid cached result; otherwise plan the missing search or refinement using known conversation context.\n- For a refinement, retrieve the most relevant cached result explicitly into a local variable and pass it as `prior_results`. Do not rely on variables from earlier execution turns. Apply only the preference newly introduced on the current turn; do not resend earlier dates, party details, budgets, or amenities that the prior result already represents.\n- Assign the return value of every search, filter, sort, and nearest-results call to a variable, then save that result with `save_to_cache` under a unique key. Save refined results under a new key so later turns can retrieve the latest relevant result."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

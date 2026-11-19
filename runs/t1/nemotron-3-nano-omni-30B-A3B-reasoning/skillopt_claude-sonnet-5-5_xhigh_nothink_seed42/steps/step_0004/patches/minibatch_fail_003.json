@@ -1,0 +1,29 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "fabricated_mandatory_dates",
+      "count": 1,
+      "description": "The user said 'weekend getaway' with a hot tub, sauna and rating but gave no check-in/check-out dates. The agent invented dates (and an incoherent checkin=checkout list) and called search_hotels. The gold output was seek_information for the stay dates. Rule 6 already forbids this, but the agent treated vague timing words as dates."
+    },
+    {
+      "failure_type": "affirmative_mapped_to_wrong_constraint",
+      "count": 1,
+      "description": "The assistant asked 'Would you prefer a hotel with a balcony?' and the user said 'That sounds amazing, yes.' The agent re-filtered with has_beach_access and pool_present, which the CACHE summary already lists as applied, instead of has_balcony=True, the item the assistant proposed."
+    }
+  ],
+  "patch": {
+    "reasoning": "Both failures are cases where an existing rule was not applied at the point of decision. In the first, the agent filled the date gap with vague context ('weekend') even though Rule 6 forbids it, so a mechanical date gate that requires quoting the user's words is more reliable. In the second, Rule 10 says a 'yes' is a new constraint, but the agent took the constraint from earlier turns instead of the assistant's last question. The fix is an explicit procedure: identify the amenity in the assistant's last message, map it to the single matching param, and exclude anything the CACHE summary already lists.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n## Rule 19: Date gate before search_hotels / search_flights (vague timing is NOT a date)\n- Before writing any search_hotels or search_flights, find the user's literal words for each mandatory date (check-in AND check-out for hotels, departure date for flights). If you cannot point to a concrete calendar date or a reference date plus offset that the user actually wrote, the date is MISSING.\n- These phrases are NOT dates: 'weekend getaway', 'this/next weekend', 'a long weekend', 'next month', 'soon', 'over the holidays', 'in the summer', 'for 3 nights', 'a week-long stay', 'last-minute'. A stay length without a start date is also missing. Never turn them into concrete dates, and never write a date list that is not literally in the conversation (for example identical check-in and check-out lists).\n- A first message that lists many optional details (city, amenities such as hot tub or sauna, rating, stars, budget, party size) but no dates is still missing the dates. Output ONLY `seek_information(\"We need the check-in and check-out dates for the hotel stay.\")` (or the flight/combined equivalent from Rule 7). Do not call search_* and do not save anything to the cache.\n- Only when the user has stated every mandatory date (in this turn or an earlier one) should you search, per Rule 14."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 20: A short 'yes' answers the assistant's LAST question - apply exactly that item, nothing else\n- When the user's last turn is only an affirmative ('Yes', 'That sounds amazing, yes', 'Sure, that works'), read the assistant's immediately preceding message. The new constraint is the single feature or option that message proposed, for example 'Would you prefer a hotel with a balcony?' -> `has_balcony=True`.\n- Do NOT take the constraint from earlier user turns. Anything the user asked for before (for example 'beach access and a pool') is already listed in the CACHE summary of the latest key ('Additionally filtering for pool_present, has_beach_access'). Re-passing those params is wrong and the real new param would be missing.\n- Procedure: (1) name the proposed item in the assistant's last message; (2) map it to ONE param from TOOL CONFIG (balcony -> has_balcony, rooftop bar -> has_rooftop_bar, spa -> has_spa_services, free parking -> has_free_parking, breakfast -> breakfast_included, gym -> gym_present, pool -> pool_present, room service -> has_room_service, kids club -> has_kids_club); (3) load the most refined key of that domain, filter with only that param, and save under a new key, e.g. `x = get_results_from_cache(key=\"filtered_hotels2\")`, `y = filter_hotels(prior_results=x, has_balcony=True)`, `save_to_cache(key=\"filtered_hotels3\", value=y)`.\n- A 'no' / 'not really' to the proposal adds no constraint (Rule 8 retrieval only)."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_or_identifier",
+      "count": 6,
+      "description": "Some calls used a less suitable endpoint or incomplete tool identifier, omitted requested operations, or stopped when named endpoints were unavailable."
+    },
+    {
+      "failure_type": "parameter_binding",
+      "count": 5,
+      "description": "Some calls used incorrect geographic levels, noncanonical values, or native numeric values where the response format required strings."
+    },
+    {
+      "failure_type": "response_format",
+      "count": 1,
+      "description": "The agent returned explanatory prose instead of the required structured answer when it could not find the named endpoints."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify that API schema types do not override the wrapper's string serialization, strengthen geographic mapping for APIs whose field names do not reveal their hierarchy level, and preserve the required response format when a named endpoint is unavailable. These edits address observed gaps without repeating the existing endpoint-selection guidance.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- For geographic fields that encode administrative hierarchies, follow the endpoint's documented hierarchy rather than treating city, province/state, metro area, and country as interchangeable. Use canonical codes where expected and provide the divisions needed to identify the requested place; use documented geographic lookup data to resolve names when available.",
+        "content": "- For geographic fields, determine each field's meaning and hierarchy level from the endpoint documentation, not from its name alone. Map the requested place into the correct fields from the root scope downward, including all required ancestor divisions; do not put a city or county in a field that expects a country or state. Use canonical codes where expected and documented geographic lookup data to resolve names when available."
+      },
+      {
+        "op": "replace",
+        "target": "- In this answer format, encode scalar `value` fields as JSON strings, including numeric and boolean-like parameter values, unless the task's response contract explicitly requires native JSON numbers or booleans.",
+        "content": "- In this answer format, encode every scalar `value` as a JSON string, even when the API schema declares the parameter as NUMBER or BOOLEAN. Schema types govern parameter validity, not serialization in this wrapper. Use native JSON numbers or booleans only when the response contract—not the API schema—explicitly requires them."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Audit every call against its own schema and the decomposed request checklist. Ensure each call is relevant and has the exact full tool identifier and correctly formed parameter entries.",
+        "content": "\n- If a requested or named endpoint is absent from the available-tools list, do not invent its identifier or switch to explanatory prose. Use an available endpoint only if its documented capability supports the requested result; do not use an adjacent endpoint to simulate an unsupported facet. If no available endpoint supports that result, make no call for it and still return only the required structured format."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

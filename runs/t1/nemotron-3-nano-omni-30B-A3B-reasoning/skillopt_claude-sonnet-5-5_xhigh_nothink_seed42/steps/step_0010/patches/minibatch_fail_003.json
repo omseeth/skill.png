@@ -1,0 +1,46 @@
+{
+  "batch_size": 3,
+  "failure_summary": [
+    {
+      "failure_type": "over_refinement_and_invented_cache_key",
+      "count": 1,
+      "description": "The user answered a hotel amenity question while the CACHE held 'flights', 'return_flights' and 'hotels'. The agent loaded a non-existent 'departure_flights' key, re-filtered both flight legs with a class from an earlier turn, and re-passed stars, neighborhood, kids club and pool, which the hotel summary already lists."
+    },
+    {
+      "failure_type": "wrong_seek_information_for_unrequested_domain",
+      "count": 1,
+      "description": "A restaurant-only conversation (Mexican, budget 75) got the city and neighborhood in its last turn, with an empty CACHE. The agent output a seek_information asking for a flight departure date instead of calling search_restaurants with values from all turns."
+    },
+    {
+      "failure_type": "invalid_param_return_date_and_missing_save",
+      "count": 1,
+      "description": "For a round-trip flight request the agent passed a non-existent return_date param in one bare search_flights call with no assignment or save. It should have made two searches (outbound and return) saved as departure_flights and return_flights."
+    }
+  ],
+  "patch": {
+    "reasoning": "All three failures break rules already in the skill: Rule 9 (no return_date, two legs), Rule 13/17 (refine only the last turn's domain, pass only new constraints, use real cache keys), and Rule 14/21 (search once the mandatory args are known from any turn). The agent is not applying them. The edits add three short worked examples that mirror these cases (round trip with a shared class, a hotel amenity reply in a flight+hotel cache, a restaurant first search where the city arrives last). They also add a final pre-flight scan to the decision order that bans the specific error patterns.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "4. Pass only the constraints the user literally stated. Never ask about optional details, and never seek information for a domain the user has not requested.",
+        "content": "\n5. Pre-flight scan before answering: (a) the text `return_date` appears nowhere (search_flights has no such param; a round trip is two searches, Rule 9); (b) every search_*/filter_* is assigned to a variable and followed by save_to_cache; (c) every get_results_from_cache key literally appears in the CACHE dict (if the CACHE has 'flights' and 'return_flights', there is no 'departure_flights'); (d) every seek_information names only a domain the user actually requested and only args the user has not yet given in ANY turn; (e) only the domain(s) the LAST turn answers are touched."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use date strings exactly as the user wrote them (e.g. \"May 15, 2025\").",
+        "content": "- Worked example (round trip with a shared class, first turn, empty CACHE): 'round-trip flight from Portland to Lexington on May 20, 2025 to May 31, 2025. Okay with either business or economy' -> `departure_flights = search_flights(start_airport_city=\"Portland\", end_airport_city=\"Lexington\", departure_date=[\"May 20, 2025\"], flight_class=[\"business\", \"economy\"])`, `return_flights = search_flights(start_airport_city=\"Lexington\", end_airport_city=\"Portland\", departure_date=[\"May 31, 2025\"], flight_class=[\"business\", \"economy\"])`, then `save_to_cache(key=\"departure_flights\", value=departure_flights)` and `save_to_cache(key=\"return_flights\", value=return_flights)`. Never write one bare `search_flights(..., return_date=[...])`. Hotels or restaurants that the user has not yet mentioned are not searched, even if the task seems to be a multi-domain trip."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Only refine domains the last turn actually talks about. Never invent filter values (e.g. a made-up cuisine list or budget) for another domain.",
+        "content": "- Worked example (hotel answer in a flight+hotel conversation): CACHE {'flights', 'return_flights', 'hotels': '...stars range: [3, 3], neighborhood(s): [Midtown Atlanta], pool_present, has_kids_club'}, the assistant asked about hotel amenities, and the user says 'Yes, laundry facilities and room service'. Output exactly `h = get_results_from_cache(key=\"hotels\")`, `h2 = filter_hotels(prior_results=h, has_laundry_service=True, has_room_service=True)`, `save_to_cache(key=\"filtered_hotels\", value=h2)`. Do NOT touch the flight keys, even if a flight class was mentioned earlier in the conversation. The flights were already searched and the hotel amenity answer says nothing about them. Do NOT re-pass stars, neighborhood, kids club or pool, because the summary already lists them. Do NOT invent keys such as 'departure_flights'."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Search only the domain whose mandatory args just became complete. Leave other domains' existing cache entries untouched (e.g. restaurants already cached, now the hotel dates arrive: call search_hotels only).",
+        "content": "- Worked example (restaurant-only conversation, empty CACHE, city arrives in the last turn): user turns 'I'm looking for Mexican food' / 'around 75' / 'St. Louis, actually only in Downtown St. Louis'. All mandatory args are now known, so gather every stated constraint from ALL turns into one first search: `restaurants = search_restaurants(city=\"St. Louis\", cuisine=[\"Mexican\"], budget=75, neighborhood=[\"Downtown St. Louis\"])` then `save_to_cache(key=\"restaurants\", value=restaurants)`. 'Actually only in <neighborhood>' is a neighborhood value (user's wording), not a reason to ask anything. Never output seek_information about flights or a departure date when the user only requested restaurants."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

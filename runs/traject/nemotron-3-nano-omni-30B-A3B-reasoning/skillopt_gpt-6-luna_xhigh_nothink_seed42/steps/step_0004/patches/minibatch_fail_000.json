@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "serialization_and_call_schema",
+      "count": 3,
+      "description": "Some answers were unparsable or encoded parameters as objects or separate arrays instead of the required call-list structure."
+    },
+    {
+      "failure_type": "endpoint_selection_or_request_coverage",
+      "count": 4,
+      "description": "Calls used an endpoint for a related but different result, omitted a distinct deliverable, or duplicated a search instead of covering it once."
+    },
+    {
+      "failure_type": "parameter_mapping_and_constraints",
+      "count": 7,
+      "description": "Arguments used incorrect identifier domains or canonical values, or failed to apply requested filters and constraints to the relevant call."
+    }
+  ],
+  "patch": {
+    "reasoning": "The trajectories show failures at three separable stages: matching each requested result to an endpoint, mapping request values to that endpoint's parameter schema, and serializing the final calls. The edits focus on those observed gaps without adding unrelated tool-specific rules.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Match requested results to endpoints\n- Choose an endpoint by the operation and artifact requested, not just by topic. For a named source, use a source-specific endpoint or selector when available; do not substitute a general search. Likewise, distinguish adjacent outputs such as financing offers, pricing, and warranty information.\n- Track each distinct requested deliverable and map it to a call. Apply compatible filters for the same result in one call; do not add unrelated calls or leave a requested result uncovered.\n\n## Map arguments to the endpoint schema\n- Map each value to the exact documented parameter, respecting its type and identifier domain. Do not substitute a familiar-looking code for a different kind of identifier, or treat a named section as a numeric page. Use canonical values only when supported by the request or tool documentation; do not fabricate opaque IDs.\n- Attach each constraint to the call it filters, and include optional parameters only when requested or directly entailed by the task.\n\n## Serialize to the active answer format\n- Follow the current task's exact wrapper, keys, and parameter-entry schema. Emit one valid JSON array containing one call object per item; represent required and optional parameter collections as arrays of `{ \"name\": ..., \"value\": ... }` entries, including empty arrays where required.\n- Do not duplicate keys, use parameter objects in place of arrays, or emit multiple top-level array fragments. Check that the completed answer parses and that parameter values use the expected JSON types."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

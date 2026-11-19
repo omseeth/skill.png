@@ -1,0 +1,34 @@
+{
+  "batch_size": 4,
+  "success_patterns": [
+    "Every clause of the query is mapped to exactly one tool call. Distractor tools from the same or similar providers (other Wayfair endpoints, Rocket League, Steamcharts, etc.) are left out. Several endpoints of one provider are called separately when the query names each (e.g. Uncovered Treasure /today and /search).",
+    "Tool names are copied exactly in 'Provider: endpoint' form, taken from the tool list headers.",
+    "Argument values are lifted from the query wording and not invented. Quantity phrases map to the matching optional parameter: 'up to 100 entries' -> limit=100, 'first 20 results' -> pageSize=20, 'offset 0' -> offset=0, '5 trivia questions' -> limit=5, 'rolling 5 dice' -> dice=5, 'limited to 150 characters' -> limit=150, '7-letter word' -> wordLength=7.",
+    "Entity and category phrases map to the matching string parameter: 'from CNN' -> newspaperId=CNN, 'toysgames category' -> category=toysgames, 'including STEREO_A and STEREO_B' -> enable='STEREO_A,STEREO_B', and the quoted ID, SKU, word or search term is passed as-is.",
+    "Required parameters are always filled. When a tool has no required parameters and the query gives no options, the optional list is left empty.",
+    "Some values the query only implies were dropped: 'Batman games' -> title=batman, 'UK market' -> country=GB, 'first' page -> page=1. One response also made two near-duplicate calls to the same tool to hedge on language and country instead of one call with both parameters. Another added an unrequested option (fragment=true)."
+  ],
+  "patch": {
+    "reasoning": "All four trajectories were single-turn parallel tool-calling tasks that succeeded by the same method: map each query clause to one tool, copy names exactly, fill required parameters, and turn the quantities and entities in the query into optional parameters. The graders still showed optional-parameter mismatches, caused by missed implied values (title, country, page), hedged duplicate calls, and unrequested flags. The skill is empty, so these rules cover both what worked and the small gaps.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Tool Selection\n- Split the query into its individual actions or clauses. Make exactly one call per clause, and check that no clause is left without a call before answering.\n- Choose the endpoint whose name and description match the clause literally. Ignore tools the query never mentions, even from the same provider or with a similar name, such as sibling endpoints or the same provider's search or list endpoints.\n- If the query uses several endpoints of one provider, call each one separately.\n- Make one call per tool unless the query clearly asks for the same tool with different inputs. Never add a second near-duplicate call to hedge. Put all the stated parameters in a single call.\n- Copy the tool name exactly as the 'Provider: endpoint' header in the tool list, including punctuation and capitalisation."
+      },
+      {
+        "op": "append",
+        "content": "## Required Parameters\n- Every required parameter must have a value. Take it verbatim from the query: SKUs, IDs, order numbers, class names, words, search terms and numbers are copied as-is and never altered or guessed.\n- If a tool's only parameter is required and the query supplies it (e.g. a weapon class name), pass it as the single required entry. Leave the optional list empty."
+      },
+      {
+        "op": "append",
+        "content": "## Optional Parameters: Turn Query Phrasing into Arguments\n- Include an optional parameter only when the query states or clearly implies a value for it. Do not add defaults, format flags or toggles (e.g. fragment, json, verbose, callback) that the query never mentions.\n- Quantity phrases map to the limit/size/count parameter: 'up to N entries', 'limited to N', 'first N results' and 'N questions' all become that parameter with value N. Use the exact parameter name from the tool list (limit vs pageSize vs dice vs wordLength).\n- Position phrases map to offset/page: 'starting from the first entry (offset 0)' -> offset=0.\n- Source, category or filter phrases ('from CNN', \"the 'toysgames' category\", 'including STEREO_A and STEREO_B') map to the matching string parameter. Join multiple items with a comma when the parameter says comma-separated.\n- Check the tool's parameter descriptions for allowed values and formats before filling an optional parameter."
+      },
+      {
+        "op": "append",
+        "content": "## Implied Values and Final Check\n- Capture values the query implies as well as ones it states outright. A subject such as 'Batman games' goes into the title/keyword/query parameter (lowercase is fine). 'UK market' -> country code GB, and 'British English' -> language en-GB, each in its matching parameter of the same single call.\n- Before giving <answer>, verify: (1) one call per clause, (2) every required parameter is filled, (3) every number or entity in the query appears in some parameter, (4) there are no extra tools or unrequested options, (5) the JSON uses only the three keys 'tool name', 'required parameters' and 'optional parameters' (use [] when empty), and the list is sorted by tool name."
+      }
+    ]
+  },
+  "source_type": "success"
+}

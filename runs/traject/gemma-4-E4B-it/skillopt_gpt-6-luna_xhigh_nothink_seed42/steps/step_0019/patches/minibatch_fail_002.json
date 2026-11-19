@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_or_mode_matching",
+      "count": 4,
+      "description": "Some calls used a near-match or redundant endpoint, or inferred a narrower selector instead of matching the requested capability and scope."
+    },
+    {
+      "failure_type": "value_serialization",
+      "count": 3,
+      "description": "Numeric schema fields were emitted as JSON numbers where the required call format expected string values."
+    },
+    {
+      "failure_type": "required_optional_grouping",
+      "count": 2,
+      "description": "Optional tool parameters were placed in the required-parameters array."
+    },
+    {
+      "failure_type": "composite_argument_mapping",
+      "count": 1,
+      "description": "A composite email address was passed whole to a username field even though the schema separately requested username and domain."
+    },
+    {
+      "failure_type": "case_mismatch_with_gold",
+      "count": 3,
+      "description": "Gold calls differed in casing from the user-supplied or schema-listed values; the trajectories provide no consistent, safe normalization rule."
+    }
+  ],
+  "patch": {
+    "reasoning": "Clarify how to resolve overlapping endpoint capabilities and how to serialize values when the call format consistently represents values as strings. Add a schema-mapping rule for composite inputs. Parameter-group assignment is already explicitly covered, and the casing differences conflict with the documented or supplied values, so neither warrants a new rule.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "For each candidate, verify that its result fulfills the requested action for the right entity and scope: suggestions, checks of weaker properties, or unfiltered results do not substitute for a requested lookup, verification, or scoped result.",
+        "content": "When endpoint descriptions overlap, compare their documented outputs with each requested property and action, rather than relying on a shared topic or a generic label. Prefer one endpoint when it directly covers all requested properties; use separate calls only for distinct requested results that it does not cover. For mode selectors, preserve the requested breadth instead of inferring a narrower mode from the target entity."
+      },
+      {
+        "op": "replace",
+        "target": "Serialize values according to the required call-format convention: follow explicit examples that consistently encode values as strings, even for numeric or boolean parameters; otherwise follow the declared schema types.",
+        "content": "Serialize each value according to the required call-format convention, not solely the parameter's semantic schema type. If the format examples consistently represent values as quoted strings, use strings for numeric and boolean parameters too; emit native JSON numbers or booleans only when the format explicitly demonstrates or requires them. Use the schema type to validate the meaning of the value."
+      },
+      {
+        "op": "insert_after",
+        "target": "Preserve query values and their entity associations, converting them only to documented formats such as API codes, list syntax, or canonical enum spelling.",
+        "content": "When the schema splits a composite input across component fields, parse the input into those fields instead of copying the whole value into one component. For example, if separate `username` and `domain` fields are requested for an email address, pass its local part as `username` and its domain as `domain`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

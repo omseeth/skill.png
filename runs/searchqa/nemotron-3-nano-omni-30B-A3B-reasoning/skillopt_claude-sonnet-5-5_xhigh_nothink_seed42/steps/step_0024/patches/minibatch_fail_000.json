@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Wrong slot type. A painting was given for 'he', 'Area of a circle' for 'its area equals...', and 'President of Vietnam' for a bare 'President + name' clue (the key wanted the country). The type-check rules already exist but are buried and unused."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "The first passage held a verbatim archive line ('...gossip's fate | tongue. right: Leah.'). The agent answered 'liver' from memory without scanning."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 2,
+      "description": "Person names carried middle initials ('Lyndon B. Johnson', 'George H. W. Bush') where the key uses the plain 'First Last' form."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "The agent hedged with alternatives ('sheep or goat') instead of committing to the single primary entity the passages name ('particularly sheep')."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "For a '___ & Wagnalls' blank the key is the full partner pair ('Funk & Wagnalls'). The agent guessed an unrelated name from a crossword hint instead of finding the pair in the passages."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures are slot-type errors, skipped archive scans, hedged answers and over-long person names. All of these are covered in principle by existing rules that the agent does not apply, since it emits a bare tag with no reasoning. Edit 1 adds a short mandatory one-line step at the top of the skill: archive check, slot type, then answer. It covers the painting, circle and country cases and the missed archive hit. Edit 2 adds a person-name form rule: drop middle initials by default, with exceptions. Edit 3 stops 'X or Y' hedging. Edit 4 handles the narrow '___ & Name' partner-pair blank. Each edit is short and conditional on a visible clue feature, to avoid regressions on stable passes.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "# Question Answering Skill",
+        "content": "\n## Step 0 (one reasoning line before every answer)\nWrite: `ARCHIVE = <quoted passage line where the clue is followed by an answer, or none>; SLOT = <person / thing / country / word>; ANSWER = <bare entity of that slot type>`.\n- Check ARCHIVE before using memory. If a passage shows the clue followed by an answer ('clue text | answer. right: Name'), copy that answer as printed (Rule 3).\n- 'he / she / who / this <role>' means a person's name. Never answer with a painting, film, song or other work the clue mentions.\n- 'Its <property> ...' (area, sides, capital) means the single bare noun that owns the property ('Circle'), not 'Area of a circle'.\n- A bare '<title> <person name>' clue (president, king, prime minister + name) means the country or state he or she led, as a bare name, never 'President of X' or the person's own name.\n"
+      },
+      {
+        "op": "insert_after",
+        "target": "- Put only the bare answer in the answer tags. Do not write a sentence, restate the clue, or add dates, qualifiers or alternatives. Brief reasoning belongs before the tags.",
+        "content": "- NEVER give two options joined by 'or' / 'and' ('sheep or goat'). When passages list several candidates, commit to the one the best sources call primary ('particularly', 'especially', 'usually', or named first and most often) and output only that word."
+      },
+      {
+        "op": "insert_after",
+        "target": "Never cut a part that identifies the person: keep the regnal numeral of a king or of a play's title character ('Richard III', not 'Richard'; 'Henry V').",
+        "content": "\n- PERSON NAMES: default to the plain 'First Last' form without middle initials or generation tags ('Lyndon Johnson', not 'Lyndon B. Johnson'; 'George Bush', not 'George H. W. Bush'). Use the exact spelling the clue itself gives for that person if it names him or her. Keep an initial only when a verbatim archive answer prints it or the person is conventionally always written with it (Dwight D. Eisenhower)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use the singular form for a generic single object ('Well', not 'wells'), but keep the plural for crops, commodities and mass categories ('Bananas') or when the clue says 'these'/'ones'.",
+        "content": "- BLANK IN A PARTNER NAME: when the clue blanks one half of a joint business or duo name written with '&' ('Publishing partners: ___ & Wagnalls'), search the passages for the name printed with the other half, then give the complete pair as printed ('Funk & Wagnalls'). Ignore crossword-solver lists that merely echo the clue words."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

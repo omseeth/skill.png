@@ -1,0 +1,26 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Refinement turns on a cached domain were written as exactly three lines: load the domain's own most refined key, filter with only the kwargs from the last user message, and save under a new key. Examples: restaurants 'Dutch + at least 4.5' -> cuisine and rating only; 'okay with at least 3.0' -> rating=[3.0, 5]; hotels 'around 35 per night + business center' -> budget and has_business_center only. Cached summary items such as rooms, travelers or the earlier city were never re-passed, and no other domain's key was touched, even with hotels and restaurants both cached.",
+    "A date reply to the assistant's date question triggered an immediate first search_hotels. It used dates copied as written, city from an earlier turn, and the turn-1 amenities (gym, air conditioning). 'Solo trip' became num_people=1, and 'flexible on the location' added no neighborhood.",
+    "First turns with a flight or hotel request and no concrete date (family vacation, '3 people', a trip with only origin and destination) were answered with a lone seek_information naming only the missing date items, with no search call and CACHE left empty.",
+    "'at least X' rating mapped to [X, 5], and the hotel amenity names matched the has_ prefix table.",
+    "Two of the batch (the 'family vacation' hotel turn and the 'flight + hotel for 3 people' turn) still produced '<date>' placeholders and an invalid kids_club kwarg. Their cache_em stayed at 1.0 but code_success was 0. The rules against both already exist, so the fix is to keep the prompt short enough to be followed, not to add more rules."
+  ],
+  "patch": {
+    "reasoning": "Nearly every success pattern is already encoded in the skill, and the optimizer memory warns that adding gates hurt last epoch. These edits therefore only remove a contradiction. They add no new gate or example and change no behavior seen in these trajectories. Edit 1 reconciles Rule 13's blanket 'no city in a filter' with the protected slow-update block's attraction-city exception. Edit 2 widens an existing 'vague words are not params' bullet to cover 'flexible on the location', which the hotel date-reply success handled correctly.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "and do not add city to a filter.",
+        "content": "and do not add city to a filter (sole exception: filter_attractions(city=...) when the user names a city for attractions cached at state level)."
+      },
+      {
+        "op": "replace",
+        "target": "- Do not convert vague style words ('formal', 'fun', 'romantic', 'nice', 'budget-friendly' with no number) into rating, stars, budget or amenity params.",
+        "content": "- Do not convert vague style words ('formal', 'fun', 'romantic', 'nice', 'budget-friendly' with no number) into rating, stars, budget or amenity params. 'Flexible on the location', 'anywhere' and 'no preference' add no neighborhood or other kwarg."
+      }
+    ]
+  },
+  "source_type": "success"
+}

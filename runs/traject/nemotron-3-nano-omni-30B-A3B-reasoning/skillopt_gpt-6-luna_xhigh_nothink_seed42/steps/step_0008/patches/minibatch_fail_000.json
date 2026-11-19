@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "call_coverage",
+      "count": 4,
+      "description": "Compound requests omitted one or more requested operations or named sources, especially in long multi-part prompts."
+    },
+    {
+      "failure_type": "endpoint_selection",
+      "count": 2,
+      "description": "Related endpoints were substituted despite returning a different type of result or handling a different target."
+    },
+    {
+      "failure_type": "parameter_mapping",
+      "count": 5,
+      "description": "Some arguments were attached to the wrong operation or failed to represent required location hierarchy, categorical values, or multiple-value encoding."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing rules state the right goals but several trajectories still miss deliverables in compound requests or choose a related endpoint by topic alone. A concrete action ledger and a result-type check make those steps easier to apply; explicitly scoping qualifiers to their operation also addresses parameter leakage and hierarchical-location errors.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Turn each explicit clause into a requested action, target, and set of qualifiers. In one-turn tasks, narrated sequences such as “first,” “then,” and “finally” describe requested actions, not actions already completed.",
+        "content": "- For compound requests, make an internal ledger with one row per requested operation and result. Expand lists of named targets and sources into separate rows, including items in later or final clauses. After selecting tools, match every row to a call and every call to a row; do not count a related search as satisfying a different requested result."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Choose an endpoint by its documented operation, output, target, and support for the requested qualifiers—not merely by a shared topic or entity name. Prefer the most specific endpoint that fits the request; use separate endpoints when distinct deliverables require them.",
+        "content": "- When endpoints overlap, first classify the requested result and operation, then compare them with each endpoint’s documented output: for example, people versus events, address verification versus domain-disposability checks, or a named-source feed versus a general topic search. Do not treat a broad API description or shared topic as evidence that an endpoint returns the requested result."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Carry every explicit filter and qualifier into the supported field that represents it. Follow the endpoint’s documented parameter meanings, required and optional fields, value types, canonical values, units, and encoding for multiple values. Do not assume conventions are the same across providers.",
+        "content": "- Bind each qualifier only to the operation it modifies, and include it only on endpoints whose schemas support it; a sort order for reviews, for instance, does not apply to a separate price lookup. For hierarchical location filters, map the country identifier and each required administrative level to their respective fields, following the endpoint’s stated dependencies rather than substituting a region name for the country."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

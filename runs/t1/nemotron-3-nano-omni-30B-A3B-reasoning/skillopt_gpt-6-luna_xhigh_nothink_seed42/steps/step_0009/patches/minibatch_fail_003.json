@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "conversation_delta_and_action_coverage",
+      "count": 8,
+      "description": "Agents missed the latest request or applied work to already-satisfied items instead of the outstanding update."
+    },
+    {
+      "failure_type": "cache_refinement_and_result_selection",
+      "count": 6,
+      "description": "Agents failed to refine the most relevant cached result, including results that already represented a proximity relationship."
+    },
+    {
+      "failure_type": "result_lifecycle",
+      "count": 5,
+      "description": "Result-producing calls were left unsaved or tool imports prevented the intended calls from executing."
+    },
+    {
+      "failure_type": "schema_and_parameter_overreach",
+      "count": 3,
+      "description": "Agents resent satisfied criteria or supplied unsupported or incorrectly shaped arguments."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers general cache use, saving results, and schema validation. These edits clarify two remaining cache-coverage cases: a follow-up constraint may apply independently to multiple domains, and a cached nearest-results object can be the base for refining one of its domains. They also make flight-leg cache coverage explicit so an already-satisfied leg is not repeated when another leg changes.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "\n- If a follow-up constraint explicitly applies to multiple requested items or domains (for example, “both”), apply it separately to each matching item’s relevant result; do not assume one domain’s refinement covers the others."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Represent flight legs separately",
+        "content": "\n- At follow-up, treat each flight leg as a separate cache-coverage unit. Leave a valid, unchanged leg untouched; search or filter only legs that are missing or affected by a new constraint, and save each resulting leg separately."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Proximity between travel domains",
+        "content": "\n- If a relevant `search_nearest` result is already cached and a follow-up adds a constraint to one of its domains, retrieve that result and apply the matching domain filter to it, preserving the existing comparison. Re-run `search_nearest` only if the compared targets or requested relationship change."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

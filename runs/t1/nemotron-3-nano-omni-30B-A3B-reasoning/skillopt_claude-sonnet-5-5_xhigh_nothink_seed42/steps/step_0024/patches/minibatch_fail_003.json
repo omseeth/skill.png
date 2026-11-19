@@ -1,0 +1,26 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_tool_path_proximity_missed",
+      "count": 1,
+      "description": "After 'Yes, we want to visit Georgia Aquarium' with hotels and attractions both cached, the agent ran search_attractions with the old type=['Cultural'] plus the name and overwrote the 'attractions' key. It never loaded the hotels key, never saved to 'attractions1', and never called search_nearest(groupBy='hotel'). tool_f1 was 0.57 with 3 gold calls missing."
+    }
+  ],
+  "patch": {
+    "reasoning": "Rules 25 and 26 already prescribe the right 5-line block for a named attraction with a hotels key cached. Rule 10 contradicts them ('save under attractions', 'do not touch the hotel cache'), and the protected strategic section stresses 'attractions only' and 'don't touch hotel keys' for attraction replies. The agent followed Rule 10 and the attraction-only guidance. Following the meta-skill, I am not adding another sibling example. I promote the rule to a trigger-based pre-check at the top of the CACHE GATE and remove the contradictory clause in Rule 10 so the two stop conflicting.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "\nPRE-CHECK (named attraction + hotels key; look at this before step 0). Trigger: the user's last turn names one specific attraction ('Yes, we want to visit <X>', 'near <X>'), or says Yes to the assistant's offer of a hotel near <X>, AND CACHE holds any hotels key (hotels, filtered_*, final_*, hotels2 ...). A name is not an attraction type, so never pass type= and never reuse or overwrite the 'attractions' key. Do not stop after the search. The whole output is exactly these five lines: `h = get_results_from_cache(key=\"<most refined hotels key>\")`, `a1 = search_attractions(city=\"<hotel city>\", attraction_name=[\"<X>\"])`, `save_to_cache(key=\"attractions1\", value=a1)` (next unused name if attractions1 exists), `nearest_hotels = search_nearest(hotels=h, attractions=a1, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`. Do not re-filter the hotels and do not re-run the cached type search. If CACHE has no hotels key, just run `search_attractions(... attraction_name=[\"<X>\"])` and save it as 'attractions'.\n"
+      },
+      {
+        "op": "replace",
+        "target": "Do not touch the hotel cache for that turn.",
+        "content": "Do not touch the hotel cache only when CACHE has no hotels key. If a hotels key exists, follow the PRE-CHECK at the top of the CACHE GATE and Rule 26 instead: name only (no type), save as 'attractions1', then search_nearest with the hotels."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

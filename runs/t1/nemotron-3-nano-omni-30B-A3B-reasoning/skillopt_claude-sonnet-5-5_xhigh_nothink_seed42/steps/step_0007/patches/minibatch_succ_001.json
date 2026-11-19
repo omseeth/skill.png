@@ -1,0 +1,26 @@
+{
+  "batch_size": 7,
+  "success_patterns": [
+    "On a first hotel or flight request with no explicit dates (even with party size, 'solo trip', or a city), the agent output only a short seek_information naming the missing dates. It did not search or fill in other parameters (trajectories 1 and 4). Rules 6 and 7 already cover this.",
+    "When the dates arrived in a later turn, the first hotel search used only city, check-in and check-out. Descriptive context such as 'suitable for a family with kids' was not turned into amenity parameters (trajectory 5). Rule 14 touches this but does not say it explicitly.",
+    "A flight class and airline reply with both legs cached was handled as load, filter and save for each leg, using the identical filter on both (trajectory 3). Rules 2, 13 and 17 already cover this.",
+    "A short 'yes' to an assistant's proposed attraction type in a multi-city itinerary led to one search_attractions call per city with the accepted type, each saved under its own key (trajectory 6). The skill covers acceptance of a proposal but not the per-city expansion.",
+    "A single-domain attraction request was a search assigned to a variable plus save_to_cache (trajectory 7). Rule 21 already covers this."
+  ],
+  "patch": {
+    "reasoning": "Most observed successes already follow existing rules. Two gaps remain. First, a newly accepted or newly requested domain in a multi-city itinerary should get one search per city, saved under keys that mirror the existing per-leg or per-city naming. Second, descriptive trip context should not be converted into search parameters, which keeps first searches clean once the dates arrive.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "  - Only a refusal or 'no preference' ('Not really', 'Anything is fine') with an existing cache entry means pure retrieval.",
+        "content": "\n  - Multi-city itinerary (the CACHE has per-city or per-leg keys such as first_flights/second_flights or first_hotels/second_hotels, or the user named two destinations): a newly accepted attraction type or a newly requested restaurant/attraction domain gets ONE search per city. Use the same type or constraint in each call and save each under its own key that mirrors the existing naming. Example after 'Yes, that sounds amazing' to 'Would you like Sporting attractions?': `first_attractions = search_attractions(city=\"Tucson\", type=[\"Sporting\"])`, `save_to_cache(key=\"first_attractions\", value=first_attractions)`, `second_attractions = search_attractions(city=\"Anchorage\", type=[\"Sporting\"])`, `save_to_cache(key=\"second_attractions\", value=second_attractions)`. Never skip a city, never put two cities in one call, and do not re-filter the cached flights or hotels on that turn."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Include optional details the user explicitly stated (num_rooms, num_people, budget, amenities, cuisine, ...) as keyword args in the search call, and nothing the user did not say.",
+        "content": "\n- Trip descriptors are not parameters. 'Suitable for a family with kids', 'weekend getaway', 'business trip' and 'special occasion' add no search kwargs. Only literal numbers or amenities (e.g. '3 people', 'with a gym') are passed. Example: the user wanted a hotel in Memphis suitable for a family with kids, and the last turn gave 'Check-in is January 16, 2026 and check-out is January 25, 2026'. Output `hotels = search_hotels(city=\"Memphis\", checkin_date=[\"January 16, 2026\"], checkout_date=[\"January 25, 2026\"])` + `save_to_cache(key=\"hotels\", value=hotels)` with no has_kids_club or num_people."
+      }
+    ]
+  },
+  "source_type": "success"
+}

@@ -1,0 +1,56 @@
+{
+  "step": 22,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 23,
+  "failure_patterns": [
+    {
+      "pattern": "ignored_answer_re_asked: The user's reply supplied the missing mandatory value (a city, or a hedged 'around May 21 ... returning May 31' date pair) but the agent called seek_information again. In one case it also asked for hotel dates although no hotel was requested.",
+      "count": 23,
+      "task_ids": [
+        "attraction:train:13:56:0",
+        "flight:train:16:11:1",
+        "restaurant:train:8:4:3",
+        "hotel:train:18:28:4",
+        "attraction:train:16:32:0",
+        "flight:train:10:18:3",
+        "flighthotelattraction:train:20:16:1",
+        "flighthotelrestaurant:train:9:34:1",
+        "flighthotel:train:25:9:2",
+        "hotelattraction:train:11:20:1",
+        "hotelrestaurant:train:5:53:0",
+        "hotelrestaurant:train:3:51:1",
+        "flighthotel:train:4:60:1",
+        "hotel:train:12:44:1",
+        "hotel:train:5:44:1",
+        "hotelrestaurant:train:5:9:0",
+        "flighthotelrestaurant:train:11:59:3",
+        "restaurant:train:9:60:2",
+        "hotelrestaurant:train:22:59:4",
+        "flighthotel:train:10:57:4",
+        "restaurant:train:20:47:3",
+        "hotelrestaurant:train:14:3:0",
+        "flighthotelrestaurant:train:3:42:1"
+      ]
+    }
+  ],
+  "score_before": 0.52,
+  "score_after": 0.5,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "\n   - DOMAIN WORDS IN THE REPLY DECIDE THE KEY. 'Downtown X is preferred for hotel', 'a hotel near Y', or stars / amenities / rooms -> hotels. Load the most refined HOTELS key (e.g. hotels2, even if filtered_restaurants / nearest_restaurants were created later) and run `filter_hotels(prior_results=h, neighborhood=[\"Downtown X\"])`. Save it under the next unused hotels key (e.g. hotels3). Never load a restaurant key for a hotel reply. A get_results_from_cache followed by save_to_cache of the same object (no filter in between) is always wrong.",
+      "target": "1. Copy the CACHE keys of each domain the LAST user turn touches (flights / hotels / restaurants / attractions, including filtered_*, nearest_*, hotels2, final_* names)."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- LAST-MESSAGE LITERAL RULE (every filter_* call): split the user's LAST message into its separate values and write exactly one kwarg per value. Values from earlier turns and everything the CACHE summary lists (stars, amenities, class, kids club, rooftop bar...) are already applied, even when the last message is only a number or a place name. Check: the filter has as many kwargs as the last message has values. 'Around 30.' answering a per-night budget question -> `budget=30` only. 'Yes, Downtown San Antonio would be perfect.' answering an area question -> `neighborhood=[\"Downtown San Antonio\"]` only. A 'Yes' plus a place, number or amenity answers the assistant's LAST question, not an older one.",
+      "target": "## CACHE GATE (run this before writing any code, every turn)"
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- STEP 0 TRIGGER: hotel AND restaurant both requested, restaurant city known, no hotel dates, CACHE has neither key (e.g. 'a hotel in <city> and restaurant recommendations', or 'a hotel with a good restaurant nearby that serves <cuisine>'). Output exactly: `restaurants = search_restaurants(city=\"<city>\"[, cuisine=[\"<cuisine>\"] if stated])`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then ONE `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. Never write the search without `restaurants =` and the save, and never drop the seek_information line. 'Good' and 'nearby' are not parameters (no rating, and no search_nearest until a hotels key exists).",
+      "target": "## Quick decision order for every turn"
+    }
+  ]
+}

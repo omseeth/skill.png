@@ -1,0 +1,50 @@
+{
+  "step": 21,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 17,
+  "failure_patterns": [
+    {
+      "pattern": "dropped_requested_domain: A requested domain was never searched even though its mandatory args were known. Hotel was dropped when flights were cached (T1) and when dates arrived (T4). Restaurants were dropped from a hotel-without-dates opener (T2).",
+      "count": 17,
+      "task_ids": [
+        "flighthotelrestaurant:train:8:34:3",
+        "hotel:train:6:3:2",
+        "hotelrestaurant:train:6:41:0",
+        "hotel:train:14:49:1",
+        "hotelattraction:train:19:30:5",
+        "hotel:train:16:25:4",
+        "flight:train:11:4:1",
+        "flighthotel:train:22:15:2",
+        "attraction:train:6:29:0",
+        "attraction:train:25:50:2",
+        "attraction:train:9:34:1",
+        "hotelrestaurant:train:3:10:0",
+        "hotel:train:7:15:2",
+        "flight:train:6:50:1",
+        "flighthotelattraction:train:3:40:1",
+        "flighthotel:train:15:13:3",
+        "hotelattraction:train:21:7:0"
+      ]
+    }
+  ],
+  "score_before": 0.52,
+  "score_after": 0.47,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": "\n-2. REQUESTED-DOMAIN TRIGGER (do this first). Scan every user turn for flight/fly, hotel/stay/room, restaurant(s)/dining, attraction(s). Each requested domain with no CACHE key must appear in this turn's code: searched if its mandatory args are known, otherwise named in ONE closing seek_information.\n   - Hotel AND restaurant or attraction requested, the restaurant or attraction city/state known, hotel dates missing (overrides the 'ONLY output is one seek_information' wording of step 4b): `restaurants = search_restaurants(city=\"<city>\")` (or `search_attractions(city=..., type=[...])`, stated constraints only) + its save_to_cache, THEN one `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. A seek_information alone is wrong here. Hotel budget, party size and 'family-friendly' do not go into the restaurant search. seek_information is the whole output only when no other requested domain is searchable.\n   - Flight keys cached (outbound and return dates known) and the turn describes a hotel (stars, neighborhood, amenities) with no 'hotels' key -> `search_hotels(city=<flight destination>, checkin_date=[<outbound date>], checkout_date=[<return date>], <every stated hotel constraint>)` + save 'hotels'. Do not search or filter flights again. Class words from earlier turns are already applied.\n   - A hotel was requested in an earlier turn and this turn supplies the dates (even as the answer to a flight question) -> the flight search(es) AND search_hotels in the same block, carrying amenity words from any turn ('beach' -> has_beach_access=True, 'pool' -> pool_present=True, 'wifi' -> free_wifi_included=True). Cached restaurants stay untouched.\n   - DATE REPLY = SEARCH. If the assistant asked for the travel date, the user's last turn gives one ('May 16, 2025', 'around May 22'), and the origin and destination appear anywhere in the conversation -> `flights = search_flights(start_airport_city=..., end_airport_city=..., departure_date=[\"<date as written>\"])` + `save_to_cache(key=\"flights\", value=flights)`. Do NOT call seek_information. Occasion words ('anniversary', 'school trip', 'something special') are not missing information.\n-1. REPLY NAMES SEVERAL DOMAINS -> ONE load -> filter -> save BLOCK PER NAMED DOMAIN. If the user's last turn states constraints for two domains (e.g. 'Yes, AA and a hotel with a gym and pool' = airline for flights + amenities for hotels), write a separate block for EACH domain the last turn names, each with its own most refined key and only its own new constraint (airline=[\"AA\"] on every flight key; gym_present=True, pool_present=True on hotels). A domain mentioned only in earlier turns does not count. The single-domain routing in the strategic section applies when the reply names ONE domain. A block that loads and saves the same object without a filter_* call is always wrong.",
+      "target": "## CACHE GATE (run this before writing any code, every turn)"
+    },
+    {
+      "op": "replace",
+      "content": "Never search with made-up values. A requested domain whose mandatory args are all known is still searched in the same block (see the REQUESTED-DOMAIN TRIGGER in the CACHE GATE).",
+      "target": "Do not run a partial search with made-up values for another domain."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n- LAST-TURN LITERAL MAP: split the user's LAST message into its separate values and give each its own parameter in ONE call. 'N of us' / 'for N people' -> num_people=N and 'N rooms' -> num_rooms=N (hotel tools only; pass both when both appear). '2 rooms and around 1125' -> `filter_hotels(prior_results=h, num_rooms=2, budget=1125)`. 'Yes, near/in <place>' -> neighborhood=[\"<place as stated>\"]. A bare number after a per-night / per-person / per-ticket question -> budget=N. 'Minimal filters' means dropping values from EARLIER turns that are already in the cache. It never means dropping a value stated in the last turn. 'Budget only' applies solely when the reply is nothing but a number.\n- Params listed in the loaded CACHE summary ('Additionally filtering for has_room_service, has_fitness_class', 'Number of room(s): 4, budget: $1175') are DONE, and re-passing them is the most common wrong answer. Rooms or headcount that the summary does NOT list are not yet applied. When the summary already lists the amenities and the user says 'Yes, near Downtown X', output only neighborhood=[\"Downtown X\"].\n- Descriptive words from earlier turns ('kid-friendly', 'family', 'school trip') are not amenity params on a refinement. A reply about how many people or rooms is num_people / num_rooms, not has_kids_club.\n- A neighborhood answer on hotels is `filter_hotels` on the most refined hotels key (a nearest_* key counts if it is the latest). search_nearest is only for 'near the hotel' / 'near <attraction>' requests.",
+      "target": "'As soon as possible' and 'around May 22' only mean the date is May 22."
+    }
+  ]
+}

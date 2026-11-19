@@ -1,0 +1,49 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "fabricated_mandatory_params",
+      "count": 3,
+      "description": "First hotel request with no check-in/check-out dates. The agent invented dates copied from tool examples (2025-08-03 etc.) instead of calling seek_information. The triggers were 'weekend getaway', a budget, a room count or amenities, none of which are dates (tasks hotelattraction:9:30:1, hotel:13:59:0, hotelattraction:17:20:1)."
+    },
+    {
+      "failure_type": "over_seeking_ignored_user_reply",
+      "count": 1,
+      "description": "The user answered the assistant's date question ('depart May 14, 2025 and return May 16, 2025'). The agent still asked for the departure date and skipped both flight searches (flighthotelattraction:11:26:1)."
+    },
+    {
+      "failure_type": "multi_domain_missing_partial_search",
+      "count": 1,
+      "description": "Flight date was supplied but hotel dates were missing. The agent output only a seek_information for the flight date instead of searching flights and asking only for the missing hotel date (flighthotel:2:2:1)."
+    },
+    {
+      "failure_type": "invalid_filter_param_and_repeated_constraint",
+      "count": 1,
+      "description": "On a restaurant budget reply the agent passed num_people=20, which filter_restaurants does not accept (ValidationError), and re-passed cuisine that the CACHE summary already showed (restaurant:2:4:4)."
+    }
+  ],
+  "patch": {
+    "reasoning": "Half the failures are hotel first-turns where the agent invented dates; the current rules say 'never fabricate' but do not name hotel contexts such as 'weekend', amenities, room count or budget as non-dates. Two failures come from misreading dates already supplied. One date-answer was treated as missing, and one multi-domain turn emitted seek_information alone, which Rule 6 ('output ONLY seek_information') conflicts with Rule 7 and the Quick decision order. The last failure is a refinement that carried earlier-turn context (party size) into a filter tool that has no such parameter. The four edits address these: a hotel hard stop, a rule that the user's reply counts as the value, a Rule 7 clarification that complete domains are still searched, and a restaurant-parameter hygiene rule.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- A round-trip request still needs the departure date. Ask for it; do not assume a return date.",
+        "content": "\n- HOTEL HARD STOP: search_hotels needs literal check-in AND check-out dates from the conversation. None of these supply dates: 'weekend getaway', 'this weekend', 'for a special occasion', a party size ('2 people'), a room count ('2 rooms'), a budget ('around 95 per night'), a rating, stars, amenities ('hot tub and sauna'), or a city alone. If the conversation has no date strings for the hotel, do NOT call search_hotels. Never write placeholder dates (e.g. 2025-08-03, 2025-08-04), never put consecutive dates in checkin_date/checkout_date to 'cover' the gap, and never use the same date for check-in and check-out. On a first hotel turn with an empty CACHE, the output is `seek_information(\"We need to ask for the check-in and check-out dates\")`. Do not also add num_people, num_rooms, budget or amenity values, because they are optional and are applied after the dates arrive. The same holds on follow-up turns that only answer optional questions (budget, rooms, amenities): while dates are still missing, ask for dates again.\n"
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 22: The user's reply to the assistant's question supplies the value; read the LAST turn before seeking\n- Before writing any seek_information, list each item you think is missing and look for it in the whole conversation, especially the last user turn. If the assistant just asked for dates and the user replies with a date ('It's May 15, 2025', 'I'm looking to depart on May 14, 2025 and return on May 16, 2025'), that reply IS the mandatory date. Never ask again for a date the user just gave, and never discard it.\n- Origin and destination stated in earlier turns are reused. 'Business trip' or 'one-way' are context only. They never cancel a date that is present.\n- A depart/return pair with origin and destination known is two search_flights calls (Rule 9), saved as departure_flights and return_flights. A single flight date gives one search saved under 'flights'.\n- 'Context is not a date' (Rule 6) applies only when NO date string appears anywhere in the conversation.\n"
+      },
+      {
+        "op": "replace",
+        "target": "Do not run a partial search with made-up values for another domain.",
+        "content": "Never search a domain with made-up values. This overrides the 'output ONLY seek_information' line of Rule 6 whenever another requested domain is fully specified. A domain whose mandatory args are ALL really present is still searched in the same block (`x = search_*(...)` plus `save_to_cache`), and one seek_information at the end names only the incomplete domain's missing items. Example: 'one-way flight from San Jose to Atlanta and a hotel', departure date 'May 15, 2025' given and no hotel check-out date -> `flights = search_flights(start_airport_city=\"San Jose\", end_airport_city=\"Atlanta\", departure_date=[\"May 15, 2025\"])`, `save_to_cache(key=\"flights\", value=flights)`, then `seek_information(\"We need to ask for the check-out date for the hotel.\")`. When a flight and a hotel are both requested, the outbound flight date also serves as the hotel check-in date (Rule 9), so ask only for what is still unknown (usually just the check-out date). Use seek_information alone only when every requested domain is missing something."
+      },
+      {
+        "op": "append",
+        "content": "\n## Rule 23: Only pass parameters the tool really has; earlier-turn context is not a filter\n- search_restaurants / filter_restaurants have NO num_people, party-size, occasion, date or time parameters. A group size ('around 20 people') or occasion ('birthday party') only explains the request. Never pass num_people to a restaurant call (it raises a ValidationError). num_people and num_rooms exist only on hotel tools. Flight tools have no party-size parameter.\n- On a refinement turn the filter gets only the LAST turn's new constraint plus earlier constraints the CACHE summary does not already list. Example: CACHE 'restaurants': 'Restaurant search results in St. Louis. cuisine(s): [Balkan].' and last turn 'We're looking to spend around 115 per person' -> `r = get_results_from_cache(key=\"restaurants\")`, `r2 = filter_restaurants(prior_results=r, budget=115)`, `save_to_cache(key=\"filtered_restaurants\", value=r2)`. No cuisine, no city, no num_people.\n- Before sending any call, verify that every keyword is in that tool's arg list in TOOL CONFIG, and drop any that is not.\n"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

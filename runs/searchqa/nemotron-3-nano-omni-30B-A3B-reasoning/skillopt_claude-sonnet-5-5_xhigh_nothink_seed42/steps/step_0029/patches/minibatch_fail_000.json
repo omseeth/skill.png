@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Answer repeats words the clue already states or a type noun: 'Conan the Destroyer' for 'Conan', 'radical sign' for 'radical' (clue says 'symbol'), and 'Chinese Hand Laundry Alliance' for 'laundries' (clue says 'alliance of these Chinese businesses'). The DELETE-CLUE-WORDS and slot rules were not applied."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "The passage held a verbatim archive line, but the agent took the contestant name after 'right:' ('Frank') instead of 'a bouncer'. In the other case it trimmed 'Lord Robert Baden-Powell' to 'Robert Baden-Powell', so Rule 4 trimming overrode Rule 3's copy-exactly rule."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "Wrong slot type: 'this man sued...' got an issue ('segregated school') instead of the plaintiff (Oliver Brown)."
+    },
+    {
+      "failure_type": "other",
+      "count": 2,
+      "description": "Passage frequency or noise won over the defining role or reference source. A name quoted in news articles (Roger Wicker) beat the person who actually was GOP leader from Mississippi (Trent Lott). Iowa State fan and sports pages beat the state-nickname list pairing 'Cyclone State' with Kansas."
+    }
+  ],
+  "patch": {
+    "reasoning": "Seven of the eight failures are ones the skill already has rules for (archive copy, strip clue words, person slot). Those rules are buried or lose to other rules. Past large 'Step 0' rewrites were rejected, so these are four small, targeted insertions placed next to the rules they sharpen. They (1) stop the contestant-name mistake and give verbatim archive answers priority over trimming, (2) extend strip-the-clue to synonym type nouns and to clues that contrast two titles, (3) fix the person-vs-issue and organization-vs-members slots, and (4) state that passage frequency is not evidence and that reference or list passages beat fan and sports pages for nicknames. They add no per-task answers and do not weaken Rule 3.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Before the answer tags, briefly quote the matched line.",
+        "content": "\n- In archive lines 'CLUE | answer. right: Name. Wrong: ...' the name after 'right:' / 'wrong:' is a CONTESTANT, never the answer. The answer is the text right after the clue's last words, up to '. right:'. Copy it exactly: keep a leading 'a'/'the' ('a bouncer') and titles ('Lord Robert Baden-Powell', 'Sir ...'). A verbatim archive answer beats every Rule 4 trimming rule and every name-shortening habit."
+      },
+      {
+        "op": "insert_after",
+        "target": "which echoes the clue's 'funeral' and ignores that the passages say 'funeral pyre').",
+        "content": "\n- STRIP ECHOES AND SYNONYMS: also strike a type noun that only restates the clue's own noun ('the name of the root SYMBOL' -> 'radical', not 'radical sign'). When the clue contrasts two titles or versions of one subject ('in '84 he's a destroyer, in '82 just a barbarian'), the answer is the SHARED name ('Conan'), not either full title. Keep a head noun only when the bare word would not be accepted (see the exception below)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- 'One of these <role/title>' ('the 14th one of these spiritual leaders') asks for the title or category noun itself (Dalai Lama), not the individual named in the clue.",
+        "content": "\n- 'This man / she / he' + an action or event ('sued X over...', 'founded...') -> the PERSON who did it (plaintiff, founder), never the issue, school, case or object named in the clue. 'The alliance / union / league / guild of these <businesses/workers>' -> the plural category noun for the MEMBERS ('laundries'), not the organization's own name; the organization is only the anchor."
+      },
+      {
+        "op": "insert_after",
+        "target": "- If the context offers several candidates (a different player in the same article, a film and its song), pick the one that satisfies ALL distinctive details: exact numbers, team, years, place. Do not choose one that fits only some.",
+        "content": "\n- Frequency is not evidence. A name that merely recurs in the passages (quoted in an article, a current officeholder, a fan page) is wrong unless it satisfies the clue's defining role. For 'leader / champion / holder' clues, pick the person who actually held that role (use your own knowledge: 'GOP leader' + a senator from a state = that state's senator who was party leader). For nickname clues ('The \"X State\"'), trust encyclopedic or list passages that pair the nickname with an entity over sports-team, fan, merchandise or social-media pages that reuse the phrase. A college team's name is not the state's nickname."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

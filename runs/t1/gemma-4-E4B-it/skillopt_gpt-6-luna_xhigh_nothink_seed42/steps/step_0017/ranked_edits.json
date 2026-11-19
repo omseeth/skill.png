@@ -1,0 +1,34 @@
+{
+  "reasoning": "Preserved all failure-driven edits as higher priority, including cache filtering and groupBy clarification, hotel party-size handling, itinerary date carryover, and pending dependent operations. The success-driven edit addresses a distinct gap: retrieving cached recommendations when the user accepts an offer to see them without adding a constraint, so it is also retained. [optimizer-ranked: selected 3/5 edits]",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "- At each turn, inspect cache summaries and resolve terse replies against the preceding assistant question and full conversation before choosing a tool action. Accepting an offer to search a new domain, category, or entity creates that search using established trip context. A reply that supplies a filter for an existing result requires retrieving the compatible cached result by its exact key and applying the matching `filter_*` tool with the new constraint. Do not treat a generic affirmative as a proximity request unless proximity was actually offered or requested.",
+      "content": "\n- If the user indicates they have no added preference, or accepts an offer to provide recommendations for an already-searched scope, retrieve the compatible cached result by its exact key for presentation. Do not repeat the search or apply a filter without a new supported constraint; do not treat an outstanding offer to present results as a no-op.",
+      "support_count": 8,
+      "source_type": "success"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Call `search_nearest` only when the user explicitly requests proximity between domains; mentioning a hotel and attractions or restaurants for the same trip or city does not by itself imply proximity. For explicit proximity requests, use the relevant hotel and attraction or restaurant results with `search_nearest`. Set `groupBy` to the domain the user wants prioritized.",
+      "content": "\n- Interpret `groupBy` as the domain to return or organize as the nearby targets, not the anchor: for “restaurants near a hotel,” use `groupBy=\"restaurant\"`; for “hotels near attractions,” use `groupBy=\"hotel\"`; for “attractions near a hotel,” use `groupBy=\"attraction\"`.\n- When a user narrows one domain within a cached `search_nearest` result, use that result as `prior_results` for the matching `filter_*` call and save the filtered output rather than retrieving the original domain result and recomputing nearest results. For any cached-result filter, pass only criteria not already embodied in the selected result, including newly added or changed criteria.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Track each requested domain or flight leg deferred solely because mandatory information is missing as pending, retaining its established route, dates, and supported preferences. When a later user turn supplies the missing information, revalidate and execute each pending request that is now complete without requiring the user to restate it. Keep incomplete requests pending and seek only their missing mandatory details; do not rerun completed, unchanged domains.",
+      "content": "\n- Also track explicitly requested or accepted operations that depend on results from multiple domains as pending when a source search is waiting for mandatory information. Once the missing information is supplied and compatible results for both inputs are available, complete the pending operation in the same turn using the updated source result and the compatible result for the other domain, then save its output. Do not create such an operation from mere co-mention of domains.",
+      "support_count": 1,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 4 addresses a well-supported gap: accepting an offer to present cached recommendations should retrieve results, not trigger a repeat search or no-op. Edit 0 clarifies `groupBy` and cache use for proximity filtering, improving tool selection where the current guidance leaves room for confusion. Edit 3 adds a general pending-operation rule for explicit multi-domain requests; edit 2 is useful but narrower, and edit 1 mostly restates existing party-size guidance.",
+    "selected_indices": [
+      4,
+      0,
+      3
+    ]
+  }
+}

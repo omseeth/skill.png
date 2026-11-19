@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_namespace_import",
+      "count": 5,
+      "description": "Agents imported a nonexistent `tools` module despite the skill's direct-call rule."
+    },
+    {
+      "failure_type": "cache_update_omission",
+      "count": 3,
+      "description": "Agents treated new budget, occupancy, or amenity criteria as already satisfied and skipped filtering cached results."
+    },
+    {
+      "failure_type": "schema_value_mapping",
+      "count": 3,
+      "description": "Agents missed supported mappings such as solo to hotel party size, or inferred occupancy and room counts without support."
+    },
+    {
+      "failure_type": "independent_domain_omission",
+      "count": 1,
+      "description": "An agent requested missing hotel dates but skipped a flight search whose required inputs were complete."
+    },
+    {
+      "failure_type": "unrequested_proximity_search",
+      "count": 1,
+      "description": "An agent ran a proximity search based on an assistant suggestion instead of filtering the hotel for the user's new amenities."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent failures—tool imports, missed cache updates, and skipped independent searches—are already explicitly covered by the skill, so repeating those rules would not patch a gap. Add only missing guidance for translating common travel wording into supported schema values and avoiding invented occupancy defaults.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Never pass a preference as an unsupported extra argument or place it in an unrelated field.",
+        "content": " Translate explicit shorthand into supported schema values: “non-stop” or “no layovers” means `num_layovers=[0]`; “solo” or “one traveler” means hotel `num_people=1`. Pass an explicitly stated party size as `num_people`, but do not infer a party size or room count when unstated, or assume `num_rooms=1` from a solo traveler."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

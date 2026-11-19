@@ -1,0 +1,37 @@
+{
+  "batch_size": 6,
+  "success_patterns": [
+    "Every agent worked out the category the clue's 'this [noun]' slot asks for (playwright, play, country, film, city) and answered with just that entity: 'David Rabe', 'King Lear', 'Italy', 'M*A*S*H', 'Buffalo'.",
+    "When the clue had a possessive or descriptor around the slot ('this city's Sabres'), the agent gave only the slot entity ('Buffalo'), not the combined phrase or team name.",
+    "For a clue of the form 'Of A, B, C or D, it's where...', the agent picked exactly one of the listed options, copied verbatim ('South Park').",
+    "Several contexts included a verbatim J! Archive, TriviaBistro, StudyStack or Fikkle Fame copy of the clue. Even when the snippet was truncated ('DAVID...'), the agent completed the full answer from other passages that repeated the same fact.",
+    "Agents chose the entity that recurs across many passages together with the clue's other named entities (Lily Rabe + Jill Clayburgh -> David Rabe; Duvall + Frank Burns + 1970 -> M*A*S*H).",
+    "Titles were given in their standard form without quotes, keeping internal punctuation ('M*A*S*H')."
+  ],
+  "patch": {
+    "reasoning": "All six trajectories succeeded by identifying the answer slot's category and returning only that entity. The skill does not yet cover three things that recurred: embedded-option clues ('Of A, B, C or D'), possessive or descriptor slots ('this city's Sabres'), and completing a truncated archive answer from other passages. Title punctuation is a small formatting gap. These additions reinforce existing rules without adding new top-level sections.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Ask: what category is the answer (country, person, vitamin, object, band), and what member of that category fits all the clue details?",
+        "content": "- Slot with a possessive or descriptor ('this city's Sabres', 'this 1970 film', 'this playwright'): answer only the slot's category. 'Buffalo', not 'Buffalo Sabres'; the film title, not the actors; the playwright's name, not the actress named beside him. Other named entities in the clue are anchors, not the answer.\n- Clue lists its own options ('Of North Park, East Park, West Park or South Park, it's where...'): the answer is exactly one of the listed options, copied verbatim. Use the context to pick which one."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Otherwise, build the answer from passages that match several of the clue's details.",
+        "content": "- Archive or flashcard snippets are often truncated right after the clue (e.g. '...THIS PLAYWRIGHT, DAVID...'). Treat the visible part as a strong hint, then complete the full answer from other passages that repeat the same fact. Choose the entity that recurs across many passages together with the clue's other named entities."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Use the singular form for a generic object ('Well', not 'wells').",
+        "content": "- For titles, give the standard title without quotation marks and keep internal punctuation as written in the context ('M*A*S*H', not 'MASH film'). For people, a full name as it appears in the context is safe ('David Rabe')."
+      },
+      {
+        "op": "replace",
+        "target": "- If the clue is a fragment, work out what single thing connects it to the context.",
+        "content": "- Before answering, locate the hidden slot ('this ___', 'one of these', '...', a trailing possessive) and name its category. Then find the context entity that fits that category and every clue detail. If the clue is a fragment, work out what single thing connects it to the context."
+      }
+    ]
+  },
+  "source_type": "success"
+}

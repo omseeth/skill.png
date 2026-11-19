@@ -1,0 +1,30 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "schema_argument_mapping",
+      "count": 7,
+      "description": "Calls used incorrect parameter placement or values, duplicated fields, dropped query qualifiers, or added unsupported defaults."
+    },
+    {
+      "failure_type": "endpoint_or_outcome_mismatch",
+      "count": 3,
+      "description": "Some calls used an unavailable or less suitable operation, or failed to select an endpoint for a requested product-discovery outcome."
+    },
+    {
+      "failure_type": "serialization_format_error",
+      "count": 2,
+      "description": "One response was malformed JSON, and another packed parameters into objects instead of the required name/value entries."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed schema, endpoint-selection, and serialization errors are already directly addressed by the skill, so repeating those rules would add little. One uncovered gap is preserving multiple requested values for a multi-valued selector, as in the science-and-technology source request. The news-search trajectory whose gold calls include unrelated operations is not an actionable skill failure.",
+    "edits": [
+      {
+        "insert_after": "- Preserve requested search text, identifiers, and constraints; normalize only as the endpoint requires, without dropping meaningful words or substituting one value or geographic level for another. Map explicit filters, counts, pages, sorting, locale, category, and location to the corresponding schema fields, using accepted representations for enums and locales.",
+        "content": "\n- When a request specifies multiple values for a multi-valued filter or selector, carry the full set using the endpoint's documented encoding; do not silently select only one value or invent a delimiter. If the schema does not support representing the full set, do not imply that a single value fulfills it."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

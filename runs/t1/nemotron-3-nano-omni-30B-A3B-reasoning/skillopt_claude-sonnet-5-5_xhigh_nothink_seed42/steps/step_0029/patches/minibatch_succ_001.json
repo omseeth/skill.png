@@ -1,0 +1,20 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Refinement turns on a cached domain are written as load, filter, save, with only the last message's new constraints (neighborhood on hotels2; budget plus pool on hotels). The pet-friendly, kids-club and rooms values stay out because they are already in the summary. This is already covered by Rules 2, 13 and 17.",
+    "When the date reply completes the mandatory args, the first search carries every stated optional detail (num_rooms, num_people, budget) and is saved as 'hotels'. This is already covered by Rules 14 and 24.",
+    "Opening turns that lack a mandatory arg produce a lone seek_information: a flight with no date, a restaurant with no city, a flight+hotel opener with no dates. The two restaurant openers (trajectories 2 and 5) scored 'success' only because the cache_em metric matched; the generated code was `search_restaurants(city=\"<city>\")` / `search_restaurants(city=\"<birthday city>\")`, which had no assignment or save and made no valid tool call (one also ended with a stray `</parameter>` tag). The gold output was `seek_information(\"We need to ask for city\")`.",
+    "In the flight+hotel opener with no dates (trajectory 8), the seek_information named only the hotel dates and omitted the flight departure date. The gold output named both."
+  ],
+  "patch": {
+    "reasoning": "Most successes follow behaviour the skill already encodes. The one cross-trajectory gap is first-turn missing-argument handling. Two of the eight trajectories wrote placeholder-filled search calls for restaurant requests with no city, and a third seek_information left out a missing domain. Rule 6 says 'no placeholders' and mentions the restaurant city only in passing. The HARD OUTPUT RULES list only a date gate and give no city gate, so the placeholder case sits far from the rules that get read first. One compact top-level gate fixes this. It states the positive trigger (what to write when an arg is missing) and the multi-domain naming rule, and it avoids adding another sibling example elsewhere.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "search_flights never takes num_people or num_layovers.",
+        "content": "\n- MISSING-ARG GATE (city and dates): every search needs its mandatory args literally stated in some turn. Restaurants need a city. Hotels need city + check-in + check-out. Flights need origin + departure date. Words like 'birthday', 'gluten-free', 'family vacation', 'special occasion' or 'one-way' never supply one. If an arg is missing, write `seek_information(...)` naming only the missing items. Never write a placeholder such as `city=\"<city>\"` or `\"<birthday city>\"`, and never write a bare or unsaved search call. Examples: 'find a restaurant for my birthday' (CACHE `{}`) -> the whole output is `seek_information(\"We need the city for the restaurant.\")`. 'family vacation from San Antonio to San Jose, need flights and hotels' (no dates) -> one `seek_information(\"We need the departure date for the flight, and the check-in and check-out dates for the hotel.\")`, naming every requested domain's missing args together."
+      }
+    ]
+  },
+  "source_type": "success"
+}

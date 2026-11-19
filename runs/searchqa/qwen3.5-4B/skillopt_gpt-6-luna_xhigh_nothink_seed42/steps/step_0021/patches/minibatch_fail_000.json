@@ -1,0 +1,45 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 4,
+      "description": "Agents chose a prominent associated entity or matched only part of the clue instead of honoring the full requested referent."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "The skill lacks explicit guidance for expansion clues and for recovering intended wording behind a spoonerism."
+    },
+    {
+      "failure_type": "rule_wrong",
+      "count": 1,
+      "description": "The singular wording was overapplied to a fruit category whose conventional label is plural."
+    },
+    {
+      "failure_type": "answer_format",
+      "count": 1,
+      "description": "The answer repeated a category prefix when the expected answer was only the identifying designation."
+    }
+  ],
+  "patch": {
+    "reasoning": "Refine the number rule so it respects conventional category names, make several recurring answer-slot distinctions explicit, and clarify when to omit a redundant category label. The context-selection failures are already addressed by the existing clue-echo and exact-relation rules, so avoid duplicating them.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "For definition-style clues, match the requested part of speech, grammatical form, and number. Do not automatically reduce an activity or process noun to its base verb: the clue may call for a gerund or another inflected form. Conversely, a singular term or entity calls for a singular headword even when examples or supporting evidence are plural. Use the lemma only when the clue asks for it, and do not copy the number of nearby examples.",
+        "content": "For definition-style clues, match the requested part of speech, grammatical form, and conventional number. Do not automatically reduce an activity or process noun to its base verb: the clue may call for a gerund or another inflected form. Do not mechanically copy the number of a nearby noun: singular wording such as “this fruit” may refer to a category whose conventional name is plural. Use the conventional label, and use the lemma only when the clue asks for it."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Type the Unknown Before Answering",
+        "content": "\nResolve the answer slot from the whole clause before retrieving. If a clue points to “this state” or “this territory” through a university's location, return the jurisdiction rather than the university. If it asks what a name or abbreviation “stands for,” give its expansion rather than repeating the original name. For a cited spoonerism or similar wordplay, distinguish the garbled wording from the intended phrase; when the clue points to what was meant, return the intended phrase."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Return the Minimal Designation\nWhen the question already supplies a category and the requested answer is conventionally just its identifying designation, do not repeat the category word. For example, if the answer slot is a vitamin's letter designation, return the letter alone rather than prefixing it with “vitamin.”"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

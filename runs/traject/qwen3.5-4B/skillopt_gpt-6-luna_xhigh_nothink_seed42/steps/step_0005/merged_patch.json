@@ -1,0 +1,37 @@
+{
+  "reasoning": "Combined both patches’ overlapping plan-section additions into one edit, preserving endpoint eligibility, source constraints, call-set deduplication, and the preference for a single endpoint that fully covers related checks. Kept the general numeric-range guidance, schema-driven argument requirements, and call-list serialization guidance as separate edits because they address distinct regions.",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "## Plan tool calls",
+      "content": "\n- Treat endpoint eligibility as a gate: confirm the endpoint's own operation and schema support the requested result kind and granularity, and can represent every compatible explicit qualifier. A topical neighbor or broader operation is not sufficient. A named provider or source is a hard constraint for that outcome; do not fulfill or supplement it with another provider when a fitting named-source endpoint exists.\n- Deduplicate the call set: make one invocation per distinct requested operation and input unless the schema supports batching or the user requests repetition. Do not add related calls as extra checks. An explicitly requested draw or simulation is its own outcome and requires the corresponding draw or simulation operation, not a related catalog or list endpoint.\n- When several requested checks concern the same subject, first look for a single endpoint whose documented operation explicitly returns all the requested properties, and prefer it over multiple narrower calls when it fully covers the outcomes. Do not infer endpoint functionality from a provider-wide description or add a secondary validator whose result is already covered; split the checks only when no endpoint genuinely covers them together.",
+      "support_count": 2,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Preserve requested search text, identifiers, and constraints; normalize only as the endpoint requires, without dropping meaningful words or substituting one value or geographic level for another. Map explicit filters, counts, pages, sorting, locale, category, and location to the corresponding schema fields, using accepted representations for enums and locales.",
+      "content": "\n- Map every numeric range or threshold to the endpoint's corresponding filter fields, regardless of domain. When both bounds are available, set both; keep range bounds distinct from result counts and page sizes. For example, a requested length range maps to minimum- and maximum-length fields, not a per-page count. Do not omit a bound or repurpose a count field.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- For each selected endpoint, take parameter names, declared types, and required-versus-optional placement from that endpoint's own schema; do not borrow fields or bucket assignments from a similar endpoint. Put every required field in the required bucket and every non-required field in the optional bucket, even when the user explicitly requests an optional setting; never duplicate a field across buckets. Use the schema's declared types and accepted enum or API-native forms, including canonical codes, symbols, and casing, while preserving identifiers and free-text search wording. Include optional settings only when requested or clearly implied; use documented recency or freshness controls for requests such as “recent” or “latest,” and a modest supported result count when wording such as “some” calls for one. Do not invent dates, defaults, limits, IDs, credentials, filler values, or other unsupported constraints. If a required value is missing, do not fabricate it.",
+      "content": "- For each selected endpoint, use only its own schema for exact parameter names, declared types, and required/optional placement; never borrow fields from similar operations. For parameters you include, put every required field in the required bucket and every non-required field in the optional bucket, even when the user explicitly requests an optional setting; never duplicate a field. In formats that represent parameters as name/value entries, every entry must contain the exact name and a concrete non-null value—never emit name-only entries or null placeholders. Bind required values to the request or a documented derivation; if a required value is missing, do not call that endpoint rather than fabricate it. Treat documented finite choices as API-native values even if typed STRING, and use documented canonical codes and casing; preserve identifiers and free-text wording except where the endpoint specifies normalization. Include optional settings only when requested or clearly implied; use documented freshness controls for “recent” or “latest” and a modest supported result count for “some.” Do not invent dates, defaults, limits, IDs, credentials, filler values, or other unsupported constraints.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Validate before responding",
+      "content": "\n- For a list-of-calls response, each array element must be one complete invocation with one tool name; repeated invocations, including repeated calls to the same endpoint, remain separate elements. Never put multiple tool names in one object or repeat wrapper or parameter keys to encode more calls. Check that every intended invocation has its own element and that parsing the final JSON would retain every element and field.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

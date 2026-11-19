@@ -1,0 +1,61 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_flight_time_params",
+      "count": 1,
+      "description": "'depart at X and arrive by Y' was mapped to a made-up departure_time range and the arrival_time was dropped. Gold uses departure_time=[X, X] and arrival_time=['12:00 AM', Y]."
+    },
+    {
+      "failure_type": "refinement_reply_not_filtered_or_bad_save_key",
+      "count": 2,
+      "description": "An attraction neighborhood proposal ('What's there?') was answered with a fresh search_attractions instead of filter_attractions. A flight refinement saved under an invented key (filtered_first_flights) instead of filtered_flights1."
+    },
+    {
+      "failure_type": "hotel_domain_dropped_or_misrouted",
+      "count": 3,
+      "description": "A requested or accepted hotel was never searched once dates were known (dates in a date-pair reply, or a 'Yes' to a hotel offer). The agent re-filtered or re-searched flights instead. Earlier amenities such as beach, pool and wifi were not carried into the first hotel search."
+    },
+    {
+      "failure_type": "flight_first_search_misbuilt",
+      "count": 2,
+      "description": "With an empty cache, the class preference was applied through filter_flights after the search instead of as a search_flights kwarg. A 'just the return flight' reply was turned into an outbound search with arrival_date."
+    },
+    {
+      "failure_type": "fabricated_dates_and_bad_formatting",
+      "count": 1,
+      "description": "A flight plus hotel request with no dates produced invented dates copied from tool examples, bare search calls and nested searches inside save_to_cache. The correct output was a single seek_information."
+    },
+    {
+      "failure_type": "state_code_in_city",
+      "count": 1,
+      "description": "'a trip to CO' with Sporting attractions put CO in city= instead of state=."
+    }
+  ],
+  "patch": {
+    "reasoning": "The failures cluster in a few places: wrong time-window mapping for flights, refinement replies mishandled (attraction neighborhood, save-key naming), hotels dropped when dates arrive or a 'Yes' accepts one, flight preferences applied after the search on first turns, fabricated dates, and a state code placed in city. The existing rules already cover several of these but sit deep in the document and are ignored. So the edits add concrete worked examples in the high-visibility CACHE GATE and HARD OUTPUT RULES sections. They also add targeted bullets under Rules 9 and 24 for the multi-domain first-search and hotel-sweep cases. Each edit patches a gap seen in the trajectories and does not duplicate content.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "save as 'filtered_hotels2'. Flights stay untouched.",
+        "content": "\n   - CACHE 'flights' + 'I need to depart at 08:23 PM and arrive by 09:24 PM' -> `filter_flights(prior_results=f, departure_time=[\"08:23 PM\", \"08:23 PM\"], arrival_time=[\"12:00 AM\", \"09:24 PM\"])`. 'Depart at X' is the point window [X, X]. 'Arrive by Y' is [\"12:00 AM\", Y]. 'Arrive after Y' is [Y, \"11:59 PM\"]. Never invent a departure window such as [X, X+1h], and never drop the arrival half. The same shapes apply inside search_flights.\n   - CACHE 'attractions' (type Historical) + assistant proposed 'Midtown Atlanta' + user 'Actually, I haven't. What's there?' -> `a = get_results_from_cache(key=\"attractions\")`, `a2 = filter_attractions(prior_results=a, neighborhood=[\"Midtown Atlanta\"])`, `save_to_cache(key=\"filtered_attractions\", value=a2)`. Never re-run search_attractions when the attractions key exists.\n   - Save keys follow the pattern filtered_<domain>, then filtered_<domain>1, filtered_<domain>2. Example: CACHE 'flights' + 'filtered_flights' and the user says 'I prefer AD and first class' -> load the most refined flights key, `filter_flights(prior_results=f, airline=[\"AD\"], flight_class=[\"first\"])`, save as 'filtered_flights1'. Never invent descriptive key names such as filtered_first_flights."
+      },
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- Dates are never invented. If no date appears in the user's messages, write no search_flights or search_hotels call, and never copy a date such as 2025-08-03 from TOOL CONFIG. 'I'm looking for a flight from Portland to Raleigh and a hotel in Raleigh' with no dates -> the ONLY output is `seek_information(\"We need the departure date for the flight, and the check-in and check-out dates for the hotel.\")`. No bare calls and no searches nested inside save_to_cache.\n- A two-letter state code in an attractions request ('a trip to CO and I want Sporting attractions') is `attractions = search_attractions(state=\"CO\", type=[\"Sporting\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. Never write `city=\"CO\"`."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 9: Round-trip flights (+ hotel) are separate search calls",
+        "content": "- FIRST flight search with a stated preference: when CACHE has no flight key and the same turn gives a class, airline or time ('we prefer business'), pass it as a kwarg on EACH leg's search_flights call (`flight_class=[\"business\"]`). Never follow a search_flights call with filter_flights in the same code block, and never filter a raw search variable. The hotel (if requested anywhere in the conversation) is searched in the same block with checkin_date=[outbound date] and checkout_date=[return date], and carries no flight kwargs.\n- 'No, just the return flight' (or 'only the return') plus a date pair like 'May 17, 2025 to May 27, 2025': search ONLY the reverse leg, `flights = search_flights(start_airport_city=<destination>, end_airport_city=<origin>, departure_date=[\"May 27, 2025\"])`, saved as \"flights\". Never use arrival_date or arrival_time for the second date. The first date is the hotel check-in and the second is the hotel check-out, so the hotel search follows in the same block."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 24: Dates, stay length and domain completeness (supplements Rules 6, 7, 9, 14)",
+        "content": "- HOTEL SWEEP: if a hotel was requested anywhere in the conversation (including the assistant asking 'Are you looking for a family-friendly hotel?' and the user answering 'Yes, that sounds wonderful') and CACHE has no hotels key, the last turn must contain `hotels = search_hotels(city=<destination city>, checkin_date=[\"<outbound flight date>\"], checkout_date=[\"<return flight date>\"])` plus `save_to_cache(key=\"hotels\", value=hotels)`. Take the dates from the cached flight summaries or the conversation. Do not re-filter flights, and do not turn style words ('family-friendly', 'kid-friendly') into airline, amenity or kids-club params.\n- The first search_hotels call carries every hotel preference stated in ANY earlier turn, each mapped to its own param: 'near the beach' -> has_beach_access=True, 'pool' -> pool_present=True, 'wifi' -> free_wifi_included=True. For example, earlier 'a hotel near the beach' and 'a hotel with a pool and wifi', then dates May 17, 2025 to May 27, 2025 in Las Vegas -> `search_hotels(city=\"Las Vegas\", checkin_date=[\"May 17, 2025\"], checkout_date=[\"May 27, 2025\"], has_beach_access=True, pool_present=True, free_wifi_included=True)`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

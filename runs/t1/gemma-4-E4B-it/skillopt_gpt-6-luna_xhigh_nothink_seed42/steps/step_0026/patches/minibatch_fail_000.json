@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_mismanagement",
+      "count": 6,
+      "description": "Repeated base searches, reprocessed already-satisfied constraints, or regenerated unrelated and derived results instead of acting only on the changed cached scope."
+    },
+    {
+      "failure_type": "tool_schema_mapping",
+      "count": 4,
+      "description": "Mis-mapped location, neighborhood, amenity, or named-attraction details to tool fields or altered the requested scope."
+    },
+    {
+      "failure_type": "tool_transaction_compliance",
+      "count": 1,
+      "description": "Omitted assigning and saving a search result."
+    }
+  ],
+  "patch": {
+    "reasoning": "The dominant cache and save failures already contradict explicit skill instructions, so repeating those rules would add no guidance. Add only the missing precise mappings exposed by the batch: distinguish a named attraction from a category and distinguish a fitness center from a gym.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "For attractions, put the requested category in `type` with its exact value (for example, if the requested type is `Scenic`, pass `type=[\"Scenic\"]`).",
+        "content": "\nFor a specifically named attraction, use `attraction_name=[<exact user-provided name>]`; do not treat the name as an attraction `type` or assume a cached category-only result includes it. For hotel amenities, map “gym” to `gym_present=True`, “fitness center” to `has_fitness_class=True`, and an explicitly requested “business center” to `has_business_center=True`. Do not substitute between these fields or infer a specific amenity from a generic phrase such as “business facilities.”"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

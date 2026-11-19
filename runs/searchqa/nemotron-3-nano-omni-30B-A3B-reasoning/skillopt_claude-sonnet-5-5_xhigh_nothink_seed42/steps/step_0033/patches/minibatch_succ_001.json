@@ -1,0 +1,32 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Each agent answered with the single entity that the passages repeatedly pair with the clue's most distinctive phrase: 'sock puppet version' -> The Incredibles, '101 days' -> Kon-Tiki, 'co-wrote It's Raining Men' -> Paul Shaffer. The answer was the short bare name or word, with no descriptor.",
+    "For a verbatim archive hit ('CLUE | pizza. right: Anissa.'), the agent copied the text between '|' and 'right:' and ignored the contestant name.",
+    "When the clue asked for 'this trade name', the agent gave ONE brand (Ritalin) that recurs across passages. It skipped the generic drug name already in the clue and the other brands in the lists (Concerta, Metadate).",
+    "For 'Rose of this South American capital', the agent answered with the city (Lima) and not 'Rose of Lima' or 'Peru'. The slot noun fixed the type, and the named saint was only an anchor.",
+    "Decorative openers and either/or asides ('Hallelujah!', 'Whether it's a fruit or vegetable') were ignored. The agent answered with the underlying thing (Tomato), not one side of the 'fruit or vegetable' choice.",
+    "For 'The type of irrigation seen here...', the agent kept the head noun and answered 'drip irrigation'. The bare modifier 'drip' does not name the thing, so the head noun stays even though the clue says 'irrigation'. This sits awkwardly with the delete-clue-words test."
+  ],
+  "patch": {
+    "reasoning": "Most of the batch is already handled by existing rules. Two things are not stated clearly enough. First, the delete-clue-words test conflicts with 'type of <noun>' clues, where the bare modifier is not a name ('drip'). Second, brand-name clues and either/or asides give no guidance on picking one answer. The edits below are short, conditional and keyed to visible clue features, so they should not hurt the stable passes. They avoid adding another mandatory template, which was rejected in earlier steps.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- For titles, give the standard title without quotation marks and keep internal punctuation as written in the context ('M*A*S*H', not 'MASH film').",
+        "content": "\n- 'The type / kind of <noun> ...' ('The type of irrigation seen here, used in Israel to make the desert bloom'): this is the one case where you keep the clue's noun. Test whether the bare modifier ('drip') would be accepted alone. If it would not, answer modifier + noun ('drip irrigation'). If the bare word is a standard name on its own ('Sirius', 'Yalta'), drop the noun. This overrides the delete-clue-words test only when the modifier alone is not a name."
+      },
+      {
+        "op": "insert_after",
+        "target": "answer with the common English name (Conch).",
+        "content": "\n- Opening interjections ('Hallelujah!') and 'Whether it's A or B' asides are decoration. They do not ask you to choose A or B. Answer with the single underlying thing the factual core describes ('Whether it's a fruit or vegetable, it's the basis of marinara' -> Tomato)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Honor qualifiers when the context offers several names for the same thing: 'Greek god of erotic love' -> 'Eros' (not Roman 'Cupid').",
+        "content": "\n- 'Known by this trade / brand name' ('The stimulant methylphenidate ... is known by this trade name'): answer with ONE brand name, the one most repeated and listed first across the passages (Ritalin, not the generic drug already in the clue and not a list of brands). Use the exact spelling the passages use."
+      }
+    ]
+  },
+  "source_type": "success"
+}

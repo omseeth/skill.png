@@ -1,0 +1,36 @@
+{
+  "batch_size": 7,
+  "failure_summary": [
+    {
+      "failure_type": "parameter_binding_and_canonicalization",
+      "count": 5,
+      "description": "Some values did not match the expected API representation for marketplace or locale selectors; one optional field was misplaced and some scalar values were not serialized as strings."
+    },
+    {
+      "failure_type": "endpoint_selection_and_redundancy",
+      "count": 2,
+      "description": "Email checks used a less suitable overlapping validator or added redundant and unrelated endpoints."
+    },
+    {
+      "failure_type": "pagination_parameter_omission",
+      "count": 1,
+      "description": "The initial page was omitted from paginated searches and reviews where the expected calls explicitly selected page 1."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers schema placement, scalar serialization, and avoiding unrelated or duplicate calls, so those rules need no repetition. These edits clarify two less explicit cases evidenced in the batch: translating storefront and locale context into an endpoint's selector format, and making the initial page explicit for paginated result requests.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Preserve user-provided identifiers and meaningful free text unless the schema requires a documented conversion. For categorical filters, codes, and selectors, map the request to the documented parameter meaning—not a similarly named field—and use the endpoint's canonical accepted token and casing from its enums or examples. Do not pass a descriptive word as a category value when it changes the field's meaning; preserve original wording when no conversion is documented. Interpret directional constraints according to field semantics.",
+        "content": "\n- For store or market fields, distinguish a user-facing storefront hostname from the API's marketplace selector. When the endpoint uses a marketplace code, pass that code rather than the full host; derive it from the hostname only when the mapping is unambiguous. Bind country context to a language-region tag only when the endpoint's accepted locale format calls for one; otherwise keep language and country values separate. Preserve free-text query and name casing unless endpoint documentation requires normalization."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Include an optional parameter whenever it directly encodes a requested facet, even if the user phrases it in prose or the endpoint has a default. For an unfiltered, random, or full/standard result, use a documented “all” or unfiltered selector when needed to preserve that scope. Do not add options that are neither requested nor needed to express it, or invent values. For missing required values, use only a documented default or a value unambiguously derivable from the query.",
+        "content": "\n- For a search, list, or review request that asks for the initial results, explicitly set an available one-based `page` parameter to `1` when omission does not clearly guarantee that result set. Follow documented zero-based indexing or a documented default instead."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

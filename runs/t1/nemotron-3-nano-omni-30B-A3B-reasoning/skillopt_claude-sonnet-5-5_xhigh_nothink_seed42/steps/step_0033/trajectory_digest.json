@@ -1,0 +1,52 @@
+{
+  "step": 33,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 24,
+  "failure_patterns": [
+    {
+      "pattern": "flight_class_or_airline_reply_filtered_only_one_leg: With departure_flights and return_flights both cached, 'business' and 'AN in first' were applied to the departure leg only. This looks like fixation on the repeated 'exactly three lines' wording.",
+      "count": 24,
+      "task_ids": [
+        "flighthotelrestaurant:train:8:34:3",
+        "flighthotel:train:12:60:5",
+        "flighthotelrestaurant:train:9:19:4",
+        "hotelrestaurant:train:3:10:0",
+        "flighthotelattraction:train:11:27:2",
+        "hotelrestaurant:train:3:1:4",
+        "hotelrestaurant:train:14:3:0",
+        "flighthotel:train:4:50:2",
+        "flight:train:17:8:3",
+        "flight:train:23:12:2",
+        "flighthotelrestaurant:train:11:59:3",
+        "hotelattraction:train:19:30:5",
+        "flighthotelrestaurant:train:10:23:1",
+        "restaurant:train:25:45:1",
+        "restaurant:train:2:41:2",
+        "flighthotel:train:9:39:6",
+        "hotel:train:21:33:1",
+        "flighthotel:train:21:3:3",
+        "flighthotel:train:25:1:2",
+        "hotelattraction:train:12:34:4",
+        "restaurant:train:1:60:0",
+        "hotelattraction:train:11:20:1",
+        "flighthotel:train:12:7:1",
+        "flighthotelrestaurant:train:7:23:5"
+      ]
+    }
+  ],
+  "score_before": 0.545,
+  "score_after": 0.53,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "Count LEGS, not keys: a raw key and its filtered_* version are ONE leg (load only the most refined one). 2 legs -> 2 blocks, 3 legs -> 3 blocks; stopping after the first leg is wrong (with `flights` and `return_flights` cached, a class reply needs a block for each). This rule applies only when a flight key is literally in CACHE. With NO flight key, a date range or 'just the return flight' reply is a first search of the requested leg(s) (plus the hotel if requested); never load a flight key that is not in CACHE.",
+      "target": "2 keys -> 2 blocks, 3 keys -> 3 blocks; stopping after the first key is wrong."
+    },
+    {
+      "op": "insert_after",
+      "content": "\n   - A hotel-domain reply when a hotels-type key IS in CACHE (stars, amenity words mapped via Rule 27, neighborhood, per-night budget, party size, rooms, or a 'Yes' to the assistant's hotel-amenity offer): exactly three lines. Load the most refined hotel key (hotels, filtered_hotels*, final_hotels*, hotels2 or nearest_hotels: the one created last / highest suffix, so a nearest_hotels built on filtered hotels beats filtered_hotels), `h2 = filter_hotels(prior_results=h, <only kwargs from the last message>)`, then save under an unused key. 'N of us' -> `num_people=<N>`; 'M rooms' -> `num_rooms=<M>`; both go in the same call. Never route it to attractions, never re-run search_nearest, write ZERO flight lines, and do not re-pass stars, neighborhood or amenities already in the summary.",
+      "target": "At most `x = get_results_from_cache(key=\"<flight key>\")` for each cached flight key."
+    }
+  ]
+}

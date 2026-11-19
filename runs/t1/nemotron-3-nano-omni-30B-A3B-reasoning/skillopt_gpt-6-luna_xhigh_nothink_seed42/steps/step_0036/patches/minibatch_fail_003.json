@@ -1,0 +1,31 @@
+{
+  "batch_size": 3,
+  "failure_summary": [
+    {
+      "failure_type": "cache_refinement_omission",
+      "count": 3,
+      "description": "Agents searched again or did no work instead of retrieving the latest compatible cached result, applying the new criterion, and saving the refinement."
+    },
+    {
+      "failure_type": "unsupported_criterion_inference",
+      "count": 1,
+      "description": "An agent translated an unsupported qualitative preference into an unrelated filter that the user had not requested."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the cache decision an explicit execution path: when a compatible cached result covers the existing request, retrieve and refine it with the new supported criteria rather than searching again or stopping. Clarify that unsupported qualitative preferences must not be mapped to unrelated filters.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+        "content": "- For each changed or still-pending item, match the exact domain and target against the listed cache summaries. If a compatible cached result covers the existing request but lacks a new criterion, retrieve it using its exact listed key and apply every new schema-supported criterion with the appropriate filter, passing the cached result as `prior_results`; then bind and save the refined result under a new key. This applies to updates such as a newly stated budget or a neighborhood made actionable by an assistant suggestion. Do not search again when a compatible base result is available, and do not treat a cache hit as satisfying a criterion it does not cover. Search only when no compatible result exists and mandatory inputs are available. Leave unaffected domains alone and do not rely on variables from earlier executions."
+      },
+      {
+        "op": "replace",
+        "target": "- Carry forward relevant details from the conversation and include explicitly supplied criteria in the appropriate call. Send only schema-supported parameters; do not infer amenities, ratings, or other preferences. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one.",
+        "content": "- Carry forward relevant details and include explicitly supplied criteria only when the tool schema supports them. Do not infer amenities, ratings, or other preferences, or translate an unsupported qualitative descriptor (such as a formal atmosphere) into an unrelated filter. Omit criteria that have no supported field while applying any supported criteria the user did provide. Do not infer exact party or room counts from broad descriptions such as “family.” Treat “solo” as one traveler only when a supported traveler-count field is available; do not infer a room count from it. A traveler count is not a flight-search parameter unless the schema provides one."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

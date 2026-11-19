@@ -1,0 +1,131 @@
+{
+  "reasoning": "fallback: failure first, then success",
+  "edits": [
+    {
+      "op": "insert_after",
+      "target": "## HARD OUTPUT RULES (check before EVERY response)",
+      "content": "\n\n- FIRST-SEARCH ARG CHECK (a requested domain with NO CACHE key). (a) Every mandatory arg must be a literal value from the conversation: search_restaurants needs a stated city; search_hotels needs city + check-in + check-out; search_flights needs origin + departure date. If one is missing, that domain gets `seek_information(...)` naming only the missing item, and never a placeholder. Example: 'find a restaurant for my birthday' + 'don't know' (a cuisine answer) has no city -> the WHOLE output is `seek_information(\"We need the city for the restaurant.\")`. Occasion words ('birthday') and 'don't know' supply nothing. (b) Hotel kwargs come only from words that name a hotel parameter. 'kid-friendly', 'family vacation', 'good', 'nice' map to NO kwarg, and never to num_people or has_kids_club; num_people only from a stated number ('solo' = 1); has_kids_club only from 'kids club'. Example: 'family vacation in <city>, need a kid-friendly hotel' + 'check-in <date A> and check-out <date B>' -> `hotels = search_hotels(city=\"<city>\", checkin_date=[\"<date A>\"], checkout_date=[\"<date B>\"])` + `save_to_cache(key=\"hotels\", value=hotels)` and nothing else. (c) Hotel + restaurant in one request with no hotel dates ('a hotel in <city> with a good restaurant nearby that serves <cuisine>'): `restaurants = search_restaurants(city=\"<city>\", cuisine=[\"<cuisine>\"])`, `save_to_cache(key=\"restaurants\", value=restaurants)`, then ONE `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. No search_nearest yet (no hotels key), no rating kwarg for 'good', and never a bare unassigned, unsaved search_*. Dropping the seek_information or the save is wrong.",
+      "source_type": "failure",
+      "support_count": 3,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Never write a placeholder such as '<date>' or '<X>' as an argument.",
+      "content": "Never write a placeholder such as '<date>', '<city>' or '<X>' as an argument to ANY tool (a missing city, date or origin means seek_information, not a search).",
+      "source_type": "failure",
+      "support_count": 3,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "A budget, stars, amenity or party-size reply never supplies dates (hotel requested, no dates, reply 'around 80 per night' -> seek_information, no search_hotels).",
+      "content": "A budget, stars, amenity or party-size reply never supplies dates (hotel requested, no dates, reply 'around 80 per night' or 'we need a pool' -> seek_information, no search_hotels). This holds even when another domain's key (e.g. only 'attractions') sits in CACHE: never filter that other key to apply a hotel reply. A date range in the user's reply ('June 29, 2025 to July 11, 2025') with a hotel requested and a city known IS check-in/check-out: call search_hotels now (a 'solo trip' adds num_people=1). Same logic for restaurants: if no city was stated in any turn, a cuisine or dietary reply ('I'm craving Thai') gets `seek_information(\"We need the city for the restaurant.\")` and never city=\"<city>\" or any other placeholder.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "read the CACHE dict. If a domain's key is present,",
+      "content": "read the CACHE dict and write down its exact key names: get_results_from_cache may use ONLY those names (CACHE has 'hotels' but no 'filtered_hotels' -> load 'hotels'). A 'No, I haven't. What's there?' answering the assistant's 'Have you considered <place>?' is interest in that place: filter the cached domain by it (`filter_attractions(prior_results=a, neighborhood=[\"<place>\"])`), never a new search. If a domain's key is present,",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "'city view' -> has_city_view_rooms_present=True.",
+      "content": "'city view' -> has_city_view_rooms_present=True. 'kitchen' / 'in-room kitchen' -> has_inroom_kitchen=True. 'beach access' -> has_beach_access=True. 'ocean view' -> has_ocean_view_rooms_present=True. 'balcony' -> has_balcony=True. 'valet parking' -> has_valet_parking=True. 'EV charging' -> has_electric_vehicle_charging=True. 'pet friendly' -> is_pet_friendly=True. 'wheelchair accessible' -> is_wheelchair_accessible=True (no has_ prefix). 'skiing' -> has_skiing_lodging=True.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Never load another domain's key and re-save it as a stand-in for the missing search.",
+      "content": "Never load another domain's key and re-save it as a stand-in for the missing search. Example: turn 1 asked for a round-trip flight A to B plus a hotel with an amenity, and the reply is 'depart <X>, return <Y>, we need N rooms' with CACHE `{}` -> THREE assigned and saved searches in one block: `departure_flights = search_flights(start_airport_city=\"A\", end_airport_city=\"B\", departure_date=[\"<X>\"])`, `return_flights = search_flights(start_airport_city=\"B\", end_airport_city=\"A\", departure_date=[\"<Y>\"])` (never a return_date kwarg, never one 'flights' call), and `hotels = search_hotels(city=\"B\", checkin_date=[\"<X>\"], checkout_date=[\"<Y>\"], num_rooms=N, <amenity from turn 1 via the Rule 27 table>)`.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "A search_* call is allowed only for a domain with NO key.",
+      "content": " The triple is per cached key you refine, not per reply. When the last message holds a flight class/airline/time/price word and CACHE has two or more flight keys (departure_flights + return_flights, or flights + flights2), write one triple per leg's most refined key with identical kwargs. When one answer covers two cached domains ('<neighborhood> would be ideal for both' with hotels and restaurants keys), write one triple per domain: the neighborhood on the most refined hotels key AND on the most refined restaurants key (a nearest_restaurants key is the latest if it exists). Stopping after the first triple is wrong. A reply about only one domain still gets only that domain's triple.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "- Include optional details the user explicitly stated (num_rooms, num_people, budget, amenities, cuisine, ...) as keyword args in the search call, and nothing the user did not say.",
+      "content": "\n- COLLECT FROM EVERY USER TURN. A first search carries every constraint the USER stated in any turn, including the last message. Example with placeholders: `search_restaurants(city=\"<city>\", cuisine=[\"<cuisine from turn 1>\"], budget=<n from a later turn>, neighborhood=[\"<neighborhood from the last message>\"])`. A stated headcount ('for N people') becomes `num_people=N` on search_hotels only. A named attraction becomes `attraction_name=[\"<exact name>\"]` together with `type=[...]` when a type was also stated. A neighborhood that only the assistant mentioned in a question, and that the user's reply did not repeat or accept, is not a user constraint. When flight keys are already cached and the turn adds hotel/attraction requests, write zero flight lines and no comments.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Never load another domain's key and re-save it as a stand-in for the missing search.",
+      "content": "\n-2b. HOTEL NEAR A CACHED ATTRACTION + DATES. If CACHE holds an 'attractions' key for a named attraction, the user wanted a hotel near it, and there is no hotels key, a dates reply is the hotel's first search, never a filter on attractions: `hotels = search_hotels(city=\"<city>\", checkin_date=[\"<X>\"], checkout_date=[\"<Y>\"], <other stated constraints>)` + `save_to_cache(key=\"hotels\", value=hotels)`, then `a = get_results_from_cache(key=\"attractions\")`, `nearest_hotels = search_nearest(hotels=hotels, attractions=a, groupBy=\"hotel\")` + `save_to_cache(key=\"nearest_hotels\", value=nearest_hotels)`. Never call filter_attractions(city=...) for a date reply.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "A multi-city trip needs one search per leg. If the user offers several candidate dates for ONE leg, put them all in that leg's departure_date list.",
+      "content": "\n  MULTI-CITY CHECK: when each date attaches to a different leg and the second leg does not return to the origin (A->B on date 1, B->C on date 2), it is NOT a round trip. Save the legs as \"flights\" and \"flights2\", not departure_flights/return_flights. If hotels were requested anywhere ('hotels in each city'), add one search_hotels per destination city (B and C), saved as \"hotels\" and \"hotels2\". Each takes check-in = the first flight date and check-out = the last flight date, copied as written, with only user-stated extras. Write all of it (2 flight + 2 hotel searches, each saved) in the same block.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Correct whole output for 'a hotel in Tucson with a view of the ocean' (CACHE `{}`): `seek_information(\"We need the check-in and check-out dates for the hotel.\")`, with no search_hotels call.",
+      "content": "A FIRST-turn hotel request that has a city and an amenity but NO dates (CACHE `{}`) gets only `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. That holds ONLY until the user supplies dates. On the next turn, when the user's message holds the dates (turn 1 'a hotel in <city> with an ocean view', turn 2 '<X> to <Y>'), write `hotels = search_hotels(city=\"<city>\", checkin_date=[\"<X>\"], checkout_date=[\"<Y>\"], has_ocean_view_rooms_present=True)` + `save_to_cache(key=\"hotels\", value=hotels)` and never ask again.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "-2. DATE ANSWER = SEARCH NOW (beats every seek_information rule below, including the 'vague timing' paragraph of Rule 6).",
+      "content": "-2. DATE ANSWER = SEARCH NOW (beats every seek_information rule below, including the 'vague timing' paragraph of Rule 6 and any 'last-minute' / 'weekend getaway' / 'family vacation' wording from turn 1). If the user's last message contains a date ('ideally May 19, 2025' counts), no date is missing: seek_information is WRONG. Search EVERY requested domain that has no CACHE key, in one block. (1) Flights: origin and destination from earlier turns; one date = one search saved as \"flights\", two dates = outbound and return searches. The kwargs are only the two cities, departure_date and a class/airline/budget the user stated. Never add departure_time, arrival_time, arrival_date or num_layovers, and never copy times such as '00:00:00' from TOOL CONFIG. (2) Hotel: it counts as requested if the user asked for it in ANY turn, or if the assistant offered one ('Are you looking for a family-friendly hotel?') and the user accepted ('Yes, that sounds wonderful'). Write `search_hotels(city=<destination>, checkin_date=[<outbound date>], checkout_date=[<return date>])` plus any stated stars, amenity, neighborhood or budget. Vague words like 'family-friendly' add no kwarg, and a hotel offer is never answered with a flight filter. With 'N nights' and one date, write the flight search first, then `checkout_date = adjust_date(date=\"<date>\", delta_days=N)` and search_hotels(checkin_date=[\"<date>\"], checkout_date=[checkout_date]). Ocean view -> has_ocean_view_rooms_present=True.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "A party-size-only reply ('There are 5 of us') when NO hotel has been requested adds no constraint, because flight and restaurant tools have no party-size parameter. Write no search and no filter.",
+      "content": "A party-size-only reply ('There are 5 of us'): if ANY hotels-type key is in CACHE (hotels, filtered_hotels*, final_hotels*, nearest_hotels), load the latest-created one (nearest_hotels beats raw hotels) and write exactly `h = get_results_from_cache(key=\"<that key>\")`, `h2 = filter_hotels(prior_results=h, num_people=5)`, `save_to_cache(key=\"<unused key>\", value=h2)`. Add no neighborhood, stars or amenity from earlier turns (an attraction named earlier is not a neighborhood), and do not search or filter attractions or flights. If NO hotel has been requested anywhere, the reply adds no constraint (flight and restaurant tools have no party-size parameter): write no search and no filter.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "Conversely, when the last message is about hotels or restaurants, write no flight line.",
+      "content": "Conversely, write a filter_flights line ONLY if the last message itself names a flight class, an airline code, a time of day or a ticket-price cap, or accepts the assistant's flight class/airline/time offer. A reply about stars, neighborhood, amenities, a restaurant or attraction, or a 'Yes' to a hotel/restaurant/attraction offer, produces NO flight line. A class stated in an earlier turn is already in the flight summaries ('flight classes: [economy]'), so re-passing it is wrong, and an airline is never taken from 'kid-friendly' or from an example.",
+      "source_type": "failure",
+      "support_count": 8,
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Do not re-filter hotels and do not re-search the attraction type.",
+      "content": "\n- Trigger check for the bullet above: search_nearest fires only when the user says near/close/stay near the attraction, or answers 'Yes' to the assistant's offer of hotels near attractions, or when hotels and that attraction are searched in the same turn. A named attraction given as the plain answer to 'what attractions are you interested in?' with hotels already cached is only `attractions = search_attractions(city=\"<city>\", attraction_name=[\"<exact name>\"])` + `save_to_cache(key=\"attractions\", value=attractions)`. Do not load or filter the hotels key for that reply.",
+      "source_type": "success",
+      "support_count": 8
+    },
+    {
+      "op": "insert_after",
+      "target": "with no search, no filter and no print('No planning needed').",
+      "content": " Load the filtered key that already shows the proposal (e.g. `filtered_attractions`), not the raw key, and never re-filter or save over an existing key.",
+      "source_type": "success",
+      "support_count": 8
+    }
+  ]
+}

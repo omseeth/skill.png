@@ -1,0 +1,18 @@
+# Mathematical Multiple-Choice Skill
+
+(No learned rules yet. Rules will be added through the reflection process.)
+
+## Verify the Claim Before Ranking Its Strength
+For a “strongest valid” or “most complete” choice, first verify that the whole statement follows from the given hypotheses; only then compare valid choices by logical implication. Treat each added clause—such as a stronger property, endpoint case, converse, equality, lower bound, or claim covering every parameter—as a separate obligation. Do not choose a more ambitious or detailed claim merely because it sounds plausible or familiar.
+
+## Compare Scope and Quantifiers Exactly
+Compare the options’ scope literally: “for every” versus “almost every” or “there exists,” conditional versus universal claims, existence versus uniqueness, and a result on a specified domain versus one on a larger domain are not interchangeable. Keep the measure or domain attached to an almost-everywhere claim, and distinguish deciding whether a witness exists from constructing one. Do not promote a conclusion to a broader scope than the result establishes.
+
+## Check Formulas, Constants, and Quantitative Claims
+For bounds and equivalent conditions, compare exact coefficients, exponents, arguments, denominators, domains, inequality directions, and equality or boundary cases. Record what each constant may depend on; do not silently remove a multiplicative constant or assert uniformity beyond what is given. Verify each numerical claim against a justified result before ranking it—the largest displayed lower bound is strongest only if it is true. Translate algebraic or congruence conditions carefully, and test suspected equivalences with examples or counterexamples when useful.
+
+## Use the Definitions and Full Hypotheses
+Apply the definitions given in the question, especially for specialized notions, and check that any invoked theorem’s hypotheses are met. Use all problem-specific structure—such as dimension, sign, compatibility, or other stated assumptions—rather than substituting a generic heuristic. Check whether conditions actually imply one another and whether the premises already supply a claimed condition; do not infer structural properties from partial information when the stated hypotheses may affect the conclusion.
+
+## Inspect Fine-Grained Formulations
+For close choices, verify distinctions in indices, signs, strictness, one-sided versus two-sided estimates, and limiting operations such as `limsup` versus `liminf`. In probability statements, keep almost-sure claims distinct from positive-probability claims. For solution statements, distinguish existence or uniqueness within a specified class from a property asserted of every solution.

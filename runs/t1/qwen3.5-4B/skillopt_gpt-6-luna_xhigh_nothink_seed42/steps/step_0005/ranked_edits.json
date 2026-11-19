@@ -1,0 +1,41 @@
+{
+  "reasoning": "Preserved the failure-driven corrections as the priority for overlapping guidance, including the rule that missing inputs block only their own domain. Added the success-driven service-scope, location-input, and hotel check-in clarifications as a separate rule because they add requirements not covered by the failure edits. Retained each edit’s support_count and source_type. [optimizer-ranked: selected 4/8 edits]",
+  "edits": [
+    {
+      "op": "append",
+      "content": "- Identify the specific travel service(s) requested from the full conversation; do not infer that every travel domain is requested merely from a destination, occasion, or generic travel context. If the requested service is unclear, seek clarification before planning. In addition to the date requirements above, flight searches require a usable origin, and hotel and restaurant searches require a city. When a hotel is clearly for the same trip at its destination and no different check-in date is stated, use the explicitly stated trip travel date as check-in; this does not establish checkout. If checkout is unknown, request it rather than assuming a stay length or a one-night stay.",
+      "support_count": 12,
+      "source_type": "success"
+    },
+    {
+      "op": "replace",
+      "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available.",
+      "content": "- Check mandatory inputs against the full conversation and relevant cached results separately for each requested domain. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not search, filter, or otherwise plan for an incomplete domain, but do proceed in the same turn with independent requested domains whose required inputs are complete; missing information for one domain does not block work in another. Do not guess or invent values, and do not ask for optional preferences as if they were required.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "replace",
+      "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+      "content": "- On each turn, consider the full conversation and cached result summaries. For every requested domain and criterion, verify that a compatible cached result for the same subject explicitly supports it; the existence of other results or a broad summary is not proof that the request is satisfied. If a requested domain or category is not covered by compatible results, search for it. If a compatible result lacks newly requested criteria, retrieve it with `get_results_from_cache(key=\"...\")`, assign the return value, pass it as `prior_results` to the matching filter, assign the filter’s return value, and save the updated result under a unique cache key. For every new search or transformation—including filters, sorts, and nearest-result calls—assign its return value and call `save_to_cache` with that value under a unique key. Do not filter unrelated results or repeat constraints already applied. Return “No planning needed” only if compatible cached results explicitly satisfy every current domain and criterion and no further operation is needed.",
+      "support_count": 2,
+      "source_type": "failure"
+    },
+    {
+      "op": "insert_after",
+      "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+      "content": "\n- Resolve other contextual follow-ups against the immediately preceding exchange as well. If the user asks about “there,” “that,” or “what’s there?” after the assistant proposed a place or category, treat that proposal as the subject of the request, not as a no-op. Use compatible cached results and apply the proposal as a new criterion when appropriate, or search the appropriate domain if the cache does not cover it; save the resulting transformation or search.",
+      "support_count": 2,
+      "source_type": "failure"
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 7 addresses the broadest set of missing prerequisites and prevents inferring services or stay details. Edit 1 resolves conflicting guidance that can block otherwise-ready independent searches. Edit 4 strengthens cache validation and handling across many kinds of operations. Edit 5 generalizes contextual understanding beyond simple affirmations; the remaining edits are more narrowly scoped or largely duplicate existing guidance.",
+    "selected_indices": [
+      7,
+      1,
+      4,
+      5
+    ]
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "step": 40,
+  "action": "reject",
+  "n_total": 40,
+  "n_fail": 20,
+  "failure_patterns": [
+    {
+      "pattern": "round_trip_flight_malformed: A date range (or depart/return pair) was written as ONE search_flights call using return_date= or return_flights=departure_date. This raised a NameError or ValidationError and dropped the second leg. In one case the hotel in the same turn was also dropped.",
+      "count": 20,
+      "task_ids": [
+        "flight:train:2:40:4",
+        "hotelrestaurant:train:14:41:1",
+        "flighthotelrestaurant:train:15:1:3",
+        "attraction:train:1:8:0",
+        "flighthotelrestaurant:train:16:43:1",
+        "attraction:train:20:56:0",
+        "hotelrestaurant:train:13:45:0",
+        "hotelattraction:train:23:13:4",
+        "flight:train:16:11:1",
+        "flighthotelattraction:train:2:22:1",
+        "flighthotelattraction:train:3:53:1",
+        "hotelrestaurant:train:22:31:1",
+        "hotel:train:15:3:1",
+        "hotelattraction:train:16:34:3",
+        "flighthotelrestaurant:train:25:34:3",
+        "flighthotelrestaurant:train:25:52:1",
+        "flighthotelrestaurant:train:1:59:3",
+        "restaurant:train:20:8:0",
+        "hotel:train:15:57:1",
+        "flighthotelrestaurant:train:16:13:3"
+      ]
+    }
+  ],
+  "score_before": 0.55,
+  "score_after": 0.545,
+  "rejected_edits": [
+    {
+      "op": "insert_after",
+      "content": " Two replies are NOT a single filter triple: (a) a flight class / airline / time / price-cap reply gets one load-filter-save triple for EVERY flight key in CACHE, with identical kwargs; (b) a 'Yes' to an offer of hotels near/close to the cached attractions, with hotels and attractions keys both in CACHE, is `h = get_results_from_cache(key=<most refined hotels key>)`, `a = get_results_from_cache(key=<most refined attractions key>)`, `n = search_nearest(hotels=h, attractions=a, groupBy=\"hotel\")`, `save_to_cache(key=\"nearest_hotels\", value=n)`, with no filter and no re-save of the attractions entry.",
+      "target": "A search_* call is allowed only for a domain with NO key."
+    },
+    {
+      "op": "replace",
+      "content": "- Use only kwargs listed in TOOL CONFIG. search_flights has NO return_date and NO return_flights kwarg: a round trip or any date pair ('X to Y', 'around X ... returning Y') is two separate assigned+saved search_flights calls (see item -2). Never write `return_flights=...`, `return_date=...` or an undefined variable (e.g. a bare `departure_date`) as an argument value. If the user wants 'just the return flight', make only the cities-swapped search with the return date. A date pair still gives hotel check-in/check-out when a hotel was requested. Never use a TOOL CONFIG example city (Dallas, Boston...) the user did not say. Restaurant dietary words are boolean flags, never cuisines: halal -> `has_halal_options=True`, kosher -> `has_kosher_options=True`, vegan -> `has_vegan_options=True`, vegetarian -> `has_vegetarian_options=True`, gluten-free -> `has_gluten_free_options=True`, nut / dairy allergy -> `has_nut_allergy_options=True` / `has_dairy_allergy_options=True`; `cuisine=` only for a real cuisine name ('Persian').",
+      "target": "- Use only kwargs listed in TOOL CONFIG. search_flights has NO return_date: a round trip is two search_flights calls."
+    }
+  ]
+}

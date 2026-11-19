@@ -1,0 +1,52 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "Invalid tool invocation",
+      "count": 4,
+      "description": "Agents imported tools even though they are already defined in the runtime, causing execution failures."
+    },
+    {
+      "failure_type": "Cache-state handling",
+      "count": 3,
+      "description": "Agents treated existing results as a reason to do nothing even when the latest turn added constraints that required filtering."
+    },
+    {
+      "failure_type": "Scope and parameter discipline",
+      "count": 4,
+      "description": "Agents added unrequested domains or inferred optional values, and sometimes failed to save updated results."
+    },
+    {
+      "failure_type": "Incomplete itinerary search",
+      "count": 1,
+      "description": "An agent searched only the outbound leg despite the conversation providing a return date."
+    },
+    {
+      "failure_type": "Value normalization",
+      "count": 2,
+      "description": "Agents changed user-provided date formatting or class-value casing instead of preserving the stated values."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits reinforce the runtime contract, distinguish a genuinely satisfied cache from one that needs updating, and prevent scope or value drift. A separate itinerary rule addresses the missing return-flight search.",
+    "edits": [
+      {
+        "op": "append",
+        "content": "\n\n## Tool execution\nCall the provided tools directly; do not import or redefine them. Return only executable tool-call code in the required output format, without extra printing or commentary."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Updating cached results\nA cached result is not sufficient merely because it exists: compare it with the latest user request. If the user adds a constraint, retrieve the most relevant cached result, apply the appropriate filter, and save the updated result under a new key. Use “No planning needed” only when the cached results already satisfy the full current request. Save every newly generated search, filter, sort, or nearest result."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Scope and user-provided values\nCall tools only for travel domains the user requested, and pass optional parameters only when explicitly provided. Do not infer unrelated amenities, room or traveler counts, or other criteria from contextual descriptions; map a request only to its matching tool parameter. Preserve user-provided entity values and formatting rather than normalizing them."
+      },
+      {
+        "op": "append",
+        "content": "\n\n## Flight itinerary legs\nWhen both outbound and return dates are provided, search each direction separately, using the corresponding date for each leg. For a multi-city itinerary, search only the explicitly specified legs; do not omit a provided leg or invent additional ones."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

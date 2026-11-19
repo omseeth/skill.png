@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "answer_format",
+      "count": 3,
+      "description": "The answer was the right referent but used an incomplete or over-expanded name form."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Agents selected an associated person or category instead of the entity type requested by the clue."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 2,
+      "description": "For bare comma-separated name pairs, agents gave a shared role rather than the specific shared geographic association."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already covers exact answer scope and semantic type, so those failures do not warrant duplicating existing rules. The two bare name-pair prompts reveal a narrower gap: the shared-completion guidance does not explicitly address elliptical pairs whose intended answer is a common geographic affiliation.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Check for Shared Completions in Parallel Clues",
+        "content": "\nFor a bare pair of proper names separated by a comma, with no relation stated, treat the prompt as asking for a shared attribute. Use context to check for a specific common geographic affiliation, such as a state or country, before answering with a broad shared role. Return that place only when the context supports the link for both names; do not infer it from association alone."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

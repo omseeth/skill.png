@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_contract_violation",
+      "count": 3,
+      "description": "Agents imported the unavailable `tools` module despite the skill requiring direct calls to injected functions."
+    },
+    {
+      "failure_type": "cache_persistence_omission",
+      "count": 3,
+      "description": "Agents made searches but omitted saving the generated results to cache."
+    },
+    {
+      "failure_type": "cache_and_domain_selection",
+      "count": 4,
+      "description": "Agents repeated covered searches or filters, skipped filtering for new criteria, or treated a request with new criteria as needing no planning."
+    },
+    {
+      "failure_type": "itinerary_parsing",
+      "count": 1,
+      "description": "An agent treated a dated multi-city itinerary as missing information instead of mapping the dates to the explicitly stated consecutive legs."
+    },
+    {
+      "failure_type": "unsupported_preference_mapping",
+      "count": 1,
+      "description": "An agent mapped the vague preference “kid-friendly” to the unrelated `is_pet_friendly` parameter."
+    }
+  ],
+  "patch": {
+    "reasoning": "The direct-call, cache-saving, incremental-filtering, and range-cardinality requirements are already present, so repeating them would not patch a skill gap. The edits clarify how to parse multi-city itineraries, when proximity searches are actually warranted, and how to avoid mapping qualitative preferences to unrelated tool fields.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Preserve user-provided dates, entity values, and casing. For a round trip, search each leg separately, reverse the outbound route for the return, and use the return leg’s departure date. Ask for an unknown endpoint rather than assuming a route.",
+        "content": "\n- For a multi-city itinerary, read the stated route segments in order and map the provided travel dates to their corresponding legs using the conversation’s chronology. Search every explicitly stated leg separately; do not force a multi-leg itinerary into a round-trip pattern or ask for dates or endpoints that are already clear. Ask only when a required leg endpoint or date is genuinely unknown."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Match arguments to the tool schema’s expected type and cardinality. For a range-shaped field, encode one requested exact value as both endpoints (for example, `[n, n]` for one star rating). Treat stated soft preferences as actionable: translate a standard time-of-day preference without exact bounds into a reasonable interval in the expected format (for example, afternoon as `12:00 PM`–`5:00 PM`).",
+        "content": "\n- Map a preference only to a tool parameter with the same meaning. Do not approximate an unsupported or vague preference with an unrelated field (for example, do not interpret “kid-friendly” as pet-friendly); omit an unmatched optional parameter rather than inventing a value."
+      },
+      {
+        "op": "insert_after",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "\n- Treat proximity as requested only when the user explicitly asks for nearby, close-to, or similar relationships between result types. Merely mentioning visits to attractions while asking for a hotel does not imply a nearest-results request. When proximity is explicit, reuse compatible cached results for either type, search only for a missing type, and then call `search_nearest`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

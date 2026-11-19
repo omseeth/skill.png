@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_or_identification",
+      "count": 6,
+      "description": "Several trajectories used an endpoint that returned the wrong kind of result or represented its tool name with a provider description or an unqualified endpoint name."
+    },
+    {
+      "failure_type": "schema_and_parameter_mapping",
+      "count": 6,
+      "description": "Calls omitted parameter values, put fields in the wrong required/optional bucket, or failed to map requested qualifiers to documented fields and values."
+    },
+    {
+      "failure_type": "requested_action_coverage",
+      "count": 6,
+      "description": "Compound requests were incompletely covered or a requested output was substituted with a nearby but non-equivalent operation."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch shows recurring confusion about matching the requested result type to an endpoint and about serializing parameter entries into the correct schema buckets. The existing compound-request checklist already addresses coverage, so these edits sharpen endpoint selection and make the parameter-object contract explicit without duplicating that checklist.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Choose an endpoint by its documented operation, output, target, and support for the requested qualifiers—not merely by a shared topic or entity name. Prefer the most specific endpoint that fits the request; use separate endpoints when distinct deliverables require them.",
+        "content": "- Identify the requested operation and result type before matching tools (for example, people vs. events, a named source’s latest items vs. keyword search, or product search vs. category enumeration); choose an endpoint whose documented output directly answers that operation for the target. A shared topic or entity name alone is not a fit."
+      },
+      {
+        "op": "replace",
+        "target": "- Use the complete tool name exactly as listed, including its provider or namespace where applicable.",
+        "content": "- Use the exact tool identifier as listed, in its provider-plus-endpoint form (typically `Provider: API endpoint`); do not use provider description text or an unqualified endpoint name."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Preserve the answer structure",
+        "content": "- Encode every entry in the `required parameters` and `optional parameters` arrays as an object with both `name` and `value` (for example, `{\"name\":\"field\",\"value\":\"...\"}`); never use bare field names or bare values. Put each field in the bucket documented for that endpoint, preserve its documented value type, and supply a query-derived value for every required field."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

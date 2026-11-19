@@ -1,0 +1,46 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "fabricated_or_placeholder_origin",
+      "count": 2,
+      "description": "Flights were requested but no departure city was ever stated. The agent invented an origin (swapped Anchorage for 'Fresno') or wrote a '<origin city>' placeholder. Gold asks seek_information for the departure city, and still searches the hotel when its args are known."
+    },
+    {
+      "failure_type": "wrong_domain_or_stale_constraint_on_refinement",
+      "count": 2,
+      "description": "A head-count reply ('There are 3 of us') loaded the raw 'hotels' key instead of 'nearest_hotels' and re-passed the earlier attraction as a neighborhood. 'Near PK2' after a dining question was applied as a hotel neighborhood filter instead of a restaurant search plus search_nearest."
+    },
+    {
+      "failure_type": "search_instead_of_filter_on_cached_domain",
+      "count": 1,
+      "description": "Attractions were cached at state level and the reply named a city. The agent ran a new search_attractions(city=...) instead of filter_attractions(city=...)."
+    },
+    {
+      "failure_type": "malformed_output",
+      "count": 1,
+      "description": "A first-turn hotel + restaurant request produced `import sys`, with no tool calls. This looks like noise, and the skill already forbids imports."
+    }
+  ],
+  "patch": {
+    "reasoning": "Two of six failures are the same gap: a flight is requested with no stated origin. The skill's date-answer gate ('search NOW') and Rule 9 push the agent to invent an origin or write a placeholder. The ORIGIN GATE plus the gate -2 clause make a missing origin a seek_information for the departure city only. Other searchable domains, such as a hotel with known city and dates, still run first. Three failures are misrouted refinements. They are fixed with compact reply-type rows placed in the top ladder right after the SEARCH GATE: a head-count goes to the latest hotel key as num_people only, a city answer on state-level attractions is a filter, and a restaurant-domain 'near <place>' reply is a restaurant search plus search_nearest rather than a hotel neighborhood filter. The rows use placeholders so no kwarg values leak into unrelated filters. No existing rule is rewritten, so the passing seek_information-only and first-search behaviour is untouched.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "search_flights never takes num_people or num_layovers.",
+        "content": "\n- ORIGIN GATE (before any search_flights): the origin must be a city the user literally named as the departure ('from X', 'out of X', 'I normally fly from X'). A destination ('a trip to <city>'), the hotel city, or 'help me with flights too' after a hotel is NOT an origin. Never guess an origin, never reuse the destination as origin, never swap cities, and never write a placeholder such as '<origin city>'. Dates being known does not change this. Flights requested + origin missing -> NO search_flights. The closing line is `seek_information(\"We need the departure city for the flight.\")`, naming only the origin (add the date only if it is also missing). Before that line, still run every other requested domain that is searchable. Example: flights + hotel, destination city and both dates given, no origin -> `search_hotels(city=<destination>, checkin_date=[<first date as written>], checkout_date=[<second date as written>])` + save as hotels, then the seek_information. Example: only a hotel key in CACHE and the reply is 'help me with flights too' with no origin stated -> the seek_information alone, with no filter and no search."
+      },
+      {
+        "op": "replace",
+        "target": "Flight requested: outbound",
+        "content": "Flight requested AND an origin city the user named (otherwise the ORIGIN GATE applies and there is no flight search): outbound"
+      },
+      {
+        "op": "insert_after",
+        "target": "saved as filtered_attractions.",
+        "content": "\n- REPLY ROWS (cached domain; kwargs come only from the last message, and anything said in earlier turns is already inside the cached entry): (a) A hotel was requested anywhere and the reply is only a head-count ('There are N of us') -> load the MOST RECENT hotel key in CACHE (a `nearest_hotels` key beats `hotels` and `filtered_hotels*`), `filter_hotels(prior_results=h, num_people=<N>)`, save under an unused key. Pass nothing else: no neighborhood, stars, amenity, hotel name or attraction name from earlier turns (a place named in turn 1 such as 'near <attraction>' is already applied). (b) Attractions cached from a state or type search and the reply names a city -> `filter_attractions(prior_results=a, city=\"<city as written>\")` saved as filtered_attractions. Never a new search_attractions. (c) The assistant's last question was about dining, 'restaurants' has no key, and the reply only gives a place ('near <place>') -> the reply is a RESTAURANT request, not a hotel filter. Write `search_restaurants(city=<trip city>)` and then `search_nearest(hotels=<hotel result>, restaurants=<restaurant result>, groupBy=\"restaurant\")`, each assigned and saved. If <place> is a specific hotel name rather than an area, the hotel result is `search_hotels(city=<trip city>, checkin_date=<cached dates as written>, checkout_date=<cached dates as written>, hotel_name=[\"<place>\"])`. Never pass a place name as neighborhood=[...] on filter_hotels."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

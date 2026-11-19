@@ -1,0 +1,55 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Number agreement: answered singular ('bear', 'sail', 'Great Highland Bagpipe') when the clue's slot was plural ('species of these', a definition about 'blades') or the standard name is plural. The current rule is singular-biased."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 3,
+      "description": "Echoed or padded an anchor from the clue instead of the slot: the quoted title 'West Side Story', the foreign word 'Orzel' instead of its English meaning, and a clue-stated modifier 'Great Highland Bagpipe'."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "Gave the long event name 'Athens Classic Marathon' despite two existing rules to use the generic name."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "Took a passage that only states a relationship ('a relative of the dugong') as an archive hit, without checking the clue's other detail ('found in Florida')."
+    },
+    {
+      "failure_type": "other",
+      "count": 1,
+      "description": "Palmdale facility: the key is a context-vs-knowledge conflict (Edwards AFB vs Air Force Plant 16). It is not generalizable, so no edit."
+    }
+  ],
+  "patch": {
+    "reasoning": "Earlier steps added long up-front 'Step 0' reasoning lines and piles of example bullets, and all were rejected. This patch is small and targets mechanisms the skill gets wrong or does not cover. (1) The singular/plural bullet is singular-biased and silent on plural definitions, so I replace it with a clear number-agreement rule; this should fix three failures. (2) Add compact handling for two clue shapes that make the agent echo the clue: a foreign-word gloss (answer the English meaning) and 'Category:\"Quoted Title\"' (answer a different linked entity). (3) Add a narrow caveat to Rule 3 so a passage that only states a relationship to the clue's topic is checked against the clue's other details, without weakening real archive hits. (4) Put a short three-line gate at the very end of the skill for recency. It restates the strip-echo, number and detail checks. It is a checklist, not a mandatory reasoning line.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Use the singular form for a generic single object ('Well', not 'wells'), but keep the plural for crops, commodities and mass categories ('Bananas') or when the clue says 'these'/'ones'.",
+        "content": "- NUMBER AGREEMENT: match the number of the clue's slot. PLURAL when the clue says 'these', 'species/kinds/types of these' ('these flying mammals' -> 'Bats'), 'ones', or when its definition names several things ('the canvas-covered blades of ...', 'the wheels of ...' -> the plural word). Also keep the plural for crops, commodities and mass categories ('Bananas') and for items whose standard name is plural (scissors, bagpipes). SINGULAR when the clue says 'this <thing>' or 'one of these' ('Well', 'bleat'). If an archive line prints the answer, copy its number exactly."
+      },
+      {
+        "op": "insert_after",
+        "target": "answer with the common English name (Conch).",
+        "content": "\n- A clue that glosses a foreign word ('This, an <foreign word> in <country>, ...' / 'called X in French') asks for the ENGLISH meaning of that word. The foreign word is an anchor, never the answer.\n- A clue of the form 'Category:\"Quoted Title\"' (colon, then a quoted work) asks for a DIFFERENT entity linked to that title that fits the category before the colon: the older work it adapts, its creator, its original. Never repeat the quoted title."
+      },
+      {
+        "op": "insert_after",
+        "target": "Before the answer tags, briefly quote the matched line.",
+        "content": "\n- A passage that only states a RELATIONSHIP to the clue's topic ('X was a relative of Y', 'similar to Y') is not an archive hit. Test the candidate against every other detail in the clue (place, rarity, date, role). If the clue says the answer is 'found in <place>' and your candidate lives elsewhere, it is the relative, not the answer. Pick the entity that all the clue's details describe."
+      },
+      {
+        "op": "append",
+        "content": "\n## Final gate (last look before the answer tags)\n1. Strip echoes: no word the clue already states, no quoted title or foreign word from the clue, and no city, sponsor, year or 'Great'/'Classic' qualifier when the clue says only 'this <generic thing>' or 'the <Region> version of this <thing>'. Give the generic name ('Athens Classic Marathon' -> 'Marathon'; 'Highland version of this instrument' -> the plain instrument name).\n2. Number: 'these', 'species of', or a plural definition -> plural answer; 'this' / 'one of these' -> singular.\n3. Every clue detail (place, role, date) must fit your answer, not just the topic."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

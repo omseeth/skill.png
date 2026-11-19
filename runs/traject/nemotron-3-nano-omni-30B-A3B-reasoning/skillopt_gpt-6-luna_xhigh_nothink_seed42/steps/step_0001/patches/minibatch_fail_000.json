@@ -1,0 +1,36 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_selection",
+      "count": 8,
+      "description": "Agents chose semantically similar but incorrect endpoints, added unrelated tools, or failed to use the exact canonical tool name."
+    },
+    {
+      "failure_type": "request_coverage",
+      "count": 6,
+      "description": "Agents missed distinct requested actions or searches, and sometimes added calls for tasks the user had not requested."
+    },
+    {
+      "failure_type": "argument_grounding",
+      "count": 5,
+      "description": "Agents omitted relevant filters, mapped values to the wrong schema fields, or invented unsupported details such as dates."
+    },
+    {
+      "failure_type": "output_format",
+      "count": 1,
+      "description": "The response was not a valid JSON list inside the required answer tags, preventing parsing."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill has no learned rules. A compact call-planning and validation workflow addresses the recurring omissions, endpoint confusion, schema mismatches, and serialization failure without adding task-specific values.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "### Call planning\n- Break the request into an inventory of distinct actions, targets, and stated constraints before selecting tools. Preserve repeated or explicitly separate requests as separate calls; do not omit later clauses or add related but unrequested calls.\n- Match each action to the endpoint that performs that operation, distinguishing similar endpoints from the same provider. Use the exact full tool name as listed (`Provider: API`), never a shortened alias.\n- Map stated constraints to the tool's actual parameter names and supported values. Include relevant filters, but do not invent missing identifiers, dates, or other values, and do not send unrelated optional parameters.\n\n### Final check\nConfirm every requested action has a call and no call is extraneous. Then verify the required answer wrapper, valid JSON array syntax, exact object keys, canonical tool names, and required sort order."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

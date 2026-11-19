@@ -1,0 +1,56 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_cache_delta_failure",
+      "count": 7,
+      "description": "New constraints or domains were missed despite relevant cache entries, while some already-satisfied results were redundantly filtered."
+    },
+    {
+      "failure_type": "contextual_reply_resolution",
+      "count": 4,
+      "description": "Brief replies were not consistently interpreted against the assistant's preceding question or proposal, so accepted preferences and targets were omitted or mishandled."
+    },
+    {
+      "failure_type": "flight_leg_semantics",
+      "count": 2,
+      "description": "Return-only or round-trip requests were not consistently represented as separate directional searches with the return date used as that leg's departure date."
+    },
+    {
+      "failure_type": "schema_or_runtime_tool_compliance",
+      "count": 4,
+      "description": "Calls used an invalid argument type or unsupported field, or attempted to import tools that were already available."
+    },
+    {
+      "failure_type": "result_persistence_noncompliance",
+      "count": 3,
+      "description": "Results were left unbound or not saved even though the skill already requires saving result-producing calls."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make cache handling an explicit delta decision, clarify how terse replies can accept a proposed target or relation, specify the return-only flight case, and enforce declared argument types and direct tool use. Persistence is already directly covered by the skill, so no duplicate edit is warranted.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- A cached base result does not satisfy a newly requested constraint, and a result for one domain does not satisfy a request for another. Use `print(\"No planning needed\")` only when relevant, valid cached results already satisfy every requested action and constraint.",
+        "content": "\n- Make the cache decision against the latest turn's delta, not the cache's mere existence: for each new supported constraint, retrieve the compatible listed result and refine it with that constraint; a filter call with only `prior_results` does not satisfy a new preference. For a new target or domain, search for the missing result. If a cached result already satisfies a domain and the latest turn adds no criterion for it, reuse it directly downstream rather than filtering it again. If a preference has no schema-supported field, do not invent one; still apply other supported new criteria."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Proximity between travel domains",
+        "content": "\n- Resolve short replies against the immediately preceding assistant question or proposal. A direct confirmation accepts the specific target or relation proposed, including a proximity offer; a contextual reference to a suggested area updates that area's search or filter. Treat the accepted relation as explicit, search for a target not covered by cache, and reuse an already-valid result for the other domain without re-filtering it."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Represent flight legs separately",
+        "content": "\n- If the user clarifies that they want only the return flight on an established route, search just that segment: reverse the route and use the return date as its `departure_date`. Do not search the outbound leg or send the return date as `arrival_date` or an unsupported `return_date`."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Validate tool arguments and preserve user intent",
+        "content": "\n- Validate declared value types as well as argument names; follow the schema's actual type annotation rather than inferring a list from wording or a field name. For example, pass an airport code as a string when the selected airport field is declared `str`. Call tools already exposed in the runtime directly; do not import, redefine, or wrap them."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

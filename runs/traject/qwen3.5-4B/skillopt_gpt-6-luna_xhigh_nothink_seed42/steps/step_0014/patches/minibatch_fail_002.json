@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_outcome_coverage",
+      "count": 6,
+      "description": "Several trajectories used a topical or neighboring endpoint, missed a distinct requested operation, or added redundant calls that did not fulfill a separate outcome."
+    },
+    {
+      "failure_type": "schema_argument_mapping",
+      "count": 6,
+      "description": "Arguments were misplaced, omitted, invented, or mapped to the wrong field or endpoint, including optional settings and explicit constraints."
+    },
+    {
+      "failure_type": "serialization",
+      "count": 2,
+      "description": "One response was malformed JSON, and another used duplicate parameter keys that obscured call arguments."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most observed errors are already addressed by the skill’s endpoint, schema, and serialization audits, so avoid repeating those rules. Add a narrow distinction for news feeds, where a broad latest-news request was incorrectly routed to a top-headlines endpoint and duplicated instead of using a chronological global feed.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Check temporal scope explicitly: current conditions are not forecasts, and location-specific active alerts are not aggregate alert counts. When coordinates are supplied and a matching coordinate-based endpoint exists, use it rather than inferring a city or changing the location form.",
+        "content": "\n- For news requests, distinguish a chronological recent/global feed from curated top headlines. For general or global latest news, prefer an endpoint whose operation returns the newest broad set, including a fixed recent-feed endpoint when available. Use a top-headlines endpoint when the requested outcome is headlines or top-ranked items; do not use it as a substitute for a broad latest-news feed or add a duplicate broad-news call."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

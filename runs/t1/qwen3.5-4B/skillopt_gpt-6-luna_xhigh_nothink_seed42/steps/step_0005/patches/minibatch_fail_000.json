@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "tool_invocation_contract_violation",
+      "count": 4,
+      "description": "Agents imported the unavailable tools module despite the skill requiring direct calls."
+    },
+    {
+      "failure_type": "missing_result_caching",
+      "count": 3,
+      "description": "Agents performed a search or filter but omitted saving its result under a cache key."
+    },
+    {
+      "failure_type": "cache_and_criteria_handling",
+      "count": 3,
+      "description": "Agents failed to apply new criteria to compatible cached results or to perform the requested nearby-results operation."
+    },
+    {
+      "failure_type": "independent_domain_blocked_by_missing_inputs",
+      "count": 1,
+      "description": "An agent requested missing hotel dates but failed to search the independently actionable restaurant domain."
+    },
+    {
+      "failure_type": "contextual_followup_resolution",
+      "count": 1,
+      "description": "An agent missed that a follow-up question referred to a place proposed by the assistant and should guide filtering."
+    }
+  ],
+  "patch": {
+    "reasoning": "Most failures already violate explicit tool-use, caching, or cache-filtering rules, so repeating those instructions would not patch a skill gap. Clarifying the conflicting missing-input guidance prevents an incomplete domain from blocking independent searches, and extending follow-up resolution covers contextual references beyond brief affirmations.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Check mandatory inputs against the full conversation and relevant cached results before planning calls. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not make partial searches or other planning calls until the user provides them. Do not guess or invent values, and do not ask for optional preferences as if they were required. Once required inputs are available, continue with independent searches whose inputs are available.",
+        "content": "- Check mandatory inputs against the full conversation and relevant cached results separately for each requested domain. Flight searches require a departure date; hotel searches require check-in and checkout dates. If any requested domain lacks required inputs, make exactly one `seek_information(...)` call listing only the missing required values across the requested domains. Do not search or filter an incomplete domain, but do proceed in the same turn with independent requested domains whose required inputs are complete. Do not guess or invent values, and do not ask for optional preferences as if they were required."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Resolve brief affirmations such as “yes” against the immediately preceding assistant question or proposal, and carry forward the proposed entity or category as stated.",
+        "content": "\n- Resolve other contextual follow-ups against the immediately preceding exchange as well. If the user asks about “there,” “that,” or “what’s there?” after the assistant proposed a place or category, treat that proposal as the subject of the request; use compatible cached results and apply the proposed place or category as a new criterion when appropriate."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

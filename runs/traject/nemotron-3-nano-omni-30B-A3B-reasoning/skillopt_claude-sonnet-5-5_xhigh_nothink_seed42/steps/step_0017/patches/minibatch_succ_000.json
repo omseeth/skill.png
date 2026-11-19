@@ -1,0 +1,38 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "All eight answers used the one-object-per-line layout with a single `optional parameters` key, full `Provider: Endpoint` names, and one call per clause, including the last. Both are already encoded.",
+    "Pagination wording that gives a count plus 'first' or 'page 1' was mapped to both the size field and `page`=1 (Pokemon Unite 'first 20', thefluentme '20 posts from the first page'). The one miss, 'first 15 posts' with only `per_page`, lost optional credit.",
+    "Count words like 'once' were treated as numbers (dice=5, rolls=1 for 'rolled 5 dice once').",
+    "Place hierarchies in the query were mapped to the Airbnb admin fields. The partial miss left out the city, `admin3`=`Roma`.",
+    "Named people inside a clause need the schema's person field. 'TED talks by Yuval Noah Harari' needs `speaker`, and that param was dropped in the otherwise correct TED call.",
+    "Optional-only tools with a vague clause still got a value taken from the clause's own wording (periodic table 'complete' -> all=true, 'fetch a template' -> get_test=template). These matched gold, and the existing 'empty optional list is almost always wrong' rule covers them.",
+    "Commentary sentences ('This sequence suggests...') correctly produced no call, and clean formatting avoided the duplicate-optional-key bug."
+  ],
+  "patch": {
+    "reasoning": "The failures that remain inside successful runs are small optional-parameter misses: `page` omitted next to 'first N', a named person dropped from a talks search, the city left out of the admin fields, and count words not treated as numbers. Each edit rewrites an existing rule with a one-line example instead of adding a new section. The 'first 20' edit sharpens an existing example that the current text contradicts: Pokemon Unite and thefluentme matched gold with page=1, and the run that skipped it lost credit.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "'first 20' -> pageSize `20`;",
+        "content": "'first 20' or 'first 15 posts' on a paginated tool -> the size field AND page `1` (pageSize `20` + page `1`; per_page `15` + page `1`);"
+      },
+      {
+        "op": "replace",
+        "target": "An unused number means a missed parameter.",
+        "content": "An unused number means a missed parameter. Count words are numbers too: 'rolled 5 dice once' -> dice `5`, rolls `1`; 'twice' -> `2`; 'from the first page' -> page `1`."
+      },
+      {
+        "op": "replace",
+        "target": "- A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).",
+        "content": "- A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`). A named person ('TED talks by Yuval Noah Harari', 'songs by X') -> the schema's person field (`speaker`, `artist`, `author`), never dropped; if the field wants a slug, lowercase it with underscores (`yuval_noah_harari`)."
+      },
+      {
+        "op": "replace",
+        "target": "(`Airbnb listings: Count Listings by administrative divisions`: `state`=`IT`, `admin1`=`Lazio`)",
+        "content": "(`Airbnb listings: Count Listings by administrative divisions`: `state`=`IT`, `admin1`=`Lazio`; every place the clause names gets a field, so 'Rome (Roma), Italy' also sets the city as `admin3`=`Roma`)"
+      }
+    ]
+  },
+  "source_type": "success"
+}

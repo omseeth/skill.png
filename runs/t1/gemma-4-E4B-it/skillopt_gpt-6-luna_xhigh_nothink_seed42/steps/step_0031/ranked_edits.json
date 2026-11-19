@@ -1,0 +1,28 @@
+{
+  "reasoning": "Consolidated the three proposals into one precedence-based turn classifier, emphasizing compatible cache reuse, accepted-offer handling, and searching only for new or uncovered scopes. Retained unique itinerary-date and named-place guidance, plus the explicit no-op rule for unsupported flight passenger counts. Omitted proposed rewrites that duplicate existing mandatory-input and schema checks. All targets are outside the protected section. [optimizer-ranked: selected 2/4 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.\n```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+      "content": "**Turn classifier (apply before any tool call):** Read the full conversation, preceding assistant offer, and cache summary; identify only the scopes changed by the latest turn.\n1. Resolve replies against the offer before interpreting an affirmative: carry out the offered operation and scope. Accepting an offer for a new category or entity starts that search; accepting a proximity offer means retrieving compatible cached hotel and attraction or restaurant results and running `search_nearest`, not searching a new category. Set `groupBy` to the domain the user wants recommended. Preserve earlier explicit proximity requests unless withdrawn; merely mentioning domains together does not imply proximity.\n2. For each changed scope, select the most constrained cached result that still covers the full requested domain, location, dates or leg, and entity scope, and embodies the most active criteria. If it covers the request, retrieve it by its literal cache key, retain criteria already embodied, apply new and other active supported filterable constraints, and save the filtered result. Apply updates such as party size or amenities to the relevant compatible cached or composite results. Do not base-search a covered scope or regenerate unaffected scopes.\n3. Base-search only for a genuinely new or uncovered scope, with all active supported criteria. Combine same-domain criteria in one call when supported, such as a category and a named attraction. If there is no supported actionable change and compatible cached results cover all active requests, take the no-op path.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Required-argument checks",
+      "content": "\n- Resolve hotel dates and city from itinerary context only when clear. If a hotel is requested as part of a round trip and the outbound and return dates define the trip span, use the destination as the hotel city and those dates as check-in and check-out unless the user specifies otherwise. For a multi-city itinerary, do not infer hotel dates or location from flight-leg dates; keep the hotel request pending and seek only its missing mandatory details. Do not silently omit an explicitly requested hotel domain.",
+      "support_count": 1,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Edit 0 ranks highest: it adds a precedence-based classifier that addresses recurring cache-follow-up and accepted-offer failures. Edit 2 is a useful, actionable clarification for deriving hotel dates from an explicitly requested round-trip itinerary while guarding against unsafe inference in multi-city trips. Edit 1 is narrower, and edit 3 largely repeats the existing rule that flight tools do not support passenger counts.",
+    "selected_indices": [
+      0,
+      2
+    ]
+  }
+}

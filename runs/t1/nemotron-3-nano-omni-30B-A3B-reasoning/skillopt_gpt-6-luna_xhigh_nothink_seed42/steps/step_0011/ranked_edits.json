@@ -1,0 +1,46 @@
+{
+  "reasoning": "Consolidated repeated guidance on conversation-wide coverage, cache compatibility, and binding and saving tool results. Combined schema validation, verbatim preservation of user values, and the hotel-neighborhood refinement into one schema-focused edit. Preserved distinct flight-date, party-detail, missing-input, and runtime guidance. Support counts estimate the number of the five source patches that support each edit; no edits target the protected section. [optimizer-ranked: selected 4/8 edits]",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+      "content": "- Before emitting code, make a coverage checklist from the full conversation, treating the latest user turn as an update rather than a standalone request. Include every still-pending requested item and domain, each explicitly described flight leg, and each new or accepted constraint or cross-domain relation. Resolve short replies against the immediately preceding assistant question or proposal: an answer such as “yes,” “that sounds great,” or a cuisine preference can accept or specify a concrete item, criterion, or relation. For each checklist item, identify its intended target, domain, relation, and schema-supported argument, then verify the plan includes the appropriate call. Treat a request as outstanding unless a valid cached result covers that exact criterion. Do not reprocess unchanged or unrelated domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Check each tool’s schema for supported argument names and required fields. Use the exact field that matches the user’s meaning; do not invent aliases. For example, hotel star requirements use `stars`, a region belongs in `state`, a city in `city`, and a named attraction in `attraction_name`. Use the schema’s exact amenity field (such as `has_laundry_service`) when that preference is stated. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+      "content": "- Treat each tool’s declared argument list as a strict whitelist: validate every keyword against that tool before calling, use the full supported field name, and do not invent aliases. Match the field to the user’s meaning (for example, hotel stars use `stars`; a state or state abbreviation uses `state`, not `city`; a city uses `city`; a named attraction uses `attraction_name`; and amenities use declared fields such as `has_laundry_service` or `has_kids_club`, not shortened labels). Preserve user-provided entity values, labels, and identifiers verbatim—including airline codes, attraction-type terms, and state abbreviations—without autocorrecting, translating, or substituting guessed equivalents. For a newly requested hotel district or area within a city, use `neighborhood` when supported. If compatible cached hotel results exist, refine them with `filter_hotels` using those results as `prior_results`, and save the refinement under a new key; retrieving the cache alone does not satisfy the new constraint. Hotel searches require check-in and check-out dates, and hotel filters require `prior_results`.",
+      "support_count": 4,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Treat the latest user turn as an update to the trip plan. Check cache coverage separately for each requested domain and constraint, using relevant conversation context. For an affected domain, retrieve the latest relevant valid result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria; search when a needed result is unavailable. Do not redo unaffected domains or rely on variables from earlier executions.",
+      "content": "- Check cache coverage separately for each requested domain and constraint, using relevant conversation context. Copy cache keys exactly from the supplied cache listing; never guess a conventional key. Confirm the listed result is valid and its summary covers the requested domain and criteria—an unlisted new constraint is not satisfied. For an affected domain, retrieve the latest relevant compatible result with `get_results_from_cache(key=\"...\")` into a local variable and pass it as `prior_results` when required. Apply only the newly introduced constraint to results that already represent earlier criteria. If no compatible listed result exists and mandatory inputs are available, search instead of filtering; never filter a missing or `None` result. Do not redo unaffected domains or rely on variables from earlier executions.",
+      "support_count": 3,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "replace",
+      "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "content": "- For every search, filter, sort, and nearest-results call, bind the exact returned object to a local variable and immediately save that same object with `save_to_cache` under a unique, descriptive key before using it downstream or finishing the plan. Save each refinement under a new key. For refinements, retrieve the cached result separately into a local variable and pass it as `prior_results`; do not nest cache retrievals inside tool calls, leave result-producing calls unbound, or omit a save. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+      "support_count": 4,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ],
+  "ranking_details": {
+    "reasoning": "Prioritize the edits that most improve multi-turn request coverage, schema fidelity, and cache correctness. Edit 2 is useful but largely reinforces an existing bind-and-save rule; the remaining candidates are narrower or less complementary.",
+    "selected_indices": [
+      0,
+      4,
+      1,
+      2
+    ]
+  }
+}

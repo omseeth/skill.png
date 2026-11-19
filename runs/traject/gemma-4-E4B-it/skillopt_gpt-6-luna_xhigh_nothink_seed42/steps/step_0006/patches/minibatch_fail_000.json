@@ -1,0 +1,38 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "canonicalization_and_serialization",
+      "count": 6,
+      "description": "Arguments differed from expected API representations in casing, market codes, multi-value encoding, search terms, tool identifiers, or string-versus-number serialization."
+    },
+    {
+      "failure_type": "endpoint_selection",
+      "count": 3,
+      "description": "The chosen endpoint or its exact tool identifier did not match the most specific documented operation for the requested task."
+    },
+    {
+      "failure_type": "output_scope_and_controls",
+      "count": 4,
+      "description": "Some calls omitted expected list-size or paging controls, or narrowed a request with multiple facets to only one."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch shows recurring mismatches between user wording and API-specific representations, plus occasional selection of an adjacent endpoint or omission of useful list controls. These additions sharpen the existing rules without encouraging invented values or unrelated calls.",
+    "edits": [
+      {
+        "insert_after": "- **Build arguments from the endpoint schema.**",
+        "content": "\n  Canonicalize labels, tags, enums, and country or market codes to the spelling and case established by the endpoint; map a market name or host to a compact code only when the mapping is unambiguous. Preserve every requested facet in a supported multi-value field, using its documented delimiter, rather than selecting just one. Keep free-text query wording unless the endpoint documents a normalization. In the required call format, follow the wrapper's value serialization: if its parameter examples use strings, serialize numeric and boolean values as strings too."
+      },
+      {
+        "insert_after": "- **Map each requested deliverable to the endpoint that performs it.**",
+        "content": "\n  When related endpoints overlap, distinguish their documented operation and granularity (for example, single-action versus batch or multi-run); prefer the endpoint that directly represents the request. Do not use a multi-run endpoint with a count of one when a suitable single-action endpoint directly fulfills the request."
+      },
+      {
+        "insert_after": "- **Handle independent calls, pagination, and explicit sorting requests.**",
+        "content": "\n  For an ordinary list, search, or latest-results request with no requested count, include a documented standard page size or result limit when the endpoint exposes one; do not omit useful output controls solely because the user did not specify a number. Do not guess an undocumented size or sort value."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

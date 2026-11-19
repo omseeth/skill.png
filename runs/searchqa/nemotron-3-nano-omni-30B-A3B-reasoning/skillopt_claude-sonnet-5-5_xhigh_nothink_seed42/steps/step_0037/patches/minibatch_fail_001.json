@@ -1,0 +1,36 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "rule_ignored",
+      "count": 2,
+      "description": "'one of these <holes / watering holes>' clues: the agent echoed a clue word ('spring' from 'Silver Springs') or picked a neighbouring object that fits the setting ('pool') instead of a specific KIND of the clue's noun (sinkhole, well). Rule 2 already says to avoid clue words and answer the nicknamed object."
+    },
+    {
+      "failure_type": "rule_missing",
+      "count": 1,
+      "description": "Bare 'Person + charge/event' fragment with no slot noun ('Henry Ward Beecher for adultery'): the hidden slot was a broad era ('the 19th century'). The agent gave a specific year (1875) from the passages."
+    },
+    {
+      "failure_type": "rule_ignored",
+      "count": 1,
+      "description": "'Forbes' vs gold 'Forbes magazine'. The eponym exception already exists in the strategic block and the agent ignored it. Gold keys that add an optional word are not reliably fixable, so no edit is proposed."
+    }
+  ],
+  "patch": {
+    "reasoning": "Five earlier steps tried a global 'Type/Evidence/Check' template and all were rejected, with the score dropping from 0.735. This patch therefore avoids another global template. It makes two narrow, low-risk edits keyed to visible clue features. (1) The existing 'one of these' bullet in Rule 2 is replaced by a sharper, length-neutral version covering clues whose slot noun is generic or quoted ('one of these holes', 'one of these \"watering holes\"'). It requires a specific KIND of that noun, forbids echoing clue words and neighbouring-object answers, and adds a 'is a kind of <noun>' test. (2) A short Rule 1 bullet covers bare 'Person + event' fragments with no slot noun, where a specific year is the wrong granularity. It is conditioned so it does not override the date+place rule or any identifiable entity slot. The Forbes failure is skipped as not rule-fixable.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Example pattern: a clue about a region 'in this country' wants the country, not the region. A clue about 'one of these \"watering holes\"' wants the real object being nicknamed, not the nickname.",
+        "content": "- Example pattern: a clue about a region 'in this country' wants the country, not the region.\n- 'ONE OF THESE <noun>' clues where the noun is generic or quoted ('water-filled one of these holes', 'one of these \"watering holes\"') want a specific KIND of that noun, or the real object being nicknamed. Rules: (a) never answer with a word already in the clue (a clue saying 'Silver Springs' cannot be answered 'spring'); (b) never answer with a neighbouring object that merely fits the setting (a swimming 'pool' for a backyard rescue); (c) scan the passages for compounds built on the clue's noun that recur near the anchor ('sinkholes' in several passages -> sinkhole is a kind of hole), and for the object that is literally a hole holding water in the clue's setting (a backyard hole a toddler falls into -> a well); (d) test: '<answer> is a kind of <clue noun>' must be true and the answer must not be a clue word."
+      },
+      {
+        "op": "insert_after",
+        "target": "- A bare date + place (or date + event) fragment such as 'February 6, 1911 in Tampico, Illinois' asks for the person (or named thing) that the passages repeatedly tie to exactly that date and place, here the person born there that day. Give the bare name ('Ronald Reagan'), not the event, the place or the date.",
+        "content": "- A bare 'Person + charge/event' fragment with no 'this', no blank and no date (e.g. 'Henry Ward Beecher for adultery') is usually a category title with its last words cut off ('Scandals of ...'). If no entity slot can be identified, the hidden answer is the broad ERA that fits the person's life dates and the event: a century or decade written as a trivia key would ('the 19th century'). Do not answer with the single year, the trial name or a place that the passages happen to repeat. Use this only when no named-entity slot is evident; the date + place rule above still applies when the clue has a date."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

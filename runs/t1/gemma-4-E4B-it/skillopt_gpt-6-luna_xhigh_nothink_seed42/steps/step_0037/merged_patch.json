@@ -1,0 +1,37 @@
+{
+  "reasoning": "Added the precedence-based classifier and retained the distinct clarifications on ambiguous locations, answer-to-field mapping, and proximity prioritization. Omitted the multi-scope reminder because the existing workflow already covers it, and omitted the proposed hotel-date inference to preserve the skill’s explicit mandatory-date and no-guessing safeguards. No edits target the protected section.",
+  "edits": [
+    {
+      "op": "replace",
+      "target": "**Follow-up decision boundary:** If the user accepts an offer to search a new domain, category, or entity, or requests a location, date, leg, or scope that no compatible cached result covers, make a new base search with all active supported criteria. If the same scope is already covered and the user only adds or changes a filterable preference—including a later budget, amenity, cuisine, or rating request—retrieve the exact compatible cache key, apply the matching filter, and save that result instead of repeating the base search. Repeat this retrieve-filter-save sequence for each affected leg.",
+      "content": "**Latest-turn action precedence (before tool selection):** Resolve the final user turn using the full conversation, the preceding assistant question or offer, and the cache summary. Keep earlier explicit requests, including proximity requests, active unless withdrawn, and act only on scopes changed by the latest turn. (1) For an explicit request or accepted offer for a genuinely new or cache-uncovered domain, category, entity, location, date, or leg, base-search only that uncovered scope with all active supported criteria; do not substitute a related cached scope or infer proximity. (2) If an affirmative only accepts an offer to present recommendations from an already covered scope, retrieve a compatible cached result for use, without searching, filtering, or saving a duplicate. (3) If a turn adds or changes a filterable constraint on a covered scope, retrieve the most constrained compatible result by its exact key, apply the new constraint, and save the filtered result; process each changed domain or leg independently and leave unrelated scopes untouched. (4) For explicitly requested or accepted proximity, retrieve compatible existing datasets and run `search_nearest`; do not search a new category merely to satisfy the proximity offer. Base-search only a genuinely new or uncovered scope.",
+      "support_count": 8,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "## Required-argument checks",
+      "content": "\n- Resolve an unambiguous location reference such as “there” from the full conversation, including the established trip destination when that is the clear referent. This supplies only the location; it does not supply other missing mandatory inputs.",
+      "support_count": 8,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Resolve terse replies using the preceding assistant question: a number supplied in response to a budget question is a budget, not a rating, and “business trip” alone does not request `flight_class=[\"business\"]`.",
+      "content": " When a question asks for multiple preference fields, map each answer to the slot it answers; for example, a carrier name or code in response to an airline question belongs in `airline`, while a cabin class belongs in `flight_class`. Do not reinterpret an abbreviation as a time preference without explicit time wording.",
+      "support_count": 8,
+      "source_type": "failure",
+      "merge_level": 1
+    },
+    {
+      "op": "insert_after",
+      "target": "Set `groupBy` to the domain the user wants prioritized.",
+      "content": " For example, when recommending restaurants near a hotel, prioritize restaurants with `groupBy=\"restaurant\"`; when recommending hotels near attractions, use `groupBy=\"hotel\"`. The anchor domain is not necessarily the domain to prioritize.",
+      "support_count": 8,
+      "source_type": "failure",
+      "merge_level": 1
+    }
+  ]
+}

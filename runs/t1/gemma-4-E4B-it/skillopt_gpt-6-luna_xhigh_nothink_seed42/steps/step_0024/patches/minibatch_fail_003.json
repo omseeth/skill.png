@@ -1,0 +1,21 @@
+{
+  "batch_size": 2,
+  "failure_summary": [
+    {
+      "failure_type": "cache_scope_mismanagement",
+      "count": 2,
+      "description": "Agents ignored compatible cached results, restarting a hotel search for filter-only preferences or regenerating unchanged domains instead of searching only for a newly requested entity."
+    }
+  ],
+  "patch": {
+    "reasoning": "The existing cache rules are broad, but the only call example demonstrates restaurant filtering. Replacing it with explicit hotel-filter and new-entity workflows targets both observed failures and shows how to reuse an unchanged cached domain.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "```python\nprior = get_results_from_cache(key=\"<exact compatible cache key from summary>\")\nfiltered = filter_restaurants(prior_results=prior, cuisine=[\"<requested cuisine>\"])\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered)\n```",
+        "content": "```python\n# Same hotel scope; the user adds filterable preferences only.\nprior_hotels = get_results_from_cache(key=\"<exact compatible hotel key from summary>\")\nfiltered_hotels = filter_hotels(prior_results=prior_hotels, budget=<requested budget>, pool_present=True)\nsave_to_cache(key=\"<descriptive filtered key>\", value=filtered_hotels)\n\n# A newly requested named attraction is not covered merely by a broader attraction result.\n# Reuse the unchanged hotel result; search only for the requested entity.\nhotels = get_results_from_cache(key=\"<exact compatible hotel key from summary>\")\nattraction = search_attractions(city=\"<requested city>\", attraction_name=[\"<exact requested entity>\"])\nsave_to_cache(key=\"<descriptive attraction key>\", value=attraction)\n# Call and save search_nearest only when proximity was requested or offered and accepted.\n```"
+      }
+    ]
+  },
+  "source_type": "failure"
+}

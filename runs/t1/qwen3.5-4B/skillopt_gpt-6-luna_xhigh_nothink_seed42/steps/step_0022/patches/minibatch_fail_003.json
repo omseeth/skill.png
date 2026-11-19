@@ -1,0 +1,46 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "cache_persistence_omission",
+      "count": 3,
+      "description": "Search results were returned but not assigned and saved to cache."
+    },
+    {
+      "failure_type": "stateful_cache_workflow_failure",
+      "count": 2,
+      "description": "A new criterion was not applied to a compatible cached result: the agent either stopped with a no-op or repeated a search."
+    },
+    {
+      "failure_type": "unsolicited_tool_calls",
+      "count": 1,
+      "description": "The agent added unrequested searches, sorting, and nearest-result operations."
+    },
+    {
+      "failure_type": "explicit_preference_not_mapped",
+      "count": 1,
+      "description": "The explicit solo-trip detail was not mapped to the hotel search's guest-count field."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make cache persistence and per-domain action selection more operational, addressing repeated omissions and misuse of cached results while preventing unrequested work. Add the supported guest-count mapping for an explicitly stated solo trip.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "Save each newly generated search or transformation result under a unique cache key.",
+        "content": "\n- **Persist every operation result:** Assign the return value of every search, filter, sort, or nearest-result call to a variable, then save that value with `save_to_cache(...)` before returning. Use the established base key for a new base search and a distinct key for a filtered or transformed result; never leave a result-producing tool call as a bare expression."
+      },
+      {
+        "op": "insert_after",
+        "target": "On each turn, consider the full conversation and cached result summaries.",
+        "content": "\n- Before generating code, make an action list from the user's current requests across the full conversation. For each requested domain, reuse and filter a compatible cached result when the user adds criteria; do not treat a new criterion as already satisfied or repeat a search covered by that result. Use “No planning needed” only if no requested action remains. Do not add domains, sorting, or nearest-result calls unless requested."
+      },
+      {
+        "op": "insert_after",
+        "target": "Flight searches require a known route and departure date; hotel searches require a city, check-in date, and checkout date; restaurant searches require a city.",
+        "content": " For a hotel search, map an explicitly stated solo trip to `num_people=1`; do not infer a guest count otherwise."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

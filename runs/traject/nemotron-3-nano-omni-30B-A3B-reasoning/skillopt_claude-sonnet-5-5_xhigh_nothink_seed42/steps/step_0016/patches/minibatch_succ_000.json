@@ -1,0 +1,31 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "Every answer used the one-object-per-line layout with one clean `optional parameters` key per object, and all 8 parsed. The layout rule in the skill is working.",
+    "Each clause of a long or narrative query got exactly one call, last clause included. Where the query named a provider and tool (Easy Email Validation, BizToc, News Network, Lost Ark, Uncovered Treasure), the agent used that endpoint directly.",
+    "Counts and qualifiers inside a clause became parameters: 15 CS:GO matches on page 1 -> limit=15, page=1; '3 twenty-sided dice 5 times' -> dice/sides/rolls; 'limited to 150 characters' -> limit=150; 'from CNN' -> newspaperId=CNN; 'up to 20 articles' -> pageSize=20.",
+    "Country and language codes followed the form shown in the schema, such as DE for Germany, GB for Great Britain, US, and `en-us` taken from the 'Default: en-us' note. Ranking words became sort values, e.g. 'highest-value giveaways' -> sort-by=value.",
+    "Misses in otherwise passing answers: the omitted `sortBy`=`relevancy` for 'sorting results by relevancy', and the omitted `Content-Type`=`application/json` on both CSGO tools (Played and Upcoming). Gold carried both in every case."
+  ],
+  "patch": {
+    "reasoning": "Optional-parameter scoring was the only loss in the batch. Two repeated gaps were an ignored sort phrase ('by relevancy') and the CSGO tools' header-style optional `Content-Type`, which gold included in 2 of 2 CSGO cases. Correct country and language code forms also contributed to the matches. These edits extend existing rules (sort field, CSGO example, value form) with concrete examples and add no new sections, in line with the budget and meta-guidance.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "'sorted by date' -> the sort field.",
+        "content": "'sorted by date' -> the sort field. Ranking words are sort values too, so copy the query's own word when the schema lists no options: 'sorting results by relevancy' on `News API_v2: Search` -> `sortBy`=`relevancy` (do not drop it while keeping `country` and `pageSize`); 'highest-value giveaways' on `GamerPower: Sort live giveaways` -> `sort-by`=`value`."
+      },
+      {
+        "op": "replace",
+        "target": "'My 15 most recent CS:GO matches from page 1' -> ONE `CSGO matches and tournaments: Played` call with `limit`=`15`, `page`=`1`.",
+        "content": "'My 15 most recent CS:GO matches from page 1' -> ONE `CSGO matches and tournaments: Played` call with `limit`=`15`, `page`=`1`, `Content-Type`=`application/json`. Its sibling `CSGO matches and tournaments: Upcoming` ('limited to 10 results on page 1') takes the same three optionals. When a schema lists a header-style optional `Content-Type`, set it to `application/json`."
+      },
+      {
+        "op": "replace",
+        "target": "Copy values verbatim from the query.",
+        "content": "Copy values verbatim from the query. For country, language and other code fields, use the code in the form the schema's own list or description shows: 'Germany' -> `DE` (the description says 'E.g, ES, DE, US'), 'Great Britain' -> `GB`, 'US news' -> `US`, and 'in English' on `Booking.com_v2: currencies` -> `language_code`=`en-us` (the schema says 'Default: en-us'). Do not invent a different casing or code style."
+      }
+    ]
+  },
+  "source_type": "success"
+}

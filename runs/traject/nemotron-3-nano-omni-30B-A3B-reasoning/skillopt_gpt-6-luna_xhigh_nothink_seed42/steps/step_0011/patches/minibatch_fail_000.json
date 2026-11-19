@@ -1,0 +1,46 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "action_coverage",
+      "count": 3,
+      "description": "Some requested operations were omitted, especially discovery steps or actions embedded in workflow-style summaries."
+    },
+    {
+      "failure_type": "endpoint_selection",
+      "count": 4,
+      "description": "Calls sometimes matched the general topic but not the requested operation, target level, or source."
+    },
+    {
+      "failure_type": "qualifier_mapping",
+      "count": 4,
+      "description": "Explicit filters and limits were omitted, put in the wrong field, or represented only as free-text search terms."
+    },
+    {
+      "failure_type": "answer_contract",
+      "count": 2,
+      "description": "Outputs included a misplaced field or invalid JSON structure despite the required call-object format."
+    }
+  ],
+  "patch": {
+    "reasoning": "The edits clarify how to extract every requested action from workflow-style wording, distinguish endpoints by the exact target and operation, and map explicit search constraints to dedicated schema fields. The skill already covers final JSON validation, so no duplicate output-format rule is added.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Turn each explicit clause into a requested action, target, and set of qualifiers. In one-turn tasks, narrated sequences such as “first,” “then,” and “finally” describe requested actions, not actions already completed.",
+        "content": "- Split coordinated verbs, objects, and parenthetical deliverables into separate action-target rows, even when they appear in one sentence. In a one-turn tool plan, past-tense workflow summaries (for example, “searched … then explored …”) still identify requested calls unless the user clearly says those steps are already complete and asks only for remaining work; narration is not evidence that a tool call has already happened."
+      },
+      {
+        "op": "replace",
+        "target": "- Choose an endpoint by its documented operation, output, target, and support for the requested qualifiers—not merely by a shared topic or entity name. Prefer the most specific endpoint that fits the request; use separate endpoints when distinct deliverables require them.",
+        "content": "- Choose an endpoint by its documented operation, output, target, and support for the requested qualifiers—not merely by a shared topic or entity name. For hierarchical targets, match the exact level and its corresponding identifier field. If a requested source has no endpoint named for it, inspect the full tool list for an endpoint that provides the requested content filtered by that source. Prefer the most specific endpoint that fits the request; use separate endpoints when distinct deliverables require them."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Map constraints to the schema",
+        "content": "- When an endpoint provides dedicated fields for explicit criteria such as source or publisher, sentiment, content type, date range, sort order, or result count, map each criterion to its field rather than expressing it only in free-text search terms. Keep the subject in the search query and place filters in their documented fields and parameter buckets."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

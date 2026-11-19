@@ -1,0 +1,51 @@
+{
+  "batch_size": 6,
+  "failure_summary": [
+    {
+      "failure_type": "incremental_planning_and_cache_compatibility",
+      "count": 2,
+      "description": "Ignored a newly requested constraint or used an incompatible cached result instead of searching or refining the correct domain."
+    },
+    {
+      "failure_type": "contextual_ellipsis_resolution",
+      "count": 1,
+      "description": "Misread a reply to the assistant’s neighborhood suggestion as requiring no action."
+    },
+    {
+      "failure_type": "per_domain_readiness_and_missing_inputs",
+      "count": 1,
+      "description": "Invented missing hotel dates and omitted a ready restaurant search while handling the blocked hotel request."
+    },
+    {
+      "failure_type": "tool_result_persistence",
+      "count": 2,
+      "description": "Called search tools without assigning and saving their returned results."
+    }
+  ],
+  "patch": {
+    "reasoning": "The skill already contains the relevant principles, but these failures show they need a more operational planning and final-code gate. The edits connect each pending action to a compatible cache entry or readiness decision, clarify the neighborhood follow-up, and make incomplete bare tool calls explicitly invalid.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "- Before emitting code, make an action ledger from the latest turn, the assistant’s immediately preceding question or offer, and all still-pending requests. For each requested domain/action, identify new criteria and schema fields, then check whether an exact listed cache key covers the same domain, target, dates, and earlier criteria. Use a compatible result directly if no criterion changed; retrieve and filter it for only new criteria if it is a compatible base; search if no compatible result exists and mandatory values are explicit; otherwise seek the missing mandatory inputs. A result from another domain is never a compatible prior result. Handle domains independently, completing ready actions without redoing unaffected ones. Before finalizing, verify that every pending action has a corresponding valid call or result; use `print(\"No planning needed\")` only if none remains."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Incremental planning and cache use",
+        "content": "\n- If the assistant has just suggested a specific neighborhood and the user responds that they have not considered it or asks what is there, treat the reply as a request to explore that neighborhood. Retrieve the latest compatible results for the relevant domain and filter on the neighborhood, preserving criteria already represented; do not treat the reply as a rejection or a no-op."
+      },
+      {
+        "op": "replace",
+        "target": "Before searching, match each required tool field to an explicit value in the full conversation; related context does not automatically satisfy that field. For example, a reunion date is not necessarily a flight departure date, and restaurant cuisine or budget does not supply the required restaurant city. Do not infer missing mandatory values or use defaults. Assess readiness independently for each requested domain and, where applicable, each city or leg: proceed with searches or refinements for domains whose required inputs are available even if another is blocked. Make one `seek_information` call asking only for all missing mandatory inputs across blocked domains. Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood. Optional preferences are not mandatory inputs.",
+        "content": "Use a per-domain mandatory-input ledger before searching: list each requested domain’s required schema fields and mark only explicit conversation values as supplied. Search or refine only where required inputs are available; for blocked domains, do not invent values, use defaults, or borrow dates from another domain. Make one `seek_information` call for only the missing mandatory inputs across blocked domains, while completing every ready requested action. Hotel check-in and check-out dates must be explicit; broad descriptions such as “family” do not supply room or party counts. Optional preferences are not mandatory inputs."
+      },
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- In emitted code, every search, filter, sort, or nearest-results call must assign its exact return value to a variable and save it with `save_to_cache` under a unique, descriptive key. A bare tool invocation is incomplete even when its arguments are correct. Save refinements under new keys; do not substitute hand-built dictionaries or redefined models for tool result objects."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "cache lifecycle / result persistence",
+      "count": 6,
+      "description": "New search or filter results were not consistently assigned and saved to cache."
+    },
+    {
+      "failure_type": "incremental cache follow-up",
+      "count": 2,
+      "description": "New flight constraints led to re-searching or re-saving unchanged results instead of filtering each cached leg."
+    },
+    {
+      "failure_type": "proximity workflow omission",
+      "count": 1,
+      "description": "The agent filtered cached hotel results but omitted the relevant cached attraction and nearest-results call."
+    },
+    {
+      "failure_type": "constraint interpretation",
+      "count": 1,
+      "description": "A single restaurant rating was treated as a minimum rather than an exact rating."
+    },
+    {
+      "failure_type": "unsupported inferred preferences",
+      "count": 1,
+      "description": "The agent inferred pet and kids-club requirements from a vague request for a kid-friendly hotel."
+    }
+  ],
+  "patch": {
+    "reasoning": "Make the cache workflow explicit for every result-producing call and for constraints that apply across multiple cached results. Clarify how proximity context carries across turns and remove ambiguity about a single stated rating. The inferred-preference error is already covered by the existing rule against inventing amenities, so it needs no duplicate edit.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Handle follow-ups incrementally through the cache:** Retrieve the relevant cached result with `get_results_from_cache`, apply only the new constraints using the appropriate same-domain filter, and save the updated result under a relevant key. Do not mix domains. Search afresh only when there is no suitable cached base; if cached results already satisfy the latest request, do nothing. Avoid repeating unrelated searches, filters, or other operations.",
+        "content": "- **Handle follow-ups incrementally and persist every result:** For every search, filter, sort, or `search_nearest` call, assign its returned result to a variable and save that exact result with `save_to_cache` under a relevant key. On follow-ups, retrieve suitable cached base results with `get_results_from_cache`, apply only new criteria through the same-domain filter, then save the filtered results under relevant fresh keys; do not re-save an unchanged base as though it were updated. When a new constraint applies to multiple cached results, such as outbound and return flight legs, process each independently. Search afresh only if no suitable base exists; do nothing if the results already satisfy the request."
+      },
+      {
+        "op": "replace",
+        "target": "- **Use proximity tools only for proximity requests:** Search for a named attraction when requested. Use `search_nearest` only when the user asks about proximity, with relevant domain results and `groupBy` set to the requested anchor domain. Do not approximate proximity by extracting a neighborhood and using it as a filter.",
+        "content": "- **Preserve and execute proximity links:** Use `search_nearest` when the user requests nearby or nearest results, or when the active conversation establishes a proximity relation that the user accepts—for example, by answering a follow-up about preferences for a hotel proposed near a named attraction. Retrieve relevant results for both domains, apply any new constraints to the correct domain first, then call `search_nearest` with the updated results and `groupBy` set to the requested anchor. Search for named attractions when requested; do not approximate proximity with a neighborhood filter."
+      },
+      {
+        "op": "replace",
+        "target": "For ratings, represent “exactly x” as `[x, x]` and “at least x” as `[x, 5]`.",
+        "content": "For ratings, treat a single numeric rating stated without minimum/at-least language as exact `[x, x]`; use `[x, 5]` only for an explicit minimum or “at least x” request."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

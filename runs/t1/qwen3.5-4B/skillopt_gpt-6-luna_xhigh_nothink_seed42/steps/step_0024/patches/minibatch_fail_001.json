@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "runtime_tool_namespace_violation",
+      "count": 4,
+      "description": "Imported tools from a nonexistent module instead of calling injected functions directly, causing runtime failures."
+    },
+    {
+      "failure_type": "stateful_request_scope_and_completion",
+      "count": 3,
+      "description": "Repeated completed work, returned without carrying out a new request, or failed to apply a newly supplied filter or proximity action."
+    },
+    {
+      "failure_type": "result_persistence_and_unsupported_inference",
+      "count": 1,
+      "description": "Failed to assign and cache a hotel search result and mapped a broad kid-friendly request to an unrelated pet-friendly criterion."
+    },
+    {
+      "failure_type": "controlled_choice_casing",
+      "count": 1,
+      "description": "Used title-case flight-class values where the tool expects the schema's lowercase choices, causing a runtime error."
+    }
+  ],
+  "patch": {
+    "reasoning": "The most frequent failure is still importing tools despite the existing instruction, so make the runtime restriction an unmistakable hard gate. The stateful failures show that agents need a clearer turn-by-turn delta rule and an explicit trigger and sequence for proximity requests. Make schema-listed choice casing actionable to prevent the observed flight-class error. The cache-discipline clarification also reinforces assigning and saving result-producing calls.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Runtime contract:** Tool functions are injected directly into the execution namespace; there is no `tools` module. Generated code must contain no `import` statements. Call provided tools directly by name without importing, redefining, or wrapping them; before returning code, scan for and remove any imports. Use keyword arguments except for `seek_information`, and return code in the required format.",
+        "content": "- **Hard runtime gate:** Tool functions are injected as bare names in the execution namespace. The returned code must contain no `import` or `from` statements and must not use a `tools.` prefix. Call each tool directly by its injected name; never import, alias, redefine, wrap, or dynamically resolve tools. Before returning, inspect the complete code and remove any import statements. Use keyword arguments except for `seek_information`, and return code in the required format."
+      },
+      {
+        "op": "replace",
+        "target": "- On each turn, consider the full conversation and cached result summaries. Reuse cached results only when their domain and subject match the request. If the user adds criteria, retrieve the closest compatible result, apply the matching filter, and save the updated result. Do not filter unrelated results; search for a requested entity or category that the cached results do not cover. Avoid retrieving unrelated results or repeating constraints in filters that were already applied. Save each newly generated search or transformation result under a unique cache key. Use “No planning needed” only when cached results already satisfy every current request.",
+        "content": "- **Turn-by-turn cache discipline:** Treat the latest turn as a delta against the full conversation and cache. Identify new or changed criteria and any earlier explicit work that remains incomplete. Reuse only compatible results; when a criterion is added, retrieve the closest compatible result, apply only that new criterion, and save the filtered result. Do not repeat completed searches or filters, or touch another completed domain merely because it appears in the conversation. Carry forward another domain only when an explicit requested action remains incomplete, and do not invent new domains. If the requested entity or category is not covered by compatible cached results, search only that requested domain. Assign every result-producing call and save its result under the established base key or a distinct filtered-result key; do not retrieve and resave unchanged results in place of applying a requested update. Use “No planning needed” only when every current request is already satisfied and no action remains."
+      },
+      {
+        "op": "replace",
+        "target": "- For recommendations near another result type, ensure compatible results for both types are available, then call `search_nearest` and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel.",
+        "content": "- Treat explicit proximity requests, including asking for one type of recommendation “near” or “nearby” another, as a required `search_nearest` action even when compatible results are already cached. Retrieve compatible result sets and apply newly stated criteria to their respective domains first; then call `search_nearest` with the required result sets and save its result. Set `groupBy` to the domain the user wants as the organizing base; when lodging is the planned base, group by hotel."
+      },
+      {
+        "op": "insert_after",
+        "target": "For controlled-choice fields, use a choice and spelling or casing accepted by the schema, while preserving the user's casing for free-form entity values.",
+        "content": "When the schema lists accepted choice tokens, use those tokens exactly, including their casing; do not title-case a natural-language preference. For example, flight `flight_class` choices are `economy`, `business`, and `first`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

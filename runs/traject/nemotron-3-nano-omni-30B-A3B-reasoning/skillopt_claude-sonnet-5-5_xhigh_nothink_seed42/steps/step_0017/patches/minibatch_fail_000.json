@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "malformed_answer_json",
+      "count": 3,
+      "description": "Answer unparseable (n_pred=0). Lines ended `], \"},`, so the `optional parameters` key was dropped mid-write, or the final `]` before `</answer>` was missing (gaming:15, music:7, ecommerce:19). The first two also used `Provider — X: X` names."
+    },
+    {
+      "failure_type": "required_vs_optional_misplacement",
+      "count": 2,
+      "description": "Schema says `Required parameters: none`, but the main entity or ID went into `required parameters` (Genius Videos `artist_id`, Zelda games list `name`)."
+    },
+    {
+      "failure_type": "wrong_tool_or_dropped_retailer",
+      "count": 3,
+      "description": "Named retailer dropped or wrong sibling chosen. Aliexpress was missing from the 'compare retailers' query (ecommerce:177). The price-range plus free-shipping query went to Shopee with an invalid `site` enum value instead of Aliexpress Item Search 2 (ecommerce:19). The MX clause used `Email API: Check Email MX Records` instead of the Email Existence Validator MX tool (email:32)."
+    },
+    {
+      "failure_type": "missing_implied_optionals",
+      "count": 3,
+      "description": "Optionals the query implies were omitted or mis-cased: Asos `lang`, chess `count`, card `value`=A, lowercase `region`=us / Pokedex values."
+    }
+  ],
+  "patch": {
+    "reasoning": "Three of eight trajectories scored zero because the answer did not parse. In each, the model wrote `], \"},` or dropped the final `]` instead of a complete `\"optional parameters\": [...]},` ending. The skill has plenty of 'never repeat the key' warnings but no literal line shape to imitate, and those warnings may be pushing the model to truncate the key. Edit 1 adds three canonical line templates covering the empty, required-only and optional-only shapes, and shows the bad ending once. Edit 2 strengthens the 'Required: none -> []' rule, which was violated twice, with concrete schema-specific cases. Edit 3 covers the two ecommerce retailer and tool-choice misses, using schema facts only. Edit 4 fixes the MX sibling choice, which has a consistent gold preference.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- The answer is one flat, bracket-balanced list `[{...}, {...}]` inside `<answer>` tags. Do not close the list early or leave stray brackets.",
+        "content": "\n- LINE TEMPLATES (copy the shape exactly; every call line has all three keys and ends `]},`):\n  - required only: `{\"tool name\": \"Shazam: songs/get-count\", \"required parameters\": [{\"name\": \"key\", \"value\": \"40333609\"}], \"optional parameters\": []},`\n  - optional only: `{\"tool name\": \"Genius - Song Lyrics: Videos\", \"required parameters\": [], \"optional parameters\": [{\"name\": \"artist_id\", \"value\": \"16775\"}, {\"name\": \"per_page\", \"value\": \"15\"}]},`\n  - The LAST call line ends `]}` with no comma, and the next line is `]</answer>` (the closing `]` is never omitted).\n  - A call line must never end in `\"},`, `\"}` or `], \"},`. That is a half-written `optional parameters` key (real zero-score output: `\"required parameters\": [{\"name\": \"key\", \"value\": \"40333609\"}], \"},`). Always write the full `\"optional parameters\": [...]` and then `}`. Names are always `Provider: Endpoint` from the `### ` heading, never `Provider — X: X`."
+      },
+      {
+        "op": "replace",
+        "target": "(e.g. CheapShark `title`, `limit`; Flight Info `FlightNumber`)",
+        "content": "(e.g. CheapShark `title`, `limit`; Flight Info `FlightNumber`; `Genius - Song Lyrics: Videos` `artist_id`, `per_page`; `The Legend of Zelda: List of The Legend of Zelda games` `name`, `limit`). This holds even when the value is the call's main entity or ID. Before writing each call, read its `Required parameters:` line: if it says `none`, write `\"required parameters\": []` first and put every value in the optional list."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Tool selection",
+        "content": "\n- NAMED RETAILERS AND SHOPPING FILTERS. A 'compare across BestBuy, Wayfair, Zappos and Aliexpress' clause needs a search call for each retailer that has a keyword-search tool, so do not drop Aliexpress (`Aliexpress DataHub: Aliexpress - Item Search 2`, optional `q`, `region`=`US`, `currency`=`USD`, `page`=`1`) or BestBuy (`keyword`, `page`). A product search with a price range and 'free shipping' needs the tool whose optionals include `startPrice`, `endPrice` and `switches` (`Aliexpress DataHub: Aliexpress - Item Search 2`: startPrice=`600`, endPrice=`900`, `switches`=`freeShipping`). 'Some iPhone accessories' is a separate `Aliexpress DataHub: Aliexpress - Item Search` call with `q`. Never put a value outside an ENUM's listed options into a required param (Shopee `site` accepts only my/th/vn/ph/sg/id/tw/br, so `US` is invalid and that tool cannot serve a US query)."
+      },
+      {
+        "op": "replace",
+        "target": "'MX records' -> the MX tool.",
+        "content": "'MX records' -> the MX tool, and when `Email Existence Validator: Get the MX Records` is listed use it (not `Email API: Check Email MX Records`). The same query's disposable clause then also uses `Email Existence Validator: Check for Disposable emails`."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

@@ -1,0 +1,51 @@
+{
+  "batch_size": 5,
+  "failure_summary": [
+    {
+      "failure_type": "result_lifecycle",
+      "count": 5,
+      "description": "Tool calls were emitted without binding their results and saving them to cache."
+    },
+    {
+      "failure_type": "pending_action_omission",
+      "count": 3,
+      "description": "The plans omitted requested domains or a return leg instead of covering every ready action."
+    },
+    {
+      "failure_type": "hotel_date_handling",
+      "count": 3,
+      "description": "Hotel searches were omitted despite an explicit trip date range, or invented when hotel dates were absent."
+    },
+    {
+      "failure_type": "semantic_field_mapping",
+      "count": 1,
+      "description": "A nightshade allergy was mapped to an unrelated nut-allergy field instead of the available tomato-allergy option."
+    }
+  ],
+  "patch": {
+    "reasoning": "A concise action inventory makes omitted domains and return legs harder to miss, while explicit result-binding guidance addresses a failure present in every trajectory. Clarifying how an explicitly shared trip date range supplies hotel dates distinguishes those cases from requests with no stay dates, and the allergy mapping covers the remaining schema-semantic miss.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- Before emitting code, audit the planned calls against the latest turn and full conversation: for each new request or accepted preference, identify its intended item, domain, relation, and schema-supported argument, then verify that a planned call includes it. Do not reprocess unchanged domains. Use only a listed, compatible cache result for refinement; if none exists and mandatory inputs are available, search instead of filtering. After the audit, use `print(\"No planning needed\")` only if no requested action or constraint remains unsatisfied by valid cached results.",
+        "content": "- Before emitting code, list every still-pending action from the full conversation, one per requested domain or location and one per flight leg; an explicit return date requires a reversed return leg. For each action, choose a compatible cached result, refinement, new search, or request for missing mandatory inputs. Include every ready action and its explicit criteria even if another action is blocked, and verify that each listed action has its matching call or valid cache disposition. Do not redo unaffected domains. Use `print(\"No planning needed\")` only when no requested action or constraint remains unsatisfied."
+      },
+      {
+        "op": "replace",
+        "target": "- Bind the exact return value of every search, filter, sort, and nearest-results call to a variable, then save it with `save_to_cache` under a unique, descriptive key. Save refined results under a new key. Do not substitute hand-built dictionaries or redefined models for tool result objects.",
+        "content": "- A tool call is incomplete until its exact returned object is bound to a variable and saved with `save_to_cache` under a unique, descriptive key. Write both steps for every search, filter, sort, and nearest-results call; save each leg and each refinement separately under a new key. Never emit a bare call or substitute hand-built dictionaries or redefined models for tool result objects."
+      },
+      {
+        "op": "replace",
+        "target": "Hotel check-in and check-out dates must be explicit; do not borrow them from flight dates or infer a neighborhood.",
+        "content": "Hotel check-in and check-out dates must be explicit. When the user requests a hotel as part of the same itinerary and explicitly gives its trip departure and return dates, use those dates as check-in and check-out, respectively. Do not infer stay dates from general trip context; if no applicable date range is explicit, ask for the missing dates. Do not infer a neighborhood."
+      },
+      {
+        "op": "insert_after",
+        "target": "- Disambiguate closely related amenity fields using the tool’s phrase-to-field semantics rather than casual synonym matching. When a hotel schema exposes both fields, map “fitness center” to `has_fitness_class` and a literal request for a “gym” to `gym_present`.",
+        "content": "\n- When the restaurant schema has no dedicated nightshade-allergy field but exposes `has_tomato_allergy_options`, map a nightshade-allergy accommodation request to that field; do not substitute an unrelated allergy option such as nut-allergy options."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

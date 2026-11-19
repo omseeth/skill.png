@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "endpoint_selection_and_scope",
+      "count": 4,
+      "description": "Some agents fanned searches out across generic tools, added unrelated calls, selected a less-specific endpoint, or let a broad endpoint obscure a separately requested output."
+    },
+    {
+      "failure_type": "argument_fidelity",
+      "count": 7,
+      "description": "Agents missed explicit constraints or optional parameters, used noncanonical values, or failed to follow the answer format's value-serialization convention."
+    },
+    {
+      "failure_type": "response_structure",
+      "count": 1,
+      "description": "One response placed optional parameters outside the individual call objects, so the result could not be parsed."
+    }
+  ],
+  "patch": {
+    "reasoning": "The batch shows that endpoint choice needs to balance avoiding redundant fan-out with covering each distinct requested output. Several failures also came from dropping explicit constraints or guessing how to encode values. Sharpening those decision rules and making the per-call response structure unmistakable addresses the recurring issues.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "- **Map each request to the endpoint that performs it.** Break a multi-part query into distinct requested operations, and record each operation's subject and constraints before choosing an endpoint. Keep each clause's values attached to the entity it describes. Choose an endpoint whose documented capability directly fulfills the request, using its exact `Provider: endpoint` name. Use a fallback only when it genuinely satisfies the action; do not choose a contradictory endpoint or add related calls merely because they share a topic.",
+        "content": "- **Map each requested deliverable to the endpoint that performs it.** List each distinct output or action with its subject and constraints, then choose the most directly fitting documented endpoint using its exact `Provider: endpoint` name. Keep each clause's values attached to the entity it describes. Cover separately requested outputs rather than assuming a broad multi-capability endpoint replaces a dedicated endpoint for each; at the same time, do not fan a query out across generic tools or marketplaces just because no source is specified. Use a fallback only when it genuinely satisfies the action; do not choose a contradictory endpoint or add unrelated calls merely because they share a topic."
+      },
+      {
+        "op": "replace",
+        "target": "- **Build arguments from the endpoint schema.** Use the exact parameter names and types, include every required parameter, and place parameters in the required or optional group specified by the tool. Carry requested or clearly implied constraints into the matching fields, including optional fields when they express a requested constraint; do not add unrelated options, defaults, or guessed values. Preserve query identifiers and values, converting them only to documented formats such as API codes, list syntax, or canonical enum spelling. Distinguish fields for different levels of a location hierarchy, and do not invent opaque identifiers. If a request implies a count or page and the endpoint exposes that parameter, use the smallest conventional value needed to fulfill it.",
+        "content": "- **Build arguments from the endpoint schema.** Use exact parameter names and satisfy the schema's semantic types; include every required parameter and put parameters in the required or optional group specified by the tool. Carry every explicit constraint into its matching field, especially requested duration, quantity, page, source, locale, or output mode, even if a broader default would include it. When the user asks for one result and the endpoint has a count field, set it to 1. Preserve query values and entity associations, converting only to documented formats or canonical API codes and enum values; never invent enum tokens, identifiers, credentials, or empty placeholders. Follow the answer-format example's convention for serializing `value` fields (for example, use strings for numbers or booleans when the example quotes them). Include optional fields only when requested or clearly implied, not as speculative defaults. Distinguish location-hierarchy fields and do not invent opaque identifiers."
+      },
+      {
+        "op": "replace",
+        "target": "- **Validate the final response.** Follow the required response format exactly, including tool names, call-object keys, and any requested call ordering. Put parameters in the specified required and optional groups (such as `required_parameters` and `optional_parameters`), each serialized as an array of `{ \"name\": ..., \"value\": ... }` objects; include empty arrays when a group has no parameters. Check that every requested operation is covered, no unrelated call was added, and the JSON is valid. When the format requires only JSON, return no surrounding commentary.",
+        "content": "- **Validate the final response.** Follow the required response format exactly, including tool names, call-object keys, and any requested call ordering. Return one list object per call, with that call's required and optional parameter arrays nested inside the object—not at the list level or shared across calls. Serialize each parameter as `{ \"name\": ..., \"value\": ... }`, and include empty arrays when a group has no parameters. Check that every requested operation is covered, no unrelated call was added, and the JSON parses. When the format requires only JSON, return no surrounding commentary."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

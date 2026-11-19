@@ -1,0 +1,51 @@
+{
+  "batch_size": 4,
+  "failure_summary": [
+    {
+      "failure_type": "wrong_parameter_slot_mapping",
+      "count": 2,
+      "description": "Location text put in the wrong parameter. 'Downtown Tucson' went into city, with neighborhood dropped and stars=[1] instead of [1,1]. The state 'OR' went into city instead of state."
+    },
+    {
+      "failure_type": "malformed_code_structure",
+      "count": 2,
+      "description": "Bare search_* calls with no assignment or save_to_cache (attractions, flights). Another response used if-None cache probes and long comment blocks."
+    },
+    {
+      "failure_type": "invented_parameter",
+      "count": 1,
+      "description": "Round-trip dates were squeezed into one search_flights call with a nonexistent return_date kwarg, instead of two assigned and saved one-way searches."
+    },
+    {
+      "failure_type": "fabricated_mandatory_args_and_wrong_scope",
+      "count": 1,
+      "description": "Hotel checkout date and num_people were invented, cached flights were re-loaded, and unnecessary filters were added. The correct output was a restaurant search plus seek_information for the missing checkout date."
+    }
+  ],
+  "patch": {
+    "reasoning": "All four failures break rules that already exist, but those rules are buried deep in a long document. The fixes are short, concrete additions placed where the model is most likely to see them. First, a compact checklist at the top covers the assign-and-save, no-comments, no-if and no-invented-kwarg errors. Second, an exact round-trip template sits at Rule 9 and forbids return_date. Third, worked examples for city, state and neighborhood mapping cover the Tucson and OR errors. Fourth, a worked example for a multi-domain turn with a missing checkout date shows the expected output: search the complete domain, then seek_information, leaving cached flights untouched.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "(No learned rules yet. Rules will be added through the reflection process.)",
+        "content": "## Core output checklist (verify before every response)\n1. Every search_*/filter_*/search_nearest call is written as `name = tool(...)` and followed by its own `save_to_cache(key=..., value=name)` line. A bare `search_attractions(...)` or `search_flights(...)` is always wrong.\n2. Output only tool calls inside <CODE>. Write no comment lines, no `if x is None` blocks, no import, no print, and no 'check the cache' probing. Load only keys that literally appear in CACHE. If CACHE is `{}`, there are no cache reads or filters at all.\n3. Use only kwargs that exist in TOOL CONFIG. search_flights has NO `return_date`, and a round trip is two assigned and saved one-way searches (Rule 9).\n4. Slot mapping: `city` is the base city only. A US state name or abbreviation goes in `state=`. A district goes in `neighborhood=[...]`. `stars` and `rating` always take two values.\n5. Never invent a hotel checkout date, num_people or num_rooms. If a requested domain lacks a mandatory arg, search the complete domains and end with ONE seek_information naming only the missing items."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 9: Round-trip flights (+ hotel) are separate search calls",
+        "content": "- Trigger: any message giving an outbound and a return date ('depart on May 21, 2025 and return on May 31, 2025', 'leave X, back Y') with origin and destination known from earlier turns. Output exactly four statements, with origin and destination swapped on the return leg. Example for Tucson to Raleigh:\n  `departure_flights = search_flights(start_airport_city=\"Tucson\", end_airport_city=\"Raleigh\", departure_date=[\"May 21, 2025\"])`\n  `save_to_cache(key=\"departure_flights\", value=departure_flights)`\n  `return_flights = search_flights(start_airport_city=\"Raleigh\", end_airport_city=\"Tucson\", departure_date=[\"May 31, 2025\"])`\n  `save_to_cache(key=\"return_flights\", value=return_flights)`\n  Any `return_date=` keyword raises a ValidationError. Do not add a hotel search unless a hotel was requested in the conversation."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 21: Output form and first-search keys",
+        "content": "- Location slots in search_* calls, with examples:\n  - 'hotel in Downtown Tucson, 1 star, Aug 5 to Aug 15, 2025' -> `hotels = search_hotels(city=\"Tucson\", neighborhood=[\"Downtown Tucson\"], stars=[1, 1], checkin_date=[\"August 5, 2025\"], checkout_date=[\"August 15, 2025\"])`. Never put 'Downtown X' in city, never drop the neighborhood, and never write stars=[1]. The same applies to restaurants ('Downtown X' -> neighborhood, with city as the base city).\n  - A bare two-letter capitalised token after 'in' or 'to' ('trip to OR', 'attractions in NV') is a US state: `attractions = search_attractions(state=\"OR\", type=[\"Cultural\", \"Social\"])` then `save_to_cache(key=\"attractions\", value=attractions)`. Never put it in city.\n  - Attraction type words are passed as the user said them (type=[\"Cultural\", \"Social\"])."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Rule 24: Dates, stay length and domain completeness (supplements Rules 6, 7, 9, 14)",
+        "content": "- Partial multi-domain turn, worked example. The CACHE holds only flight keys (single departure date, e.g. May 17, 2025). The hotel was requested ('near Downtown, 3 star') but no checkout date was ever given. The last turn adds a restaurant request ('as long as it's Turkish or Persian'). The ONLY correct output is:\n  `restaurants = search_restaurants(city=\"Colorado Springs\", cuisine=[\"Turkish\", \"Persian\"])`\n  `save_to_cache(key=\"restaurants\", value=restaurants)`\n  `seek_information(\"We need to ask for the checkout date\")`\n  Do NOT call search_hotels (a flight date never supplies the checkout date, and never pass num_people=1 or checkout = check-in + 1). Do NOT load, re-filter or re-search the cached flights, do not probe 'hotels' or 'restaurants' with get_results_from_cache, and do not call filter_* on a result you just searched."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

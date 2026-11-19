@@ -1,0 +1,41 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "follow_up_scope_and_cache_delta",
+      "count": 6,
+      "description": "Follow-ups used stale or unsaved results, skipped earlier pending work, or repeated work already satisfied by cache."
+    },
+    {
+      "failure_type": "result_not_assigned_or_saved",
+      "count": 3,
+      "description": "A search or filter result was left bare instead of being assigned and saved."
+    },
+    {
+      "failure_type": "location_or_proximity_misinterpretation",
+      "count": 2,
+      "description": "A requested area was treated as proximity or its complete area phrase was not retained."
+    },
+    {
+      "failure_type": "schema_and_date_handling",
+      "count": 1,
+      "description": "Code passed an unsupported traveler-count argument to flights and calculated dates in Python instead of using the date tool."
+    }
+  ],
+  "patch": {
+    "reasoning": "The follow-up rule already contains the right principles but buries them in a long paragraph. Replacing it with a concise per-deliverable procedure makes pending work, cache selection, and assigned-and-saved call shapes explicit. The proximity rule also contains a sentence that can prompt rerunning nearest after any input update; changing it prevents an area-only hotel update from reopening a completed proximity request.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "Treat a short answer to an assistant's clarification question as an explicit user-provided value or preference; an affirmative answer accepting an offered domain or option is a request to proceed. On each turn, reconcile the full conversation and cache, including explicitly requested tasks still pending from earlier turns, then decide separately for every requested or clearly pending domain. If a suitable cached base exists and a new constraint is not reflected in it, retrieve the latest suitable result using `get_results_from_cache(key=\"<exact key from the cache summary>\")` and assign the returned result; do not rely on variables from earlier code or turns. Apply only the new same-domain filter and save the update under a fresh relevant key. If no suitable base exists and required inputs are available, search and save. If required inputs are missing, ask for them while still completing other requested domains whose required inputs are available. A result summary satisfies a request only when it reflects all current constraints. For updates affecting multiple results, such as outbound and return legs, retrieve, filter, and process each independently. Do not repeat completed work, reapply constraints, or touch unrelated results. Never return no-planning merely because a cache entry exists. Compare the cache summary with the current conversation and follow the cache-update, search, or missing-input rules above for any unmet request or pending deliverable. Return no-planning only when every requested or pending deliverable reflects all current constraints and the latest turn adds no request, accepted offer, or new constraint.",
+        "content": "Treat a short clarification answer as an explicit value or preference, and an affirmative acceptance as a request to proceed. At each turn, make a compact ledger of every explicitly requested or accepted deliverable across the full conversation. Mark an item satisfied only if the latest suitable cache summary reflects its domain, location, and all current constraints; complete every unmet item, not just the topic of the latest message, and leave satisfied or unrelated items untouched. For an unmet item with a suitable latest same-domain, location, and itinerary-leg base, retrieve it in a standalone assignment using its exact cache key, apply only the new criteria in one matching filter call, assign that result, and save it under a fresh key. Otherwise, search once with all known criteria if required inputs are available, assigning and saving the result; seek missing required inputs while completing other ready items. Process multiple affected results independently. Never nest cache retrieval in another call, leave a result-producing call bare, repeat completed work, or treat cache presence alone as completion. Return no-planning only when all ledger items are satisfied and the latest turn adds no request, acceptance, or constraint."
+      },
+      {
+        "op": "replace",
+        "target": "If a later constraint changes an underlying domain result used by a proximity result, refresh and save `search_nearest` using the updated result and the latest suitable cached result for the other domain.",
+        "content": "Do not rerun `search_nearest` merely because a previously used input result changes. Rerun it only when the current turn explicitly requests an updated proximity relationship or the latest suitable cached nearest result does not satisfy a still-pending proximity request; an area preference for a domain is a same-domain location filter and does not by itself reopen a completed proximity deliverable."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

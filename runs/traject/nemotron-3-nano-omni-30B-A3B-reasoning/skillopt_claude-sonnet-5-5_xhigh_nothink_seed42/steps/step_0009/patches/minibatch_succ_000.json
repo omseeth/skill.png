@@ -1,0 +1,35 @@
+{
+  "batch_size": 8,
+  "success_patterns": [
+    "All 8 trajectories matched every tool name, usually because they copied `Provider: API` exactly and made one call per clause. Zero-input endpoints got `[]` for both parameter lists.",
+    "When the query named a provider and an action, the agent picked that provider's matching endpoint, including the single-item endpoint over the batch one (Blaze Verify: Verify an email). N emails produced N calls to the same tool.",
+    "Remaining optional-parameter misses were repeated: the search subject (batman, Majora) was left out of title/name filters, 'first N results' lacked page `1`, and 'since DATE' was mapped to `to` instead of `from`.",
+    "Some agents invented unrequested optionals (country=US, a `to` date bound), wrote bare-string optional lists like `[\"sort-by\",\"popularity\"]`, or emitted an empty-value optional. These cost optional-parameter score even when tool names matched."
+  ],
+  "patch": {
+    "reasoning": "Tool-name and call-count handling already works in these successes. The remaining losses are in optional parameters. The recurring misses are: the search subject not placed in a title/name/q optional, 'first N results' without page `1`, 'since' mapped to the wrong date field, publisher lists in the wrong form, invented bounds or countries, and malformed or empty-value optional entries. The edits below are small and each targets one of these, instead of the large bundles that were rejected earlier. A fourth edit reinforces choosing a single-item endpoint over a batch one when the query names a provider.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "- Each parameter is `{\"name\": \"x\", \"value\": \"y\"}`. Every value is a quoted string, including numbers (`\"2023\"`, `\"1\"`, `\"9098084\"`).",
+        "content": "\n- Even a single optional is an object inside the list: `\"optional parameters\": [{\"name\": \"sort-by\", \"value\": \"popularity\"}]`. Never write bare strings like `[\"sort-by\", \"popularity\"]`. Never emit an entry with an empty value (e.g. `selectedOptionIds` `\"\"`); leave it out."
+      },
+      {
+        "op": "insert_after",
+        "target": "  - A named group or entity search -> the matching `by` field, when the schema offers one (e.g. `Group Name`).",
+        "content": "\n  - The subject of a search clause goes in the tool's text-filter optional (`title`, `name`, `q`, `keyword`) even when that field is optional: 'Batman games' -> title `batman`; 'Zelda games with Majora in the title' -> name `Majora`. 'First 20 results' or 'first page with 15 results' on a paged tool -> page `1` AND the size field (`pageSize` `20`). A platform word ('Steam giveaways') -> platform `steam`."
+      },
+      {
+        "op": "insert_after",
+        "target": "  - 'recorded after January 2017' -> from_record_date `2017-01-01`. Use the date field that matches the verb (recorded vs published).",
+        "content": "\n  - 'published since October 2023' -> `from` `2023-10-01` (not `to`); 'before/until' -> `to`. Give only the bound the query states, and do not add a country, region or end date it never names. Publisher or source lists are comma-separated with no spaces, in the form the schema or domain suggests (`cnn.com,bbc.com,theverge.com`)."
+      },
+      {
+        "op": "insert_after",
+        "target": "- If the query names a tool or provider ('using Easy Email Validation', 'the Email Existence Validator tool', 'the Email API'), use that provider's endpoint whose description matches the requested action ('check if disposable' -> `Email Existence Validator: Check for Disposable emails`; 'generate a fake business email' -> `Email API: Get Fake Email Address`).",
+        "content": "\n- When a named provider has single and batch endpoints, pick by input count: one email 'using Blaze Verify' -> `Blaze Verify: Verify an email`, not the batch endpoint. 'Roll a six-sided die' -> `Regular die`, not a custom-dice endpoint."
+      }
+    ]
+  },
+  "source_type": "success"
+}

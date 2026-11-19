@@ -1,0 +1,51 @@
+{
+  "batch_size": 8,
+  "failure_summary": [
+    {
+      "failure_type": "stale_or_missing_filter_constraint",
+      "count": 2,
+      "description": "On a refinement turn, the agent re-passed constraints already shown in the loaded CACHE summary (budget $55, stars [5,5]) and omitted the one new constraint from the last message (neighborhood)."
+    },
+    {
+      "failure_type": "wrong_domain_routing",
+      "count": 3,
+      "description": "The last turn was applied to the wrong domain. A hotel budget filtered the attractions key, a hotel request re-filtered flights instead of searching hotels, and 'Mexican food' became search_attractions(type=Culinary) instead of search_restaurants."
+    },
+    {
+      "failure_type": "incomplete_multi_leg_refinement",
+      "count": 1,
+      "description": "With departure_flights and return_flights both cached, an airline+class reply was applied to the departure leg only."
+    },
+    {
+      "failure_type": "fabricated_parameters",
+      "count": 2,
+      "description": "A date was invented (copied from skill examples) for a round trip with no date, and a nested duplicate search was emitted instead of seek_information. A city (St. Louis) was invented for an attractions search that gave only a state."
+    }
+  ],
+  "patch": {
+    "reasoning": "The failures cluster into four patterns, and the existing rules for each are buried deep in a long document and are ignored. Each of the four edits targets one pattern and sits in the top sections (HARD OUTPUT RULES / CACHE GATE) with concrete worked examples from these failures. (1) A domain-routing step handles hotel replies with no hotel key, hotel requests after flights, and food requests. (2) A filter-kwargs rule requires the new constraint from the last message, forbids re-passing anything in the CACHE summary, and fixes the key naming pattern. (3) A two-leg flight bullet requires one load/filter/save triple per flight key. (4) A no-invented-values rule stops dates and cities copied from skill examples and fabricated state-only cities.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## CACHE GATE (run this before writing any code, every turn)",
+        "content": "0. ROUTE THE LAST USER MESSAGE TO A DOMAIN FIRST. The user's words decide the domain, not the examples in this skill. Restaurant / food / cuisine (Mexican, Dutch...) / eat / per person -> restaurants (`search_restaurants`); hotel / stay / stars / amenity / per night / rooms -> hotels; attraction types or names -> attractions; airline / class / flight times -> flights. A food or cuisine request is NEVER `search_attractions(type=[\"Culinary\"])`. Example: 'Mexican food' + 'around 75' + 'St. Louis, actually only in Downtown St. Louis' -> `restaurants = search_restaurants(city=\"St. Louis\", cuisine=[\"Mexican\"], budget=75, neighborhood=[\"Downtown St. Louis\"])` then `save_to_cache(key=\"restaurants\", value=restaurants)`. Then act only on the domain(s) the last message touches:\n   - Domain has a key -> filter it (steps 2-3 below).\n   - Domain has NO key and its mandatory args are known anywhere in the conversation -> first search carrying EVERY constraint stated in any turn. Hotel dates can come from flights already searched: outbound date = check-in, return date = check-out. Example: CACHE holds only departure_flights (May 17, 2025) and return_flights (May 24, 2025) and the user says 'a hotel in Downtown Lexington with a 5 star rating' -> `hotels = search_hotels(city=\"Lexington\", checkin_date=[\"May 17, 2025\"], checkout_date=[\"May 24, 2025\"], neighborhood=[\"Downtown Lexington\"], stars=[5, 5])` then `save_to_cache(key=\"hotels\", value=hotels)`. Do NOT re-filter the flights.\n   - Domain has NO key and a mandatory arg is missing (hotel with no check-in/check-out dates, e.g. reply 'around 45 per night' while only 'attractions' is cached) -> output ONLY `seek_information(\"We need the check-in and check-out dates for the hotel.\")`. Never apply that reply to another domain's key (a hotel budget is never an attractions or flights filter)."
+      },
+      {
+        "op": "insert_after",
+        "target": "Never save under a key already in CACHE (use the next unused name such as filtered_hotels2).",
+        "content": "\n3b. FILTER KWARGS = ONLY WHAT THE LAST USER MESSAGE ADDS. Before writing filter_*, name the constraint in the last message ('Yeah, Downtown Raleigh' / 'Downtown Portland is where we'd like to stay' -> neighborhood=[\"<user's wording>\"]). That is the required kwarg, and a filter that omits it is wrong. Then read the summary of the key you load. Every value it lists ('budget: $55', 'stars range: [5, 5]', cuisine, rating, traveler count, dates) is ALREADY applied and must NOT be passed again. Examples: 'filtered_restaurants' lists 'budget: $55' + reply 'Downtown Raleigh' -> `filter_restaurants(prior_results=x, neighborhood=[\"Downtown Raleigh\"])` only, saved as 'filtered_restaurants1'. 'hotels2' lists 'stars range: [5, 5]' + reply 'Downtown Portland is where we'd like to stay' -> `filter_hotels(prior_results=x, neighborhood=[\"Downtown Portland\"])` only, with no stars. When the loaded key ends in a number (hotels2), save under the incremented name (hotels3); otherwise use filtered_<domain>, then filtered_<domain>1."
+      },
+      {
+        "op": "insert_after",
+        "target": "A bare two-letter capital code ('AM', 'AG') in an answer to an airline/class question is an airline code. Never re-run search_flights.",
+        "content": "\n   - TWO FLIGHT KEYS (e.g. 'departure_flights' + 'return_flights', or one-key-per-leg names): count the flight keys in CACHE before writing. A class / airline / time / budget reply needs one load -> filter -> save triple PER KEY, so two keys means six lines. 'We prefer AB and economy class' -> `d = get_results_from_cache(key=\"departure_flights\")`, `d2 = filter_flights(prior_results=d, airline=[\"AB\"], flight_class=[\"economy\"])`, `save_to_cache(key=\"filtered_departure_flights\", value=d2)`, `r = get_results_from_cache(key=\"return_flights\")`, `r2 = filter_flights(prior_results=r, airline=[\"AB\"], flight_class=[\"economy\"])`, `save_to_cache(key=\"filtered_return_flights\", value=r2)`. Filtering only the departure leg is wrong."
+      },
+      {
+        "op": "insert_after",
+        "target": "'As soon as possible' and 'around May 22' only mean the date is May 22.",
+        "content": "\n- Never invent or copy mandatory values. Every date and every city in a search call must appear in the user's own messages. The dates ('May 15, 2025', 'May 19, 2025') and cities (St. Louis, Fresno, Tucson) in this skill's examples are illustrations only. A flight request with no date, e.g. 'a round-trip flight from Portland to Tucson and a hotel stay for a special occasion', gets ONLY `seek_information(\"We need the departure date for the flight, and the check-in and check-out dates for the hotel.\")`, with no search_flights call and no nested search inside save_to_cache. A state-only attraction request, e.g. 'Art attractions in MO', is `attractions = search_attractions(type=[\"Art\"], state=\"MO\")` with NO city kwarg."
+      }
+    ]
+  },
+  "source_type": "failure"
+}
