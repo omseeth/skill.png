@@ -3,7 +3,7 @@
 <p align="center">
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white" alt="Python 3.12"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT"></a>
-  <!-- <a href="PAPER_URL"><img src="https://img.shields.io/badge/paper-arXiv-b31b1b" alt="Paper"></a> -->
+  <a href="https://arxiv.org/abs/2611.26296"><img src="https://img.shields.io/badge/arXiv-2611.26296-b31b1b?logo=arxiv&logoColor=white" alt="arXiv 2611.26296"></a>
 </p>
 
 <p align="center">
@@ -46,6 +46,7 @@ same image can be optimized for several VLMs at once.
 - [Interpreting Skill.png](#interpreting-skillpng)
 - [Layout](#layout)
 - [License](#license)
+- [Cite as](#cite-as)
 
 ## Results
 
@@ -556,3 +557,17 @@ The T1 dataset ([capitalone/T1](https://huggingface.co/datasets/capitalone/T1),
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)) is not included: the adapter downloads
 it at a pinned revision. Result files under `runs/t1/` contain excerpts of its dialogues, which
 remain under CC BY 4.0.
+
+## Cite as
+
+```bibtex
+@misc{seeth2026skillpnglearningagentskills,
+      title={SKILL.PNG: Learning Agent Skills in Pixel Space},
+      author={Maximilian Seeth and Chengzhi Martin Hu and Marie Kempkes and Paul Röttger and Leo Schwinn},
+      year={2026},
+      eprint={2611.26296},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2611.26296},
+}
+```
